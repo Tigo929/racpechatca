@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+/* ── Бренд-переменные Распечатка PRO ────────────────────────────────────── */
+:root {
+  --brand-ink:          #1E1B4B; /* indigo-950 — шапка, premium фоны */
+  --brand-deep:         #312E81; /* indigo-900 */
+  --brand-primary:      #4338CA; /* indigo-700 — ссылки, info */
+  --brand-amber:        #D97706; /* amber-600  — CTA, активные состояния */
+  --brand-amber-hover:  #B45309; /* amber-700  */
+  --brand-amber-light:  #FFFBEB; /* amber-50   */
+  --brand-text:         #0F172A; /* slate-900  */
+  --brand-surface:      #FFFFFF;
+  --brand-bg:           #F8FAFC; /* slate-50   */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  background-color: var(--brand-bg);
+  color: var(--brand-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Кастомный скроллбар в фирменных цветах */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #F1F5F9; }
+::-webkit-scrollbar-thumb { background: #C7D2FE; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--brand-primary); }
+
+/* Цвет выделения текста */
+::selection { background: #FEF3C7; color: #78350F; }

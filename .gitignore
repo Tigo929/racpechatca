@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+**/dist/
+
+# Env files (секреты — никогда не в git!)
+.env
+**/.env
+.env.local
+**/.env.local
+
+# Prisma generated client
+crm-new/src/generated/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db

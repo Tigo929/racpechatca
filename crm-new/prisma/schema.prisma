@@ -1,0 +1,156 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  username  String   @unique
+  password  String
+  role      EnumRole @default(EXECUTOR)
+}
+
+enum EnumRole {
+  ADMIN
+  EXECUTOR
+}
+
+model OrderPhoto {
+  id        String   @id() @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  numberOrder           String               @unique
+  sourceOrder           EnumSourceOrder
+  communicationPlatform EnumCommunication
+  urlCommunication      String
+  deliveryMethod        EnumDeliveryMethod
+  deliveryCost          Int
+  totalOrder            Int
+  note                  String?
+  status                EnumStatus           @default(NEW)
+  productCategory       EnumProductCategory  @default(PHOTO)
+  deadline              DateTime?
+  isUrgent              Boolean              @default(false)
+
+  items        ItemPhoto[]
+  tshirtItems  ItemTshirt[]
+}
+
+enum EnumProductCategory {
+  PHOTO
+  TSHIRT
+}
+
+enum EnumSourceOrder {
+  AVITO
+  OZON
+  WB
+  LOCAL
+}
+
+enum EnumCommunication {
+  AVITO
+  TELEGRAM
+  MAX
+  OZON
+}
+
+enum EnumStatus {
+  NEW
+  FOLDER_STRUCTURE_CREATED
+  PRINTED
+  READY
+  SENT
+  PAID
+}
+
+enum EnumDeliveryMethod {
+  YANDEX_PVZ
+  OZON_PVZ
+  PICKUP
+  OZON_SELLER
+  WB_SELLER
+}
+
+model ItemPhoto {
+  id        String   @id() @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order   OrderPhoto @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId String
+
+  formatPaper   String
+  typePaper     EnumTypePaper
+  quantity      Int
+  price         Int
+  pricePosition Int
+}
+
+enum EnumTypePaper {
+  GLOSS
+  MATTE
+}
+
+model ItemTshirt {
+  id        String   @id() @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order   OrderPhoto @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId String
+
+  color         String
+  size          EnumTshirtSize
+  gender        EnumTshirtGender  @default(UNISEX)
+  printLocation EnumPrintLocation
+  printType     EnumPrintType     @default(DTF)
+  quantity      Int
+  price         Int
+  pricePosition Int
+  designCost    Int               @default(0)
+  designUrl     String?
+  designNote    String?
+}
+
+enum EnumTshirtSize {
+  XS
+  S
+  M
+  L
+  XL
+  XXL
+  XXXL
+}
+
+enum EnumTshirtGender {
+  UNISEX
+  MALE
+  FEMALE
+  KIDS
+}
+
+enum EnumPrintLocation {
+  FRONT
+  BACK
+  FRONT_BACK
+  SLEEVE_LEFT
+  SLEEVE_RIGHT
+  FULL
+  BY_TZ
+}
+
+enum EnumPrintType {
+  DTF
+  DTG
+  SILK
+  SUBLIMATION
+}
