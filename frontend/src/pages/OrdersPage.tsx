@@ -1,19 +1,18 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, ChevronLeft, ChevronRight, Printer, RefreshCw, LogOut, Users, Flame, Clock } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, Printer, RefreshCw, LogOut, Users, Flame, Clock, Camera, Shirt } from 'lucide-react';
 import { getDeadlineInfo } from '../utils/deadline';
 import { Link } from 'react-router-dom';
 import { ordersApi } from '../api/orders';
 import { StatusBadge } from '../components/StatusBadge';
-import { SourceBadge } from '../components/SourceBadge';
 import { Modal } from '../components/Modal';
 import { CreateOrderForm } from '../components/CreateOrderForm';
 import { OrderDetail } from '../components/OrderDetail';
 import { FilterChip } from '../components/FilterChip';
 import { DeliveryBadge } from '../components/DeliveryBadge';
-import { STATUS_FLOW, STATUS_LABELS, DELIVERY_LABELS } from '../constants';
+import { STATUS_FLOW, STATUS_LABELS } from '../constants';
 import { useAuth } from '../context/AuthContext';
-import type { EnumStatus, EnumSourceOrder, OrdersQuery } from '../types';
+import type { EnumStatus, OrdersQuery } from '../types';
 
 const PAGE_SIZE = 10;
 
@@ -21,7 +20,12 @@ export function OrdersPage() {
   const { user, logout } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
 
-  const [query, setQuery] = useState<OrdersQuery>({ page: 1, limit: PAGE_SIZE });
+  // Исполнители видят только фото-заказы — фильтр на уровне запроса к бэкенду
+  const [query, setQuery] = useState<OrdersQuery>({
+    page: 1,
+    limit: PAGE_SIZE,
+    productCategory: isAdmin ? undefined : 'PHOTO',
+  });
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -36,9 +40,6 @@ export function OrdersPage() {
 
   const setStatus = (status: EnumStatus | undefined) =>
     setQuery(q => ({ ...q, status, page: 1 }));
-
-  const setSource = (sourceOrder: EnumSourceOrder | undefined) =>
-    setQuery(q => ({ ...q, sourceOrder, page: 1 }));
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -126,18 +127,15 @@ export function OrdersPage() {
         <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3 shadow-sm">
           <div className="flex gap-1.5 flex-wrap">
             <FilterChip active={!query.status} onClick={() => setStatus(undefined)}>Все</FilterChip>
-            {STATUS_FLOW.map(s => (
+            {/* Лид «Обратился» — только для администратора */}
+            {isAdmin && (
+              <FilterChip active={query.status === 'LEAD'} onClick={() => setStatus('LEAD')}>
+                🔔 Обратился
+              </FilterChip>
+            )}
+            {STATUS_FLOW.filter(s => s !== 'LEAD').map(s => (
               <FilterChip key={s} active={query.status === s} onClick={() => setStatus(s)}>
                 {STATUS_LABELS[s]}
-              </FilterChip>
-            ))}
-          </div>
-          <div className="flex gap-1.5 flex-wrap items-center">
-            <span className="text-xs text-gray-400">Источник:</span>
-            {(['AVITO', 'OZON', 'WB', 'LOCAL'] as EnumSourceOrder[]).map(src => (
-              <FilterChip key={src} active={query.sourceOrder === src}
-                onClick={() => setSource(query.sourceOrder === src ? undefined : src)} small>
-                {src === 'AVITO' ? 'Авито' : src === 'WB' ? 'WB' : src === 'LOCAL' ? 'Местный' : 'Ozon'}
               </FilterChip>
             ))}
           </div>
@@ -161,9 +159,9 @@ export function OrdersPage() {
                 <thead>
                   <tr className="border-b border-gray-50 bg-gray-50/60">
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Номер</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Тип</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Дата</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Дедлайн</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Источник</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Статус</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Доставка</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Позиций</th>
@@ -176,21 +174,24 @@ export function OrdersPage() {
                   {orders.map(order => {
                     const dl = getDeadlineInfo(order.deadline, order.createdAt);
                     const isPaid = order.status === 'PAID';
+                    const isSent = order.status === 'SENT';
+                    const showUrgent = order.isUrgent && !isPaid && !isSent;
+                    // Цветное выделение строки по дедлайну — только для активных заказов
                     const rowBg = isPaid
                       ? 'opacity-60'
-                      : order.isUrgent
+                      : showUrgent
                         ? 'bg-red-100 hover:bg-red-150'
-                        : dl.rowClass || 'hover:bg-amber-50/60';
+                        : (!isSent && dl.rowClass) || 'hover:bg-amber-50/60';
                     return (
                     <tr
                       key={order.id}
                       onClick={() => setSelectedId(order.id)}
                       className={`cursor-pointer transition-colors group ${rowBg}`}
-                      style={order.isUrgent && !isPaid ? { borderLeft: '5px solid #dc2626', boxShadow: 'inset 3px 0 8px rgba(220,38,38,0.08)' } : {}}
+                      style={showUrgent ? { borderLeft: '5px solid #dc2626', boxShadow: 'inset 3px 0 8px rgba(220,38,38,0.08)' } : {}}
                     >
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-1.5">
-                          {order.isUrgent && (
+                          {showUrgent && (
                             <Flame size={13} className="text-red-500 flex-shrink-0 animate-pulse" />
                           )}
                           <span className="font-mono text-sm font-semibold text-indigo-800 group-hover:text-indigo-950">
@@ -198,17 +199,31 @@ export function OrdersPage() {
                           </span>
                         </div>
                       </td>
+                      <td className="px-4 py-3.5">
+                        {order.productCategory === 'TSHIRT' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-violet-100 text-violet-700">
+                            <Shirt size={11} /> Футболка
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-amber-100 text-amber-700">
+                            <Camera size={11} /> Фото
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3.5 text-sm text-gray-500">
                         {new Date(order.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${dl.badgeClass}`}>
-                          <Clock size={10} />
-                          {dl.label}
-                        </span>
+                        {/* Дедлайн не показываем для отправленных и оплаченных */}
+                        {!isSent && !isPaid && dl.label ? (
+                          <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${dl.badgeClass}`}>
+                            <Clock size={10} /> {dl.label}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300 text-xs">—</span>
+                        )}
                       </td>
-                      <td className="px-4 py-3.5"><SourceBadge source={order.sourceOrder} /></td>
-                      <td className="px-4 py-3.5"><StatusBadge status={order.status} size="sm" /></td>
+                      <td className="px-4 py-3.5"><StatusBadge status={order.status} productCategory={order.productCategory} size="sm" /></td>
                       <td className="px-4 py-3.5"><DeliveryBadge method={order.deliveryMethod} /></td>
                       <td className="px-4 py-3.5 text-sm text-gray-600">
                         {(order.items?.length ?? 0) + (order.tshirtItems?.length ?? 0)} шт.

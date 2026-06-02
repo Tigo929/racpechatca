@@ -19,16 +19,6 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending }: P
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className={labelCls}>Источник</p>
-          <select className={inputCls} value={form.sourceOrder}
-            onChange={e => set({ sourceOrder: e.target.value as UpdateOrderDto['sourceOrder'] })}>
-            <option value="AVITO">Авито</option>
-            <option value="OZON">Ozon</option>
-            <option value="WB">Wildberries</option>
-            <option value="LOCAL">Местный</option>
-          </select>
-        </div>
-        <div>
           <p className={labelCls}>Платформа общения</p>
           <select className={inputCls} value={form.communicationPlatform}
             onChange={e => set({ communicationPlatform: e.target.value as UpdateOrderDto['communicationPlatform'] })}>
@@ -41,9 +31,15 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending }: P
       </div>
 
       <div>
-        <p className={labelCls}>Ссылка на переписку</p>
-        <input className={inputCls} value={form.urlCommunication}
-          onChange={e => set({ urlCommunication: e.target.value })} />
+        <p className={labelCls}>
+          {form.communicationPlatform === 'TELEGRAM' ? 'Username в Telegram' : 'Ссылка на переписку'}
+        </p>
+        <input
+          className={inputCls}
+          placeholder={form.communicationPlatform === 'TELEGRAM' ? '@username' : 'https://www.avito.ru/...'}
+          value={form.urlCommunication ?? ''}
+          onChange={e => set({ urlCommunication: e.target.value })}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3">

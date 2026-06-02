@@ -36,7 +36,7 @@ export class OrderItemService {
     if (!order) throw new NotFoundException('Заказ не найден');
     return this.prisma.orderPhoto.update({
       where: { id: item.orderId },
-      include: { items: true },
+      include: { items: true, tshirtItems: true },
       data: {
         totalOrder: calculatorTotalPrice(order.items, order.deliveryCost),
       },
@@ -48,12 +48,12 @@ export class OrderItemService {
     await this.prisma.itemPhoto.delete({ where: { id: idItem } });
     const order = await this.prisma.orderPhoto.findUnique({
       where: { id: item.orderId },
-      include: { items: true },
+      include: { items: true, tshirtItems: true },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
     return this.prisma.orderPhoto.update({
       where: { id: item.orderId },
-      include: { items: true },
+      include: { items: true, tshirtItems: true },
       data: {
         totalOrder: calculatorTotalPrice(order.items, order.deliveryCost),
       },
@@ -73,12 +73,12 @@ export class OrderItemService {
     });
     const order = await this.prisma.orderPhoto.findUnique({
       where: { id: idOrder },
-      include: { items: true },
+      include: { items: true, tshirtItems: true },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
     return this.prisma.orderPhoto.update({
       where: { id: idOrder },
-      include: { items: true },
+      include: { items: true, tshirtItems: true },
       data: {
         totalOrder: calculatorTotalPrice(order.items, order.deliveryCost),
       },

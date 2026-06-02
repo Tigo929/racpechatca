@@ -9,15 +9,17 @@ import type {
 } from './types';
 
 export const STATUS_LABELS: Record<EnumStatus, string> = {
+  LEAD: 'Обратился',
   NEW: 'Новый',
-  FOLDER_STRUCTURE_CREATED: 'Папка создана',
-  PRINTED: 'Напечатан',
+  FOLDER_STRUCTURE_CREATED: 'Создана папка',
+  PRINTED: 'Печатается',
   READY: 'Готов',
   SENT: 'Отправлен',
   PAID: 'Оплачен',
 };
 
 export const STATUS_COLORS: Record<EnumStatus, string> = {
+  LEAD: 'bg-pink-100 text-pink-700',
   NEW: 'bg-blue-100 text-blue-800',
   FOLDER_STRUCTURE_CREATED: 'bg-purple-100 text-purple-800',
   PRINTED: 'bg-yellow-100 text-yellow-800',
@@ -26,7 +28,19 @@ export const STATUS_COLORS: Record<EnumStatus, string> = {
   PAID: 'bg-emerald-100 text-emerald-800',
 };
 
+// Поток статусов для фотографий
 export const STATUS_FLOW: EnumStatus[] = [
+  'LEAD',
+  'NEW',
+  'FOLDER_STRUCTURE_CREATED',
+  'READY',
+  'SENT',
+  'PAID',
+];
+
+// Поток статусов для футболок (используем те же enum, другие подписи)
+export const TSHIRT_STATUS_FLOW: EnumStatus[] = [
+  'LEAD',
   'NEW',
   'FOLDER_STRUCTURE_CREATED',
   'PRINTED',
@@ -34,6 +48,16 @@ export const STATUS_FLOW: EnumStatus[] = [
   'SENT',
   'PAID',
 ];
+
+export const TSHIRT_STATUS_LABELS: Record<EnumStatus, string> = {
+  LEAD: 'Обратился',
+  NEW: 'Новый',
+  FOLDER_STRUCTURE_CREATED: 'Оформлен',
+  PRINTED: 'На стадии дизайна',
+  READY: 'На исполнении',
+  SENT: 'Отправлен',
+  PAID: 'Оплачен',
+};
 
 export const SOURCE_LABELS: Record<EnumSourceOrder, string> = {
   AVITO: 'Авито',

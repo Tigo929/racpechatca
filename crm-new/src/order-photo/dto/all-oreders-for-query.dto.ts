@@ -1,6 +1,6 @@
 import { Type } from "class-transformer";
 import { IsEnum, IsNumber, IsOptional } from "class-validator";
-import { EnumSourceOrder, EnumStatus } from "src/generated/prisma/enums";
+import { EnumProductCategory, EnumSourceOrder, EnumStatus } from "src/generated/prisma/enums";
 
 export default class DtoAllOrdersforQuery {
   @IsNumber()
@@ -17,4 +17,7 @@ export default class DtoAllOrdersforQuery {
   @IsEnum(EnumSourceOrder)
   @IsOptional()
   sourceOrder?: EnumSourceOrder;
+  @IsEnum(EnumProductCategory)
+  @IsOptional()
+  productCategory?: EnumProductCategory;
 }

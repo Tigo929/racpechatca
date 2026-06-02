@@ -4,6 +4,7 @@ export type EnumTshirtSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
 export type EnumPrintLocation = 'FRONT' | 'BACK' | 'FRONT_BACK' | 'BY_TZ';
 
 export type EnumStatus =
+  | 'LEAD'
   | 'NEW'
   | 'FOLDER_STRUCTURE_CREATED'
   | 'PRINTED'
@@ -119,6 +120,7 @@ export interface CreateOrderDto {
   deliveryCost: number;
   note?: string;
   productCategory?: EnumProductCategory;
+  status?: EnumStatus;
   items?: CreateItemDto[];
   tshirtItems?: CreateTshirtItemDto[];
 }
@@ -171,4 +173,5 @@ export interface OrdersQuery {
   limit?: number;
   status?: EnumStatus;
   sourceOrder?: EnumSourceOrder;
+  productCategory?: EnumProductCategory;
 }

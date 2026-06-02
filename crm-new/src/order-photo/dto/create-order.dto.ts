@@ -14,6 +14,7 @@ import {
   EnumDeliveryMethod,
   EnumProductCategory,
   EnumSourceOrder,
+  EnumStatus,
 } from 'src/generated/prisma/enums';
 import DtoCreateItemOrder from './create-item-order.dto';
 import { DtoCreateTshirtItem } from './create-tshirt-item.dto';
@@ -40,6 +41,10 @@ export default class DtoCreateOrder {
   @IsOptional()
   @IsEnum(EnumProductCategory)
   productCategory?: EnumProductCategory;
+
+  @IsOptional()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  status?: any; // EnumStatus — cast to any until LEAD lands in local generated client
 
   @IsString()
   @IsOptional()

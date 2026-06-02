@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, Check, X, ExternalLink } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, ExternalLink, MessageCircle } from 'lucide-react';
 import { ordersApi } from '../api/orders';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -135,6 +135,20 @@ export function TshirtItemsTable({ order }: Props) {
 
   return (
     <div>
+      {/* Ссылка на клиента */}
+      {order.urlCommunication && (
+        <a
+          href={order.urlCommunication}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-3 py-2 mb-4 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors text-sm font-medium border border-indigo-100"
+        >
+          <MessageCircle size={15} />
+          Написать клиенту
+          <ExternalLink size={12} className="opacity-60" />
+        </a>
+      )}
+
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-700">Позиции ({order.tshirtItems.length})</h3>
         {isAdmin && (

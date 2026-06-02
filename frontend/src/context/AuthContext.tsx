@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string) => {
     const res = await authApi.login(username, password);
     localStorage.setItem('access_token', res.access_token);
-    setUser({ id: '', username: res.username, role: res.role });
+    // Получаем полный профиль (с id) одним запросом
     const me = await authApi.me();
     setUser(me);
   };

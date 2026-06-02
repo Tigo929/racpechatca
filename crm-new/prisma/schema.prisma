@@ -64,6 +64,7 @@ enum EnumCommunication {
 }
 
 enum EnumStatus {
+  LEAD
   NEW
   FOLDER_STRUCTURE_CREATED
   PRINTED

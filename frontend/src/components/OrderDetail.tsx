@@ -1,19 +1,75 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Pencil, Trash2, ExternalLink, Flame, Clock } from 'lucide-react';
+import { Pencil, Trash2, Flame, Clock, Copy } from 'lucide-react';
+
+function generateConfirmationText(order: OrderPhoto): string {
+  const items = order.items ?? [];
+  const tshirtItems = order.tshirtItems ?? [];
+  const delivery = order.deliveryCost ?? 0;
+  const total = order.totalOrder ?? 0;
+  const prepay = Math.ceil(total * 0.5);
+  const rest = total - prepay;
+  const deadlineStr = order.deadline
+    ? new Date(order.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+    : '3 рабочих дня';
+
+  const lines: string[] = [];
+  items.forEach(i => {
+    const type = i.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
+    lines.push(`• ${i.formatPaper} (${type}) × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
+  });
+  tshirtItems.forEach(i => {
+    lines.push(`• Футболка ${i.color}, р-р ${i.size} × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
+  });
+
+  const itemsTotal = [...items, ...tshirtItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0);
+  const separator = '─────────────────';
+
+  const isPickup = order.deliveryMethod === 'PICKUP';
+
+  // Фраза для остатка зависит от способа доставки
+  const restLabel = isPickup
+    ? `👉 Остаток — ${rest.toLocaleString('ru-RU')} ₽ при самовывозе`
+    : `👉 Остаток — ${rest.toLocaleString('ru-RU')} ₽ при подтверждении фото доставки`;
+
+  return [
+    '✅ Отлично, ваш заказ подтверждён!',
+    '',
+    '📋 Состав заказа:',
+    ...lines,
+    '',
+    separator,
+    `💰 Сумма по позициям: ${itemsTotal.toLocaleString('ru-RU')} ₽`,
+    ...(delivery > 0 ? [`🚚 Доставка: ${delivery.toLocaleString('ru-RU')} ₽`] : []),
+    `📦 Итого к оплате: ${total.toLocaleString('ru-RU')} ₽`,
+    '',
+    `⏳ Срок изготовления: до ${deadlineStr}`,
+    '',
+    separator,
+    '💳 Для подтверждения заказа:',
+    `👉 Предоплата 50% — ${prepay.toLocaleString('ru-RU')} ₽ (сейчас)`,
+    restLabel,
+    ...(isPickup ? ['', '📍 Самовывоз: Измайловский проезд, 6, корп. 1, подъезд 3'] : []),
+    '',
+    '📲 Реквизиты для перевода (СБП / ТБанк):',
+    '   8 916 349 85 15',
+    '   Гулян Тигран Саакович',
+    '',
+    'Спасибо за доверие! Приступаем к работе 🙌',
+  ].join('\n');
+}
 import { getDeadlineInfo } from '../utils/deadline';
 import { ordersApi } from '../api/orders';
 import { StatusStepper } from './StatusStepper';
 import { ItemsTable } from './ItemsTable';
 import { StatusBadge } from './StatusBadge';
-import { SourceBadge } from './SourceBadge';
 import { InfoRow } from './InfoRow';
 import { OrderEditForm } from './OrderEditForm';
 import { TshirtItemsTable } from './TshirtItemsTable';
 import { COMMUNICATION_LABELS, DELIVERY_LABELS } from '../constants';
 import { useAuth } from '../context/AuthContext';
-import type { UpdateOrderDto } from '../types';
+import type { UpdateOrderDto, OrderPhoto } from '../types';
 
 interface Props {
   orderId: string;
@@ -61,10 +117,15 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
 
   const startEdit = () => {
     if (!order) return;
+    // Если Telegram — вернуть @username из https://t.me/username
+    const urlComm =
+      order.communicationPlatform === 'TELEGRAM' && order.urlCommunication.startsWith('https://t.me/')
+        ? '@' + order.urlCommunication.replace('https://t.me/', '')
+        : order.urlCommunication;
     setForm({
       sourceOrder: order.sourceOrder,
       communicationPlatform: order.communicationPlatform,
-      urlCommunication: order.urlCommunication,
+      urlCommunication: urlComm,
       deliveryMethod: order.deliveryMethod,
       deliveryCost: order.deliveryCost,
       note: order.note,
@@ -89,44 +150,73 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
         <div>
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-2xl font-bold text-gray-900">#{order.numberOrder}</span>
-            <StatusBadge status={order.status} />
-            <SourceBadge source={order.sourceOrder} />
-            {order.isUrgent && (
+            <StatusBadge status={order.status} productCategory={order.productCategory} />
+            {/* Дедлайн — только для активных заказов */}
+            {order.status !== 'SENT' && order.status !== 'PAID' && (() => {
+              const dl = getDeadlineInfo(order.deadline, order.createdAt);
+              return dl.label ? (
+                <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${dl.badgeClass}`}>
+                  <Clock size={10} /> {dl.label}
+                </span>
+              ) : null;
+            })()}
+            {order.isUrgent && order.status !== 'SENT' && order.status !== 'PAID' && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold border border-red-300 animate-pulse">
                 <Flame size={11} /> Срочно
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3 mt-1 flex-wrap">
-            <p className="text-xs text-gray-400">
-              Создан {new Date(order.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
-            {(() => {
-              const dl = getDeadlineInfo(order.deadline, order.createdAt);
-              return dl.label ? (
-                <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${dl.badgeClass}`}>
-                  <Clock size={10} /> Дедлайн: {dl.label}
-                </span>
-              ) : null;
-            })()}
-          </div>
         </div>
         <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
-          {/* Кнопка Срочно — доступна всем */}
-          <button
-            onClick={toggleUrgent}
-            disabled={updateMutation.isPending}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-60 ${
-              order.isUrgent
-                ? 'bg-red-500 text-white hover:bg-red-600'
-                : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
-            }`}
-          >
-            <Flame size={13} />
-            {order.isUrgent ? 'Снять срочность' : 'Срочно'}
-          </button>
+          {/* Кнопка Срочно — только пока не отправлен */}
+          {order.status !== 'SENT' && order.status !== 'PAID' && (
+            <button
+              onClick={toggleUrgent}
+              disabled={updateMutation.isPending}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-60 ${
+                order.isUrgent
+                  ? 'bg-red-500 text-white hover:bg-red-600'
+                  : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+              }`}
+            >
+              <Flame size={13} />
+              {order.isUrgent ? 'Снять срочность' : 'Срочно'}
+            </button>
+          )}
           {isAdmin && (
             <>
+              {/* Кнопка подтверждения — только для статуса NEW */}
+              {order.status === 'NEW' && (
+                <button
+                  onClick={() => {
+                    const text = generateConfirmationText(order);
+                    // Clipboard API требует HTTPS — используем fallback через textarea
+                    try {
+                      if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(text)
+                          .then(() => toast.success('Текст подтверждения скопирован!'))
+                          .catch(() => toast.error('Не удалось скопировать'));
+                      } else {
+                        const ta = document.createElement('textarea');
+                        ta.value = text;
+                        ta.style.position = 'fixed';
+                        ta.style.opacity = '0';
+                        document.body.appendChild(ta);
+                        ta.focus();
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                        toast.success('Текст подтверждения скопирован!');
+                      }
+                    } catch {
+                      toast.error('Не удалось скопировать');
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"
+                >
+                  <Copy size={13} /> Скопировать подтверждение
+                </button>
+              )}
               {!editing && (
                 <button onClick={startEdit}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
@@ -162,16 +252,6 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
         <div className="grid grid-cols-2 gap-x-8 gap-y-3">
           <InfoRow label="Платформа общения" value={COMMUNICATION_LABELS[order.communicationPlatform]} />
           <InfoRow label="Способ доставки" value={DELIVERY_LABELS[order.deliveryMethod]} />
-          <InfoRow
-            label="Ссылка на переписку"
-            value={
-              <a href={order.urlCommunication} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1 text-indigo-600 hover:underline text-sm truncate max-w-[200px]">
-                <ExternalLink size={12} />
-                {order.urlCommunication}
-              </a>
-            }
-          />
           {isAdmin && (
             <>
               <InfoRow label="Доставка" value={`${(order.deliveryCost ?? 0).toLocaleString()} ₽`} />
@@ -190,10 +270,12 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
         </div>
       )}
 
-      {/* Items */}
-      {order.productCategory === 'TSHIRT'
+      {/* Items — исполнители видят только фото-позиции */}
+      {order.productCategory === 'TSHIRT' && isAdmin
         ? <TshirtItemsTable order={order} />
-        : <ItemsTable order={order} />
+        : order.productCategory === 'PHOTO'
+          ? <ItemsTable order={order} />
+          : null
       }
     </div>
   );

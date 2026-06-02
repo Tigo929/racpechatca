@@ -14,7 +14,7 @@ import type {
 } from '../types';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000',
+  baseURL: '',
 });
 
 api.interceptors.request.use((cfg) => {
@@ -41,6 +41,7 @@ export const ordersApi = {
     if (query.limit) params.set('limit', String(query.limit));
     if (query.status) params.set('status', query.status);
     if (query.sourceOrder) params.set('sourceOrder', query.sourceOrder);
+    if (query.productCategory) params.set('productCategory', query.productCategory);
     const { data } = await api.get<OrdersResponse>(`/order-photo?${params}`);
     return data;
   },

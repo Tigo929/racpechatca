@@ -1,4 +1,5 @@
 import { useFieldArray, useForm } from 'react-hook-form';
+import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Trash2, Camera, Shirt } from 'lucide-react';
@@ -47,6 +48,21 @@ const baseSchema = z.object({
       path: ['urlCommunication'],
     });
   }
+  if (
+    (data.communicationPlatform === 'AVITO' || data.communicationPlatform === 'OZON' || data.communicationPlatform === 'MAX') &&
+    data.urlCommunication.length > 0 &&
+    !data.urlCommunication.startsWith('http')
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Укажите полную ссылку (начинается с https://)',
+      path: ['urlCommunication'],
+    });
+  }
+});
+
+// Схема для обычной заявки (позиции обязательны)
+const fullSchema = baseSchema.superRefine((data, ctx) => {
   if (data.productCategory === 'PHOTO' && (!data.items || data.items.length === 0)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Добавьте хотя бы одну позицию', path: ['items'] });
   }
@@ -58,6 +74,7 @@ const baseSchema = z.object({
 type FormValues = z.infer<typeof baseSchema>;
 interface Props { onClose: () => void }
 
+
 const inputCls = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent';
 const selectCls = inputCls;
 const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
@@ -65,11 +82,11 @@ const errorCls = 'text-red-500 text-xs mt-1';
 
 export function CreateOrderForm({ onClose }: Props) {
   const qc = useQueryClient();
-  const { register, control, handleSubmit, watch, formState: { errors } } = useForm<FormValues>({
-    resolver: zodResolver(baseSchema),
+  const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormValues>({
+    resolver: zodResolver(fullSchema),
     defaultValues: {
       productCategory: 'PHOTO',
-      sourceOrder: 'AVITO',
+      sourceOrder: 'AVITO' as const,
       communicationPlatform: 'TELEGRAM',
       deliveryMethod: 'PICKUP',
       deliveryCost: 0,
@@ -84,12 +101,26 @@ export function CreateOrderForm({ onClose }: Props) {
   const productCategory = watch('productCategory');
   const communicationPlatform = watch('communicationPlatform');
 
+  // При смене категории очищаем массив позиций другой категории,
+  // чтобы Zod-валидация не падала на невидимых полях
+  useEffect(() => {
+    if (productCategory === 'TSHIRT') {
+      setValue('items', []);
+    } else {
+      setValue('tshirtItems', []);
+    }
+  }, [productCategory, setValue]);
+
   const photoFields = useFieldArray({ control, name: 'items' });
   const tshirtFields = useFieldArray({ control, name: 'tshirtItems' });
 
   const mutation = useMutation({
     mutationFn: ordersApi.create,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['orders'] }); toast.success('Заявка создана'); onClose(); },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['orders'] });
+      toast.success((vars as any).status === 'LEAD' ? 'Обращение записано' : 'Заявка создана');
+      onClose();
+    },
     onError: () => toast.error('Ошибка при создании заявки'),
   });
 
@@ -99,6 +130,37 @@ export function CreateOrderForm({ onClose }: Props) {
       items: data.productCategory === 'PHOTO' ? data.items : undefined,
       tshirtItems: data.productCategory === 'TSHIRT' ? data.tshirtItems : undefined,
     });
+  };
+
+  // Создать обращение (LEAD) — позиции не обязательны
+  const onSubmitLead = () => {
+    const data = watch();
+    const url = data.urlCommunication ?? '';
+    // Минимальная проверка: ссылка/username не пустая
+    if (!url || url.trim() === '') {
+      toast.error('Укажите ссылку или @username');
+      return;
+    }
+    if (data.communicationPlatform === 'TELEGRAM' && !url.startsWith('@')) {
+      toast.error('Для Telegram укажите @username (начинается с @)');
+      return;
+    }
+    if (data.communicationPlatform !== 'TELEGRAM' && !url.startsWith('http')) {
+      toast.error('Укажите полную ссылку (начинается с https://)');
+      return;
+    }
+    mutation.mutate({
+      sourceOrder: data.sourceOrder ?? 'AVITO',
+      communicationPlatform: data.communicationPlatform,
+      urlCommunication: url,
+      deliveryMethod: data.deliveryMethod ?? 'PICKUP',
+      deliveryCost: data.deliveryCost ?? 0,
+      note: data.note,
+      productCategory: data.productCategory ?? 'PHOTO',
+      status: 'LEAD' as any,
+      items: undefined,
+      tshirtItems: undefined,
+    } as any);
   };
 
   return (
@@ -127,15 +189,6 @@ export function CreateOrderForm({ onClose }: Props) {
       {/* Основные поля */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className={labelCls}>Источник заявки</label>
-          <select className={selectCls} {...register('sourceOrder')}>
-            <option value="AVITO">Авито</option>
-            <option value="OZON">Ozon</option>
-            <option value="WB">Wildberries</option>
-            <option value="LOCAL">Местный</option>
-          </select>
-        </div>
-        <div>
           <label className={labelCls}>Платформа общения</label>
           <select className={selectCls} {...register('communicationPlatform')}>
             <option value="AVITO">Авито</option>
@@ -148,10 +201,10 @@ export function CreateOrderForm({ onClose }: Props) {
 
       <div>
         <label className={labelCls}>
-          {communicationPlatform === 'TELEGRAM' ? 'User ID в Telegram' : 'Ссылка на переписку'}
+          {communicationPlatform === 'TELEGRAM' ? 'Username в Telegram' : 'Ссылка на переписку'}
         </label>
         <input className={inputCls}
-          placeholder={communicationPlatform === 'TELEGRAM' ? '@username' : 'https://...'}
+          placeholder={communicationPlatform === 'TELEGRAM' ? '@username' : 'https://www.avito.ru/...'}
           {...register('urlCommunication')} />
         {errors.urlCommunication && <p className={errorCls}>{errors.urlCommunication.message}</p>}
       </div>
@@ -307,15 +360,26 @@ export function CreateOrderForm({ onClose }: Props) {
         </div>
       )}
 
-      <div className="flex gap-3 pt-2 border-t border-gray-100">
-        <button type="button" onClick={onClose}
-          className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-          Отмена
-        </button>
-        <button type="submit" disabled={mutation.isPending}
-          className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-60 transition-colors shadow-sm">
-          {mutation.isPending ? 'Создание...' : 'Создать заявку'}
-        </button>
+      <div className="pt-2 border-t border-gray-100 space-y-2">
+        <div className="flex gap-3">
+          <button type="button" onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+            Отмена
+          </button>
+          <button
+            type="button"
+            disabled={mutation.isPending}
+            onClick={onSubmitLead}
+            className="flex-1 px-4 py-2 text-sm font-semibold text-pink-700 bg-pink-50 border border-pink-200 rounded-lg hover:bg-pink-100 disabled:opacity-60 transition-colors"
+          >
+            {mutation.isPending ? '...' : '🔔 Записать обращение'}
+          </button>
+          <button type="submit" disabled={mutation.isPending}
+            className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-60 transition-colors shadow-sm">
+            {mutation.isPending ? 'Создание...' : 'Создать заявку'}
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 text-center">«Записать обращение» — сохраняет лид без позиций. «Создать заявку» — полноценный заказ.</p>
       </div>
     </form>
   );

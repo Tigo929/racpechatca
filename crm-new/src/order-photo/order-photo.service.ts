@@ -32,6 +32,8 @@ export class OrderPhotoService {
           numberOrder: fullDate(lengthOrder),
           totalOrder: calculatorTotalPrice(itemsForTotal, dto.deliveryCost),
           deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ...(dto.status ? { status: dto.status as any } : {}),
           sourceOrder: dto.sourceOrder,
           communicationPlatform: dto.communicationPlatform,
           urlCommunication: buildCommunicationUrl(dto.communicationPlatform, dto.urlCommunication),
@@ -71,14 +73,24 @@ export class OrderPhotoService {
     const limit = query.limit ?? 10;
     const [orders, count] = await this.prisma.$transaction([
       this.prisma.orderPhoto.findMany({
-        where: { status: query.status, sourceOrder: query.sourceOrder },
+        where: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          status: (query.status ?? { notIn: ['SENT', 'LEAD'] }) as any,
+          sourceOrder: query.sourceOrder,
+          productCategory: query.productCategory,
+        },
         take: limit,
         skip: (page - 1) * limit,
         orderBy: { createdAt: "asc" },
         include: { items: true, tshirtItems: true },
       }),
       this.prisma.orderPhoto.count({
-        where: { status: query.status, sourceOrder: query.sourceOrder },
+        where: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          status: (query.status ?? { notIn: ['SENT', 'LEAD'] }) as any,
+          sourceOrder: query.sourceOrder,
+          productCategory: query.productCategory,
+        },
       }),
     ]);
     const data = {
@@ -128,7 +140,7 @@ export class OrderPhotoService {
         deliveryCost: dto.deliveryCost ?? order.deliveryCost,
         status: dto.status ?? order.status,
         totalOrder: calculatorTotalPrice(
-          order.items,
+          order.productCategory === 'TSHIRT' ? order.tshirtItems : order.items,
           dto.deliveryCost ?? order.deliveryCost,
         ),
         note: dto.note ?? order.note,
@@ -140,10 +152,7 @@ export class OrderPhotoService {
   async deleteOrder(idOrder: string) {
     await this.getOrderById(idOrder);
 
-    await this.prisma.itemPhoto.deleteMany({
-      where: { orderId: idOrder },
-    });
-
+    // ItemPhoto и ItemTshirt удалятся каскадно (onDelete: Cascade)
     const deleteOrder = await this.prisma.orderPhoto.delete({
       where: { id: idOrder },
       include: { items: true, tshirtItems: true },

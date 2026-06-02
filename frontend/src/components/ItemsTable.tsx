@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, ExternalLink, MessageCircle } from 'lucide-react';
 import { ordersApi } from '../api/orders';
 import { TYPE_LABELS } from '../constants';
 import { useAuth } from '../context/AuthContext';
@@ -25,6 +25,8 @@ export function ItemsTable({ order }: Props) {
   const [editState, setEditState] = useState<EditState | null>(null);
   const [adding, setAdding] = useState(false);
   const [newItem, setNewItem] = useState<EditState>({ formatPaper: '', typePaper: 'GLOSS', quantity: '1', price: '10' });
+  // Свободная цена: quantity скрыт, цена = итого позиции (quantity=1 на бэкенд)
+  const [freePrice, setFreePrice] = useState(false);
 
   const invalidate = (updated: OrderPhoto) => {
     qc.setQueryData(['order', order.id], updated);
@@ -58,25 +60,57 @@ export function ItemsTable({ order }: Props) {
 
   const saveEdit = (id: string) => {
     if (!editState) return;
-    updateMutation.mutate({ id, data: { formatPaper: editState.formatPaper, typePaper: editState.typePaper, quantity: Number(editState.quantity), price: Number(editState.price) } });
+    const qty = freePrice ? 1 : Number(editState.quantity);
+    const prc = Number(editState.price);
+    updateMutation.mutate({ id, data: { formatPaper: editState.formatPaper, typePaper: editState.typePaper, quantity: qty, price: prc } });
   };
 
   const saveNew = () => {
-    addMutation.mutate({ formatPaper: newItem.formatPaper, typePaper: newItem.typePaper, quantity: Number(newItem.quantity), price: Number(newItem.price) });
+    const qty = freePrice ? 1 : Number(newItem.quantity);
+    const prc = Number(newItem.price);
+    addMutation.mutate({ formatPaper: newItem.formatPaper, typePaper: newItem.typePaper, quantity: qty, price: prc });
   };
 
-  const colSpanTotal = isAdmin ? 4 : 2;
+  const colSpanTotal = isAdmin ? (freePrice ? 3 : 4) : 2;
 
   return (
     <div>
+      {/* Ссылка на клиента */}
+      {order.urlCommunication && (
+        <a
+          href={order.urlCommunication}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-3 py-2 mb-4 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors text-sm font-medium border border-indigo-100"
+        >
+          <MessageCircle size={15} />
+          Написать клиенту
+          <ExternalLink size={12} className="opacity-60" />
+        </a>
+      )}
+
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-700">Позиции ({order.items.length})</h3>
-        {isAdmin && (
-          <button onClick={() => setAdding(true)}
-            className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
-            <Plus size={14} /> Добавить
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {/* Свободная цена — только для администратора */}
+          {isAdmin && (
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={freePrice}
+                onChange={e => setFreePrice(e.target.checked)}
+                className="w-3.5 h-3.5 rounded accent-amber-500"
+              />
+              <span className="text-xs text-gray-500">Свободная цена</span>
+            </label>
+          )}
+          {isAdmin && (
+            <button onClick={() => setAdding(true)}
+              className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
+              <Plus size={14} /> Добавить
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="border border-gray-100 rounded-xl overflow-hidden">
@@ -85,9 +119,9 @@ export function ItemsTable({ order }: Props) {
             <tr>
               <th className="px-4 py-2 text-left">Формат</th>
               <th className="px-4 py-2 text-left">Тип</th>
-              <th className="px-4 py-2 text-right">Кол-во</th>
-              {isAdmin && <th className="px-4 py-2 text-right">Цена</th>}
-              {isAdmin && <th className="px-4 py-2 text-right">Итого</th>}
+              {!freePrice && <th className="px-4 py-2 text-right">Кол-во</th>}
+              {isAdmin && !freePrice && <th className="px-4 py-2 text-right">Цена / шт</th>}
+              {isAdmin && <th className="px-4 py-2 text-right">{freePrice ? 'Сумма' : 'Итого'}</th>}
               {isAdmin && <th className="px-3 py-2"></th>}
             </tr>
           </thead>
@@ -107,15 +141,18 @@ export function ItemsTable({ order }: Props) {
                         <option value="MATTE">Матт</option>
                       </select>
                     </td>
+                    {!freePrice && (
+                      <td className="px-4 py-2">
+                        <input type="number" min={1} className={inputCls + ' text-right'} value={editState.quantity}
+                          onChange={e => setEditState({ ...editState, quantity: e.target.value })} />
+                      </td>
+                    )}
                     <td className="px-4 py-2">
-                      <input type="number" min={1} className={inputCls + ' text-right'} value={editState.quantity}
-                        onChange={e => setEditState({ ...editState, quantity: e.target.value })} />
+                      <input type="number" min={0} className={inputCls + ' text-right'} value={editState.price}
+                        onChange={e => setEditState({ ...editState, price: e.target.value })}
+                        placeholder={freePrice ? 'Сумма ₽' : 'Цена ₽'} />
                     </td>
-                    <td className="px-4 py-2">
-                      <input type="number" min={1} className={inputCls + ' text-right'} value={editState.price}
-                        onChange={e => setEditState({ ...editState, price: e.target.value })} />
-                    </td>
-                    <td className="px-4 py-2 text-right text-gray-400">—</td>
+                    {!freePrice && <td className="px-4 py-2 text-right text-gray-400">—</td>}
                     <td className="px-3 py-2">
                       <div className="flex gap-1">
                         <button onClick={() => saveEdit(item.id)} disabled={updateMutation.isPending}
@@ -129,8 +166,8 @@ export function ItemsTable({ order }: Props) {
                   <>
                     <td className="px-4 py-2.5 font-medium text-gray-800">{item.formatPaper}</td>
                     <td className="px-4 py-2.5 text-gray-600">{TYPE_LABELS[item.typePaper]}</td>
-                    <td className="px-4 py-2.5 text-right">{item.quantity}</td>
-                    {isAdmin && <td className="px-4 py-2.5 text-right">{item.price.toLocaleString()} ₽</td>}
+                    {!freePrice && <td className="px-4 py-2.5 text-right">{item.quantity}</td>}
+                    {isAdmin && !freePrice && <td className="px-4 py-2.5 text-right">{item.price.toLocaleString()} ₽</td>}
                     {isAdmin && <td className="px-4 py-2.5 text-right font-medium">{item.pricePosition.toLocaleString()} ₽</td>}
                     {isAdmin && (
                       <td className="px-3 py-2.5">
@@ -159,15 +196,18 @@ export function ItemsTable({ order }: Props) {
                     <option value="MATTE">Матт</option>
                   </select>
                 </td>
+                {!freePrice && (
+                  <td className="px-4 py-2">
+                    <input type="number" min={1} className={inputCls + ' text-right'} value={newItem.quantity}
+                      onChange={e => setNewItem({ ...newItem, quantity: e.target.value })} />
+                  </td>
+                )}
                 <td className="px-4 py-2">
-                  <input type="number" min={1} className={inputCls + ' text-right'} value={newItem.quantity}
-                    onChange={e => setNewItem({ ...newItem, quantity: e.target.value })} />
+                  <input type="number" min={0} className={inputCls + ' text-right'} value={newItem.price}
+                    onChange={e => setNewItem({ ...newItem, price: e.target.value })}
+                    placeholder={freePrice ? 'Сумма ₽' : 'Цена ₽'} />
                 </td>
-                <td className="px-4 py-2">
-                  <input type="number" min={1} className={inputCls + ' text-right'} value={newItem.price}
-                    onChange={e => setNewItem({ ...newItem, price: e.target.value })} />
-                </td>
-                <td className="px-4 py-2 text-right text-gray-400">—</td>
+                {!freePrice && <td className="px-4 py-2 text-right text-gray-400">—</td>}
                 <td className="px-3 py-2">
                   <div className="flex gap-1">
                     <button onClick={saveNew} disabled={addMutation.isPending}
