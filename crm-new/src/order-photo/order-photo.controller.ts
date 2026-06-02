@@ -102,6 +102,13 @@ export class OrderPhotoController {
     return this.orderPhotoService.getAllOrders(query);
   }
 
+  // Зарплата — только администратор. Объявлено до ':idOrder', чтобы маршрут не перехватился.
+  @Get('salary/summary')
+  @Roles(EnumRole.ADMIN)
+  getSalarySummary() {
+    return this.orderPhotoService.getSalarySummary();
+  }
+
   @Get('items/:idItem')
   getItemById(@Param('idItem') idItem: string) {
     return this.orderItemService.getItemById(idItem);

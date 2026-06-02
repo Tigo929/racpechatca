@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, ChevronLeft, ChevronRight, Printer, RefreshCw, LogOut, Users, Flame, Clock, Camera, Shirt } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, Printer, RefreshCw, LogOut, Users, Flame, Clock, Camera, Shirt, Wallet } from 'lucide-react';
 import { getDeadlineInfo } from '../utils/deadline';
 import { Link } from 'react-router-dom';
 import { ordersApi } from '../api/orders';
@@ -74,6 +74,13 @@ export function OrdersPage() {
 
             {isAdmin && (
               <>
+                <Link
+                  to="/salary"
+                  title="Зарплата"
+                  className="p-2 text-indigo-300 hover:text-amber-400 rounded-lg hover:bg-indigo-800 transition-colors"
+                >
+                  <Wallet size={15} />
+                </Link>
                 <Link
                   to="/users"
                   title="Пользователи"

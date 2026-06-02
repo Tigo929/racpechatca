@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { UsersPage } from './pages/UsersPage';
+import { SalaryPage } from './pages/SalaryPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -36,6 +37,7 @@ function AppRoutes() {
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
       <Route path="/" element={<PrivateRoute><OrdersPage /></PrivateRoute>} />
       <Route path="/users" element={<AdminRoute><UsersPage /></AdminRoute>} />
+      <Route path="/salary" element={<AdminRoute><SalaryPage /></AdminRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

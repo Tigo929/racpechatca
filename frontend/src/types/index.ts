@@ -175,3 +175,32 @@ export interface OrdersQuery {
   sourceOrder?: EnumSourceOrder;
   productCategory?: EnumProductCategory;
 }
+
+export interface SalaryOrder {
+  id: string;
+  numberOrder: string;
+  createdAt: string;
+  updatedAt: string;
+  status: EnumStatus;
+  totalOrder: number;
+  deliveryCost: number;
+  cleanTotal: number;
+  employeeShare: number;
+  ownerShare: number;
+}
+
+export interface SalarySummary {
+  ratePercent: number;
+  toPay: SalaryOrder[];
+  paid: SalaryOrder[];
+  summary: {
+    toPayCount: number;
+    toPayClean: number;
+    toPayEmployee: number;
+    toPayOwner: number;
+    paidCount: number;
+    paidClean: number;
+    paidEmployee: number;
+    paidOwner: number;
+  };
+}

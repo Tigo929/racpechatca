@@ -11,6 +11,7 @@ import type {
   ItemTshirt,
   CreateTshirtItemDto,
   UpdateTshirtItemDto,
+  SalarySummary,
 } from '../types';
 
 const api = axios.create({
@@ -48,6 +49,11 @@ export const ordersApi = {
 
   getById: async (id: string): Promise<OrderPhoto> => {
     const { data } = await api.get<OrderPhoto>(`/order-photo/${id}`);
+    return data;
+  },
+
+  getSalary: async (): Promise<SalarySummary> => {
+    const { data } = await api.get<SalarySummary>('/order-photo/salary/summary');
     return data;
   },
 

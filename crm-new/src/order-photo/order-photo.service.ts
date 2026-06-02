@@ -104,6 +104,74 @@ export class OrderPhotoService {
     };
     return data;
   }
+  // Доля сотрудника от чистой суммы заказа (30%)
+  private static readonly EMPLOYEE_RATE = 0.3;
+
+  /**
+   * Расчёт зарплаты по фото-заказам.
+   *
+   * Чистая сумма = totalOrder − deliveryCost (доставка не делится).
+   * Сотрудник получает 30%, владелец — 70%.
+   *
+   * Статус SENT  → зарплата ещё не выплачена (в долге, «к выплате»).
+   * Статус PAID  → зарплата уже выплачена сотруднику (история).
+   */
+  async getSalarySummary() {
+    const rate = OrderPhotoService.EMPLOYEE_RATE;
+
+    const orders = await this.prisma.orderPhoto.findMany({
+      where: {
+        productCategory: 'PHOTO',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        status: { in: ['SENT', 'PAID'] } as any,
+      },
+      orderBy: { updatedAt: 'desc' },
+      include: { items: true },
+    });
+
+    const mapOrder = (o: (typeof orders)[number]) => {
+      const cleanTotal = (o.totalOrder ?? 0) - (o.deliveryCost ?? 0);
+      const employeeShare = Math.round(cleanTotal * rate);
+      const ownerShare = cleanTotal - employeeShare;
+      return {
+        id: o.id,
+        numberOrder: o.numberOrder,
+        createdAt: o.createdAt,
+        updatedAt: o.updatedAt,
+        status: o.status,
+        totalOrder: o.totalOrder ?? 0,
+        deliveryCost: o.deliveryCost ?? 0,
+        cleanTotal,
+        employeeShare,
+        ownerShare,
+      };
+    };
+
+    const toPay = orders.filter((o) => o.status === 'SENT').map(mapOrder);
+    const paid = orders.filter((o) => o.status === 'PAID').map(mapOrder);
+
+    const sum = (arr: ReturnType<typeof mapOrder>[], key: 'cleanTotal' | 'employeeShare' | 'ownerShare') =>
+      arr.reduce((acc, o) => acc + o[key], 0);
+
+    return {
+      ratePercent: Math.round(rate * 100),
+      toPay,
+      paid,
+      summary: {
+        // К выплате (статус SENT)
+        toPayCount: toPay.length,
+        toPayClean: sum(toPay, 'cleanTotal'),
+        toPayEmployee: sum(toPay, 'employeeShare'),
+        toPayOwner: sum(toPay, 'ownerShare'),
+        // Уже выплачено (статус PAID)
+        paidCount: paid.length,
+        paidClean: sum(paid, 'cleanTotal'),
+        paidEmployee: sum(paid, 'employeeShare'),
+        paidOwner: sum(paid, 'ownerShare'),
+      },
+    };
+  }
+
   async getOrderById(idOrder: string) {
     const order = await this.prisma.orderPhoto.findUnique({
       where: { id: idOrder },
