@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { ordersApi } from '../api/orders';
 import { STATUS_FLOW, STATUS_LABELS, TSHIRT_STATUS_FLOW, TSHIRT_STATUS_LABELS } from '../constants';
+import { useAuth } from '../context/AuthContext';
 import type { EnumStatus, OrderPhoto } from '../types';
 import { Check, ChevronRight } from 'lucide-react';
 
@@ -9,6 +10,8 @@ interface Props { order: OrderPhoto }
 
 export function StatusStepper({ order }: Props) {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const isTshirt = order.productCategory === 'TSHIRT';
   const flow = isTshirt ? TSHIRT_STATUS_FLOW : STATUS_FLOW;
   const labels = isTshirt ? TSHIRT_STATUS_LABELS : STATUS_LABELS;
@@ -30,16 +33,21 @@ export function StatusStepper({ order }: Props) {
         const isDone = idx < currentIdx;
         const isCurrent = idx === currentIdx;
         const isNext = idx === currentIdx + 1;
+        const isPrev = idx === currentIdx - 1;
+        // Исполнитель — только шаг вперёд. Администратор — вперёд и назад (если ошибся).
+        const clickable = isNext || (isAdmin && isPrev);
 
         return (
           <div key={status} className="flex items-center gap-1">
             <button
-              disabled={!isNext || mutation.isPending}
+              disabled={!clickable || mutation.isPending}
               onClick={() => mutation.mutate(status)}
+              title={isAdmin && isPrev ? 'Вернуть на предыдущий статус' : undefined}
               className={`
                 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all
-                ${isDone ? 'bg-green-100 text-green-700 cursor-default' : ''}
                 ${isCurrent ? 'bg-amber-600 text-white shadow-sm cursor-default' : ''}
+                ${isDone && !(isAdmin && isPrev) ? 'bg-green-100 text-green-700 cursor-default' : ''}
+                ${isAdmin && isPrev ? 'bg-green-100 text-green-700 hover:bg-orange-100 hover:text-orange-700 cursor-pointer border border-dashed border-green-300' : ''}
                 ${isNext ? 'bg-gray-100 text-gray-600 hover:bg-amber-100 hover:text-amber-700 cursor-pointer border border-dashed border-gray-300' : ''}
                 ${idx > currentIdx + 1 ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : ''}
               `}
