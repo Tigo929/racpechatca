@@ -21,8 +21,22 @@ export class OrderPhotoService {
   async createOrder(dto: DtoCreateOrder) {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(1001)`;
-      const count = await tx.orderPhoto.count();
-      const lengthOrder = String(count + 1).padStart(3, '0');
+
+      // Префикс номера по сегодняшней дате: YYYYMMDD
+      const now = new Date();
+      const datePrefix = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+
+      // Берём максимальный порядковый номер среди заказов за сегодня и +1.
+      // Это устойчиво к удалениям (глобальный count давал дубликаты).
+      const lastToday = await tx.orderPhoto.findFirst({
+        where: { numberOrder: { startsWith: `${datePrefix}-` } },
+        orderBy: { numberOrder: 'desc' },
+        select: { numberOrder: true },
+      });
+      const lastSeq = lastToday
+        ? parseInt(lastToday.numberOrder.split('-')[1] ?? '0', 10)
+        : 0;
+      const lengthOrder = String(lastSeq + 1).padStart(3, '0');
 
       const isTshirt = dto.productCategory === 'TSHIRT';
       const itemsForTotal = isTshirt ? (dto.tshirtItems ?? []) : (dto.items ?? []);
