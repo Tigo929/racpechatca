@@ -1,21 +1,19 @@
 import type { EnumDeliveryMethod } from '../types';
 import { DELIVERY_LABELS } from '../constants';
 
-interface Props {
-  method: EnumDeliveryMethod;
-}
+interface Props { method: EnumDeliveryMethod }
 
 const DELIVERY_STYLES: Record<EnumDeliveryMethod, string> = {
-  YANDEX_PVZ:  'bg-yellow-400 text-black border border-yellow-500 font-semibold',
-  OZON_PVZ:    'bg-blue-100 text-blue-700 border border-blue-200',
-  OZON_SELLER: 'bg-blue-50 text-blue-600 border border-blue-100',
-  WB_SELLER:   'bg-purple-100 text-purple-700 border border-purple-200',
-  PICKUP:      'bg-gray-100 text-gray-600 border border-gray-200',
+  YANDEX_PVZ:  'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-300/60',
+  OZON_PVZ:    'bg-blue-100 text-blue-700 ring-1 ring-blue-200/60',
+  OZON_SELLER: 'bg-sky-100 text-sky-700 ring-1 ring-sky-200/60',
+  WB_SELLER:   'bg-violet-100 text-violet-700 ring-1 ring-violet-200/60',
+  PICKUP:      'bg-gray-100 text-gray-600 ring-1 ring-gray-200/60',
 };
 
 export function DeliveryBadge({ method }: Props) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs ${DELIVERY_STYLES[method]}`}>
+    <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium ${DELIVERY_STYLES[method]}`}>
       {DELIVERY_LABELS[method]}
     </span>
   );
