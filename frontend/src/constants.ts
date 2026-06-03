@@ -14,6 +14,7 @@ export const STATUS_LABELS: Record<EnumStatus, string> = {
   FOLDER_STRUCTURE_CREATED: 'Создана папка',
   PRINTED: 'Печатается',
   READY: 'Готов',
+  DONE: 'Выполнен',
   SENT: 'Отправлен',
   PAID: 'Оплачен',
 };
@@ -24,6 +25,7 @@ export const STATUS_COLORS: Record<EnumStatus, string> = {
   FOLDER_STRUCTURE_CREATED: 'bg-purple-100 text-purple-800',
   PRINTED: 'bg-yellow-100 text-yellow-800',
   READY: 'bg-green-100 text-green-800',
+  DONE: 'bg-cyan-100 text-cyan-800',
   SENT: 'bg-orange-100 text-orange-800',
   PAID: 'bg-emerald-100 text-emerald-800',
 };
@@ -45,6 +47,7 @@ export const TSHIRT_STATUS_FLOW: EnumStatus[] = [
   'FOLDER_STRUCTURE_CREATED',
   'PRINTED',
   'READY',
+  'DONE',
   'SENT',
   'PAID',
 ];
@@ -55,6 +58,7 @@ export const TSHIRT_STATUS_LABELS: Record<EnumStatus, string> = {
   FOLDER_STRUCTURE_CREATED: 'Оформлен',
   PRINTED: 'На стадии дизайна',
   READY: 'На исполнении',
+  DONE: 'Выполнен',
   SENT: 'Отправлен',
   PAID: 'Оплачен',
 };

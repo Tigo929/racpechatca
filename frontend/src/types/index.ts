@@ -9,6 +9,7 @@ export type EnumStatus =
   | 'FOLDER_STRUCTURE_CREATED'
   | 'PRINTED'
   | 'READY'
+  | 'DONE'
   | 'SENT'
   | 'PAID';
 

@@ -13,6 +13,7 @@ const STATUS_STYLES: Record<EnumStatus, { bg: string; text: string; dot: string 
   FOLDER_STRUCTURE_CREATED: { bg: 'bg-purple-50',  text: 'text-purple-700',  dot: 'bg-purple-500' },
   PRINTED:                  { bg: 'bg-yellow-50',  text: 'text-yellow-700',  dot: 'bg-yellow-500' },
   READY:                    { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  DONE:                     { bg: 'bg-cyan-50',    text: 'text-cyan-700',    dot: 'bg-cyan-500' },
   SENT:                     { bg: 'bg-orange-50',  text: 'text-orange-700',  dot: 'bg-orange-500' },
   PAID:                     { bg: 'bg-teal-50',    text: 'text-teal-700',    dot: 'bg-teal-500' },
 };
