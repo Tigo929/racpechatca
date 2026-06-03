@@ -78,9 +78,9 @@ function OrderRow({ order, onPay, paying, paid }: OrderRowProps) {
           <button
             onClick={() => onPay(order.id)}
             disabled={paying}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
-            <HandCoins size={12} /> Выплатить
+            <HandCoins size={12} aria-hidden="true" /> Выплатить
           </button>
         ) : null}
       </td>
@@ -111,14 +111,14 @@ function SalaryTable({
       <table className="w-full">
         <thead>
           <tr className="border-b border-gray-100 bg-gray-50/60 text-xs text-gray-400 uppercase tracking-wide">
-            <th className="px-4 py-2.5 text-left">Номер</th>
-            <th className="px-4 py-2.5 text-left">Дата</th>
-            <th className="px-4 py-2.5 text-right">Сумма</th>
-            <th className="px-4 py-2.5 text-right">Доставка</th>
-            <th className="px-4 py-2.5 text-right">Чистыми</th>
-            <th className="px-4 py-2.5 text-right">Сотрудник 30%</th>
-            <th className="px-4 py-2.5 text-right">Владелец 70%</th>
-            <th className="px-3 py-2.5"></th>
+            <th scope="col" className="px-4 py-2.5 text-left">Номер</th>
+            <th scope="col" className="px-4 py-2.5 text-left">Дата</th>
+            <th scope="col" className="px-4 py-2.5 text-right">Сумма</th>
+            <th scope="col" className="px-4 py-2.5 text-right">Доставка</th>
+            <th scope="col" className="px-4 py-2.5 text-right">Чистыми</th>
+            <th scope="col" className="px-4 py-2.5 text-right">Сотрудник 30%</th>
+            <th scope="col" className="px-4 py-2.5 text-right">Владелец 70%</th>
+            <th scope="col" className="px-3 py-2.5"><span className="sr-only">Действия</span></th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">

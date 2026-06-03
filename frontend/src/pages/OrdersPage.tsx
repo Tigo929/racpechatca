@@ -50,7 +50,7 @@ export function OrdersPage() {
           {/* Логотип */}
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Printer size={16} className="text-indigo-950" />
+              <Printer size={16} className="text-indigo-950" aria-hidden="true" />
             </div>
             <div>
               <h1 className="text-sm font-bold text-white leading-none">
@@ -66,43 +66,43 @@ export function OrdersPage() {
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => refetch()}
-              title="Обновить"
-              className="p-2 text-indigo-300 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors"
+              aria-label="Обновить список заявок"
+              className="p-2 text-indigo-300 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             >
-              <RefreshCw size={15} />
+              <RefreshCw size={15} aria-hidden="true" />
             </button>
 
             {isAdmin && (
               <>
                 <Link
                   to="/salary"
-                  title="Зарплата"
-                  className="p-2 text-indigo-300 hover:text-amber-400 rounded-lg hover:bg-indigo-800 transition-colors"
+                  aria-label="Зарплата"
+                  className="p-2 text-indigo-300 hover:text-amber-400 rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                 >
-                  <Wallet size={15} />
+                  <Wallet size={15} aria-hidden="true" />
                 </Link>
                 <Link
                   to="/users"
-                  title="Пользователи"
-                  className="p-2 text-indigo-300 hover:text-amber-400 rounded-lg hover:bg-indigo-800 transition-colors"
+                  aria-label="Пользователи"
+                  className="p-2 text-indigo-300 hover:text-amber-400 rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                 >
-                  <Users size={15} />
+                  <Users size={15} aria-hidden="true" />
                 </Link>
                 <button
                   onClick={() => setCreateOpen(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm"
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-950"
                 >
-                  <Plus size={15} /> Новая заявка
+                  <Plus size={15} aria-hidden="true" /> Новая заявка
                 </button>
               </>
             )}
 
             <button
               onClick={logout}
-              title="Выйти"
-              className="p-2 text-indigo-300 hover:text-red-400 rounded-lg hover:bg-indigo-800 transition-colors"
+              aria-label="Выйти из системы"
+              className="p-2 text-indigo-300 hover:text-red-400 rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             >
-              <LogOut size={15} />
+              <LogOut size={15} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -152,7 +152,7 @@ export function OrdersPage() {
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
           {isLoading ? (
             <div className="flex justify-center py-20">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500" />
+              <div role="status" aria-label="Загрузка заявок" className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500" />
             </div>
           ) : orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-gray-400">
@@ -165,15 +165,15 @@ export function OrdersPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-50 bg-gray-50/60">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Номер</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Тип</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Дата</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Дедлайн</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Статус</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Доставка</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Позиций</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Номер</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Тип</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Дата</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Дедлайн</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Статус</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Доставка</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Позиций</th>
                     {isAdmin && (
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">Сумма</th>
+                      <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">Сумма</th>
                     )}
                   </tr>
                 </thead>
@@ -193,15 +193,14 @@ export function OrdersPage() {
                     <tr
                       key={order.id}
                       onClick={() => setSelectedId(order.id)}
-                      className={`cursor-pointer transition-colors group ${rowBg}`}
-                      style={showUrgent ? { borderLeft: '5px solid #dc2626', boxShadow: 'inset 3px 0 8px rgba(220,38,38,0.08)' } : {}}
+                      className={`cursor-pointer transition-colors group ${rowBg} ${showUrgent ? 'border-l-4 border-l-red-500' : ''}`}
                     >
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-1.5">
                           {showUrgent && (
-                            <Flame size={13} className="text-red-500 flex-shrink-0 animate-pulse" />
+                            <Flame size={13} className="text-red-500 flex-shrink-0 motion-safe:animate-pulse" aria-hidden="true" />
                           )}
-                          <span className="font-mono text-sm font-semibold text-indigo-800 group-hover:text-indigo-950">
+                          <span className="font-mono text-sm font-semibold text-indigo-800 group-hover:text-indigo-950 tabular-nums">
                             {order.numberOrder}
                           </span>
                         </div>
@@ -209,11 +208,11 @@ export function OrdersPage() {
                       <td className="px-4 py-3.5">
                         {order.productCategory === 'TSHIRT' ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-violet-100 text-violet-700">
-                            <Shirt size={11} /> Футболка
+                            <Shirt size={11} aria-hidden="true" /> Футболка
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-amber-100 text-amber-700">
-                            <Camera size={11} /> Фото
+                            <Camera size={11} aria-hidden="true" /> Фото
                           </span>
                         )}
                       </td>

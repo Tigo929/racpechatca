@@ -42,9 +42,11 @@ export function StatusStepper({ order }: Props) {
             <button
               disabled={!clickable || mutation.isPending}
               onClick={() => mutation.mutate(status)}
+              tabIndex={clickable ? 0 : -1}
+              aria-current={isCurrent ? 'step' : undefined}
               title={isAdmin && isPrev ? 'Вернуть на предыдущий статус' : undefined}
               className={`
-                flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all
+                flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500
                 ${isCurrent ? 'bg-amber-600 text-white shadow-sm cursor-default' : ''}
                 ${isDone && !(isAdmin && isPrev) ? 'bg-green-100 text-green-700 cursor-default' : ''}
                 ${isAdmin && isPrev ? 'bg-green-100 text-green-700 hover:bg-orange-100 hover:text-orange-700 cursor-pointer border border-dashed border-green-300' : ''}
@@ -52,11 +54,11 @@ export function StatusStepper({ order }: Props) {
                 ${idx > currentIdx + 1 ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : ''}
               `}
             >
-              {isDone && <Check size={11} />}
+              {isDone && <Check size={11} aria-hidden="true" />}
               {labels[status]}
             </button>
             {idx < flow.length - 1 && (
-              <ChevronRight size={12} className="text-gray-300 flex-shrink-0" />
+              <ChevronRight size={12} className="text-gray-300 flex-shrink-0" aria-hidden="true" />
             )}
           </div>
         );

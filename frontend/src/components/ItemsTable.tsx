@@ -9,7 +9,7 @@ import type { ItemPhoto, OrderPhoto } from '../types';
 
 interface Props { order: OrderPhoto }
 
-const inputCls = 'w-full rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500';
+const inputCls = 'w-full rounded border border-gray-200 px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500';
 const selectCls = inputCls;
 
 interface EditState {
@@ -81,11 +81,11 @@ export function ItemsTable({ order }: Props) {
           href={order.urlCommunication}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-3 py-2 mb-4 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors text-sm font-medium border border-indigo-100"
+          className="inline-flex items-center gap-2 px-3 py-2 mb-4 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors text-sm font-medium border border-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
         >
-          <MessageCircle size={15} />
+          <MessageCircle size={15} aria-hidden="true" />
           Написать клиенту
-          <ExternalLink size={12} className="opacity-60" />
+          <ExternalLink size={12} className="opacity-60" aria-hidden="true" />
         </a>
       )}
 
@@ -117,12 +117,12 @@ export function ItemsTable({ order }: Props) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>
-              <th className="px-4 py-2 text-left">Формат</th>
-              <th className="px-4 py-2 text-left">Тип</th>
-              {!freePrice && <th className="px-4 py-2 text-right">Кол-во</th>}
-              {isAdmin && !freePrice && <th className="px-4 py-2 text-right">Цена / шт</th>}
-              {isAdmin && <th className="px-4 py-2 text-right">{freePrice ? 'Сумма' : 'Итого'}</th>}
-              {isAdmin && <th className="px-3 py-2"></th>}
+              <th scope="col" className="px-4 py-2 text-left">Формат</th>
+              <th scope="col" className="px-4 py-2 text-left">Тип</th>
+              {!freePrice && <th scope="col" className="px-4 py-2 text-right">Кол-во</th>}
+              {isAdmin && !freePrice && <th scope="col" className="px-4 py-2 text-right">Цена / шт</th>}
+              {isAdmin && <th scope="col" className="px-4 py-2 text-right">{freePrice ? 'Сумма' : 'Итого'}</th>}
+              {isAdmin && <th scope="col" className="px-3 py-2"><span className="sr-only">Действия</span></th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -172,9 +172,9 @@ export function ItemsTable({ order }: Props) {
                     {isAdmin && (
                       <td className="px-3 py-2.5">
                         <div className="flex gap-1">
-                          <button onClick={() => startEdit(item)} className="p-1 text-gray-400 hover:text-indigo-600"><Pencil size={13} /></button>
-                          <button onClick={() => deleteMutation.mutate(item.id)} disabled={deleteMutation.isPending}
-                            className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={13} /></button>
+                          <button onClick={() => startEdit(item)} aria-label="Редактировать позицию" className="p-1 text-gray-400 hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded"><Pencil size={13} aria-hidden="true" /></button>
+                          <button onClick={() => deleteMutation.mutate(item.id)} disabled={deleteMutation.isPending} aria-label="Удалить позицию"
+                            className="p-1 text-gray-400 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"><Trash2 size={13} aria-hidden="true" /></button>
                         </div>
                       </td>
                     )}

@@ -7,7 +7,7 @@ import { authApi } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 import type { EnumRole } from '../types';
 
-const inputCls = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent';
+const inputCls = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:border-transparent';
 const ROLE_LABELS: Record<EnumRole, string> = { ADMIN: 'Администратор', EXECUTOR: 'Исполнитель' };
 const ROLE_COLORS: Record<EnumRole, string> = {
   ADMIN: 'bg-indigo-100 text-indigo-800',
@@ -68,29 +68,48 @@ export function UsersPage() {
         {adding && (
           <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 mb-4 space-y-3">
             <p className="text-xs font-semibold text-amber-700">Новый пользователь</p>
-            <input
-              className={inputCls} placeholder="Логин" value={form.username}
-              onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
-            />
-            <input
-              type="password" className={inputCls} placeholder="Пароль (мин. 4 символа)"
-              value={form.password}
-              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-            />
-            <select
-              className={inputCls} value={form.role}
-              onChange={e => setForm(f => ({ ...f, role: e.target.value as EnumRole }))}
-            >
+            <div>
+              <label htmlFor="new-user-username" className="block text-xs font-medium text-amber-700 mb-1">Логин</label>
+              <input
+                id="new-user-username"
+                name="username"
+                autoComplete="off"
+                spellCheck={false}
+                className={inputCls} placeholder="Логин…" value={form.username}
+                onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label htmlFor="new-user-password" className="block text-xs font-medium text-amber-700 mb-1">Пароль</label>
+              <input
+                id="new-user-password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                className={inputCls} placeholder="Мин. 4 символа"
+                value={form.password}
+                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label htmlFor="new-user-role" className="block text-xs font-medium text-amber-700 mb-1">Роль</label>
+              <select
+                id="new-user-role"
+                name="role"
+                className={inputCls} value={form.role}
+                onChange={e => setForm(f => ({ ...f, role: e.target.value as EnumRole }))}
+              >
               <option value="EXECUTOR">Исполнитель</option>
               <option value="ADMIN">Администратор</option>
             </select>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={() => createMutation.mutate()}
                 disabled={createMutation.isPending || !form.username || form.password.length < 4}
-                className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 disabled:opacity-50"
+                className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               >
-                <Check size={13} /> {createMutation.isPending ? 'Создаём...' : 'Создать'}
+                <Check size={13} aria-hidden="true" /> {createMutation.isPending ? 'Создаём…' : 'Создать'}
               </button>
               <button onClick={() => setAdding(false)}
                 className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200">

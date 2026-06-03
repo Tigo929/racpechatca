@@ -136,7 +136,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500" />
+        <div role="status" aria-label="Загрузка заявки" className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500" />
       </div>
     );
   }
@@ -161,8 +161,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
               ) : null;
             })()}
             {order.isUrgent && order.status !== 'SENT' && order.status !== 'PAID' && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold border border-red-300 animate-pulse">
-                <Flame size={11} /> Срочно
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold border border-red-300 motion-safe:animate-pulse">
+                <Flame size={11} aria-hidden="true" /> Срочно
               </span>
             )}
           </div>
@@ -173,13 +173,13 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             <button
               onClick={toggleUrgent}
               disabled={updateMutation.isPending}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-60 ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 ${
                 order.isUrgent
                   ? 'bg-red-500 text-white hover:bg-red-600'
                   : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
               }`}
             >
-              <Flame size={13} />
+              <Flame size={13} aria-hidden="true" />
               {order.isUrgent ? 'Снять срочность' : 'Срочно'}
             </button>
           )}
@@ -190,7 +190,6 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 <button
                   onClick={() => {
                     const text = generateConfirmationText(order);
-                    // Clipboard API требует HTTPS — используем fallback через textarea
                     try {
                       if (navigator.clipboard && window.isSecureContext) {
                         navigator.clipboard.writeText(text)
@@ -212,21 +211,21 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                       toast.error('Не удалось скопировать');
                     }
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
-                  <Copy size={13} /> Скопировать подтверждение
+                  <Copy size={13} aria-hidden="true" /> Скопировать подтверждение
                 </button>
               )}
               {!editing && (
                 <button onClick={startEdit}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-                  <Pencil size={13} /> Изменить
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400">
+                  <Pencil size={13} aria-hidden="true" /> Изменить
                 </button>
               )}
               <button onClick={() => { if (confirm('Удалить заявку?')) deleteMutation.mutate(); }}
                 disabled={deleteMutation.isPending}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-60">
-                <Trash2 size={13} /> Удалить
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400">
+                <Trash2 size={13} aria-hidden="true" /> Удалить
               </button>
             </>
           )}

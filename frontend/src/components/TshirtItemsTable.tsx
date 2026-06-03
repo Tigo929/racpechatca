@@ -18,7 +18,7 @@ import type {
 
 interface Props { order: OrderPhoto }
 
-const inputCls = 'w-full rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500';
+const inputCls = 'w-full rounded border border-gray-200 px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500';
 const selectCls = inputCls;
 
 type EditState = {
@@ -143,9 +143,9 @@ export function TshirtItemsTable({ order }: Props) {
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 px-3 py-2 mb-4 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors text-sm font-medium border border-indigo-100"
         >
-          <MessageCircle size={15} />
+          <MessageCircle size={15} aria-hidden="true" />
           Написать клиенту
-          <ExternalLink size={12} className="opacity-60" />
+          <ExternalLink size={12} className="opacity-60" aria-hidden="true" />
         </a>
       )}
 

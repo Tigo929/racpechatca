@@ -29,7 +29,7 @@ function AppRoutes() {
   // Пока идёт проверка токена — показываем спиннер один раз
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500" />
+      <div role="status" aria-label="Загрузка" className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500" />
     </div>
   );
   return (
