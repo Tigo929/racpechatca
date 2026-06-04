@@ -26,16 +26,13 @@ export class OrderPhotoService {
       const now = new Date();
       const datePrefix = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
 
-      // Берём максимальный порядковый номер среди заказов за сегодня и +1.
-      // Это устойчиво к удалениям (глобальный count давал дубликаты).
-      const lastToday = await tx.orderPhoto.findFirst({
-        where: { numberOrder: { startsWith: `${datePrefix}-` } },
-        orderBy: { numberOrder: 'desc' },
-        select: { numberOrder: true },
-      });
-      const lastSeq = lastToday
-        ? parseInt(lastToday.numberOrder.split('-')[1] ?? '0', 10)
-        : 0;
+      // Глобальный счётчик — не сбрасывается при смене даты.
+      // Берём MAX числовой части из всех заказов через raw SQL.
+      const seqResult = await tx.$queryRaw<{ max: number }[]>`
+        SELECT COALESCE(MAX(CAST(SPLIT_PART("numberOrder", '-', 2) AS INTEGER)), 0) AS max
+        FROM "OrderPhoto"
+      `;
+      const lastSeq = Number(seqResult[0]?.max ?? 0);
       const lengthOrder = String(lastSeq + 1).padStart(3, '0');
 
       const isTshirt = dto.productCategory === 'TSHIRT';

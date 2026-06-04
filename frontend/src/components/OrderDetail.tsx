@@ -35,6 +35,7 @@ function generateConfirmationText(order: OrderPhoto): string {
 
   return [
     '✅ Отлично, ваш заказ подтверждён!',
+    `📌 Номер заказа: ${order.numberOrder}`,
     '',
     '📋 Состав заказа:',
     ...lines,
@@ -56,7 +57,58 @@ function generateConfirmationText(order: OrderPhoto): string {
     '   8 916 349 85 15',
     '   Гулян Тигран Саакович',
     '',
+    '👉 Как только внесёте оплату, пожалуйста, пришлите чек.',
+    '',
     'Спасибо за доверие! Приступаем к работе 🙌',
+  ].join('\n');
+}
+
+function generateReadyText(order: OrderPhoto): string {
+  const items = order.items ?? [];
+  const tshirtItems = order.tshirtItems ?? [];
+  const delivery = order.deliveryCost ?? 0;
+  const total = order.totalOrder ?? 0;
+  const prepay = Math.ceil(total * 0.5);
+  const rest = total - prepay;
+
+  const lines: string[] = [];
+  items.forEach(i => {
+    const type = i.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
+    lines.push(`• ${i.formatPaper} (${type}) × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
+  });
+  tshirtItems.forEach(i => {
+    lines.push(`• Футболка ${i.color}, р-р ${i.size} × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
+  });
+
+  const itemsTotal = [...items, ...tshirtItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0);
+  const separator = '─────────────────';
+  const isPickup = order.deliveryMethod === 'PICKUP';
+
+  return [
+    '🎉 Ваш заказ готов!',
+    `📌 Номер заказа: ${order.numberOrder}`,
+    '',
+    '📋 Состав заказа:',
+    ...lines,
+    '',
+    separator,
+    `💰 Сумма по позициям: ${itemsTotal.toLocaleString('ru-RU')} ₽`,
+    ...(delivery > 0 ? [`🚚 Доставка: ${delivery.toLocaleString('ru-RU')} ₽`] : []),
+    `📦 Итого к оплате: ${total.toLocaleString('ru-RU')} ₽`,
+    '',
+    separator,
+    '💳 Остаток к оплате:',
+    `👉 Предоплата 50% — ${prepay.toLocaleString('ru-RU')} ₽ (уже внесена)`,
+    `👉 Остаток — ${rest.toLocaleString('ru-RU')} ₽`,
+    ...(isPickup ? ['', '📍 Самовывоз: Измайловский проезд, 6, корп. 1, подъезд 3'] : []),
+    '',
+    '📲 Реквизиты для перевода (СБП / ТБанк):',
+    '   8 916 349 85 15',
+    '   Гулян Тигран Саакович',
+    '',
+    '👉 Пожалуйста, оплатите остаток и пришлите чек по тем же реквизитам.',
+    '',
+    'Спасибо! Ждём вас 🙌',
   ].join('\n');
 }
 import { getDeadlineInfo } from '../utils/deadline';
@@ -185,37 +237,45 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           )}
           {isAdmin && (
             <>
-              {/* Кнопка подтверждения — только для статуса NEW */}
-              {order.status === 'NEW' && (
-                <button
-                  onClick={() => {
-                    const text = generateConfirmationText(order);
-                    try {
-                      if (navigator.clipboard && window.isSecureContext) {
-                        navigator.clipboard.writeText(text)
-                          .then(() => toast.success('Текст подтверждения скопирован!'))
-                          .catch(() => toast.error('Не удалось скопировать'));
-                      } else {
-                        const ta = document.createElement('textarea');
-                        ta.value = text;
-                        ta.style.position = 'fixed';
-                        ta.style.opacity = '0';
-                        document.body.appendChild(ta);
-                        ta.focus();
-                        ta.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(ta);
-                        toast.success('Текст подтверждения скопирован!');
-                      }
-                    } catch {
-                      toast.error('Не удалось скопировать');
+              {/* Кнопки копирования текста клиенту */}
+              {(order.status === 'NEW' || order.status === 'READY') && (() => {
+                const text = order.status === 'NEW'
+                  ? generateConfirmationText(order)
+                  : generateReadyText(order);
+                const label = order.status === 'NEW'
+                  ? 'Скопировать подтверждение'
+                  : 'Скопировать сообщение готовности';
+                const copyText = () => {
+                  try {
+                    if (navigator.clipboard && window.isSecureContext) {
+                      navigator.clipboard.writeText(text)
+                        .then(() => toast.success('Текст скопирован!'))
+                        .catch(() => toast.error('Не удалось скопировать'));
+                    } else {
+                      const ta = document.createElement('textarea');
+                      ta.value = text;
+                      ta.style.position = 'fixed';
+                      ta.style.opacity = '0';
+                      document.body.appendChild(ta);
+                      ta.focus();
+                      ta.select();
+                      document.execCommand('copy');
+                      document.body.removeChild(ta);
+                      toast.success('Текст скопирован!');
                     }
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                >
-                  <Copy size={13} aria-hidden="true" /> Скопировать подтверждение
-                </button>
-              )}
+                  } catch {
+                    toast.error('Не удалось скопировать');
+                  }
+                };
+                return (
+                  <button
+                    onClick={copyText}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  >
+                    <Copy size={13} aria-hidden="true" /> {label}
+                  </button>
+                );
+              })()}
               {!editing && (
                 <button onClick={startEdit}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400">
