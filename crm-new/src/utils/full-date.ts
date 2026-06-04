@@ -1,9 +1,11 @@
-const fullDate = (seq: string) => {
+const fullDate = (lengthOrder: string) => {
   const now = new Date();
+
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}-${seq}`;
+
+  return `${year}${month}${day}-${lengthOrder}`;
 };
 
 export default fullDate;
