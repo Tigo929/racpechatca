@@ -22,15 +22,16 @@ export class OrderPhotoService {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(1001)`;
 
-      // Префикс номера по сегодняшней дате: YYYYMMDD
+      // Формат номера: YYYYMMDD-XXX, где XXX — счётчик внутри текущего месяца.
+      // Счётчик не сбрасывается каждый день, сбрасывается только при смене месяца.
       const now = new Date();
       const datePrefix = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+      const monthPrefix = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-      // Глобальный счётчик — не сбрасывается при смене даты.
-      // Берём MAX числовой части из всех заказов через raw SQL.
       const seqResult = await tx.$queryRaw<{ max: number }[]>`
         SELECT COALESCE(MAX(CAST(SPLIT_PART("numberOrder", '-', 2) AS INTEGER)), 0) AS max
         FROM "OrderPhoto"
+        WHERE "numberOrder" LIKE ${monthPrefix + '%'}
       `;
       const lastSeq = Number(seqResult[0]?.max ?? 0);
       const lengthOrder = String(lastSeq + 1).padStart(3, '0');
