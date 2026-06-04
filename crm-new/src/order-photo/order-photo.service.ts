@@ -22,18 +22,22 @@ export class OrderPhotoService {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(1001)`;
 
-      // Префикс номера по сегодняшней дате: YYYYMMDD
+      // Формат номера: YYYY-MM-DD-N, где N — счётчик внутри текущего месяца.
+      // Счётчик не сбрасывается каждый день, но сбрасывается при смене месяца.
       const now = new Date();
-      const datePrefix = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const datePrefix = `${year}-${month}-${day}`;
+      const monthPrefix = `${year}-${month}`;
 
-      // Глобальный счётчик — не сбрасывается при смене даты.
-      // Берём MAX числовой части из всех заказов через raw SQL.
       const seqResult = await tx.$queryRaw<{ max: number }[]>`
-        SELECT COALESCE(MAX(CAST(SPLIT_PART("numberOrder", '-', 2) AS INTEGER)), 0) AS max
+        SELECT COALESCE(MAX(CAST(SPLIT_PART("numberOrder", '-', 4) AS INTEGER)), 0) AS max
         FROM "OrderPhoto"
+        WHERE "numberOrder" LIKE ${monthPrefix + '-%'}
       `;
       const lastSeq = Number(seqResult[0]?.max ?? 0);
-      const lengthOrder = String(lastSeq + 1).padStart(3, '0');
+      const lengthOrder = String(lastSeq + 1);
 
       const isTshirt = dto.productCategory === 'TSHIRT';
       const itemsForTotal = isTshirt ? (dto.tshirtItems ?? []) : (dto.items ?? []);
