@@ -12,7 +12,7 @@ import { FilterChip } from '../components/FilterChip';
 import { DeliveryBadge } from '../components/DeliveryBadge';
 import { STATUS_FLOW, STATUS_LABELS } from '../constants';
 import { useAuth } from '../context/AuthContext';
-import type { EnumStatus, OrdersQuery } from '../types';
+import type { EnumStatus, EnumProductCategory, OrdersQuery } from '../types';
 
 const PAGE_SIZE = 10;
 
@@ -40,6 +40,9 @@ export function OrdersPage() {
 
   const setStatus = (status: EnumStatus | undefined) =>
     setQuery(q => ({ ...q, status, page: 1 }));
+
+  const setProductCategory = (productCategory: EnumProductCategory | undefined) =>
+    setQuery(q => ({ ...q, productCategory, page: 1 }));
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--brand-bg)' }}>
@@ -133,20 +136,40 @@ export function OrdersPage() {
         )}
 
         {/* Фильтры */}
-        <div className="bg-white rounded-2xl border border-gray-100/80 px-4 py-3 flex items-center gap-3 flex-wrap" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">Статус</span>
-          <div className="flex gap-1.5 flex-wrap">
-            <FilterChip active={!query.status} onClick={() => setStatus(undefined)}>Все</FilterChip>
-            {isAdmin && (
-              <FilterChip active={query.status === 'LEAD'} onClick={() => setStatus('LEAD')}>
-                🔔 Обратился
-              </FilterChip>
-            )}
-            {STATUS_FLOW.filter(s => s !== 'LEAD').map(s => (
-              <FilterChip key={s} active={query.status === s} onClick={() => setStatus(s)}>
-                {STATUS_LABELS[s]}
-              </FilterChip>
-            ))}
+        <div className="bg-white rounded-2xl border border-gray-100/80 px-4 py-3 space-y-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          {/* Фильтр по типу товара — только для администратора */}
+          {isAdmin && (
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">Тип</span>
+              <div className="flex gap-1.5 flex-wrap">
+                <FilterChip active={!query.productCategory} onClick={() => setProductCategory(undefined)}>
+                  Все
+                </FilterChip>
+                <FilterChip active={query.productCategory === 'PHOTO'} onClick={() => setProductCategory('PHOTO')}>
+                  <Camera size={11} aria-hidden="true" className="inline mr-1" />Фото
+                </FilterChip>
+                <FilterChip active={query.productCategory === 'TSHIRT'} onClick={() => setProductCategory('TSHIRT')}>
+                  <Shirt size={11} aria-hidden="true" className="inline mr-1" />Футболки
+                </FilterChip>
+              </div>
+            </div>
+          )}
+          {/* Фильтр по статусу */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">Статус</span>
+            <div className="flex gap-1.5 flex-wrap">
+              <FilterChip active={!query.status} onClick={() => setStatus(undefined)}>Все</FilterChip>
+              {isAdmin && (
+                <FilterChip active={query.status === 'LEAD'} onClick={() => setStatus('LEAD')}>
+                  🔔 Обратился
+                </FilterChip>
+              )}
+              {STATUS_FLOW.filter(s => s !== 'LEAD').map(s => (
+                <FilterChip key={s} active={query.status === s} onClick={() => setStatus(s)}>
+                  {STATUS_LABELS[s]}
+                </FilterChip>
+              ))}
+            </div>
           </div>
         </div>
 
