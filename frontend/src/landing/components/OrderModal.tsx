@@ -151,6 +151,7 @@ function OrderModalInner() {
               <input
                 type="text"
                 required
+                autoFocus
                 value={form.name}
                 onChange={(e) => set('name', e.target.value)}
                 placeholder="Как к вам обращаться"
