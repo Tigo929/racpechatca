@@ -31,7 +31,7 @@ export function OrderModal() {
 function OrderModalInner() {
   const { closeModal, preset, design } = useOrderModal();
   const [form, setForm] = useState<FormState>(() => ({ ...EMPTY, description: preset }));
-  const [status, setStatus] = useState<'idle' | 'sending' | 'done'>('idle');
+  const [status, setStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
   const fileRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -53,25 +53,29 @@ function OrderModalInner() {
     e.preventDefault();
     setStatus('sending');
 
-    // ── ТОЧКА ИНТЕГРАЦИИ ───────────────────────────────────────────
-    // Сейчас mock. Позже заменить на реальную отправку. Полезная нагрузка:
-    //   const payload = {
-    //     ...form,                         // имя, телефон, telegram, описание, файл
-    //     design,                          // превью PNG (dataURL), цвет, transform
-    //   };
-    //   const data = new FormData();
-    //   data.append('name', form.name); ...
-    //   if (design?.previewDataUrl) data.append('preview', design.previewDataUrl);
-    //   if (design) data.append('design', JSON.stringify({
-    //     shirtColor: design.shirtColor, shirtColorName: design.shirtColorName,
-    //     transform: design.transform, hasArtwork: design.hasArtwork,
-    //   }));
-    //   await fetch(`${API_URL}/order-photo/lead`, { method: 'POST', body: data });
-    // или Telegram Bot API / Email / WhatsApp.
-    await new Promise((r) => setTimeout(r, 900));
-    // ───────────────────────────────────────────────────────────────
+    // Описание дополняем данными из конструктора, если макет собран.
+    const designNote = design
+      ? `\n\n[Конструктор] Футболка: ${design.shirtColorName}` +
+        (design.hasArtwork ? ' · макет прикреплён в конструкторе' : '')
+      : '';
 
-    setStatus('done');
+    try {
+      const res = await fetch('/order-photo/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          phone: form.phone,
+          telegram: form.telegram || undefined,
+          description: (form.description + designNote).trim() || undefined,
+          productCategory: 'TSHIRT',
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setStatus('done');
+    } catch {
+      setStatus('error');
+    }
   };
 
   return (
@@ -205,6 +209,13 @@ function OrderModalInner() {
                 </span>
               </button>
             </div>
+
+            {status === 'error' && (
+              <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
+                Не удалось отправить заявку. Проверьте соединение и попробуйте ещё раз —
+                или напишите нам напрямую: {siteConfig.phone}
+              </div>
+            )}
 
             <button
               type="submit"

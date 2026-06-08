@@ -6,6 +6,7 @@ import fullDate from 'src/utils/full-date';
 import DtoAllOrdersforQuery from './dto/all-oreders-for-query.dto';
 import UpdateStatus from './dto/update-status.dto';
 import { DtoUpdateOrder } from './dto/update-order.dto';
+import { DtoCreateLead } from './dto/create-lead.dto';
 import { EnumCommunication } from 'src/generated/prisma/enums';
 
 function buildCommunicationUrl(platform: EnumCommunication, raw: string): string {
@@ -80,6 +81,56 @@ export class OrderPhotoService {
       });
     });
   }
+  /**
+   * Создаёт заявку с лендинга (статус LEAD).
+   *
+   * Лендинг не знает про внутренние enum'ы CRM, поэтому проставляем
+   * безопасные значения по умолчанию, а контакт клиента кладём в note.
+   * Номер заявки формируется тем же счётчиком, что и обычные заказы.
+   */
+  async createLead(dto: DtoCreateLead) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(1001)`;
+
+      const now = new Date();
+      const monthPrefix = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      const seqResult = await tx.$queryRaw<{ max: number }[]>`
+        SELECT COALESCE(MAX(CAST(SPLIT_PART("numberOrder", '-', 2) AS INTEGER)), 0) AS max
+        FROM "OrderPhoto"
+        WHERE "numberOrder" LIKE ${monthPrefix + '%'}
+      `;
+      const lastSeq = Number(seqResult[0]?.max ?? 0);
+      const lengthOrder = String(lastSeq + 1).padStart(3, '0');
+
+      // Telegram из формы может прийти как "@user", "user" или ссылкой.
+      const tgRaw = (dto.telegram ?? '').trim().replace(/^@/, '');
+      const noteLines = [
+        `🆕 Заявка с сайта`,
+        `Имя: ${dto.name}`,
+        `Телефон: ${dto.phone}`,
+        tgRaw ? `Telegram: @${tgRaw}` : null,
+        dto.description ? `Описание: ${dto.description}` : null,
+      ].filter(Boolean);
+
+      return tx.orderPhoto.create({
+        data: {
+          numberOrder: fullDate(lengthOrder),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          status: 'LEAD' as any,
+          sourceOrder: 'LOCAL',
+          communicationPlatform: tgRaw ? 'TELEGRAM' : 'MAX',
+          urlCommunication: tgRaw ? `https://t.me/${tgRaw}` : dto.phone,
+          deliveryMethod: 'PICKUP',
+          deliveryCost: 0,
+          totalOrder: 0,
+          productCategory: dto.productCategory ?? 'TSHIRT',
+          note: noteLines.join('\n'),
+        },
+      });
+    });
+  }
+
   async getAllOrders(query: DtoAllOrdersforQuery) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
