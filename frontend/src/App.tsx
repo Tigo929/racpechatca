@@ -1,15 +1,21 @@
+import { lazy, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ScrollToTop } from './components/ScrollToTop';
 import { LandingPage } from './pages/LandingPage';
-import { ProductLandingPage } from './landing/pages/ProductLandingPage';
 import { productSlugs } from './landing/data/productPages';
-import { LoginPage } from './pages/LoginPage';
-import { OrdersPage } from './pages/OrdersPage';
-import { UsersPage } from './pages/UsersPage';
-import { SalaryPage } from './pages/SalaryPage';
+
+// CRM и продуктовые страницы грузим лениво — посетителю лендинга
+// не нужно скачивать код админки и наоборот. Меньше начальный бандл = быстрее LCP.
+const ProductLandingPage = lazy(() =>
+  import('./landing/pages/ProductLandingPage').then((m) => ({ default: m.ProductLandingPage })),
+);
+const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
+const OrdersPage = lazy(() => import('./pages/OrdersPage').then((m) => ({ default: m.OrdersPage })));
+const UsersPage = lazy(() => import('./pages/UsersPage').then((m) => ({ default: m.UsersPage })));
+const SalaryPage = lazy(() => import('./pages/SalaryPage').then((m) => ({ default: m.SalaryPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -39,9 +45,18 @@ function CrmGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RouteFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div role="status" aria-label="Загрузка" className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500" />
+    </div>
+  );
+}
+
 function AppRoutes() {
   const { user } = useAuth();
   return (
+    <Suspense fallback={<RouteFallback />}>
     <Routes>
       <Route path="/" element={<LandingPage />} />
 
@@ -56,6 +71,7 @@ function AppRoutes() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   );
 }
 
