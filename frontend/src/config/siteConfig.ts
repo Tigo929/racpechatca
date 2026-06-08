@@ -42,6 +42,14 @@ export const siteConfig = {
   },
 } as const;
 
+/**
+ * Поле ещё не заполнено реальными данными (осталось значение-заглушка
+ * в квадратных скобках). Используется, чтобы не показывать клиенту «[ТЕЛЕФОН]».
+ */
+export function isFilled(value: string): boolean {
+  return !!value && !value.trim().startsWith('[');
+}
+
 /** Ссылка на Telegram-чат */
 export const telegramUrl = `https://t.me/${siteConfig.telegram}`;
 /** Ссылка на WhatsApp-чат */

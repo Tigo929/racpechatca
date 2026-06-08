@@ -6,6 +6,7 @@ import {
   telegramUrl,
   whatsappUrl,
   telUrl,
+  isFilled,
 } from '../../config/siteConfig';
 import { productPages } from '../data/productPages';
 
@@ -47,24 +48,30 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Контактные данные */}
+          {/* Контактные данные — показываем только заполненные поля */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 border-t border-white/10 pt-12">
-            <ContactCard icon={Phone} label="Телефон">
-              <a href={telUrl} className="hover:text-amber-400 transition-colors">
-                {siteConfig.phone}
-              </a>
-            </ContactCard>
-            <ContactCard icon={MapPin} label="Адрес">
-              {siteConfig.address}, {siteConfig.cityNominative}
-            </ContactCard>
+            {isFilled(siteConfig.phone) && (
+              <ContactCard icon={Phone} label="Телефон">
+                <a href={telUrl} className="hover:text-amber-400 transition-colors">
+                  {siteConfig.phone}
+                </a>
+              </ContactCard>
+            )}
+            {isFilled(siteConfig.address) && (
+              <ContactCard icon={MapPin} label="Адрес">
+                {siteConfig.address}, {siteConfig.cityNominative}
+              </ContactCard>
+            )}
             <ContactCard icon={Clock} label="Часы работы">
               {siteConfig.workingHours}
             </ContactCard>
-            <ContactCard icon={Mail} label="Почта">
-              <a href={`mailto:${siteConfig.email}`} className="hover:text-amber-400 transition-colors">
-                {siteConfig.email}
-              </a>
-            </ContactCard>
+            {isFilled(siteConfig.email) && (
+              <ContactCard icon={Mail} label="Почта">
+                <a href={`mailto:${siteConfig.email}`} className="hover:text-amber-400 transition-colors">
+                  {siteConfig.email}
+                </a>
+              </ContactCard>
+            )}
           </div>
 
           {/* Мессенджеры */}
@@ -89,14 +96,15 @@ export function Footer() {
             </a>
           </div>
 
-          {/* Карта-заглушка */}
-          <div className="mt-10 rounded-2xl overflow-hidden border border-white/10 bg-white/5 h-56 flex items-center justify-center text-indigo-300">
-            <div className="text-center">
-              <MapPin className="w-8 h-8 mx-auto mb-2 text-amber-400/70" />
-              <p className="text-sm">Карта — {siteConfig.address}, {siteConfig.cityNominative}</p>
-              <p className="text-xs text-indigo-400 mt-1">Заглушка — подключить Яндекс.Карты</p>
+          {/* Карта точки выдачи — показываем только когда указан реальный адрес */}
+          {isFilled(siteConfig.address) && (
+            <div className="mt-10 rounded-2xl overflow-hidden border border-white/10 bg-white/5 h-56 flex items-center justify-center text-indigo-300">
+              <div className="text-center">
+                <MapPin className="w-8 h-8 mx-auto mb-2 text-amber-400/70" />
+                <p className="text-sm">{siteConfig.address}, {siteConfig.cityNominative}</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </section>
 

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { siteConfig } from '../../config/siteConfig';
+import { siteConfig, isFilled } from '../../config/siteConfig';
 import { catalogItems, faqItems } from '../data/content';
 import { setMeta, setLink, setJsonLd } from './seoDom';
 
@@ -45,17 +45,19 @@ export function useSeo() {
     setLink('canonical', siteConfig.siteUrl);
 
     // ─── JSON-LD: LocalBusiness ───────────────────────────────────
+    // Незаполненные контакты не кладём в разметку — иначе поисковики
+    // получат значения-заглушки и могут отклонить структурированные данные.
     setJsonLd('ld-localbusiness', {
       '@context': 'https://schema.org',
       '@type': 'LocalBusiness',
       name: siteConfig.companyName,
       description: META_DESCRIPTION,
       url: siteConfig.siteUrl,
-      telephone: siteConfig.phoneRaw,
-      email: siteConfig.email,
+      ...(isFilled(siteConfig.phoneRaw) ? { telephone: siteConfig.phoneRaw } : {}),
+      ...(isFilled(siteConfig.email) ? { email: siteConfig.email } : {}),
       address: {
         '@type': 'PostalAddress',
-        streetAddress: siteConfig.address,
+        ...(isFilled(siteConfig.address) ? { streetAddress: siteConfig.address } : {}),
         addressLocality: cNom,
         addressCountry: 'RU',
       },

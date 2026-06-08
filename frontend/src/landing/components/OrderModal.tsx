@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, Upload, CheckCircle2, Loader2 } from 'lucide-react';
 import { useOrderModal } from './OrderModalContext';
-import { siteConfig } from '../../config/siteConfig';
+import { siteConfig, isFilled } from '../../config/siteConfig';
 
 interface FormState {
   name: string;
@@ -213,8 +213,8 @@ function OrderModalInner() {
 
             {status === 'error' && (
               <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
-                Не удалось отправить заявку. Проверьте соединение и попробуйте ещё раз —
-                или напишите нам напрямую: {siteConfig.phone}
+                Не удалось отправить заявку. Проверьте соединение и попробуйте ещё раз
+                {isFilled(siteConfig.phone) ? ` — или напишите нам напрямую: ${siteConfig.phone}` : ''}
               </div>
             )}
 
@@ -234,7 +234,7 @@ function OrderModalInner() {
 
             <p className="text-xs text-center text-slate-400">
               Нажимая кнопку, вы соглашаетесь на обработку данных.
-              Можно написать напрямую: {siteConfig.phone}
+              {isFilled(siteConfig.phone) ? ` Можно написать напрямую: ${siteConfig.phone}` : ''}
             </p>
           </form>
         )}

@@ -55,9 +55,6 @@ export function Reviews() {
             </Reveal>
           ))}
         </div>
-        <p className="mt-5 text-xs text-slate-400 text-center">
-          Отзывы-заглушки — заменим на реальные после первых заказов.
-        </p>
       </div>
     </section>
   );
