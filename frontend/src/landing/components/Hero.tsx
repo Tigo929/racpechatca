@@ -1,4 +1,4 @@
-import { Sparkles, Calculator, ArrowRight, ShieldCheck, Layers, Clock } from 'lucide-react';
+import { Sparkles, Calculator, ArrowRight, ShieldCheck, Layers, Clock, Star } from 'lucide-react';
 import { motion, useScroll, useTransform } from 'motion/react';
 import { useRef } from 'react';
 import { useOrderModal } from './OrderModalContext';
@@ -89,11 +89,33 @@ export function Hero() {
             </MagneticButton>
           </motion.div>
 
+          {/* Соц.доказательство + снятие риска прямо у CTA */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...spring, delay: 0.42 }}
+            className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 justify-center lg:justify-start text-sm"
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <span className="flex" aria-hidden>
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                ))}
+              </span>
+              <span className="text-white font-semibold">{siteConfig.rating.value}</span>
+              <span className="text-indigo-300">· {siteConfig.rating.count} отзывов</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-indigo-200">
+              <ShieldCheck className="w-4 h-4 text-amber-400" />
+              Бесплатный макет · оплата после согласования
+            </span>
+          </motion.div>
+
           <motion.ul
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ ...spring, delay: 0.48 }}
-            className="mt-9 flex flex-wrap gap-x-6 gap-y-3 justify-center lg:justify-start"
+            className="mt-7 flex flex-wrap gap-x-6 gap-y-3 justify-center lg:justify-start"
           >
             {MINI.map((m, i) => (
               <motion.li
