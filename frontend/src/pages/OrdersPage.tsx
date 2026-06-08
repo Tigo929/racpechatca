@@ -78,14 +78,14 @@ export function OrdersPage() {
             {isAdmin && (
               <>
                 <Link
-                  to="/salary"
+                  to="/crm/salary"
                   aria-label="Зарплата"
                   className="p-2 text-indigo-300 hover:text-amber-400 rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                 >
                   <Wallet size={15} aria-hidden="true" />
                 </Link>
                 <Link
-                  to="/users"
+                  to="/crm/users"
                   aria-label="Пользователи"
                   className="p-2 text-indigo-300 hover:text-amber-400 rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                 >

@@ -1,0 +1,278 @@
+/* ──────────────────────────────────────────────────────────────────
+   Стили лендинга «Распечатка PRO». Только transform/opacity в анимациях.
+   Все движения отключаются при prefers-reduced-motion.
+   ────────────────────────────────────────────────────────────────── */
+
+/* ── Корень лендинга: Manrope, тёплый фон, фирменный текст ───────── */
+.landing-root {
+  --bg-base: #FAFAF8;
+  --bg-warm: #F4F2EC;
+  --ink: #111827;
+  font-family: 'Manrope', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-base);
+  color: var(--ink);
+}
+.landing-root .bg-base { background-color: var(--bg-base); }
+.landing-root .bg-warm { background-color: var(--bg-warm); }
+
+/* ── Reveal при скролле ─────────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.reveal--up { transform: translate3d(0, 28px, 0); }
+.reveal--fade { transform: translate3d(0, 0, 0); }
+.reveal--scale { transform: scale(0.96); }
+.reveal--in {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+/* ── Появление Hero (без observer, сразу при загрузке) ──────────── */
+@keyframes heroIn {
+  from { opacity: 0; transform: translate3d(0, 24px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.hero-anim {
+  opacity: 0;
+  animation: heroIn 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.hero-anim-1 { animation-delay: 0.05s; }
+.hero-anim-2 { animation-delay: 0.18s; }
+.hero-anim-3 { animation-delay: 0.31s; }
+.hero-anim-4 { animation-delay: 0.44s; }
+.hero-anim-5 { animation-delay: 0.57s; }
+
+/* ── Мягкий pulse для главного CTA (раз в несколько секунд) ─────── */
+@keyframes softPulse {
+  0%, 92%, 100% { box-shadow: 0 10px 30px -10px rgba(217, 119, 6, 0.5); }
+  96% { box-shadow: 0 10px 38px -6px rgba(217, 119, 6, 0.85); }
+}
+.cta-pulse {
+  animation: softPulse 5s ease-in-out infinite;
+}
+
+/* ── Плавающий фон-градиент в Hero ──────────────────────────────── */
+@keyframes floatBlob {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(0, -18px, 0) scale(1.05); }
+}
+.blob {
+  animation: floatBlob 9s ease-in-out infinite;
+  will-change: transform;
+}
+.blob-delay { animation-delay: -4.5s; }
+
+/* ── Карточки: hover-эффект ─────────────────────────────────────── */
+.card-hover {
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.35s ease;
+}
+.card-hover:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 50px -24px rgba(30, 27, 75, 0.35);
+}
+
+/* ── Превью футболки в конструкторе ─────────────────────────────── */
+.shirt-fill {
+  transition: fill 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.shirt-ink {
+  transition: fill 0.5s ease, opacity 0.5s ease;
+}
+
+/* ── Плавная смена цвета свотча ─────────────────────────────────── */
+.swatch {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.swatch:hover { transform: scale(1.12); }
+.swatch--active {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #D97706;
+}
+
+/* ── FAQ-аккордеон ──────────────────────────────────────────────── */
+.faq-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.faq-panel--open { grid-template-rows: 1fr; }
+.faq-panel > div { overflow: hidden; }
+.faq-chevron { transition: transform 0.3s ease; }
+.faq-chevron--open { transform: rotate(180deg); }
+
+/* ── Плавающая Telegram-кнопка ──────────────────────────────────── */
+@keyframes fabIn {
+  from { opacity: 0; transform: scale(0.7) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.fab {
+  animation: fabIn 0.4s ease 1s both;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.fab:hover { transform: scale(1.08); }
+
+/* ── Модалка заявки ─────────────────────────────────────────────── */
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.modal-overlay { animation: overlayIn 0.25s ease forwards; }
+.modal-card { animation: modalIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+/* ── Хедер: фон при скролле ─────────────────────────────────────── */
+.header-scrolled {
+  background: rgba(30, 27, 75, 0.92);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 30px -12px rgba(15, 23, 42, 0.5);
+}
+
+/* ── Подчёркивание навигации ────────────────────────────────────── */
+.nav-link {
+  position: relative;
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 100%;
+  height: 2px;
+  background: #D97706;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.nav-link:hover::after { transform: scaleX(1); }
+
+/* ── Gallery lightbox ───────────────────────────────────────────── */
+.lightbox { animation: overlayIn 0.25s ease forwards; }
+
+/* ── Поля ввода в модалке ───────────────────────────────────────── */
+.inp {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.75rem;
+  border: 1.5px solid #E2E8F0;
+  background: #fff;
+  color: #0F172A;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.inp::placeholder { color: #94A3B8; }
+.inp:focus {
+  outline: none;
+  border-color: #D97706;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
+}
+
+/* ── Кастомный курсор (только pointer: fine — десктоп) ──────────── */
+@media (pointer: fine) {
+  .landing-root * { cursor: none !important; }
+
+  .cursor-ring {
+    position: fixed;
+    top: 0; left: 0;
+    width: 52px; height: 52px;
+    border: 2.5px solid rgba(217, 119, 6, 0.6);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    background: rgba(217, 119, 6, 0.06);
+  }
+
+  .cursor-dot {
+    position: fixed;
+    top: 0; left: 0;
+    width: 12px; height: 12px;
+    background: #D97706;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 10000;
+    box-shadow: 0 0 8px 3px rgba(217,119,6,0.45);
+  }
+}
+
+/* ── Ripple волна ────────────────────────────────────────────────── */
+@keyframes rippleAnim {
+  from { transform: scale(0); opacity: 0.4; }
+  to   { transform: scale(1); opacity: 0; }
+}
+.ripple-wave {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  animation: rippleAnim 0.55s ease-out forwards;
+  pointer-events: none;
+}
+
+/* ── Градиентный текст (для акцентов) ───────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #D97706 0%, #F59E0B 50%, #FCD34D 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Shimmer-эффект на кнопке CTA ───────────────────────────────── */
+@keyframes shimmer {
+  from { background-position: -200% center; }
+  to   { background-position:  200% center; }
+}
+.btn-shimmer {
+  background-image: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255,255,255,0.18) 50%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+}
+
+/* ── Улучшенный card-hover с glow ───────────────────────────────── */
+.card-hover {
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.3s ease;
+}
+.card-hover:hover {
+  transform: translateY(-8px) scale(1.01);
+  box-shadow:
+    0 32px 64px -24px rgba(30, 27, 75, 0.28),
+    0 0 0 1px rgba(99, 102, 241, 0.08);
+}
+
+/* ── Декоративная линия-разделитель ─────────────────────────────── */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(99,102,241,0.2) 30%, rgba(217,119,6,0.3) 70%, transparent);
+}
+
+/* ── Уважение к prefers-reduced-motion ──────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .hero-anim,
+  .blob,
+  .cta-pulse,
+  .fab,
+  .modal-card,
+  .modal-overlay,
+  .card-hover,
+  .btn-shimmer {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

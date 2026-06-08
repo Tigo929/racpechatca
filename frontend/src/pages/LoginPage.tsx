@@ -16,7 +16,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(username, password);
-      navigate('/', { replace: true });
+      navigate('/crm', { replace: true });
     } catch {
       toast.error('Неверный логин или пароль');
     } finally {

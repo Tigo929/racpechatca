@@ -47,7 +47,7 @@ export function UsersPage() {
       {/* Шапка */}
       <header className="bg-indigo-950 border-b border-indigo-900">
         <div className="max-w-lg mx-auto px-4 py-3.5 flex items-center gap-3">
-          <Link to="/" className="p-1.5 text-indigo-300 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors">
+          <Link to="/crm" className="p-1.5 text-indigo-300 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors">
             <ArrowLeft size={16} />
           </Link>
           <h1 className="text-sm font-bold text-white">Пользователи</h1>

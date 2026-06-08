@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /crm
+Disallow: /crm/
+
+Sitemap: https://raspechatka.ru/sitemap.xml

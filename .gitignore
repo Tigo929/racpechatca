@@ -22,3 +22,17 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Local deploy/SSH scripts и дампы (не в git)
+ssh-*.cjs
+ssh-*.mjs
+*.tar
+*.tar.gz
+*.sql
+deploy-*.tar.gz
+
+# Agent/tooling
+.agents/
+.claude/
+skills-lock.json
+REPORT.md

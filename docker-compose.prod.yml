@@ -27,7 +27,7 @@ services:
     networks:
       - internal
     command: >
-      sh -c "npx prisma generate && npx prisma db push && node dist/src/main"
+      sh -c "node dist/src/main"
 
   frontend:
     build:

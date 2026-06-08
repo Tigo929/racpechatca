@@ -155,7 +155,7 @@ export function SalaryPage() {
       <header className="bg-indigo-950 border-b border-indigo-900 sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex items-center gap-3">
           <Link
-            to="/"
+            to="/crm"
             className="p-1.5 text-indigo-300 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors"
           >
             <ArrowLeft size={16} />
