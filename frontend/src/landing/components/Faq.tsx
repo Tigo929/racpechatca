@@ -28,6 +28,8 @@ export function Faq() {
                     <button
                       onClick={() => setOpen(isOpen ? null : i)}
                       aria-expanded={isOpen}
+                      aria-controls={`faq-panel-${i}`}
+                      id={`faq-button-${i}`}
                       className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left"
                     >
                       <span className="font-semibold text-slate-900">{item.q}</span>
@@ -38,7 +40,12 @@ export function Faq() {
                       />
                     </button>
                   </h3>
-                  <div className={`faq-panel ${isOpen ? 'faq-panel--open' : ''}`}>
+                  <div
+                    id={`faq-panel-${i}`}
+                    role="region"
+                    aria-labelledby={`faq-button-${i}`}
+                    className={`faq-panel ${isOpen ? 'faq-panel--open' : ''}`}
+                  >
                     <div>
                       <p className="px-5 pb-5 text-slate-600 leading-relaxed">{item.a}</p>
                     </div>
