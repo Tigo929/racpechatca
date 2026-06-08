@@ -19,6 +19,7 @@ import { Reviews } from '../landing/components/Reviews';
 import { Faq } from '../landing/components/Faq';
 import { Footer } from '../landing/components/Footer';
 import { TelegramFab } from '../landing/components/TelegramFab';
+import { MobileCtaBar } from '../landing/components/MobileCtaBar';
 
 // Konva-конструктор тяжёлый — грузим лениво, чтобы не блокировать страницу.
 const TShirtDesigner = lazy(() => import('../landing/components/designer/TShirtDesigner'));
@@ -65,6 +66,7 @@ export function LandingPage() {
         </main>
         <Footer />
         <TelegramFab />
+        <MobileCtaBar />
         <OrderModal />
       </div>
     </OrderModalProvider>
