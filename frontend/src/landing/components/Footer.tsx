@@ -8,7 +8,6 @@ import {
   telUrl,
   isFilled,
 } from '../../config/siteConfig';
-import { productPages } from '../data/productPages';
 
 export function Footer() {
   const { openModal } = useOrderModal();
@@ -128,56 +127,32 @@ export function Footer() {
               </p>
             </div>
 
-            {/* Каталог — ссылки на SEO-страницы товаров */}
-            <nav aria-label="Каталог">
-              <h3 className="text-white font-semibold mb-4">Каталог</h3>
-              <ul className="space-y-2.5">
-                {productPages.map((p) => (
-                  <li key={p.slug}>
-                    <Link to={`/${p.slug}`} className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">
-                      {p.title}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-
-            {/* Услуги (страница контактов в планах) */}
-            <nav aria-label="Услуги">
-              <h3 className="text-white font-semibold mb-4">Услуги</h3>
-              <ul className="space-y-2.5">
-                <li><Link to="/futbolka-s-foto" className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">Печать фото на футболке</Link></li>
-                <li><Link to="/futbolki-s-logotipom" className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">Печать логотипа</Link></li>
-                <li><Link to="/korporativnyy-merch" className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">Корпоративный мерч</Link></li>
-                <li><a href="/#designer" className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">Онлайн-конструктор</a></li>
-              </ul>
-            </nav>
-
-            {/* Разделы */}
+            {/* Навигация по странице */}
             <nav aria-label="Разделы">
-              <h3 className="text-white font-semibold mb-4">Разделы</h3>
+              <h3 className="text-white font-semibold mb-4">На странице</h3>
               <ul className="space-y-2.5">
-                <li><a href="/#gift" className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">В подарок</a></li>
-                <li><a href="/#business" className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">Для бизнеса</a></li>
+                <li><a href="/#product" className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">Футболка с принтом</a></li>
+                <li><a href="/#designer" className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">Онлайн-конструктор</a></li>
                 <li><a href="/#how" className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">Как заказать</a></li>
-                <li><a href="/#reviews" className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">Отзывы</a></li>
-                <li><a href="/#faq" className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">Вопросы</a></li>
+                <li><a href="/#gallery" className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">Работы</a></li>
+              </ul>
+            </nav>
+
+            {/* Доверие */}
+            <nav aria-label="Информация">
+              <h3 className="text-white font-semibold mb-4">Информация</h3>
+              <ul className="space-y-2.5">
+                <li><a href="/#reviews" className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">Отзывы клиентов</a></li>
+                <li><a href="/#faq" className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">Частые вопросы</a></li>
+                <li><a href="/#contacts" className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">Контакты</a></li>
+                <li>
+                  <button onClick={() => openModal()} className="text-sm text-indigo-300 hover:text-amber-400 transition-colors">
+                    Рассчитать заказ
+                  </button>
+                </li>
               </ul>
             </nav>
           </div>
-
-          {/* Внутренняя перелинковка */}
-          <p className="mt-10 text-sm text-indigo-400">
-            Также заказывают:{' '}
-            {productPages.map((p, i) => (
-              <span key={p.slug}>
-                <Link to={`/${p.slug}`} className="text-indigo-300 hover:text-amber-400 transition-colors">
-                  {p.title.toLowerCase()}
-                </Link>
-                {i < productPages.length - 1 ? ', ' : '.'}
-              </span>
-            ))}
-          </p>
 
           <div className="mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row gap-3 items-center justify-between text-sm text-indigo-400">
             <p>© {year} {siteConfig.companyName}. Печать на футболках в {siteConfig.city}.</p>
