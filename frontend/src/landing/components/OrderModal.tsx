@@ -88,7 +88,7 @@ function OrderModalInner() {
     >
       <div
         ref={dialogRef}
-        className="modal-card relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] overflow-y-auto"
+        className="modal-card relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] overflow-y-auto overscroll-contain"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Шапка модалки */}
@@ -113,7 +113,7 @@ function OrderModalInner() {
         </div>
 
         {status === 'done' ? (
-          <div className="px-6 pb-8 pt-2 text-center">
+          <div className="px-6 pb-8 pt-2 text-center" role="status" aria-live="polite">
             <div className="mx-auto w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mb-4">
               <CheckCircle2 className="w-9 h-9 text-green-600" />
             </div>
@@ -152,9 +152,11 @@ function OrderModalInner() {
                 type="text"
                 required
                 autoFocus
+                autoComplete="name"
+                name="name"
                 value={form.name}
                 onChange={(e) => set('name', e.target.value)}
-                placeholder="Как к вам обращаться"
+                placeholder="Например, Анна"
                 className="inp"
               />
             </Field>
@@ -163,9 +165,12 @@ function OrderModalInner() {
               <input
                 type="tel"
                 required
+                autoComplete="tel"
+                inputMode="tel"
+                name="phone"
                 value={form.phone}
                 onChange={(e) => set('phone', e.target.value)}
-                placeholder="+7 ___ ___-__-__"
+                placeholder="+7 900 000-00-00"
                 className="inp"
               />
             </Field>
@@ -173,6 +178,10 @@ function OrderModalInner() {
             <Field label="Telegram (необязательно)">
               <input
                 type="text"
+                name="telegram"
+                autoComplete="off"
+                spellCheck={false}
+                autoCapitalize="none"
                 value={form.telegram}
                 onChange={(e) => set('telegram', e.target.value)}
                 placeholder="@username"
@@ -212,7 +221,7 @@ function OrderModalInner() {
             </div>
 
             {status === 'error' && (
-              <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
+              <div role="alert" aria-live="assertive" className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
                 Не удалось отправить заявку. Проверьте соединение и попробуйте ещё раз
                 {isFilled(siteConfig.phone) ? ` — или напишите нам напрямую: ${siteConfig.phone}` : ''}
               </div>

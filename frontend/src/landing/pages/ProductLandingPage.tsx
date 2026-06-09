@@ -130,7 +130,7 @@ function ProductContent({ product }: { product: ProductPage }) {
                   {product.gallery.map((g, i) => (
                     <ThumbV key={i} active={view === i + 1} onClick={() => setView(i + 1)} label={g.caption}>
                       {g.src
-                        ? <img src={g.src} alt={g.caption} className="w-full h-full object-cover" />
+                        ? <img src={g.src} alt={g.caption} loading="lazy" decoding="async" width={1200} height={800} className="w-full h-full object-cover" />
                         : <PersonScene color={g.color} ink={g.ink} className="w-full h-full" />
                       }
                     </ThumbV>
@@ -157,6 +157,9 @@ function ProductContent({ product }: { product: ProductPage }) {
                     <img
                       src={product.gallery[view - 1].src}
                       alt={product.gallery[view - 1].alt}
+                      decoding="async"
+                      width={1200}
+                      height={800}
                       className="w-full h-full object-cover rounded-2xl"
                     />
                   ) : (
@@ -315,7 +318,7 @@ function ProductContent({ product }: { product: ProductPage }) {
               ? Object.values(tshirtPhotos).map((src, i) => (
                   <Reveal key={i} delay={i * 70} variant="scale">
                     <div className="aspect-square rounded-2xl overflow-hidden shadow-sm border border-slate-100">
-                      <img src={src} alt={`Результат печати ${i + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                      <img src={src} alt={`Результат печати ${i + 1}`} loading="lazy" decoding="async" width={1200} height={800} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
                     </div>
                   </Reveal>
                 ))

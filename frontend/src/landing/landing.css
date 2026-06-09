@@ -15,6 +15,14 @@
 .landing-root .bg-base { background-color: var(--bg-base); }
 .landing-root .bg-warm { background-color: var(--bg-warm); }
 
+/* ── Тач-взаимодействие: убираем 300ms задержку и задаём подсветку тапа ── */
+.landing-root button,
+.landing-root a,
+.landing-root [role='button'] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(217, 119, 6, 0.18);
+}
+
 /* ── Reveal при скролле ─────────────────────────────────────────── */
 .reveal {
   opacity: 0;

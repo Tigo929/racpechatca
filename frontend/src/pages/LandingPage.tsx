@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react';
+import { MotionConfig } from 'motion/react';
 import '../landing/landing.css';
 import { CustomCursor } from '../landing/components/CustomCursor';
 import { useSeo } from '../landing/hooks/useSeo';
@@ -43,6 +44,7 @@ export function LandingPage() {
   useSeo();
 
   return (
+    <MotionConfig reducedMotion="user">
     <OrderModalProvider>
       <div className="landing-root bg-base min-h-screen">
         <CustomCursor />
@@ -70,5 +72,6 @@ export function LandingPage() {
         <OrderModal />
       </div>
     </OrderModalProvider>
+    </MotionConfig>
   );
 }

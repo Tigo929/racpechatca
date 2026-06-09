@@ -92,7 +92,7 @@ export function Gallery() {
             onClick={(e) => e.stopPropagation()}
           >
             {active.src ? (
-              <img src={active.src} alt={active.alt} className="w-full h-auto" />
+              <img src={active.src} alt={active.alt} width={1200} height={800} decoding="async" className="w-full h-auto" />
             ) : (
               <PersonScene color={active.color} ink={active.ink} className="w-full max-h-[60vh]" />
             )}
