@@ -6,9 +6,8 @@ import { siteConfig } from '../../config/siteConfig';
 // Ссылки с префиксом «/#» работают и с главной (только скролл), и с
 // продуктовых страниц (переход на главную + скролл к секции).
 const NAV = [
-  { href: '/#catalog', label: 'Футболки' },
-  { href: '/#business', label: 'Для бизнеса' },
-  { href: '/#gift', label: 'В подарок' },
+  { href: '/#product', label: 'Футболка' },
+  { href: '/#designer', label: 'Конструктор' },
   { href: '/#how', label: 'Как заказать' },
   { href: '/#gallery', label: 'Работы' },
   { href: '/#reviews', label: 'Отзывы' },

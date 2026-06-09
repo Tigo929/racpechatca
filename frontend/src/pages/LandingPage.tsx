@@ -7,11 +7,9 @@ import { OrderModalProvider } from '../landing/components/OrderModalContext';
 import { OrderModal } from '../landing/components/OrderModal';
 import { Header } from '../landing/components/Header';
 import { Hero } from '../landing/components/Hero';
+import { ProductShowcase } from '../landing/components/ProductShowcase';
 import { Stats } from '../landing/components/Stats';
 import { TrustBar } from '../landing/components/TrustBar';
-import { GiftSection } from '../landing/components/GiftSection';
-import { BusinessSection } from '../landing/components/BusinessSection';
-import { Catalog } from '../landing/components/Catalog';
 import { HowToOrder } from '../landing/components/HowToOrder';
 import { Quality } from '../landing/components/Quality';
 import { SeoText } from '../landing/components/SeoText';
@@ -51,20 +49,18 @@ export function LandingPage() {
         <Header />
         <main>
           <Hero />
-          <Stats />
           <TrustBar />
-          <GiftSection />
-          <BusinessSection />
-          <Catalog />
+          <ProductShowcase />
           <Suspense fallback={<DesignerFallback />}>
             <TShirtDesigner />
           </Suspense>
           <HowToOrder />
+          <Stats />
           <Quality />
-          <SeoText />
           <Gallery />
           <Reviews />
           <Faq />
+          <SeoText />
         </main>
         <Footer />
         <TelegramFab />
