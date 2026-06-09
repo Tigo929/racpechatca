@@ -12,6 +12,7 @@ import { Stats } from '../landing/components/Stats';
 import { TrustBar } from '../landing/components/TrustBar';
 import { HowToOrder } from '../landing/components/HowToOrder';
 import { Quality } from '../landing/components/Quality';
+import { Guarantees } from '../landing/components/Guarantees';
 import { SeoText } from '../landing/components/SeoText';
 import { Gallery } from '../landing/components/Gallery';
 import { Reviews } from '../landing/components/Reviews';
@@ -57,6 +58,7 @@ export function LandingPage() {
           <HowToOrder />
           <Stats />
           <Quality />
+          <Guarantees />
           <Gallery />
           <Reviews />
           <Faq />

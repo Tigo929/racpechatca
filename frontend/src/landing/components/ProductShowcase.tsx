@@ -168,6 +168,10 @@ export function ProductShowcase() {
                 <ArrowRight className="w-5 h-5" />
               </button>
             </div>
+            <p className="mt-3 flex items-center gap-1.5 text-sm text-slate-500 justify-center sm:justify-start">
+              <Check className="w-4 h-4 text-green-600 shrink-0" />
+              Бесплатный макет · оплата после согласования
+            </p>
           </div>
         </div>
       </div>

@@ -237,7 +237,7 @@ function OrderModalInner() {
                   <Loader2 className="w-5 h-5 animate-spin" /> Отправляем…
                 </>
               ) : (
-                'Отправить заявку'
+                'Получить расчёт и макет'
               )}
             </button>
 
