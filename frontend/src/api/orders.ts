@@ -14,6 +14,7 @@ import type {
   SalarySummary,
   ExecutorSalaryData,
   CreatePaymentDto,
+  RecentPayment,
 } from '../types';
 
 const api = axios.create({
@@ -138,13 +139,13 @@ export const salaryApi = {
     return data;
   },
 
-  getPayments: async (executorId: string) => {
-    const { data } = await api.get(`/salary/payments/${executorId}`);
+  getPayments: async (executorId: string): Promise<RecentPayment[]> => {
+    const { data } = await api.get<RecentPayment[]>(`/salary/payments/${executorId}`);
     return data;
   },
 
-  createPayment: async (dto: CreatePaymentDto) => {
-    const { data } = await api.post('/salary/payments', dto);
+  createPayment: async (dto: CreatePaymentDto): Promise<RecentPayment> => {
+    const { data } = await api.post<RecentPayment>('/salary/payments', dto);
     return data;
   },
 };

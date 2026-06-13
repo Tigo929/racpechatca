@@ -1,7 +1,7 @@
 import { Sparkles, ArrowRight, ShieldCheck, Star, Check } from 'lucide-react';
 import { motion, useScroll, useTransform } from 'motion/react';
 import { useRef } from 'react';
-import { useOrderModal } from './OrderModalContext';
+import { useOrderModal } from './useOrderModal';
 import { MagneticButton } from './MagneticButton';
 import { siteConfig } from '../../config/siteConfig';
 import { tshirtPhotos } from '../../assets/portfolio';

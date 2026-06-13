@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Menu, X, Printer, Calculator } from 'lucide-react';
-import { useOrderModal } from './OrderModalContext';
+import { useOrderModal } from './useOrderModal';
 import { siteConfig } from '../../config/siteConfig';
 
 // Ссылки с префиксом «/#» работают и с главной (только скролл), и с

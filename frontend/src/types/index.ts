@@ -161,7 +161,6 @@ export interface UpdateOrderDto {
   deliveryMethod?: EnumDeliveryMethod;
   deliveryCost?: number;
   note?: string;
-  status?: EnumStatus;
   isUrgent?: boolean;
 }
 
@@ -195,7 +194,7 @@ export interface AppUser {
   username: string;
   role: EnumRole;
   isActive: boolean;
-  rateBasisPoints: number;
+  rateBasisPoints: number | null;
   createdAt: string;
 }
 
@@ -266,14 +265,18 @@ export interface RecentPayment {
   createdAt: string;
   amount: number;
   note?: string | null;
+  paidBy: {
+    id: string;
+    username: string;
+  };
 }
 
 export interface ExecutorSalaryData {
   id: string;
   username: string;
   isActive: boolean;
-  rateBasisPoints: number;
-  ratePercent: string;
+  rateBasisPoints: number | null;
+  ratePercent: string | null;
   totalDebt: number;
   totalPaid: number;
   pendingAccruals: AccrualBrief[];

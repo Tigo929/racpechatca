@@ -8,9 +8,10 @@ import {
   TSHIRT_STATUS_LABELS,
   TERMINAL_STATUSES,
 } from '../constants';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import type { EnumStatus, OrderPhoto } from '../types';
 import { Check, ChevronRight } from 'lucide-react';
+import { getErrorMessage } from '../utils/get-error-message';
 
 interface Props { order: OrderPhoto }
 
@@ -32,8 +33,8 @@ export function StatusStepper({ order }: Props) {
       qc.invalidateQueries({ queryKey: ['orders'] });
       toast.success(`Статус: ${labels[updated.status] ?? updated.status}`);
     },
-    onError: (e: any) =>
-      toast.error(e.response?.data?.message ?? 'Ошибка обновления статуса'),
+    onError: (error: unknown) =>
+      toast.error(getErrorMessage(error, 'Ошибка обновления статуса')),
   });
 
   // Если текущий статус не в flow (например CANCELLED или legacy PAID) — просто показываем бейдж

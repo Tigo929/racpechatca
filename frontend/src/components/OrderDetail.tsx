@@ -121,8 +121,9 @@ import { InfoRow } from './InfoRow';
 import { OrderEditForm } from './OrderEditForm';
 import { TshirtItemsTable } from './TshirtItemsTable';
 import { COMMUNICATION_LABELS, DELIVERY_LABELS } from '../constants';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import type { AppUser, UpdateOrderDto, OrderPhoto } from '../types';
+import { getErrorMessage } from '../utils/get-error-message';
 
 const inputCls =
   'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:border-transparent';
@@ -142,7 +143,7 @@ function AssignPanel({ order, onAssigned }: AssignPanelProps) {
     staleTime: 60_000,
   });
 
-  const executors = (users as AppUser[]).filter((u) => u.role === 'EXECUTOR' && u.isActive !== false);
+  const executors = users.filter((u: AppUser) => u.role === 'EXECUTOR' && u.isActive !== false);
 
   const mutation = useMutation({
     mutationFn: () => ordersApi.assignExecutor(order.id, executorId),
@@ -151,7 +152,7 @@ function AssignPanel({ order, onAssigned }: AssignPanelProps) {
       setOpen(false);
       toast.success('Исполнитель назначен');
     },
-    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Ошибка'),
+    onError: (error: unknown) => toast.error(getErrorMessage(error, 'Ошибка')),
   });
 
   if (!open) {
@@ -176,7 +177,9 @@ function AssignPanel({ order, onAssigned }: AssignPanelProps) {
         <option value="">— выберите —</option>
         {executors.map((u) => (
           <option key={u.id} value={u.id}>
-            {u.username} ({(u.rateBasisPoints / 100).toFixed(2)}%)
+            {u.username} ({u.rateBasisPoints === null
+              ? 'ставка не назначена'
+              : `${(u.rateBasisPoints / 100).toFixed(2)}%`})
           </option>
         ))}
       </select>
@@ -367,7 +370,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       <div className="bg-gray-50 rounded-xl p-4 space-y-3">
         <p className="text-xs font-medium text-gray-500">Прогресс статуса</p>
         <StatusStepper order={order} />
-        {isAdmin && order.productCategory === 'TSHIRT' && (
+        {isAdmin && (
           <AssignPanel
             order={order}
             onAssigned={(updated) => {

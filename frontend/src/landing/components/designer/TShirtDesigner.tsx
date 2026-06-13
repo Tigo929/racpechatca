@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { Palette } from 'lucide-react';
 import { Reveal } from '../Reveal';
-import { useOrderModal } from '../OrderModalContext';
+import { useOrderModal } from '../useOrderModal';
 import { shirtColors } from '../../data/content';
 import { TShirtCanvas, type TShirtCanvasHandle } from './TShirtCanvas';
 import { DesignerToolbar } from './DesignerToolbar';

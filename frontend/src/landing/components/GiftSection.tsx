@@ -1,6 +1,6 @@
 import { Gift, ArrowRight } from 'lucide-react';
 import { Reveal } from './Reveal';
-import { useOrderModal } from './OrderModalContext';
+import { useOrderModal } from './useOrderModal';
 import { giftCards } from '../data/content';
 
 export function GiftSection() {

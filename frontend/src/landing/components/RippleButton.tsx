@@ -11,7 +11,6 @@ interface Props {
 
 export function RippleButton({ children, className = '', onClick, magnetic = true, strength = 0.3 }: Props) {
   const ref = useRef<HTMLButtonElement>(null);
-  const ripplesRef = useRef<HTMLSpanElement[]>([]);
 
   const x = useMotionValue(0);
   const y = useMotionValue(0);

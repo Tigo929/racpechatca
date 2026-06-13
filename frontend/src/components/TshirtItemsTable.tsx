@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Plus, Pencil, Trash2, Check, X, ExternalLink, MessageCircle } from 'lucide-react';
 import { ordersApi } from '../api/orders';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import {
   TSHIRT_SIZE_LABELS,
   PRINT_LOCATION_LABELS,
@@ -40,6 +40,51 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <td className="px-3 py-2 text-xs text-gray-500 w-36">{label}</td>
       <td className="px-3 py-2 text-sm">{children}</td>
     </tr>
+  );
+}
+
+function EditForm({
+  state,
+  onChange,
+}: {
+  state: EditState;
+  onChange: (state: EditState) => void;
+}) {
+  return (
+    <table className="w-full text-sm border border-gray-100 rounded-lg overflow-hidden mb-2">
+      <tbody>
+        <Row label="Цвет">
+          <select className={selectCls} value={state.color} onChange={(event) => onChange({ ...state, color: event.target.value })}>
+            {TSHIRT_COLORS.map((color) => <option key={color}>{color}</option>)}
+          </select>
+        </Row>
+        <Row label="Размер">
+          <select className={selectCls} value={state.size} onChange={(event) => onChange({ ...state, size: event.target.value as EnumTshirtSize })}>
+            {Object.entries(TSHIRT_SIZE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </Row>
+        <Row label="Место печати">
+          <select className={selectCls} value={state.printLocation} onChange={(event) => onChange({ ...state, printLocation: event.target.value as EnumPrintLocation })}>
+            {Object.entries(PRINT_LOCATION_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </Row>
+        <Row label="Кол-во">
+          <input type="number" min={1} className={inputCls} value={state.quantity} onChange={(event) => onChange({ ...state, quantity: event.target.value })} />
+        </Row>
+        <Row label="Цена ₽">
+          <input type="number" min={0} className={inputCls} value={state.price} onChange={(event) => onChange({ ...state, price: event.target.value })} />
+        </Row>
+        <Row label="Стоимость дизайна ₽">
+          <input type="number" min={0} className={inputCls} value={state.designCost} onChange={(event) => onChange({ ...state, designCost: event.target.value })} />
+        </Row>
+        <Row label="Ссылка на макет">
+          <input className={inputCls} placeholder="https://..." value={state.designUrl} onChange={(event) => onChange({ ...state, designUrl: event.target.value })} />
+        </Row>
+        <Row label="Описание дизайна">
+          <input className={inputCls} placeholder="Логотип на белом фоне..." value={state.designNote} onChange={(event) => onChange({ ...state, designNote: event.target.value })} />
+        </Row>
+      </tbody>
+    </table>
   );
 }
 
@@ -95,43 +140,6 @@ export function TshirtItemsTable({ order }: Props) {
     designCost: Number(s.designCost),
     designUrl: s.designUrl || undefined, designNote: s.designNote || undefined,
   });
-
-  const EditForm = ({ state, onChange }: { state: EditState; onChange: (s: EditState) => void }) => (
-    <table className="w-full text-sm border border-gray-100 rounded-lg overflow-hidden mb-2">
-      <tbody>
-        <Row label="Цвет">
-          <select className={selectCls} value={state.color} onChange={e => onChange({ ...state, color: e.target.value })}>
-            {TSHIRT_COLORS.map(c => <option key={c}>{c}</option>)}
-          </select>
-        </Row>
-        <Row label="Размер">
-          <select className={selectCls} value={state.size} onChange={e => onChange({ ...state, size: e.target.value as EnumTshirtSize })}>
-            {Object.entries(TSHIRT_SIZE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
-        </Row>
-        <Row label="Место печати">
-          <select className={selectCls} value={state.printLocation} onChange={e => onChange({ ...state, printLocation: e.target.value as EnumPrintLocation })}>
-            {Object.entries(PRINT_LOCATION_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
-        </Row>
-        <Row label="Кол-во">
-          <input type="number" min={1} className={inputCls} value={state.quantity} onChange={e => onChange({ ...state, quantity: e.target.value })} />
-        </Row>
-        <Row label="Цена ₽">
-          <input type="number" min={0} className={inputCls} value={state.price} onChange={e => onChange({ ...state, price: e.target.value })} />
-        </Row>
-        <Row label="Стоимость дизайна ₽">
-          <input type="number" min={0} className={inputCls} value={state.designCost} onChange={e => onChange({ ...state, designCost: e.target.value })} />
-        </Row>
-        <Row label="Ссылка на макет">
-          <input className={inputCls} placeholder="https://..." value={state.designUrl} onChange={e => onChange({ ...state, designUrl: e.target.value })} />
-        </Row>
-        <Row label="Описание дизайна">
-          <input className={inputCls} placeholder="Логотип на белом фоне..." value={state.designNote} onChange={e => onChange({ ...state, designNote: e.target.value })} />
-        </Row>
-      </tbody>
-    </table>
-  );
 
   return (
     <div>

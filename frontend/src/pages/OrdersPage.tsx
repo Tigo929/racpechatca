@@ -11,7 +11,7 @@ import { OrderDetail } from '../components/OrderDetail';
 import { FilterChip } from '../components/FilterChip';
 import { DeliveryBadge } from '../components/DeliveryBadge';
 import { STATUS_FLOW, STATUS_LABELS } from '../constants';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import type { EnumStatus, EnumProductCategory, OrdersQuery } from '../types';
 
 const PAGE_SIZE = 10;

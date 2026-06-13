@@ -4,8 +4,9 @@ import toast from 'react-hot-toast';
 import { Plus, Trash2, X, Check, ArrowLeft, Pencil, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { authApi } from '../api/auth';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import type { AppUser, EnumRole } from '../types';
+import { getErrorMessage } from '../utils/get-error-message';
 
 const inputCls =
   'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:border-transparent';
@@ -34,7 +35,9 @@ interface RateEditorProps {
 
 function RateEditor({ user, onClose }: RateEditorProps) {
   const qc = useQueryClient();
-  const [rate, setRate] = useState(bpToPercent(user.rateBasisPoints));
+  const [rate, setRate] = useState(
+    user.rateBasisPoints === null ? '' : bpToPercent(user.rateBasisPoints),
+  );
 
   const mutation = useMutation({
     mutationFn: (rateBasisPoints: number) =>
@@ -44,7 +47,7 @@ function RateEditor({ user, onClose }: RateEditorProps) {
       toast.success('Ставка обновлена');
       onClose();
     },
-    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Ошибка'),
+    onError: (error: unknown) => toast.error(getErrorMessage(error, 'Ошибка')),
   });
 
   const bp = percentToBp(rate);
@@ -99,7 +102,7 @@ export function UsersPage() {
       setForm({ username: '', password: '', role: 'EXECUTOR' });
       toast.success('Пользователь создан');
     },
-    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Ошибка'),
+    onError: (error: unknown) => toast.error(getErrorMessage(error, 'Ошибка')),
   });
 
   const toggleActiveMutation = useMutation({
@@ -118,8 +121,8 @@ export function UsersPage() {
       qc.invalidateQueries({ queryKey: ['users'] });
       toast.success('Удалён');
     },
-    onError: (e: any) =>
-      toast.error(e.response?.data?.message ?? 'Ошибка удаления'),
+    onError: (error: unknown) =>
+      toast.error(getErrorMessage(error, 'Ошибка удаления')),
   });
 
   return (
@@ -236,7 +239,9 @@ export function UsersPage() {
                       className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors font-mono"
                       title="Изменить ставку"
                     >
-                      {bpToPercent(u.rateBasisPoints ?? 0)}%
+                      {u.rateBasisPoints === null
+                        ? 'Ставка не назначена'
+                        : `${bpToPercent(u.rateBasisPoints)}%`}
                       <Pencil size={10} />
                     </button>
                   )}

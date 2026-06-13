@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, Upload, CheckCircle2, Loader2 } from 'lucide-react';
-import { useOrderModal } from './OrderModalContext';
+import { useOrderModal } from './useOrderModal';
 import { siteConfig, isFilled } from '../../config/siteConfig';
 
 interface FormState {

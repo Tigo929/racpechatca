@@ -1,4 +1,4 @@
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,6 +11,7 @@ import {
   TSHIRT_SIZE_LABELS,
   PRINT_LOCATION_LABELS,
 } from '../constants';
+import type { CreateOrderDto } from '../types';
 
 const photoItemSchema = z.object({
   formatPaper: z.string().min(1, 'Укажите формат'),
@@ -82,7 +83,7 @@ const errorCls = 'text-red-500 text-xs mt-1';
 
 export function CreateOrderForm({ onClose }: Props) {
   const qc = useQueryClient();
-  const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormValues>({
+  const { register, control, handleSubmit, getValues, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(fullSchema),
     defaultValues: {
       productCategory: 'PHOTO',
@@ -98,8 +99,8 @@ export function CreateOrderForm({ onClose }: Props) {
     },
   });
 
-  const productCategory = watch('productCategory');
-  const communicationPlatform = watch('communicationPlatform');
+  const productCategory = useWatch({ control, name: 'productCategory' });
+  const communicationPlatform = useWatch({ control, name: 'communicationPlatform' });
 
   // При смене категории очищаем массив позиций другой категории,
   // чтобы Zod-валидация не падала на невидимых полях
@@ -118,7 +119,7 @@ export function CreateOrderForm({ onClose }: Props) {
     mutationFn: ordersApi.create,
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['orders'] });
-      toast.success((vars as any).status === 'LEAD' ? 'Обращение записано' : 'Заявка создана');
+      toast.success(vars.status === 'LEAD' ? 'Обращение записано' : 'Заявка создана');
       onClose();
     },
     onError: () => toast.error('Ошибка при создании заявки'),
@@ -134,7 +135,7 @@ export function CreateOrderForm({ onClose }: Props) {
 
   // Создать обращение (LEAD) — позиции не обязательны
   const onSubmitLead = () => {
-    const data = watch();
+    const data = getValues();
     const url = data.urlCommunication ?? '';
     // Минимальная проверка: ссылка/username не пустая
     if (!url || url.trim() === '') {
@@ -149,7 +150,7 @@ export function CreateOrderForm({ onClose }: Props) {
       toast.error('Укажите полную ссылку (начинается с https://)');
       return;
     }
-    mutation.mutate({
+    const lead: CreateOrderDto = {
       sourceOrder: data.sourceOrder ?? 'AVITO',
       communicationPlatform: data.communicationPlatform,
       urlCommunication: url,
@@ -157,10 +158,11 @@ export function CreateOrderForm({ onClose }: Props) {
       deliveryCost: data.deliveryCost ?? 0,
       note: data.note,
       productCategory: data.productCategory ?? 'PHOTO',
-      status: 'LEAD' as any,
+      status: 'LEAD',
       items: undefined,
       tshirtItems: undefined,
-    } as any);
+    };
+    mutation.mutate(lead);
   };
 
   return (

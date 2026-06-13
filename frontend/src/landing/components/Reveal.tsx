@@ -18,7 +18,7 @@ const VARIANTS = {
   right: { hidden: { opacity: 0, x: 36 },        visible: { opacity: 1, x: 0 } },
 };
 
-const SPRING = { type: 'spring', stiffness: 70, damping: 18, mass: 0.9 };
+const SPRING = { type: 'spring' as const, stiffness: 70, damping: 18, mass: 0.9 };
 
 export function Reveal({
   children,

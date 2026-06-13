@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Send, Sparkles } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useOrderModal } from './OrderModalContext';
+import { useOrderModal } from './useOrderModal';
 import { telegramUrl } from '../../config/siteConfig';
 
 /**

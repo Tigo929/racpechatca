@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { salaryApi } from '../api/orders';
 import type { ExecutorSalaryData, AccrualBrief } from '../types';
+import { getErrorMessage } from '../utils/get-error-message';
 
 const fmt = (n: number) => n.toLocaleString('ru-RU') + ' ₽';
 
@@ -60,6 +61,7 @@ function PayForm({ executor, onDone }: PayFormProps) {
   const qc = useQueryClient();
   const [amount, setAmount] = useState(String(executor.totalDebt));
   const [note, setNote] = useState('');
+  const [confirming, setConfirming] = useState(false);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -71,9 +73,11 @@ function PayForm({ executor, onDone }: PayFormProps) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['salary-summary'] });
       toast.success('Выплата записана');
+      setConfirming(false);
       onDone();
     },
-    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Ошибка'),
+    onError: (error: unknown) =>
+      toast.error(getErrorMessage(error, 'Ошибка выплаты')),
   });
 
   const parsed = Math.round(Number(amount));
@@ -110,7 +114,7 @@ function PayForm({ executor, onDone }: PayFormProps) {
       )}
       <div className="flex gap-2">
         <button
-          onClick={() => mutation.mutate()}
+          onClick={() => setConfirming(true)}
           disabled={mutation.isPending || !valid}
           className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
         >
@@ -124,6 +128,44 @@ function PayForm({ executor, onDone }: PayFormProps) {
           Отмена
         </button>
       </div>
+
+      {confirming && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="payment-confirm-title"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 id="payment-confirm-title" className="text-lg font-bold text-gray-900">
+              Подтвердить выплату сотруднику?
+            </h2>
+            <div className="mt-4 space-y-2 rounded-xl bg-gray-50 p-4 text-sm">
+              <p><span className="text-gray-500">Сотрудник:</span> <strong>{executor.username}</strong></p>
+              <p><span className="text-gray-500">Сумма:</span> <strong>{fmt(parsed)}</strong></p>
+            </div>
+            <p className="mt-4 text-sm text-gray-600">
+              После подтверждения выплата будет записана в историю.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => setConfirming(false)}
+                disabled={mutation.isPending}
+                className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={() => mutation.mutate()}
+                disabled={mutation.isPending}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {mutation.isPending ? 'Записываем…' : 'Подтвердить выплату'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -148,7 +190,7 @@ function ExecutorCard({ ex }: ExecutorCardProps) {
                 <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-600">неактивен</span>
               )}
               <span className="text-xs text-gray-400 font-mono bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
-                {ex.ratePercent}%
+                {ex.ratePercent === null ? 'Ставка не назначена' : `${ex.ratePercent}%`}
               </span>
             </div>
             <p className="text-xs text-gray-400 mt-0.5">
@@ -262,6 +304,41 @@ function ExecutorCard({ ex }: ExecutorCardProps) {
                         <td className="px-3 py-2 text-xs text-emerald-600">
                           {ACCRUAL_STATUS_LABELS[a.status] ?? a.status}
                         </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {ex.recentPayments.length > 0 && (
+            <>
+              <div className="px-5 pt-4 pb-1 flex items-center gap-2">
+                <Wallet size={12} className="text-indigo-500" />
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">История выплат</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-xs text-gray-400 border-b border-gray-50">
+                      <th className="px-3 py-2 text-left">Сотрудник</th>
+                      <th className="px-3 py-2 text-left">Дата</th>
+                      <th className="px-3 py-2 text-right">Сумма</th>
+                      <th className="px-3 py-2 text-left">Комментарий</th>
+                      <th className="px-3 py-2 text-left">Подтвердил</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ex.recentPayments.map((payment) => (
+                      <tr key={payment.id} className="border-b border-gray-50 text-sm">
+                        <td className="px-3 py-2 font-semibold text-gray-800">{ex.username}</td>
+                        <td className="px-3 py-2 text-gray-500">
+                          {new Date(payment.createdAt).toLocaleString('ru-RU')}
+                        </td>
+                        <td className="px-3 py-2 text-right font-semibold text-emerald-700">{fmt(payment.amount)}</td>
+                        <td className="px-3 py-2 text-gray-600">{payment.note || '—'}</td>
+                        <td className="px-3 py-2 text-gray-600">{payment.paidBy.username}</td>
                       </tr>
                     ))}
                   </tbody>

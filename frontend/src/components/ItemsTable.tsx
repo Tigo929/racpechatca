@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { Plus, Pencil, Trash2, Check, X, ExternalLink, MessageCircle } from 'lucide-react';
 import { ordersApi } from '../api/orders';
 import { TYPE_LABELS } from '../constants';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import type { ItemPhoto, OrderPhoto } from '../types';
 
 interface Props { order: OrderPhoto }

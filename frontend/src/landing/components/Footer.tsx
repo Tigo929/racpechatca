@@ -1,6 +1,5 @@
 import { Printer, Phone, Mail, MapPin, Send, MessageCircle, Calculator, Clock } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { useOrderModal } from './OrderModalContext';
+import { useOrderModal } from './useOrderModal';
 import {
   siteConfig,
   telegramUrl,

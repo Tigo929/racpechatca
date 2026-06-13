@@ -15,7 +15,7 @@ const cardVariants = {
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { type: 'spring', stiffness: 65, damping: 18, delay: i * 0.09 },
+    transition: { type: 'spring' as const, stiffness: 65, damping: 18, delay: i * 0.09 },
   }),
 };
 

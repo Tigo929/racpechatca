@@ -1,5 +1,5 @@
 import { useRef, type ReactNode, type MouseEvent } from 'react';
-import { motion, useMotionValue, useSpring, useTransform } from 'motion/react';
+import { motion, useMotionValue, useSpring, useTransform, type MotionValue } from 'motion/react';
 
 interface Props {
   children: ReactNode;
@@ -52,13 +52,12 @@ function GlowOverlay({
   glowX,
   glowY,
 }: {
-  glowX: ReturnType<typeof useTransform>;
-  glowY: ReturnType<typeof useTransform>;
+  glowX: MotionValue<number>;
+  glowY: MotionValue<number>;
 }) {
   const bg = useTransform(
-    [glowX, glowY] as const,
-    ([gx, gy]: number[]) =>
-      `radial-gradient(circle at ${gx}% ${gy}%, rgba(255,255,255,0.13) 0%, transparent 65%)`,
+    () =>
+      `radial-gradient(circle at ${glowX.get()}% ${glowY.get()}%, rgba(255,255,255,0.13) 0%, transparent 65%)`,
   );
   return (
     <motion.div

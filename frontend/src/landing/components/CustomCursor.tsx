@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { motion, useMotionValue, useSpring } from 'motion/react';
 
 export function CustomCursor() {
@@ -17,7 +17,6 @@ export function CustomCursor() {
 
   // Состояние hover над кликабельным
   const ringSize = useMotionValue(52);
-  const ringOpacity = useMotionValue(1);
   const ringBg = useMotionValue('rgba(217,119,6,0)');
   const ringBorder = useMotionValue('rgba(217,119,6,0.55)');
   const dotSize = useMotionValue(12);
@@ -28,7 +27,7 @@ export function CustomCursor() {
 
   const isHoveringRef = useRef(false);
 
-  const setHover = (on: boolean) => {
+  const setHover = useCallback((on: boolean) => {
     if (isHoveringRef.current === on) return;
     isHoveringRef.current = on;
     if (on) {
@@ -45,7 +44,7 @@ export function CustomCursor() {
       dotSize.set(12);
       dotBg.set('#D97706');
     }
-  };
+  }, [dotBg, dotSize, ringBg, ringBorder, ringSize]);
 
   useEffect(() => {
     if (!window.matchMedia('(pointer: fine)').matches) return;
@@ -64,7 +63,7 @@ export function CustomCursor() {
 
     window.addEventListener('mousemove', onMove);
     return () => window.removeEventListener('mousemove', onMove);
-  }, []);
+  }, [cursorX, cursorY, dotX, dotY, setHover]);
 
   return (
     <>

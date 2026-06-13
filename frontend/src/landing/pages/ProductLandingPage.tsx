@@ -19,14 +19,14 @@ import { siteConfig } from '../../config/siteConfig';
 import { getProductBySlug, productPages } from '../data/productPages';
 import { sharedReviews } from '../data/reviews';
 import { useProductSeo } from '../hooks/useProductSeo';
-import { OrderModalProvider, useOrderModal } from '../components/OrderModalContext';
+import { OrderModalProvider } from '../components/OrderModalContext';
+import { useOrderModal } from '../components/useOrderModal';
 import { OrderModal } from '../components/OrderModal';
 import { CustomCursor } from '../components/CustomCursor';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { TelegramFab } from '../components/TelegramFab';
 import { Reveal } from '../components/Reveal';
-import { MagneticButton } from '../components/MagneticButton';
 import { RippleButton } from '../components/RippleButton';
 import { TiltCard } from '../components/TiltCard';
 import { TshirtSVG } from '../components/TshirtSVG';
@@ -95,7 +95,6 @@ function ProductContent({ product }: { product: ProductPage }) {
     openModal(`Интересует: ${product.title}. Цвет: ${color.name}, размер: ${size}. `);
 
   const others = productPages.filter((p) => p.slug !== product.slug);
-  const galleryLength = product.gallery.length;
 
   return (
     <>

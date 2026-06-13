@@ -1,6 +1,6 @@
 import { Building2, Calculator, Check } from 'lucide-react';
 import { Reveal } from './Reveal';
-import { useOrderModal } from './OrderModalContext';
+import { useOrderModal } from './useOrderModal';
 import { businessCards } from '../data/content';
 
 const POINTS = [
