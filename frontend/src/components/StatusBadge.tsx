@@ -16,16 +16,19 @@ const STATUS_STYLES: Record<EnumStatus, { bg: string; text: string; dot: string 
   DONE:                     { bg: 'bg-cyan-50',    text: 'text-cyan-700',    dot: 'bg-cyan-500' },
   SENT:                     { bg: 'bg-orange-50',  text: 'text-orange-700',  dot: 'bg-orange-500' },
   PAID:                     { bg: 'bg-teal-50',    text: 'text-teal-700',    dot: 'bg-teal-500' },
+  READY_FOR_REVIEW:         { bg: 'bg-violet-50',  text: 'text-violet-700',  dot: 'bg-violet-500' },
+  COMPLETED:                { bg: 'bg-emerald-100',text: 'text-emerald-800', dot: 'bg-emerald-600' },
+  CANCELLED:                { bg: 'bg-red-50',     text: 'text-red-700',     dot: 'bg-red-400' },
 };
 
 export function StatusBadge({ status, productCategory, size = 'md' }: Props) {
   const labels = productCategory === 'TSHIRT' ? TSHIRT_STATUS_LABELS : STATUS_LABELS;
-  const s = STATUS_STYLES[status];
+  const s = STATUS_STYLES[status] ?? { bg: 'bg-gray-50', text: 'text-gray-600', dot: 'bg-gray-400' };
   const base = size === 'sm' ? 'px-2 py-0.5 text-xs gap-1.5' : 'px-2.5 py-1 text-xs gap-1.5';
   return (
     <span className={`inline-flex items-center rounded-lg font-semibold ${base} ${s.bg} ${s.text}`}>
       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} aria-hidden="true" />
-      {labels[status]}
+      {labels[status] ?? status}
     </span>
   );
 }

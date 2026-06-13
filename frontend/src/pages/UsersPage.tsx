@@ -1,23 +1,89 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Plus, Trash2, X, Check, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, X, Check, ArrowLeft, Pencil, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
-import type { EnumRole } from '../types';
+import type { AppUser, EnumRole } from '../types';
 
-const inputCls = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:border-transparent';
-const ROLE_LABELS: Record<EnumRole, string> = { ADMIN: 'Администратор', EXECUTOR: 'Исполнитель' };
+const inputCls =
+  'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:border-transparent';
+
+const ROLE_LABELS: Record<EnumRole, string> = {
+  ADMIN: 'Администратор',
+  EXECUTOR: 'Исполнитель',
+};
 const ROLE_COLORS: Record<EnumRole, string> = {
   ADMIN: 'bg-indigo-100 text-indigo-800',
   EXECUTOR: 'bg-gray-100 text-gray-600',
 };
 
+function bpToPercent(bp: number): string {
+  return (bp / 100).toFixed(2);
+}
+
+function percentToBp(pct: string): number {
+  return Math.round(parseFloat(pct) * 100);
+}
+
+interface RateEditorProps {
+  user: AppUser;
+  onClose: () => void;
+}
+
+function RateEditor({ user, onClose }: RateEditorProps) {
+  const qc = useQueryClient();
+  const [rate, setRate] = useState(bpToPercent(user.rateBasisPoints));
+
+  const mutation = useMutation({
+    mutationFn: (rateBasisPoints: number) =>
+      authApi.updateUser(user.id, { rateBasisPoints }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+      toast.success('Ставка обновлена');
+      onClose();
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Ошибка'),
+  });
+
+  const bp = percentToBp(rate);
+  const valid = !isNaN(bp) && bp >= 0 && bp <= 10000;
+
+  return (
+    <div className="flex items-center gap-2 mt-2">
+      <div className="relative flex-1">
+        <input
+          type="number"
+          min="0"
+          max="100"
+          step="0.01"
+          value={rate}
+          onChange={(e) => setRate(e.target.value)}
+          className="w-full rounded-lg border border-amber-300 px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 pr-7"
+          placeholder="30.00"
+        />
+        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+      </div>
+      <button
+        onClick={() => mutation.mutate(bp)}
+        disabled={mutation.isPending || !valid}
+        className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+      >
+        <Check size={13} /> {mutation.isPending ? '…' : 'Сохранить'}
+      </button>
+      <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600">
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
 export function UsersPage() {
   const { user: me } = useAuth();
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
+  const [editingRateId, setEditingRateId] = useState<string | null>(null);
   const [form, setForm] = useState({ username: '', password: '', role: 'EXECUTOR' as EnumRole });
 
   const { data: users = [] } = useQuery({
@@ -36,25 +102,41 @@ export function UsersPage() {
     onError: (e: any) => toast.error(e.response?.data?.message ?? 'Ошибка'),
   });
 
+  const toggleActiveMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      authApi.updateUser(id, { isActive }),
+    onSuccess: (_, { isActive }) => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+      toast.success(isActive ? 'Пользователь активирован' : 'Пользователь деактивирован');
+    },
+    onError: () => toast.error('Ошибка'),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: authApi.deleteUser,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['users'] }); toast.success('Удалён'); },
-    onError: () => toast.error('Ошибка удаления'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+      toast.success('Удалён');
+    },
+    onError: (e: any) =>
+      toast.error(e.response?.data?.message ?? 'Ошибка удаления'),
   });
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Шапка */}
       <header className="bg-indigo-950 border-b border-indigo-900">
-        <div className="max-w-lg mx-auto px-4 py-3.5 flex items-center gap-3">
-          <Link to="/crm" className="p-1.5 text-indigo-300 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors">
+        <div className="max-w-2xl mx-auto px-4 py-3.5 flex items-center gap-3">
+          <Link
+            to="/crm"
+            className="p-1.5 text-indigo-300 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors"
+          >
             <ArrowLeft size={16} />
           </Link>
           <h1 className="text-sm font-bold text-white">Пользователи</h1>
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto py-6 px-4">
+      <div className="max-w-2xl mx-auto py-6 px-4">
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-gray-500">{users.length} пользователей</p>
           <button
@@ -75,8 +157,10 @@ export function UsersPage() {
                 name="username"
                 autoComplete="off"
                 spellCheck={false}
-                className={inputCls} placeholder="Логин…" value={form.username}
-                onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+                className={inputCls}
+                placeholder="Логин…"
+                value={form.username}
+                onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
               />
             </div>
             <div>
@@ -86,9 +170,10 @@ export function UsersPage() {
                 name="password"
                 type="password"
                 autoComplete="new-password"
-                className={inputCls} placeholder="Мин. 4 символа"
+                className={inputCls}
+                placeholder="Мин. 4 символа"
                 value={form.password}
-                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
               />
             </div>
             <div>
@@ -96,12 +181,13 @@ export function UsersPage() {
               <select
                 id="new-user-role"
                 name="role"
-                className={inputCls} value={form.role}
-                onChange={e => setForm(f => ({ ...f, role: e.target.value as EnumRole }))}
+                className={inputCls}
+                value={form.role}
+                onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as EnumRole }))}
               >
-              <option value="EXECUTOR">Исполнитель</option>
-              <option value="ADMIN">Администратор</option>
-            </select>
+                <option value="EXECUTOR">Исполнитель</option>
+                <option value="ADMIN">Администратор</option>
+              </select>
             </div>
             <div className="flex gap-2">
               <button
@@ -111,8 +197,10 @@ export function UsersPage() {
               >
                 <Check size={13} aria-hidden="true" /> {createMutation.isPending ? 'Создаём…' : 'Создать'}
               </button>
-              <button onClick={() => setAdding(false)}
-                className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200">
+              <button
+                onClick={() => setAdding(false)}
+                className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200"
+              >
                 <X size={13} /> Отмена
               </button>
             </div>
@@ -120,27 +208,71 @@ export function UsersPage() {
         )}
 
         <div className="space-y-2">
-          {users.map(u => (
-            <div key={u.id}
-              className="flex items-center justify-between px-4 py-3 bg-white border border-gray-100 rounded-xl shadow-sm">
-              <div>
-                <span className="text-sm font-semibold text-gray-900">{u.username}</span>
-                {u.id === me?.id && <span className="ml-2 text-xs text-gray-400">(вы)</span>}
+          {(users as AppUser[]).map((u) => (
+            <div
+              key={u.id}
+              className={`bg-white border rounded-xl shadow-sm px-4 py-3 ${
+                u.isActive === false ? 'opacity-60 border-red-100' : 'border-gray-100'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                {/* Left: name + role */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm font-semibold text-gray-900 truncate">{u.username}</span>
+                  {u.id === me?.id && <span className="text-xs text-gray-400 shrink-0">(вы)</span>}
+                  {u.isActive === false && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium shrink-0">неактивен</span>
+                  )}
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${ROLE_COLORS[u.role]}`}>
+                    {ROLE_LABELS[u.role]}
+                  </span>
+                </div>
+
+                {/* Right: rate badge + actions */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {u.role === 'EXECUTOR' && (
+                    <button
+                      onClick={() => setEditingRateId(editingRateId === u.id ? null : u.id)}
+                      className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors font-mono"
+                      title="Изменить ставку"
+                    >
+                      {bpToPercent(u.rateBasisPoints ?? 0)}%
+                      <Pencil size={10} />
+                    </button>
+                  )}
+
+                  {u.id !== me?.id && (
+                    <>
+                      <button
+                        onClick={() =>
+                          toggleActiveMutation.mutate({ id: u.id, isActive: !u.isActive })
+                        }
+                        disabled={toggleActiveMutation.isPending}
+                        title={u.isActive ? 'Деактивировать' : 'Активировать'}
+                        className="text-gray-400 hover:text-indigo-500 p-1 transition-colors"
+                      >
+                        {u.isActive ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Удалить пользователя ${u.username}?`))
+                            deleteMutation.mutate(u.id);
+                        }}
+                        disabled={deleteMutation.isPending}
+                        className="text-gray-400 hover:text-red-500 p-1 transition-colors"
+                        title="Удалить"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[u.role]}`}>
-                  {ROLE_LABELS[u.role]}
-                </span>
-                {u.id !== me?.id && (
-                  <button
-                    onClick={() => deleteMutation.mutate(u.id)}
-                    disabled={deleteMutation.isPending}
-                    className="text-gray-400 hover:text-red-500 p-1 transition-colors"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </div>
+
+              {/* Rate editor (inline) */}
+              {editingRateId === u.id && (
+                <RateEditor user={u} onClose={() => setEditingRateId(null)} />
+              )}
             </div>
           ))}
         </div>

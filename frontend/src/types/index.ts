@@ -11,7 +11,10 @@ export type EnumStatus =
   | 'READY'
   | 'DONE'
   | 'SENT'
-  | 'PAID';
+  | 'PAID'
+  | 'READY_FOR_REVIEW'
+  | 'COMPLETED'
+  | 'CANCELLED';
 
 export type EnumSourceOrder = 'AVITO' | 'OZON' | 'WB' | 'LOCAL';
 
@@ -25,6 +28,13 @@ export type EnumDeliveryMethod =
   | 'WB_SELLER';
 
 export type EnumTypePaper = 'GLOSS' | 'MATTE';
+
+export type EnumAccrualStatus =
+  | 'PENDING'
+  | 'PARTIALLY_PAID'
+  | 'PAID'
+  | 'SETTLED'
+  | 'REVERSED';
 
 export interface ItemTshirt {
   id: string;
@@ -54,6 +64,19 @@ export interface ItemPhoto {
   pricePosition: number;
 }
 
+export interface OrderExecutor {
+  id: string;
+  username: string;
+}
+
+export interface OrderAccrualBrief {
+  id: string;
+  status: EnumAccrualStatus;
+  salaryAmount: number;
+  paidAmount: number;
+  rateBasisPoints: number;
+}
+
 export interface OrderPhoto {
   id: string;
   createdAt: string;
@@ -70,8 +93,13 @@ export interface OrderPhoto {
   productCategory: EnumProductCategory;
   deadline?: string | null;
   isUrgent: boolean;
+  executorId?: string | null;
+  executor?: OrderExecutor | null;
+  completedAt?: string | null;
+  clientPaidAt?: string | null;
   items: ItemPhoto[];
   tshirtItems: ItemTshirt[];
+  accruals?: OrderAccrualBrief[];
 }
 
 export interface OrdersResponse {
@@ -166,6 +194,8 @@ export interface AppUser {
   id: string;
   username: string;
   role: EnumRole;
+  isActive: boolean;
+  rateBasisPoints: number;
   createdAt: string;
 }
 
@@ -176,6 +206,8 @@ export interface OrdersQuery {
   sourceOrder?: EnumSourceOrder;
   productCategory?: EnumProductCategory;
 }
+
+// ── Legacy salary types (старая страница зарплаты) ───────────────────────────
 
 export interface SalaryOrder {
   id: string;
@@ -204,4 +236,53 @@ export interface SalarySummary {
     paidEmployee: number;
     paidOwner: number;
   };
+}
+
+// ── New salary types ──────────────────────────────────────────────────────────
+
+export interface AccrualBrief {
+  id: string;
+  orderNumber: string;
+  completedAt: string | null;
+  salaryBase: number;
+  rateBasisPoints: number;
+  salaryAmount: number;
+  paidAmount: number;
+  debt: number;
+  status: EnumAccrualStatus;
+}
+
+export interface ClosedAccrualBrief {
+  id: string;
+  orderNumber: string;
+  completedAt: string | null;
+  salaryAmount: number;
+  paidAmount: number;
+  status: EnumAccrualStatus;
+}
+
+export interface RecentPayment {
+  id: string;
+  createdAt: string;
+  amount: number;
+  note?: string | null;
+}
+
+export interface ExecutorSalaryData {
+  id: string;
+  username: string;
+  isActive: boolean;
+  rateBasisPoints: number;
+  ratePercent: string;
+  totalDebt: number;
+  totalPaid: number;
+  pendingAccruals: AccrualBrief[];
+  closedAccruals: ClosedAccrualBrief[];
+  recentPayments: RecentPayment[];
+}
+
+export interface CreatePaymentDto {
+  executorId: string;
+  amount: number;
+  note?: string;
 }

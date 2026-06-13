@@ -32,6 +32,14 @@ export const authApi = {
     return data;
   },
 
+  updateUser: async (
+    id: string,
+    patch: { isActive?: boolean; rateBasisPoints?: number },
+  ): Promise<AppUser> => {
+    const { data } = await api.patch<AppUser>(`/users/${id}`, patch);
+    return data;
+  },
+
   deleteUser: async (id: string): Promise<void> => {
     await api.delete(`/users/${id}`);
   },

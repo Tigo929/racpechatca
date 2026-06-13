@@ -12,6 +12,8 @@ import type {
   CreateTshirtItemDto,
   UpdateTshirtItemDto,
   SalarySummary,
+  ExecutorSalaryData,
+  CreatePaymentDto,
 } from '../types';
 
 const api = axios.create({
@@ -29,7 +31,7 @@ api.interceptors.response.use(
   (err) => {
     if (err.response?.status === 401) {
       localStorage.removeItem('access_token');
-      window.location.href = '/login';
+      window.location.href = '/crm/login';
     }
     return Promise.reject(err);
   },
@@ -52,6 +54,19 @@ export const ordersApi = {
     return data;
   },
 
+  assignExecutor: async (
+    orderId: string,
+    executorId: string,
+    note?: string,
+  ): Promise<OrderPhoto> => {
+    const { data } = await api.patch<OrderPhoto>(`/order-photo/${orderId}/assign`, {
+      executorId,
+      note,
+    });
+    return data;
+  },
+
+  // Legacy salary endpoint (backward compat)
   getSalary: async (): Promise<SalarySummary> => {
     const { data } = await api.get<SalarySummary>('/order-photo/salary/summary');
     return data;
@@ -108,6 +123,28 @@ export const ordersApi = {
 
   deleteTshirtItem: async (itemId: string): Promise<OrderPhoto> => {
     const { data } = await api.delete<OrderPhoto>(`/order-photo/tshirt-items/${itemId}`);
+    return data;
+  },
+};
+
+export const salaryApi = {
+  getSummary: async (): Promise<ExecutorSalaryData[]> => {
+    const { data } = await api.get<ExecutorSalaryData[]>('/salary/summary');
+    return data;
+  },
+
+  getAccruals: async (executorId: string) => {
+    const { data } = await api.get(`/salary/accruals/${executorId}`);
+    return data;
+  },
+
+  getPayments: async (executorId: string) => {
+    const { data } = await api.get(`/salary/payments/${executorId}`);
+    return data;
+  },
+
+  createPayment: async (dto: CreatePaymentDto) => {
+    const { data } = await api.post('/salary/payments', dto);
     return data;
   },
 };

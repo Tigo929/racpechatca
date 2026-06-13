@@ -17,6 +17,9 @@ export const STATUS_LABELS: Record<EnumStatus, string> = {
   DONE: 'Выполнен',
   SENT: 'Отправлен',
   PAID: 'Оплачен',
+  READY_FOR_REVIEW: 'На проверке',
+  COMPLETED: 'Завершён',
+  CANCELLED: 'Отменён',
 };
 
 export const STATUS_COLORS: Record<EnumStatus, string> = {
@@ -28,9 +31,12 @@ export const STATUS_COLORS: Record<EnumStatus, string> = {
   DONE: 'bg-cyan-100 text-cyan-800',
   SENT: 'bg-orange-100 text-orange-800',
   PAID: 'bg-emerald-100 text-emerald-800',
+  READY_FOR_REVIEW: 'bg-violet-100 text-violet-800',
+  COMPLETED: 'bg-emerald-200 text-emerald-900',
+  CANCELLED: 'bg-red-100 text-red-700',
 };
 
-// Поток статусов для фотографий
+// Поток статусов для фотографий (без нового executor-flow)
 export const STATUS_FLOW: EnumStatus[] = [
   'LEAD',
   'NEW',
@@ -40,7 +46,7 @@ export const STATUS_FLOW: EnumStatus[] = [
   'PAID',
 ];
 
-// Поток статусов для футболок (используем те же enum, другие подписи)
+// Поток статусов для футболок (новый executor-flow)
 export const TSHIRT_STATUS_FLOW: EnumStatus[] = [
   'LEAD',
   'NEW',
@@ -48,8 +54,8 @@ export const TSHIRT_STATUS_FLOW: EnumStatus[] = [
   'PRINTED',
   'READY',
   'DONE',
-  'SENT',
-  'PAID',
+  'READY_FOR_REVIEW',
+  'COMPLETED',
 ];
 
 export const TSHIRT_STATUS_LABELS: Record<EnumStatus, string> = {
@@ -61,6 +67,9 @@ export const TSHIRT_STATUS_LABELS: Record<EnumStatus, string> = {
   DONE: 'Выполнен',
   SENT: 'Отправлен',
   PAID: 'Оплачен',
+  READY_FOR_REVIEW: 'На проверке',
+  COMPLETED: 'Завершён',
+  CANCELLED: 'Отменён',
 };
 
 export const SOURCE_LABELS: Record<EnumSourceOrder, string> = {
@@ -109,3 +118,6 @@ export const PRINT_LOCATION_LABELS: Record<EnumPrintLocation, string> = {
 };
 
 export const TSHIRT_COLORS = ['Белый', 'Чёрный'];
+
+// Финальные статусы — на этих статусах заказ уже закрыт
+export const TERMINAL_STATUSES: EnumStatus[] = ['COMPLETED', 'CANCELLED', 'PAID', 'SENT'];

@@ -14,6 +14,7 @@ export default defineConfig({
       '/order-photo': { target: 'http://localhost:3000', changeOrigin: true },
       '/auth': { target: 'http://localhost:3000', changeOrigin: true },
       '/users': { target: 'http://localhost:3000', changeOrigin: true },
+      '/salary': { target: 'http://localhost:3000', changeOrigin: true },
     },
   },
 });

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Pencil, Trash2, Flame, Clock, Copy } from 'lucide-react';
+import { Pencil, Trash2, Flame, Clock, Copy, UserCheck, X } from 'lucide-react';
+import { authApi } from '../api/auth';
 
 function generateConfirmationText(order: OrderPhoto): string {
   const items = order.items ?? [];
@@ -121,7 +122,77 @@ import { OrderEditForm } from './OrderEditForm';
 import { TshirtItemsTable } from './TshirtItemsTable';
 import { COMMUNICATION_LABELS, DELIVERY_LABELS } from '../constants';
 import { useAuth } from '../context/AuthContext';
-import type { UpdateOrderDto, OrderPhoto } from '../types';
+import type { AppUser, UpdateOrderDto, OrderPhoto } from '../types';
+
+const inputCls =
+  'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:border-transparent';
+
+interface AssignPanelProps {
+  order: OrderPhoto;
+  onAssigned: (updated: OrderPhoto) => void;
+}
+
+function AssignPanel({ order, onAssigned }: AssignPanelProps) {
+  const [open, setOpen] = useState(false);
+  const [executorId, setExecutorId] = useState(order.executorId ?? '');
+
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: authApi.getUsers,
+    staleTime: 60_000,
+  });
+
+  const executors = (users as AppUser[]).filter((u) => u.role === 'EXECUTOR' && u.isActive !== false);
+
+  const mutation = useMutation({
+    mutationFn: () => ordersApi.assignExecutor(order.id, executorId),
+    onSuccess: (updated) => {
+      onAssigned(updated);
+      setOpen(false);
+      toast.success('Исполнитель назначен');
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Ошибка'),
+  });
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50 transition-colors"
+      >
+        <UserCheck size={13} />
+        {order.executor ? `Исполнитель: ${order.executor.username}` : 'Назначить исполнителя'}
+      </button>
+    );
+  }
+
+  return (
+    <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex items-center gap-2">
+      <select
+        value={executorId}
+        onChange={(e) => setExecutorId(e.target.value)}
+        className={inputCls + ' flex-1'}
+      >
+        <option value="">— выберите —</option>
+        {executors.map((u) => (
+          <option key={u.id} value={u.id}>
+            {u.username} ({(u.rateBasisPoints / 100).toFixed(2)}%)
+          </option>
+        ))}
+      </select>
+      <button
+        onClick={() => mutation.mutate()}
+        disabled={mutation.isPending || !executorId}
+        className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+      >
+        {mutation.isPending ? '…' : 'Назначить'}
+      </button>
+      <button onClick={() => setOpen(false)} className="p-1.5 text-gray-400 hover:text-gray-600">
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
 
 interface Props {
   orderId: string;
@@ -136,7 +207,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<UpdateOrderDto>({});
 
-  const { data: order, isLoading } = useQuery({
+  const { data: order, isLoading, refetch } = useQuery({
     queryKey: ['order', orderId],
     queryFn: () => ordersApi.getById(orderId),
   });
@@ -293,9 +364,18 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       </div>
 
       {/* Status flow */}
-      <div className="bg-gray-50 rounded-xl p-4">
-        <p className="text-xs font-medium text-gray-500 mb-3">Прогресс статуса</p>
+      <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+        <p className="text-xs font-medium text-gray-500">Прогресс статуса</p>
         <StatusStepper order={order} />
+        {isAdmin && order.productCategory === 'TSHIRT' && (
+          <AssignPanel
+            order={order}
+            onAssigned={(updated) => {
+              qc.setQueryData(['order', orderId], updated);
+              refetch();
+            }}
+          />
+        )}
       </div>
 
       {/* Details */}
