@@ -14,6 +14,7 @@ import { EnumRole } from 'src/generated/prisma/enums';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { StripPricesInterceptor } from 'src/interceptors/strip-prices.interceptor';
 import { OrderPhotoService } from './order-photo.service';
 import { OrderItemService } from './order-item.service';
@@ -26,6 +27,13 @@ import DtoUpdateItemOrder from './dto/update-item.dto';
 import DtoCreateItemOrder from './dto/create-item-order.dto';
 import { DtoCreateTshirtItem } from './dto/create-tshirt-item.dto';
 import { DtoUpdateTshirtItem } from './dto/update-tshirt-item.dto';
+import { DtoAssignExecutor } from './dto/assign-executor.dto';
+
+interface RequestUser {
+  id: string;
+  username: string;
+  role: string;
+}
 
 @Controller('order-photo')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -57,17 +65,35 @@ export class OrderPhotoController {
     return this.orderPhotoService.deleteOrder(idOrder);
   }
 
+  // ── Admin-only: assign executor ────────────────────────────────────────────
+
+  @Patch(':idOrder/assign')
+  @Roles(EnumRole.ADMIN)
+  assignExecutor(
+    @Param('idOrder') idOrder: string,
+    @Body() dto: DtoAssignExecutor,
+    @CurrentUser() me: RequestUser,
+  ) {
+    return this.orderPhotoService.assignExecutor(idOrder, dto, me.id);
+  }
+
   // ── Admin-only: add / update / delete items ────────────────────────────────
 
   @Post(':idOrder/items')
   @Roles(EnumRole.ADMIN)
-  addItemToOrder(@Param('idOrder') idOrder: string, @Body() dto: DtoCreateItemOrder) {
+  addItemToOrder(
+    @Param('idOrder') idOrder: string,
+    @Body() dto: DtoCreateItemOrder,
+  ) {
     return this.orderItemService.addItemToOrder(idOrder, dto);
   }
 
   @Patch('items/:idItem')
   @Roles(EnumRole.ADMIN)
-  updateItemOrder(@Param('idItem') idItem: string, @Body() dto: DtoUpdateItemOrder) {
+  updateItemOrder(
+    @Param('idItem') idItem: string,
+    @Body() dto: DtoUpdateItemOrder,
+  ) {
     return this.orderItemService.updateItemOrder(idItem, dto);
   }
 
@@ -79,13 +105,19 @@ export class OrderPhotoController {
 
   @Post(':idOrder/tshirt-items')
   @Roles(EnumRole.ADMIN)
-  addTshirtItem(@Param('idOrder') idOrder: string, @Body() dto: DtoCreateTshirtItem) {
+  addTshirtItem(
+    @Param('idOrder') idOrder: string,
+    @Body() dto: DtoCreateTshirtItem,
+  ) {
     return this.tshirtItemService.addTshirtItem(idOrder, dto);
   }
 
   @Patch('tshirt-items/:idItem')
   @Roles(EnumRole.ADMIN)
-  updateTshirtItem(@Param('idItem') idItem: string, @Body() dto: DtoUpdateTshirtItem) {
+  updateTshirtItem(
+    @Param('idItem') idItem: string,
+    @Body() dto: DtoUpdateTshirtItem,
+  ) {
     return this.tshirtItemService.updateTshirtItem(idItem, dto);
   }
 
@@ -102,7 +134,7 @@ export class OrderPhotoController {
     return this.orderPhotoService.getAllOrders(query);
   }
 
-  // Зарплата — только администратор. Объявлено до ':idOrder', чтобы маршрут не перехватился.
+  // Зарплата (legacy) — объявлено до ':idOrder', чтобы маршрут не перехватился.
   @Get('salary/summary')
   @Roles(EnumRole.ADMIN)
   getSalarySummary() {
@@ -125,7 +157,16 @@ export class OrderPhotoController {
   }
 
   @Patch(':idOrder/status')
-  updateStatusOrder(@Param('idOrder') idOrder: string, @Body() dto: UpdateStatus) {
-    return this.orderPhotoService.updateStatusOrder(idOrder, dto);
+  updateStatusOrder(
+    @Param('idOrder') idOrder: string,
+    @Body() dto: UpdateStatus,
+    @CurrentUser() me: RequestUser,
+  ) {
+    return this.orderPhotoService.updateStatusOrder(
+      idOrder,
+      dto,
+      me.id,
+      me.role,
+    );
   }
 }

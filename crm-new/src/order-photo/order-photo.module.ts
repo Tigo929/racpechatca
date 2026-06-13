@@ -8,6 +8,11 @@ import { PrismaService } from 'src/prisma/prisma.service';
 
 @Module({
   controllers: [LeadController, OrderPhotoController],
-  providers: [OrderPhotoService, OrderItemService, TshirtItemService, PrismaService],
+  providers: [
+    OrderPhotoService,
+    OrderItemService,
+    TshirtItemService,
+    PrismaService,
+  ],
 })
 export class OrderPhotoModule {}
