@@ -1,14 +1,22 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DtoCreateUser } from './dto/create-user.dto';
+import { DtoUpdateUser } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async createUser(dto: DtoCreateUser) {
-    const exists = await this.prisma.user.findUnique({ where: { username: dto.username } });
+    const exists = await this.prisma.user.findUnique({
+      where: { username: dto.username },
+    });
     if (exists) throw new ConflictException('Пользователь уже существует');
     const hashed = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
@@ -25,9 +33,47 @@ export class UsersService {
     return users.map(({ password: _, ...u }) => u);
   }
 
+  async updateUser(id: string, dto: DtoUpdateUser, adminId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('Пользователь не найден');
+
+    const data: { isActive?: boolean; rateBasisPoints?: number } = {};
+
+    if (dto.isActive !== undefined) data.isActive = dto.isActive;
+
+    if (dto.rateBasisPoints !== undefined) {
+      data.rateBasisPoints = dto.rateBasisPoints;
+      await this.prisma.userRateHistory.create({
+        data: {
+          userId: id,
+          oldRateBasisPoints: user.rateBasisPoints,
+          newRateBasisPoints: dto.rateBasisPoints,
+          changedBy: adminId,
+        },
+      });
+    }
+
+    const updated = await this.prisma.user.update({ where: { id }, data });
+    const { password: _, ...safe } = updated;
+    return safe;
+  }
+
   async deleteUser(id: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('Пользователь не найден');
+
+    const activeAccruals = await this.prisma.salaryAccrual.count({
+      where: {
+        executorId: id,
+        status: { in: ['PENDING', 'PARTIALLY_PAID'] },
+      },
+    });
+    if (activeAccruals > 0) {
+      throw new BadRequestException(
+        `Нельзя удалить пользователя: есть ${activeAccruals} незакрытых начислений. Сначала выплатите зарплату.`,
+      );
+    }
+
     await this.prisma.user.delete({ where: { id } });
   }
 }

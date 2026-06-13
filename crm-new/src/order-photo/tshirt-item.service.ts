@@ -7,14 +7,15 @@ import { DtoUpdateTshirtItem } from './dto/update-tshirt-item.dto';
 export class TshirtItemService {
   constructor(private prisma: PrismaService) {}
 
-  private async recalcTotal(orderId: string, tx = this.prisma as typeof this.prisma) {
+  private async recalcTotal(orderId: string, tx = this.prisma) {
     const order = await tx.orderPhoto.findUnique({
       where: { id: orderId },
       include: { tshirtItems: true },
     });
     if (!order) return;
     const total =
-      order.tshirtItems.reduce((s, i) => s + i.pricePosition, 0) + order.deliveryCost;
+      order.tshirtItems.reduce((s, i) => s + i.pricePosition, 0) +
+      order.deliveryCost;
     await tx.orderPhoto.update({
       where: { id: orderId },
       data: { totalOrder: total },
@@ -22,9 +23,12 @@ export class TshirtItemService {
   }
 
   async addTshirtItem(orderId: string, dto: DtoCreateTshirtItem) {
-    const order = await this.prisma.orderPhoto.findUnique({ where: { id: orderId } });
+    const order = await this.prisma.orderPhoto.findUnique({
+      where: { id: orderId },
+    });
     if (!order) throw new NotFoundException('Заказ не найден');
 
+    const designCost = dto.designCost ?? 0;
     await this.prisma.itemTshirt.create({
       data: {
         orderId,
@@ -33,8 +37,8 @@ export class TshirtItemService {
         printLocation: dto.printLocation,
         quantity: dto.quantity,
         price: dto.price,
-        pricePosition: dto.price * dto.quantity,
-        designCost: dto.designCost ?? 0,
+        pricePosition: dto.price * dto.quantity + designCost,
+        designCost,
         designUrl: dto.designUrl,
         designNote: dto.designNote,
       },
@@ -49,11 +53,14 @@ export class TshirtItemService {
   }
 
   async updateTshirtItem(itemId: string, dto: DtoUpdateTshirtItem) {
-    const item = await this.prisma.itemTshirt.findUnique({ where: { id: itemId } });
+    const item = await this.prisma.itemTshirt.findUnique({
+      where: { id: itemId },
+    });
     if (!item) throw new NotFoundException('Позиция не найдена');
 
     const quantity = dto.quantity ?? item.quantity;
     const price = dto.price ?? item.price;
+    const designCost = dto.designCost ?? item.designCost;
 
     await this.prisma.itemTshirt.update({
       where: { id: itemId },
@@ -61,7 +68,8 @@ export class TshirtItemService {
         ...dto,
         quantity,
         price,
-        pricePosition: price * quantity,
+        designCost,
+        pricePosition: price * quantity + designCost,
       },
     });
 
@@ -74,7 +82,9 @@ export class TshirtItemService {
   }
 
   async deleteTshirtItem(itemId: string) {
-    const item = await this.prisma.itemTshirt.findUnique({ where: { id: itemId } });
+    const item = await this.prisma.itemTshirt.findUnique({
+      where: { id: itemId },
+    });
     if (!item) throw new NotFoundException('Позиция не найдена');
 
     await this.prisma.itemTshirt.delete({ where: { id: itemId } });
@@ -87,7 +97,9 @@ export class TshirtItemService {
   }
 
   async getTshirtItem(itemId: string) {
-    const item = await this.prisma.itemTshirt.findUnique({ where: { id: itemId } });
+    const item = await this.prisma.itemTshirt.findUnique({
+      where: { id: itemId },
+    });
     if (!item) throw new NotFoundException('Позиция не найдена');
     return item;
   }
