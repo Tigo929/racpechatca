@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -13,7 +14,14 @@ import UpdateStatus from './dto/update-status.dto';
 import { DtoUpdateOrder } from './dto/update-order.dto';
 import { DtoCreateLead } from './dto/create-lead.dto';
 import { DtoAssignExecutor } from './dto/assign-executor.dto';
-import { EnumCommunication } from 'src/generated/prisma/enums';
+import {
+  EnumCommunication,
+  EnumRole,
+  EnumStatus,
+} from 'src/generated/prisma/enums';
+import type { Prisma } from 'src/generated/prisma/client';
+import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
+import { calculateSalarySnapshot } from 'src/salary/salary-calculation';
 
 function buildCommunicationUrl(
   platform: EnumCommunication,
@@ -27,7 +35,10 @@ function buildCommunicationUrl(
 
 @Injectable()
 export class OrderPhotoService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly financialIntegrity: OrderFinancialIntegrityService,
+  ) {}
 
   async createOrder(dto: DtoCreateOrder) {
     return this.prisma.$transaction(async (tx) => {
@@ -58,7 +69,6 @@ export class OrderPhotoService {
           totalOrder: calculatorTotalPrice(itemsForTotal, dto.deliveryCost),
           deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
 
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           ...(dto.status ? { status: dto.status } : {}),
           sourceOrder: dto.sourceOrder,
           communicationPlatform: dto.communicationPlatform,
@@ -133,8 +143,7 @@ export class OrderPhotoService {
         data: {
           numberOrder: fullDate(lengthOrder),
 
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          status: 'LEAD' as any,
+          status: EnumStatus.LEAD,
           sourceOrder: 'LOCAL',
           communicationPlatform: tgRaw ? 'TELEGRAM' : 'MAX',
           urlCommunication: tgRaw ? `https://t.me/${tgRaw}` : dto.phone,
@@ -148,17 +157,27 @@ export class OrderPhotoService {
     });
   }
 
-  async getAllOrders(query: DtoAllOrdersforQuery) {
+  async getAllOrders(
+    query: DtoAllOrdersforQuery,
+    currentUserId: string,
+    currentUserRole: string,
+  ) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
+    const where: Prisma.OrderPhotoWhereInput = {
+      status: query.status ?? {
+        notIn: [EnumStatus.SENT, EnumStatus.LEAD],
+      },
+      sourceOrder: query.sourceOrder,
+      productCategory: query.productCategory,
+      ...(currentUserRole === EnumRole.EXECUTOR
+        ? { executorId: currentUserId }
+        : {}),
+    };
+
     const [orders, count] = await this.prisma.$transaction([
       this.prisma.orderPhoto.findMany({
-        where: {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          status: (query.status ?? { notIn: ['SENT', 'LEAD'] }) as any,
-          sourceOrder: query.sourceOrder,
-          productCategory: query.productCategory,
-        },
+        where,
         take: limit,
         skip: (page - 1) * limit,
         orderBy: { createdAt: 'asc' },
@@ -169,12 +188,7 @@ export class OrderPhotoService {
         },
       }),
       this.prisma.orderPhoto.count({
-        where: {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          status: (query.status ?? { notIn: ['SENT', 'LEAD'] }) as any,
-          sourceOrder: query.sourceOrder,
-          productCategory: query.productCategory,
-        },
+        where,
       }),
     ]);
     return {
@@ -188,7 +202,11 @@ export class OrderPhotoService {
     };
   }
 
-  async getOrderById(idOrder: string) {
+  async getOrderById(
+    idOrder: string,
+    currentUserId: string,
+    currentUserRole: string,
+  ) {
     const order = await this.prisma.orderPhoto.findUnique({
       where: { id: idOrder },
       include: {
@@ -207,6 +225,12 @@ export class OrderPhotoService {
       },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
+    if (
+      currentUserRole === EnumRole.EXECUTOR &&
+      order.executorId !== currentUserId
+    ) {
+      throw new ForbiddenException('Нет доступа к чужому заказу.');
+    }
     return order;
   }
 
@@ -219,6 +243,7 @@ export class OrderPhotoService {
       where: { id: orderId },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
+    await this.financialIntegrity.assertOrderFinanciallyEditable(orderId);
 
     const executor = await this.prisma.user.findUnique({
       where: { id: dto.executorId },
@@ -257,11 +282,11 @@ export class OrderPhotoService {
     userId: string,
     userRole: string,
   ) {
-    const order = await this.getOrderById(id);
+    const order = await this.getOrderById(id, userId, userRole);
 
     const isAdmin = userRole === 'ADMIN';
 
-    const newStatus = dto.status as any as string;
+    const newStatus = dto.status;
 
     // Исполнитель может переводить только в READY_FOR_REVIEW, если назначен на этот заказ.
     if (!isAdmin) {
@@ -285,12 +310,29 @@ export class OrderPhotoService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT "id"
+        FROM "OrderPhoto"
+        WHERE "id" = ${id}
+        FOR UPDATE
+      `;
+
+      const lockedOrder = await tx.orderPhoto.findUnique({
+        where: { id },
+        include: {
+          items: true,
+          tshirtItems: true,
+          executor: { select: { id: true, username: true } },
+        },
+      });
+      if (!lockedOrder) throw new NotFoundException('Заказ не найден');
+
       // Записываем историю изменения статуса
       await tx.statusHistory.create({
         data: {
           orderId: id,
 
-          fromStatus: order.status,
+          fromStatus: lockedOrder.status,
           toStatus: newStatus,
           changedBy: userId,
         },
@@ -298,47 +340,49 @@ export class OrderPhotoService {
 
       // При переводе в COMPLETED создаём начисление зарплаты
       if (newStatus === 'COMPLETED' && isAdmin) {
-        if (!order.executorId) {
+        if (!lockedOrder.executorId) {
           throw new BadRequestException(
             'Нельзя завершить заказ без назначенного исполнителя.',
           );
         }
 
         const executor = await tx.user.findUnique({
-          where: { id: order.executorId },
+          where: { id: lockedOrder.executorId },
         });
         if (!executor) throw new NotFoundException('Исполнитель не найден');
 
-        const existingAccrual = await tx.salaryAccrual.findUnique({
-          where: { orderId: id },
+        const existingAccrual = await tx.salaryAccrual.findFirst({
+          where: {
+            orderId: id,
+            status: { not: 'REVERSED' },
+          },
         });
 
         if (!existingAccrual) {
-          const salaryBase =
-            (order.totalOrder ?? 0) - (order.deliveryCost ?? 0);
-          const rate = executor.rateBasisPoints;
-          const salaryAmount = Math.round((salaryBase * rate) / 10000);
+          const snapshot = calculateSalarySnapshot(
+            lockedOrder.totalOrder,
+            lockedOrder.deliveryCost,
+            executor.rateBasisPoints,
+          );
 
           await tx.salaryAccrual.create({
             data: {
               orderId: id,
-              executorId: order.executorId,
-              salaryBase,
-              rateBasisPoints: rate,
-              salaryAmount,
+              executorId: lockedOrder.executorId,
+              ...snapshot,
             },
           });
         }
-
-        await tx.orderPhoto.update({
-          where: { id },
-          data: { completedAt: new Date() },
-        });
       }
 
       const updated = await tx.orderPhoto.update({
         where: { id },
-        data: { status: dto.status },
+        data: {
+          status: dto.status,
+          ...(newStatus === EnumStatus.COMPLETED
+            ? { completedAt: lockedOrder.completedAt ?? new Date() }
+            : {}),
+        },
         include: {
           items: true,
           tshirtItems: true,
@@ -351,7 +395,10 @@ export class OrderPhotoService {
   }
 
   async updateOrder(idOrder: string, dto: DtoUpdateOrder) {
-    const order = await this.getOrderById(idOrder);
+    const order = await this.getOrderById(idOrder, '', EnumRole.ADMIN);
+    if (dto.deliveryCost !== undefined) {
+      await this.financialIntegrity.assertOrderFinanciallyEditable(idOrder);
+    }
     return this.prisma.orderPhoto.update({
       where: { id: idOrder },
       include: {
@@ -371,7 +418,6 @@ export class OrderPhotoService {
           : order.urlCommunication,
         deliveryMethod: dto.deliveryMethod ?? order.deliveryMethod,
         deliveryCost: dto.deliveryCost ?? order.deliveryCost,
-        status: dto.status ?? order.status,
         totalOrder: calculatorTotalPrice(
           order.productCategory === 'TSHIRT' ? order.tshirtItems : order.items,
           dto.deliveryCost ?? order.deliveryCost,
@@ -383,17 +429,15 @@ export class OrderPhotoService {
   }
 
   async deleteOrder(idOrder: string) {
-    await this.getOrderById(idOrder);
+    await this.getOrderById(idOrder, '', EnumRole.ADMIN);
 
-    const activeAccruals = await this.prisma.salaryAccrual.count({
-      where: {
-        orderId: idOrder,
-        status: { in: ['PENDING', 'PARTIALLY_PAID'] },
-      },
+    const accrualCount = await this.prisma.salaryAccrual.count({
+      where: { orderId: idOrder },
     });
-    if (activeAccruals > 0) {
-      throw new BadRequestException(
-        'Нельзя удалить заказ с незакрытыми начислениями зарплаты.',
+    if (accrualCount > 0) {
+      throw new ConflictException(
+        'Нельзя удалить заказ с финансовой историей.\n' +
+          'Используйте отмену или архив.',
       );
     }
 
@@ -419,8 +463,7 @@ export class OrderPhotoService {
       where: {
         productCategory: 'PHOTO',
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        status: { in: ['SENT', 'PAID'] } as any,
+        status: { in: [EnumStatus.SENT, EnumStatus.PAID] },
       },
       orderBy: { updatedAt: 'desc' },
       include: { items: true },

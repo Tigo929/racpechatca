@@ -1,11 +1,20 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { EnumRole } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DtoCreateTshirtItem } from './dto/create-tshirt-item.dto';
 import { DtoUpdateTshirtItem } from './dto/update-tshirt-item.dto';
+import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
 
 @Injectable()
 export class TshirtItemService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly financialIntegrity: OrderFinancialIntegrityService,
+  ) {}
 
   private async recalcTotal(orderId: string, tx = this.prisma) {
     const order = await tx.orderPhoto.findUnique({
@@ -27,6 +36,7 @@ export class TshirtItemService {
       where: { id: orderId },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
+    await this.financialIntegrity.assertOrderFinanciallyEditable(orderId);
 
     const designCost = dto.designCost ?? 0;
     await this.prisma.itemTshirt.create({
@@ -57,6 +67,7 @@ export class TshirtItemService {
       where: { id: itemId },
     });
     if (!item) throw new NotFoundException('Позиция не найдена');
+    await this.financialIntegrity.assertOrderFinanciallyEditable(item.orderId);
 
     const quantity = dto.quantity ?? item.quantity;
     const price = dto.price ?? item.price;
@@ -86,6 +97,7 @@ export class TshirtItemService {
       where: { id: itemId },
     });
     if (!item) throw new NotFoundException('Позиция не найдена');
+    await this.financialIntegrity.assertOrderFinanciallyEditable(item.orderId);
 
     await this.prisma.itemTshirt.delete({ where: { id: itemId } });
     await this.recalcTotal(item.orderId);
@@ -96,11 +108,24 @@ export class TshirtItemService {
     });
   }
 
-  async getTshirtItem(itemId: string) {
+  async getTshirtItem(
+    itemId: string,
+    currentUserId?: string,
+    currentUserRole?: string,
+  ) {
     const item = await this.prisma.itemTshirt.findUnique({
       where: { id: itemId },
     });
     if (!item) throw new NotFoundException('Позиция не найдена');
+    if (currentUserRole === EnumRole.EXECUTOR) {
+      const order = await this.prisma.orderPhoto.findUnique({
+        where: { id: item.orderId },
+        select: { executorId: true },
+      });
+      if (order?.executorId !== currentUserId) {
+        throw new ForbiddenException('Нет доступа к чужому заказу.');
+      }
+    }
     return item;
   }
 }

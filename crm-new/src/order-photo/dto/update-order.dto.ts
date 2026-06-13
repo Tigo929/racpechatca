@@ -12,7 +12,6 @@ import {
   EnumCommunication,
   EnumDeliveryMethod,
   EnumSourceOrder,
-  EnumStatus,
 } from 'src/generated/prisma/enums';
 
 export class DtoUpdateOrder {
@@ -48,10 +47,6 @@ export class DtoUpdateOrder {
   @IsString()
   @IsOptional()
   note?: string;
-
-  @IsEnum(EnumStatus)
-  @IsOptional()
-  status?: EnumStatus;
 
   @IsBoolean()
   @IsOptional()

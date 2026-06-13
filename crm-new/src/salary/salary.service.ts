@@ -32,7 +32,9 @@ export class SalaryService {
         },
         salaryPayments: {
           orderBy: { createdAt: 'desc' },
-          take: 5,
+          include: {
+            paidBy: { select: { id: true, username: true } },
+          },
         },
       },
     });
@@ -55,7 +57,10 @@ export class SalaryService {
         username: ex.username,
         isActive: ex.isActive,
         rateBasisPoints: ex.rateBasisPoints,
-        ratePercent: (ex.rateBasisPoints / 100).toFixed(2),
+        ratePercent:
+          ex.rateBasisPoints === null
+            ? null
+            : (ex.rateBasisPoints / 100).toFixed(2),
         totalDebt,
         totalPaid,
         pendingAccruals: pending.map((a) => ({
@@ -77,7 +82,7 @@ export class SalaryService {
           paidAmount: a.paidAmount,
           status: a.status,
         })),
-        recentPayments: ex.salaryPayments,
+        recentPayments: ex.salaryPayments.slice(0, 5),
       };
     });
   }
@@ -115,35 +120,45 @@ export class SalaryService {
    * Создаёт платёж и автоматически погашает PENDING-начисления (FIFO).
    * Если остаток платежа > долга — выбрасывает ошибку (не допускаем переплат).
    */
-  async createPayment(dto: DtoCreatePayment) {
-    const executor = await this.prisma.user.findUnique({
-      where: { id: dto.executorId },
-    });
-    if (!executor) throw new NotFoundException('Исполнитель не найден');
-
-    const pendingAccruals = await this.prisma.salaryAccrual.findMany({
-      where: {
-        executorId: dto.executorId,
-        status: { in: ['PENDING', 'PARTIALLY_PAID'] },
-      },
-      orderBy: { createdAt: 'asc' },
-    });
-
-    const totalDebt = pendingAccruals.reduce(
-      (s, a) => s + a.salaryAmount - a.paidAmount,
-      0,
-    );
-
-    if (dto.amount > totalDebt) {
-      throw new BadRequestException(
-        `Сумма платежа (${dto.amount} ₽) превышает долг (${totalDebt} ₽).`,
-      );
-    }
-
+  async createPayment(dto: DtoCreatePayment, paidById: string) {
     return this.prisma.$transaction(async (tx) => {
+      const executor = await tx.user.findUnique({
+        where: { id: dto.executorId },
+        select: { id: true },
+      });
+      if (!executor) throw new NotFoundException('Исполнитель не найден');
+
+      const lockedRows = await tx.$queryRaw<{ id: string }[]>`
+        SELECT "id"
+        FROM "SalaryAccrual"
+        WHERE "executorId" = ${dto.executorId}
+          AND "status" IN ('PENDING', 'PARTIALLY_PAID')
+        ORDER BY "createdAt" ASC, "id" ASC
+        FOR UPDATE
+      `;
+
+      const pendingAccruals = lockedRows.length
+        ? await tx.salaryAccrual.findMany({
+            where: { id: { in: lockedRows.map(({ id }) => id) } },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          })
+        : [];
+
+      const totalDebt = pendingAccruals.reduce(
+        (sum, accrual) => sum + accrual.salaryAmount - accrual.paidAmount,
+        0,
+      );
+
+      if (dto.amount > totalDebt) {
+        throw new BadRequestException(
+          `Сумма платежа (${dto.amount} ₽) превышает долг (${totalDebt} ₽).`,
+        );
+      }
+
       const payment = await tx.salaryPayment.create({
         data: {
           executorId: dto.executorId,
+          paidById,
           amount: dto.amount,
           note: dto.note,
         },
@@ -178,7 +193,10 @@ export class SalaryService {
 
       return tx.salaryPayment.findUnique({
         where: { id: payment.id },
-        include: { accrualLinks: { include: { accrual: true } } },
+        include: {
+          paidBy: { select: { id: true, username: true } },
+          accrualLinks: { include: { accrual: true } },
+        },
       });
     });
   }
@@ -189,6 +207,7 @@ export class SalaryService {
       where: { executorId },
       orderBy: { createdAt: 'desc' },
       include: {
+        paidBy: { select: { id: true, username: true } },
         accrualLinks: {
           include: {
             accrual: {

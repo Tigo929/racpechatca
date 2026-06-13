@@ -5,6 +5,11 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { SalaryService } from './salary.service';
 import { DtoCreatePayment } from './dto/create-payment.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+
+interface RequestUser {
+  id: string;
+}
 
 @Controller('salary')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -28,7 +33,7 @@ export class SalaryController {
   }
 
   @Post('payments')
-  createPayment(@Body() dto: DtoCreatePayment) {
-    return this.salaryService.createPayment(dto);
+  createPayment(@Body() dto: DtoCreatePayment, @CurrentUser() me: RequestUser) {
+    return this.salaryService.createPayment(dto, me.id);
   }
 }
