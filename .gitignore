@@ -29,6 +29,7 @@ ssh-*.mjs
 *.tar
 *.tar.gz
 *.sql
+!crm-new/prisma/migrations/**/*.sql
 deploy-*.tar.gz
 
 # Agent/tooling

@@ -9,12 +9,19 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  username  String   @unique
-  password  String
-  role      EnumRole @default(EXECUTOR)
+  id              String   @id @default(uuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  username        String   @unique
+  password        String
+  role            EnumRole @default(EXECUTOR)
+  isActive        Boolean  @default(true)
+  rateBasisPoints Int      @default(0)
+
+  salaryAccruals SalaryAccrual[]
+  salaryPayments SalaryPayment[]
+  assignedOrders OrderPhoto[]    @relation("OrderExecutor")
+  rateHistory    UserRateHistory[]
 }
 
 enum EnumRole {
@@ -27,7 +34,7 @@ model OrderPhoto {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  numberOrder           String               @unique
+  numberOrder           String              @unique
   sourceOrder           EnumSourceOrder
   communicationPlatform EnumCommunication
   urlCommunication      String
@@ -35,13 +42,21 @@ model OrderPhoto {
   deliveryCost          Int
   totalOrder            Int
   note                  String?
-  status                EnumStatus           @default(NEW)
-  productCategory       EnumProductCategory  @default(PHOTO)
+  status                EnumStatus          @default(NEW)
+  productCategory       EnumProductCategory @default(PHOTO)
   deadline              DateTime?
-  isUrgent              Boolean              @default(false)
+  isUrgent              Boolean             @default(false)
 
-  items        ItemPhoto[]
-  tshirtItems  ItemTshirt[]
+  executorId   String?
+  executor     User?     @relation("OrderExecutor", fields: [executorId], references: [id])
+  completedAt  DateTime?
+  clientPaidAt DateTime?
+
+  items         ItemPhoto[]
+  tshirtItems   ItemTshirt[]
+  accruals      SalaryAccrual[]
+  statusHistory StatusHistory[]
+  assignments   OrderAssignment[]
 }
 
 enum EnumProductCategory {
@@ -72,6 +87,9 @@ enum EnumStatus {
   DONE
   SENT
   PAID
+  READY_FOR_REVIEW
+  COMPLETED
+  CANCELLED
 }
 
 enum EnumDeliveryMethod {
@@ -155,4 +173,100 @@ enum EnumPrintType {
   DTG
   SILK
   SUBLIMATION
+}
+
+enum EnumAccrualStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  SETTLED
+  REVERSED
+}
+
+model SalaryAccrual {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderId  String
+  order    OrderPhoto @relation(fields: [orderId], references: [id])
+
+  executorId String
+  executor   User   @relation(fields: [executorId], references: [id])
+
+  salaryBase      Int
+  rateBasisPoints Int
+  salaryAmount    Int
+
+  status     EnumAccrualStatus @default(PENDING)
+  paidAmount Int               @default(0)
+
+  paymentLinks PaymentAccrualLink[]
+
+  @@unique([orderId])
+}
+
+model SalaryPayment {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  executorId String
+  executor   User   @relation(fields: [executorId], references: [id])
+
+  amount Int
+  note   String?
+
+  accrualLinks PaymentAccrualLink[]
+}
+
+model PaymentAccrualLink {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  paymentId String
+  payment   SalaryPayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  accrualId String
+  accrual   SalaryAccrual @relation(fields: [accrualId], references: [id])
+
+  amount Int
+
+  @@unique([paymentId, accrualId])
+}
+
+model StatusHistory {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  orderId String
+  order   OrderPhoto @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  fromStatus String?
+  toStatus   String
+  changedBy  String
+}
+
+model OrderAssignment {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  orderId String
+  order   OrderPhoto @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  executorId String
+  assignedBy String
+  note       String?
+}
+
+model UserRateHistory {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  oldRateBasisPoints Int
+  newRateBasisPoints Int
+  changedBy          String
 }
