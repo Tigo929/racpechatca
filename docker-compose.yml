@@ -25,9 +25,9 @@ services:
       PORT: 3000
     networks:
       - internal
-    # Миграция/пуш схемы при каждом старте
+    # Применяет накопленные миграции и запускает сервер
     command: >
-      sh -c "npx prisma db push --skip-generate && node dist/main"
+      sh -c "npx prisma migrate deploy && node dist/main"
 
   frontend:
     build:

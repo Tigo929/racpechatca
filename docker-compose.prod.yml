@@ -27,7 +27,7 @@ services:
     networks:
       - internal
     command: >
-      sh -c "node dist/src/main"
+      sh -c "npx prisma migrate deploy && node dist/src/main"
 
   frontend:
     build:
