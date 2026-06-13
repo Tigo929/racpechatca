@@ -1,5 +1,13 @@
 import { Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Matches, ValidateIf } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Matches,
+  ValidateIf,
+} from 'class-validator';
 import {
   EnumCommunication,
   EnumDeliveryMethod,
@@ -18,8 +26,14 @@ export class DtoUpdateOrder {
 
   @IsString()
   @IsOptional()
-  @ValidateIf((o) => o.communicationPlatform === EnumCommunication.TELEGRAM && o.urlCommunication !== undefined)
-  @Matches(/^@/, { message: 'Для Telegram укажите @username (должно начинаться с @)' })
+  @ValidateIf(
+    (o: DtoUpdateOrder) =>
+      o.communicationPlatform === EnumCommunication.TELEGRAM &&
+      o.urlCommunication !== undefined,
+  )
+  @Matches(/^@/, {
+    message: 'Для Telegram укажите @username (должно начинаться с @)',
+  })
   urlCommunication?: string;
 
   @IsEnum(EnumDeliveryMethod)
@@ -30,7 +44,7 @@ export class DtoUpdateOrder {
   @IsOptional()
   @Type(() => Number)
   deliveryCost?: number;
-  
+
   @IsString()
   @IsOptional()
   note?: string;

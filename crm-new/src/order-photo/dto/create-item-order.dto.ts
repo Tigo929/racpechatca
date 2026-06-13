@@ -1,6 +1,6 @@
-import { Type } from "class-transformer";
-import { IsEnum, IsNumber, IsString, MinLength } from "class-validator";
-import { EnumTypePaper } from "src/generated/prisma/enums";
+import { Type } from 'class-transformer';
+import { IsEnum, IsNumber, IsString, MinLength } from 'class-validator';
+import { EnumTypePaper } from 'src/generated/prisma/enums';
 
 export default class DtoCreateItemOrder {
   @IsString()

@@ -1,8 +1,19 @@
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import {
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  NestInterceptor,
+} from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-const PRICE_FIELDS = ['totalOrder', 'deliveryCost', 'price', 'pricePosition', 'designCost'];
+const PRICE_FIELDS = [
+  'totalOrder',
+  'deliveryCost',
+  'price',
+  'pricePosition',
+  'designCost',
+];
 
 function strip(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(strip);

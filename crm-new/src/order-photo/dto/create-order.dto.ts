@@ -14,7 +14,6 @@ import {
   EnumDeliveryMethod,
   EnumProductCategory,
   EnumSourceOrder,
-  EnumStatus,
 } from 'src/generated/prisma/enums';
 import DtoCreateItemOrder from './create-item-order.dto';
 import { DtoCreateTshirtItem } from './create-tshirt-item.dto';
@@ -27,8 +26,13 @@ export default class DtoCreateOrder {
   communicationPlatform!: EnumCommunication;
 
   @IsString()
-  @ValidateIf((o) => o.communicationPlatform === EnumCommunication.TELEGRAM)
-  @Matches(/^@/, { message: 'Для Telegram укажите @username (должно начинаться с @)' })
+  @ValidateIf(
+    (o: DtoCreateOrder) =>
+      o.communicationPlatform === EnumCommunication.TELEGRAM,
+  )
+  @Matches(/^@/, {
+    message: 'Для Telegram укажите @username (должно начинаться с @)',
+  })
   urlCommunication!: string;
 
   @IsEnum(EnumDeliveryMethod)
@@ -43,7 +47,6 @@ export default class DtoCreateOrder {
   productCategory?: EnumProductCategory;
 
   @IsOptional()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   status?: any; // EnumStatus — cast to any until LEAD lands in local generated client
 
   @IsString()
