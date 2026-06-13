@@ -27,7 +27,7 @@ services:
       - internal
     # Применяет накопленные миграции и запускает сервер
     command: >
-      sh -c "npx prisma migrate deploy && node dist/main"
+      sh -c "npx prisma migrate deploy && node dist/src/main"
 
   frontend:
     build:
