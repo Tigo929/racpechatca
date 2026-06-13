@@ -302,10 +302,16 @@ export class OrderPhotoService {
       }
     }
 
-    // Только ADMIN может переводить в COMPLETED, CANCELLED
-    if ((newStatus === 'COMPLETED' || newStatus === 'CANCELLED') && !isAdmin) {
+    // Только ADMIN может переводить в SENT, PAID, COMPLETED, CANCELLED
+    if (
+      (newStatus === 'SENT' ||
+        newStatus === 'PAID' ||
+        newStatus === 'COMPLETED' ||
+        newStatus === 'CANCELLED') &&
+      !isAdmin
+    ) {
       throw new ForbiddenException(
-        'Только администратор может завершать или отменять заказ.',
+        'Только администратор может устанавливать этот статус.',
       );
     }
 
@@ -338,11 +344,11 @@ export class OrderPhotoService {
         },
       });
 
-      // При переводе в COMPLETED создаём начисление зарплаты
-      if (newStatus === 'COMPLETED' && isAdmin) {
+      // При переводе в SENT создаём начисление зарплаты исполнителю
+      if (newStatus === EnumStatus.SENT && isAdmin) {
         if (!lockedOrder.executorId) {
           throw new BadRequestException(
-            'Нельзя завершить заказ без назначенного исполнителя.',
+            'Нельзя отправить заказ без назначенного исполнителя.',
           );
         }
 
@@ -352,10 +358,7 @@ export class OrderPhotoService {
         if (!executor) throw new NotFoundException('Исполнитель не найден');
 
         const existingAccrual = await tx.salaryAccrual.findFirst({
-          where: {
-            orderId: id,
-            status: { not: 'REVERSED' },
-          },
+          where: { orderId: id, status: { not: 'REVERSED' } },
         });
 
         if (!existingAccrual) {
@@ -372,6 +375,38 @@ export class OrderPhotoService {
               ...snapshot,
             },
           });
+        }
+      }
+
+      // При переводе в PAID автоматически закрываем незакрытый долг по зарплате
+      if (newStatus === EnumStatus.PAID && isAdmin) {
+        const accrual = await tx.salaryAccrual.findFirst({
+          where: { orderId: id, status: { in: ['PENDING', 'PARTIALLY_PAID'] } },
+        });
+
+        if (accrual) {
+          const remaining = accrual.salaryAmount - accrual.paidAmount;
+          if (remaining > 0) {
+            const payment = await tx.salaryPayment.create({
+              data: {
+                executorId: accrual.executorId,
+                paidById: userId,
+                amount: remaining,
+                note: `Автовыплата при переводе заказа ${lockedOrder.numberOrder} в «Оплачен»`,
+              },
+            });
+            await tx.salaryAccrual.update({
+              where: { id: accrual.id },
+              data: { paidAmount: accrual.salaryAmount, status: 'PAID' },
+            });
+            await tx.paymentAccrualLink.create({
+              data: {
+                paymentId: payment.id,
+                accrualId: accrual.id,
+                amount: remaining,
+              },
+            });
+          }
         }
       }
 

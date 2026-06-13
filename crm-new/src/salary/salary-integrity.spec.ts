@@ -120,7 +120,7 @@ function setupCompletion(productCategory: 'PHOTO' | 'TSHIRT' = 'PHOTO') {
   stub.statusHistory.create.mockResolvedValue({ id: 'history-1' });
   stub.orderPhoto.update.mockResolvedValue({
     ...order,
-    status: EnumStatus.COMPLETED,
+    status: EnumStatus.SENT,
   });
   return { stub, service: createOrderService(stub) };
 }
@@ -151,7 +151,7 @@ describe('salary accrual integrity', () => {
     expect(calculateSalarySnapshot(5000, 500, 0).status).toBe('SETTLED');
   });
 
-  it('does not create a second active accrual on repeat completion', async () => {
+  it('does not create a second active accrual on repeat send', async () => {
     const { stub, service } = setupCompletion();
     stub.salaryAccrual.findFirst
       .mockResolvedValueOnce(null)
@@ -159,13 +159,13 @@ describe('salary accrual integrity', () => {
 
     await service.updateStatusOrder(
       'order-1',
-      { status: EnumStatus.COMPLETED },
+      { status: EnumStatus.SENT },
       'admin-1',
       EnumRole.ADMIN,
     );
     await service.updateStatusOrder(
       'order-1',
-      { status: EnumStatus.COMPLETED },
+      { status: EnumStatus.SENT },
       'admin-1',
       EnumRole.ADMIN,
     );
@@ -184,13 +184,13 @@ describe('salary accrual integrity', () => {
 
     await service.updateStatusOrder(
       'order-1',
-      { status: EnumStatus.COMPLETED },
+      { status: EnumStatus.SENT },
       'admin-1',
       EnumRole.ADMIN,
     );
     await service.updateStatusOrder(
       'order-1',
-      { status: EnumStatus.COMPLETED },
+      { status: EnumStatus.SENT },
       'admin-1',
       EnumRole.ADMIN,
     );
@@ -204,13 +204,13 @@ describe('salary accrual integrity', () => {
   });
 
   it.each(['PHOTO', 'TSHIRT'] as const)(
-    'creates salary for a %s order',
+    'creates salary for a %s order on send',
     async (productCategory) => {
       const { stub, service } = setupCompletion(productCategory);
 
       await service.updateStatusOrder(
         'order-1',
-        { status: EnumStatus.COMPLETED },
+        { status: EnumStatus.SENT },
         'admin-1',
         EnumRole.ADMIN,
       );
