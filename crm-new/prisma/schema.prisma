@@ -16,12 +16,13 @@ model User {
   password        String
   role            EnumRole @default(EXECUTOR)
   isActive        Boolean  @default(true)
-  rateBasisPoints Int      @default(0)
+  rateBasisPoints Int?
 
-  salaryAccruals SalaryAccrual[]
-  salaryPayments SalaryPayment[]
-  assignedOrders OrderPhoto[]    @relation("OrderExecutor")
-  rateHistory    UserRateHistory[]
+  salaryAccruals     SalaryAccrual[]
+  salaryPayments     SalaryPayment[]   @relation("SalaryPaymentExecutor")
+  authorizedPayments SalaryPayment[]   @relation("SalaryPaymentAuthor")
+  assignedOrders     OrderPhoto[]      @relation("OrderExecutor")
+  rateHistory        UserRateHistory[]
 }
 
 enum EnumRole {
@@ -188,8 +189,8 @@ model SalaryAccrual {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  orderId  String
-  order    OrderPhoto @relation(fields: [orderId], references: [id])
+  orderId String
+  order   OrderPhoto @relation(fields: [orderId], references: [id])
 
   executorId String
   executor   User   @relation(fields: [executorId], references: [id])
@@ -202,8 +203,6 @@ model SalaryAccrual {
   paidAmount Int               @default(0)
 
   paymentLinks PaymentAccrualLink[]
-
-  @@unique([orderId])
 }
 
 model SalaryPayment {
@@ -212,7 +211,10 @@ model SalaryPayment {
   updatedAt DateTime @updatedAt
 
   executorId String
-  executor   User   @relation(fields: [executorId], references: [id])
+  executor   User   @relation("SalaryPaymentExecutor", fields: [executorId], references: [id])
+
+  paidById String
+  paidBy   User   @relation("SalaryPaymentAuthor", fields: [paidById], references: [id])
 
   amount Int
   note   String?
@@ -266,7 +268,7 @@ model UserRateHistory {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  oldRateBasisPoints Int
+  oldRateBasisPoints Int?
   newRateBasisPoints Int
   changedBy          String
 }
