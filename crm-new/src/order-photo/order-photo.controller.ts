@@ -130,8 +130,11 @@ export class OrderPhotoController {
   // ── Both roles: read orders + items, update status ─────────────────────────
 
   @Get()
-  getAllOrders(@Query() query: DtoAllOrdersforQuery) {
-    return this.orderPhotoService.getAllOrders(query);
+  getAllOrders(
+    @Query() query: DtoAllOrdersforQuery,
+    @CurrentUser() me: RequestUser,
+  ) {
+    return this.orderPhotoService.getAllOrders(query, me.id, me.role);
   }
 
   // Зарплата (legacy) — объявлено до ':idOrder', чтобы маршрут не перехватился.
@@ -142,18 +145,24 @@ export class OrderPhotoController {
   }
 
   @Get('items/:idItem')
-  getItemById(@Param('idItem') idItem: string) {
-    return this.orderItemService.getItemById(idItem);
+  getItemById(@Param('idItem') idItem: string, @CurrentUser() me: RequestUser) {
+    return this.orderItemService.getItemById(idItem, me.id, me.role);
   }
 
   @Get('tshirt-items/:idItem')
-  getTshirtItem(@Param('idItem') idItem: string) {
-    return this.tshirtItemService.getTshirtItem(idItem);
+  getTshirtItem(
+    @Param('idItem') idItem: string,
+    @CurrentUser() me: RequestUser,
+  ) {
+    return this.tshirtItemService.getTshirtItem(idItem, me.id, me.role);
   }
 
   @Get(':idOrder')
-  getOrderById(@Param('idOrder') idOrder: string) {
-    return this.orderPhotoService.getOrderById(idOrder);
+  getOrderById(
+    @Param('idOrder') idOrder: string,
+    @CurrentUser() me: RequestUser,
+  ) {
+    return this.orderPhotoService.getOrderById(idOrder, me.id, me.role);
   }
 
   @Patch(':idOrder/status')

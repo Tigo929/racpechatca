@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { EnumRole } from 'src/generated/prisma/enums';
 import { ROLES_KEY } from '../decorators/roles.decorator';
+import type { AuthenticatedRequest } from '../authenticated-request';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -18,8 +19,8 @@ export class RolesGuard implements CanActivate {
       ctx.getClass(),
     ]);
     if (!required) return true;
-    const { user } = ctx.switchToHttp().getRequest();
-    if (!required.includes(user?.role)) {
+    const { user } = ctx.switchToHttp().getRequest<AuthenticatedRequest>();
+    if (!required.includes(user.role)) {
       throw new ForbiddenException('Недостаточно прав');
     }
     return true;

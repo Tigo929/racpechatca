@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import type { AuthenticatedRequest } from 'src/auth/authenticated-request';
 
 const PRICE_FIELDS = [
   'totalOrder',
@@ -33,8 +34,8 @@ function strip(value: unknown): unknown {
 @Injectable()
 export class StripPricesInterceptor implements NestInterceptor {
   intercept(ctx: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const req = ctx.switchToHttp().getRequest();
-    const role = req.user?.role;
+    const req = ctx.switchToHttp().getRequest<AuthenticatedRequest>();
+    const role = req.user.role;
     if (role !== 'EXECUTOR') return next.handle();
     return next.handle().pipe(map((data) => strip(data)));
   }
