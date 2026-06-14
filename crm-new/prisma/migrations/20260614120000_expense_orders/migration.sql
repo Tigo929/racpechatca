@@ -1,12 +1,12 @@
 -- CreateTable
 CREATE TABLE "ExpenseOrder" (
-    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "id" TEXT NOT NULL DEFAULT gen_random_uuid()::TEXT,
     "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "category" "EnumProductCategory" NOT NULL,
     "amount" INTEGER NOT NULL,
     "note" TEXT,
-    "createdById" UUID NOT NULL,
+    "createdById" TEXT NOT NULL,
 
     CONSTRAINT "ExpenseOrder_pkey" PRIMARY KEY ("id")
 );
