@@ -342,36 +342,31 @@ export class OrderPhotoService {
       });
 
       // При переводе в SENT создаём начисление зарплаты исполнителю
-      if (newStatus === EnumStatus.SENT && isAdmin) {
-        if (!lockedOrder.executorId) {
-          throw new BadRequestException(
-            'Нельзя отправить заказ без назначенного исполнителя.',
-          );
-        }
-
+      if (newStatus === EnumStatus.SENT && isAdmin && lockedOrder.executorId) {
         const executor = await tx.user.findUnique({
           where: { id: lockedOrder.executorId },
         });
-        if (!executor) throw new NotFoundException('Исполнитель не найден');
 
-        const existingAccrual = await tx.salaryAccrual.findFirst({
-          where: { orderId: id, status: { not: 'REVERSED' } },
-        });
-
-        if (!existingAccrual) {
-          const snapshot = calculateSalarySnapshot(
-            lockedOrder.totalOrder,
-            lockedOrder.deliveryCost,
-            executor.rateBasisPoints,
-          );
-
-          await tx.salaryAccrual.create({
-            data: {
-              orderId: id,
-              executorId: lockedOrder.executorId,
-              ...snapshot,
-            },
+        if (executor && executor.rateBasisPoints !== null) {
+          const existingAccrual = await tx.salaryAccrual.findFirst({
+            where: { orderId: id, status: { not: 'REVERSED' } },
           });
+
+          if (!existingAccrual) {
+            const snapshot = calculateSalarySnapshot(
+              lockedOrder.totalOrder,
+              lockedOrder.deliveryCost,
+              executor.rateBasisPoints,
+            );
+
+            await tx.salaryAccrual.create({
+              data: {
+                orderId: id,
+                executorId: lockedOrder.executorId,
+                ...snapshot,
+              },
+            });
+          }
         }
       }
 

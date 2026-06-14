@@ -244,6 +244,7 @@ export class SalaryService {
               totalOrder: true,
               deliveryCost: true,
               createdAt: true,
+              status: true,
             },
           },
         },
@@ -283,6 +284,22 @@ export class SalaryService {
         await tx.paymentAccrualLink.create({
           data: { paymentId: payment.id, accrualId: accrual.id, amount },
         });
+
+        // Переводим заказ в статус PAID
+        if (accrual.order.status === 'SENT') {
+          await tx.orderPhoto.update({
+            where: { id: accrual.orderId },
+            data: { status: 'PAID' },
+          });
+          await tx.statusHistory.create({
+            data: {
+              orderId: accrual.orderId,
+              fromStatus: 'SENT',
+              toStatus: 'PAID',
+              changedBy: paidById,
+            },
+          });
+        }
       }
 
       return {
