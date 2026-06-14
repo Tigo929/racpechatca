@@ -463,10 +463,11 @@ export class OrderPhotoService {
 
   async updateOrder(idOrder: string, dto: DtoUpdateOrder) {
     const order = await this.getOrderById(idOrder, '', EnumRole.ADMIN);
-    if (dto.deliveryCost !== undefined) {
+    const deliveryChanged = dto.deliveryCost !== undefined;
+    if (deliveryChanged) {
       await this.financialIntegrity.assertOrderFinanciallyEditable(idOrder);
     }
-    return this.prisma.orderPhoto.update({
+    const updated = await this.prisma.orderPhoto.update({
       where: { id: idOrder },
       include: {
         items: true,
@@ -493,6 +494,15 @@ export class OrderPhotoService {
         isUrgent: dto.isUrgent !== undefined ? dto.isUrgent : order.isUrgent,
       },
     });
+    // Доставка влияет на сумму → подгоняем невыплаченное начисление.
+    if (deliveryChanged) {
+      await this.financialIntegrity.recalcPendingAccrual(
+        idOrder,
+        updated.totalOrder,
+        updated.deliveryCost,
+      );
+    }
+    return updated;
   }
 
   async deleteOrder(idOrder: string) {

@@ -118,10 +118,18 @@ export class TshirtItemService {
       include: { items: true, tshirtItems: true },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
-    return tx.orderPhoto.update({
+    const updated = await tx.orderPhoto.update({
       where: { id: orderId },
       include: { items: true, tshirtItems: true },
       data: { totalOrder: calcOrderTotal(order.tshirtItems, order.deliveryCost) },
     });
+    // Невыплаченное начисление подгоняем под новую сумму заказа.
+    await this.financialIntegrity.recalcPendingAccrual(
+      orderId,
+      updated.totalOrder,
+      updated.deliveryCost,
+      tx,
+    );
+    return updated;
   }
 }
