@@ -170,9 +170,6 @@ export class OrderPhotoService {
       },
       sourceOrder: query.sourceOrder,
       productCategory: query.productCategory,
-      ...(currentUserRole === EnumRole.EXECUTOR
-        ? { executorId: currentUserId }
-        : {}),
     };
 
     const [orders, count] = await this.prisma.$transaction([

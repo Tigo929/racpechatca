@@ -5,6 +5,7 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { SalaryService } from './salary.service';
 import { DtoCreatePayment } from './dto/create-payment.dto';
+import { DtoCreatePaymentByAccruals } from './dto/create-payment-by-accruals.dto';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 
 interface RequestUser {
@@ -35,5 +36,13 @@ export class SalaryController {
   @Post('payments')
   createPayment(@Body() dto: DtoCreatePayment, @CurrentUser() me: RequestUser) {
     return this.salaryService.createPayment(dto, me.id);
+  }
+
+  @Post('payments/by-accruals')
+  createPaymentByAccruals(
+    @Body() dto: DtoCreatePaymentByAccruals,
+    @CurrentUser() me: RequestUser,
+  ) {
+    return this.salaryService.createPaymentByAccruals(dto, me.id);
   }
 }

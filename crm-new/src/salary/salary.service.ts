@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DtoCreatePayment } from './dto/create-payment.dto';
+import { DtoCreatePaymentByAccruals } from './dto/create-payment-by-accruals.dto';
 
 @Injectable()
 export class SalaryService {
@@ -218,6 +219,87 @@ export class SalaryService {
           },
         },
       },
+    });
+  }
+
+  /**
+   * Оплачивает конкретные начисления целиком (по списку ID).
+   * Все выбранные accruals должны принадлежать executorId и быть PENDING/PARTIALLY_PAID.
+   */
+  async createPaymentByAccruals(
+    dto: DtoCreatePaymentByAccruals,
+    paidById: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const accruals = await tx.salaryAccrual.findMany({
+        where: {
+          id: { in: dto.accrualIds },
+          executorId: dto.executorId,
+          status: { in: ['PENDING', 'PARTIALLY_PAID'] },
+        },
+        include: {
+          order: {
+            select: {
+              numberOrder: true,
+              totalOrder: true,
+              deliveryCost: true,
+              createdAt: true,
+            },
+          },
+        },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      });
+
+      if (accruals.length !== dto.accrualIds.length) {
+        throw new BadRequestException(
+          'Некоторые начисления не найдены или уже закрыты.',
+        );
+      }
+
+      const totalAmount = accruals.reduce(
+        (sum, a) => sum + a.salaryAmount - a.paidAmount,
+        0,
+      );
+
+      if (totalAmount === 0) {
+        throw new BadRequestException('Выбранные начисления уже закрыты.');
+      }
+
+      const payment = await tx.salaryPayment.create({
+        data: {
+          executorId: dto.executorId,
+          paidById,
+          amount: totalAmount,
+          note: dto.note,
+        },
+      });
+
+      for (const accrual of accruals) {
+        const amount = accrual.salaryAmount - accrual.paidAmount;
+        await tx.salaryAccrual.update({
+          where: { id: accrual.id },
+          data: { paidAmount: accrual.salaryAmount, status: 'PAID' },
+        });
+        await tx.paymentAccrualLink.create({
+          data: { paymentId: payment.id, accrualId: accrual.id, amount },
+        });
+      }
+
+      return {
+        paymentId: payment.id,
+        paidAt: payment.createdAt,
+        totalAmount,
+        accruals: accruals.map((a) => ({
+          id: a.id,
+          orderNumber: a.order.numberOrder,
+          orderDate: a.order.createdAt,
+          totalOrder: a.order.totalOrder,
+          deliveryCost: a.order.deliveryCost,
+          salaryBase: a.salaryBase,
+          rateBasisPoints: a.rateBasisPoints,
+          salaryAmount: a.salaryAmount - a.paidAmount,
+        })),
+      };
     });
   }
 }

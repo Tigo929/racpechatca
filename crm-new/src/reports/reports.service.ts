@@ -1,0 +1,91 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { EnumStatus } from 'src/generated/prisma/enums';
+
+const MONTH_LABELS = [
+  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
+];
+
+const EXCLUDED_STATUSES: EnumStatus[] = [EnumStatus.LEAD, EnumStatus.CANCELLED];
+
+@Injectable()
+export class ReportsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getMonthlyReport(year: number) {
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year + 1, 0, 1);
+
+    const orders = await this.prisma.orderPhoto.findMany({
+      where: {
+        createdAt: { gte: startOfYear, lt: endOfYear },
+        status: { notIn: EXCLUDED_STATUSES },
+      },
+      select: {
+        createdAt: true,
+        totalOrder: true,
+        deliveryCost: true,
+        productCategory: true,
+        status: true,
+      },
+    });
+
+    const months = Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      label: MONTH_LABELS[i],
+      orderCount: 0,
+      totalRevenue: 0,
+      deliveryCost: 0,
+      netRevenue: 0,
+      photoCount: 0,
+      tshirtCount: 0,
+    }));
+
+    for (const order of orders) {
+      const idx = order.createdAt.getMonth();
+      const m = months[idx];
+      const total = order.totalOrder ?? 0;
+      const delivery = order.deliveryCost ?? 0;
+      m.orderCount += 1;
+      m.totalRevenue += total;
+      m.deliveryCost += delivery;
+      m.netRevenue += total - delivery;
+      if (order.productCategory === 'PHOTO') m.photoCount += 1;
+      else m.tshirtCount += 1;
+    }
+
+    const totals = months.reduce(
+      (acc, m) => ({
+        orderCount: acc.orderCount + m.orderCount,
+        totalRevenue: acc.totalRevenue + m.totalRevenue,
+        deliveryCost: acc.deliveryCost + m.deliveryCost,
+        netRevenue: acc.netRevenue + m.netRevenue,
+        photoCount: acc.photoCount + m.photoCount,
+        tshirtCount: acc.tshirtCount + m.tshirtCount,
+      }),
+      {
+        orderCount: 0,
+        totalRevenue: 0,
+        deliveryCost: 0,
+        netRevenue: 0,
+        photoCount: 0,
+        tshirtCount: 0,
+      },
+    );
+
+    return { year, months, totals };
+  }
+
+  async getAvailableYears() {
+    const first = await this.prisma.orderPhoto.findFirst({
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
+    });
+    const currentYear = new Date().getFullYear();
+    const startYear = first ? first.createdAt.getFullYear() : currentYear;
+    const years: number[] = [];
+    for (let y = startYear; y <= currentYear; y++) years.push(y);
+    return years.reverse();
+  }
+}

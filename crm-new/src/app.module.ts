@@ -4,6 +4,7 @@ import { OrderPhotoModule } from './order-photo/order-photo.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { SalaryModule } from './salary/salary.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { SalaryModule } from './salary/salary.module';
     UsersModule,
     OrderPhotoModule,
     SalaryModule,
+    ReportsModule,
   ],
   controllers: [],
   providers: [],

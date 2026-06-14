@@ -289,3 +289,44 @@ export interface CreatePaymentDto {
   amount: number;
   note?: string;
 }
+
+export interface CreatePaymentByAccrualsDto {
+  executorId: string;
+  accrualIds: string[];
+  note?: string;
+}
+
+export interface PaymentByAccrualsResult {
+  paymentId: string;
+  paidAt: string;
+  totalAmount: number;
+  accruals: Array<{
+    id: string;
+    orderNumber: string;
+    orderDate: string;
+    totalOrder: number;
+    deliveryCost: number;
+    salaryBase: number;
+    rateBasisPoints: number;
+    salaryAmount: number;
+  }>;
+}
+
+// ── Reports types ─────────────────────────────────────────────────────────────
+
+export interface MonthData {
+  month: number;
+  label: string;
+  orderCount: number;
+  totalRevenue: number;
+  deliveryCost: number;
+  netRevenue: number;
+  photoCount: number;
+  tshirtCount: number;
+}
+
+export interface MonthlyReport {
+  year: number;
+  months: MonthData[];
+  totals: Omit<MonthData, 'month' | 'label'>;
+}

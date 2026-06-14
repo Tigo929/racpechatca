@@ -1,166 +1,338 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import toast from 'react-hot-toast';
-import {
-  ArrowLeft,
-  Wallet,
-  HandCoins,
-  ChevronDown,
-  ChevronUp,
-  CheckCircle2,
-  Clock,
-} from 'lucide-react';
 import { salaryApi } from '../api/orders';
-import type { ExecutorSalaryData, AccrualBrief } from '../types';
+import type { ExecutorSalaryData, AccrualBrief, PaymentByAccrualsResult } from '../types';
 import { getErrorMessage } from '../utils/get-error-message';
 
-const fmt = (n: number) => n.toLocaleString('ru-RU') + ' ₽';
+const fmt = (n: number) =>
+  n.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 });
 
-const ACCRUAL_STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Ожидает выплаты',
-  PARTIALLY_PAID: 'Частично выплачено',
-  PAID: 'Выплачено',
-  SETTLED: 'Закрыто',
-  REVERSED: 'Отменено',
-};
-
-function AccrualRow({ a }: { a: AccrualBrief }) {
-  const dt = a.completedAt
-    ? new Date(a.completedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+const fmtDate = (s: string | null | undefined) =>
+  s
+    ? new Date(s).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })
     : '—';
-  const statusColor =
-    a.status === 'PENDING' || a.status === 'PARTIALLY_PAID'
-      ? 'text-amber-700'
-      : 'text-emerald-600';
 
+// ── PDF receipt ───────────────────────────────────────────────────────────────
+
+function printPaymentReceipt(
+  executor: ExecutorSalaryData,
+  result: PaymentByAccrualsResult,
+) {
+  const rows = result.accruals
+    .map(
+      (a) => `<tr>
+        <td>${a.orderNumber}</td>
+        <td>${fmtDate(a.orderDate)}</td>
+        <td>${fmt(a.totalOrder)}</td>
+        <td>${fmt(a.deliveryCost)}</td>
+        <td>${fmt(a.salaryBase)}</td>
+        <td>${(a.rateBasisPoints / 100).toFixed(0)}%</td>
+        <td><strong>${fmt(a.salaryAmount)}</strong></td>
+      </tr>`,
+    )
+    .join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"/>
+<title>Расчётный листок — ${executor.username}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#111;padding:40px}
+h1{font-size:22px;margin-bottom:4px}
+.sub{color:#666;margin-bottom:28px;font-size:12px}
+.meta{display:flex;gap:40px;margin-bottom:28px;padding:16px;background:#f8f8f8;border-radius:8px}
+.meta-item label{font-size:11px;color:#888;display:block;margin-bottom:2px}
+.meta-item span{font-weight:700;font-size:15px}
+table{width:100%;border-collapse:collapse;margin-bottom:28px}
+th{background:#f0f0f0;text-align:left;padding:9px 12px;font-size:11px;color:#666;border-bottom:2px solid #ddd;text-transform:uppercase;letter-spacing:.5px}
+td{padding:9px 12px;border-bottom:1px solid #eee}
+.total td{background:#f8f8f8;font-weight:700;font-size:14px;border-top:2px solid #ccc;border-bottom:none}
+.footer{margin-top:48px;display:flex;justify-content:space-between}
+.sig{border-top:1px solid #bbb;padding-top:6px;width:220px;text-align:center;font-size:12px;color:#666}
+@media print{body{padding:20px}}
+</style></head>
+<body>
+<h1>Расчётный листок</h1>
+<p class="sub">Дата формирования: ${fmtDate(result.paidAt)}</p>
+<div class="meta">
+  <div class="meta-item"><label>Исполнитель</label><span>${executor.username}</span></div>
+  <div class="meta-item"><label>Ставка</label><span>${executor.ratePercent ?? '—'}%</span></div>
+  <div class="meta-item"><label>Дата выплаты</label><span>${fmtDate(result.paidAt)}</span></div>
+  <div class="meta-item"><label>Кол-во заказов</label><span>${result.accruals.length}</span></div>
+</div>
+<table>
+<thead><tr><th>№ заказа</th><th>Дата</th><th>Выручка</th><th>Доставка</th><th>База</th><th>%</th><th>ЗП</th></tr></thead>
+<tbody>
+${rows}
+<tr class="total"><td colspan="6">Итого выплачено</td><td>${fmt(result.totalAmount)}</td></tr>
+</tbody></table>
+<div class="footer">
+  <div class="sig">Выплатил: _______________</div>
+  <div class="sig">Получил: _______________</div>
+</div>
+<script>window.onload=()=>window.print()</script>
+</body></html>`;
+
+  const w = window.open('', '_blank', 'width=960,height=720');
+  if (w) { w.document.write(html); w.document.close(); }
+}
+
+// ── Executor list item ────────────────────────────────────────────────────────
+
+function ExecutorListItem({
+  ex,
+  active,
+  onClick,
+}: {
+  ex: ExecutorSalaryData;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
-    <tr className="border-b border-gray-50 text-sm">
-      <td className="px-3 py-2 font-mono font-semibold text-indigo-800">{a.orderNumber}</td>
-      <td className="px-3 py-2 text-gray-500">{dt}</td>
-      <td className="px-3 py-2 text-right text-gray-600">{fmt(a.salaryBase)}</td>
-      <td className="px-3 py-2 text-right text-gray-500 font-mono">{(a.rateBasisPoints / 100).toFixed(2)}%</td>
-      <td className="px-3 py-2 text-right font-semibold text-gray-800">{fmt(a.salaryAmount)}</td>
-      <td className="px-3 py-2 text-right text-emerald-600">{a.paidAmount > 0 ? fmt(a.paidAmount) : '—'}</td>
-      <td className={`px-3 py-2 text-right font-bold ${a.debt > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-        {a.debt > 0 ? fmt(a.debt) : '✓'}
+    <button
+      onClick={onClick}
+      className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+        active ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-800'
+      }`}
+    >
+      <div className="font-semibold">{ex.username}</div>
+      <div className={`text-sm mt-0.5 ${active ? 'text-blue-200' : 'text-gray-500'}`}>
+        {ex.ratePercent ? `${ex.ratePercent}%` : 'ставка не задана'} ·{' '}
+        {ex.totalDebt > 0 ? (
+          <span className={active ? 'text-yellow-300 font-semibold' : 'text-orange-600 font-semibold'}>
+            долг {fmt(ex.totalDebt)}
+          </span>
+        ) : (
+          <span className={active ? 'text-blue-200' : 'text-green-600'}>закрыт</span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// ── Accrual row ───────────────────────────────────────────────────────────────
+
+function AccrualRow({
+  accrual,
+  checked,
+  onChange,
+}: {
+  accrual: AccrualBrief;
+  checked: boolean;
+  onChange: (id: string, v: boolean) => void;
+}) {
+  const isPaid = accrual.status === 'PAID' || accrual.status === 'SETTLED';
+  return (
+    <tr className={`border-b border-gray-100 ${isPaid ? 'opacity-50' : 'hover:bg-gray-50'}`}>
+      <td className="py-2.5 pl-4 pr-2 w-8">
+        {!isPaid && (
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => onChange(accrual.id, e.target.checked)}
+            className="w-4 h-4 accent-blue-600 cursor-pointer"
+          />
+        )}
       </td>
-      <td className={`px-3 py-2 text-xs ${statusColor}`}>
-        {ACCRUAL_STATUS_LABELS[a.status] ?? a.status}
+      <td className="py-2.5 px-3 font-mono text-sm font-medium">{accrual.orderNumber}</td>
+      <td className="py-2.5 px-3 text-sm text-gray-500">{fmtDate(accrual.completedAt)}</td>
+      <td className="py-2.5 px-3 text-right tabular-nums">{fmt(accrual.salaryBase)}</td>
+      <td className="py-2.5 px-3 text-right text-gray-400 text-xs">
+        {(accrual.rateBasisPoints / 100).toFixed(0)}%
+      </td>
+      <td className="py-2.5 px-3 text-right font-semibold tabular-nums">{fmt(accrual.salaryAmount)}</td>
+      <td className="py-2.5 px-3 pr-4 text-right">
+        {isPaid ? (
+          <span className="text-green-600 text-xs font-medium bg-green-50 px-2 py-0.5 rounded-full">
+            оплачено
+          </span>
+        ) : (
+          <span className="text-orange-700 font-semibold tabular-nums">{fmt(accrual.debt)}</span>
+        )}
       </td>
     </tr>
   );
 }
 
-interface PayFormProps {
-  executor: ExecutorSalaryData;
-  onDone: () => void;
-}
+// ── Detail panel ──────────────────────────────────────────────────────────────
 
-function PayForm({ executor, onDone }: PayFormProps) {
+function ExecutorDetail({
+  executor,
+  onPaymentDone,
+}: {
+  executor: ExecutorSalaryData;
+  onPaymentDone: () => void;
+}) {
   const qc = useQueryClient();
-  const [amount, setAmount] = useState(String(executor.totalDebt));
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [note, setNote] = useState('');
-  const [confirming, setConfirming] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const [paidResult, setPaidResult] = useState<PaymentByAccrualsResult | null>(null);
+  const [error, setError] = useState('');
+
+  const pending = executor.pendingAccruals;
+  const allRows: AccrualBrief[] = [
+    ...pending,
+    ...executor.closedAccruals.map((c) => ({ ...c, debt: 0, salaryBase: 0, rateBasisPoints: 0 })),
+  ];
+
+  const selectedTotal = useMemo(
+    () => pending.filter((a) => selected.has(a.id)).reduce((s, a) => s + a.debt, 0),
+    [pending, selected],
+  );
+
+  const toggleAll = () =>
+    setSelected(selected.size === pending.length ? new Set() : new Set(pending.map((a) => a.id)));
+
+  const toggle = (id: string, v: boolean) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      v ? next.add(id) : next.delete(id);
+      return next;
+    });
 
   const mutation = useMutation({
     mutationFn: () =>
-      salaryApi.createPayment({
+      salaryApi.createPaymentByAccruals({
         executorId: executor.id,
-        amount: Math.round(Number(amount)),
-        note: note || undefined,
+        accrualIds: Array.from(selected),
+        note: note.trim() || undefined,
       }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['salary-summary'] });
-      toast.success('Выплата записана');
-      setConfirming(false);
-      onDone();
+    onSuccess: (result) => {
+      setPaidResult(result);
+      setSelected(new Set());
+      setConfirm(false);
+      setNote('');
+      setError('');
+      void qc.invalidateQueries({ queryKey: ['salary-summary'] });
+      onPaymentDone();
     },
-    onError: (error: unknown) =>
-      toast.error(getErrorMessage(error, 'Ошибка выплаты')),
+    onError: (e) => { setError(getErrorMessage(e)); setConfirm(false); },
   });
 
-  const parsed = Math.round(Number(amount));
-  const valid = parsed > 0 && parsed <= executor.totalDebt;
-
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-3 space-y-3">
-      <p className="text-xs font-semibold text-amber-800">Зарегистрировать выплату</p>
-      <div className="flex gap-3">
-        <div className="relative flex-1">
-          <input
-            type="number"
-            min="1"
-            max={executor.totalDebt}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="w-full rounded-lg border border-amber-300 px-3 py-2 text-sm pr-7 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-            placeholder="Сумма"
-          />
-          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₽</span>
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-5">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">{executor.username}</h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Ставка: <strong>{executor.ratePercent ?? '—'}%</strong>
+            {' · '}Долг:{' '}
+            <strong className={executor.totalDebt > 0 ? 'text-orange-600' : 'text-green-600'}>
+              {fmt(executor.totalDebt)}
+            </strong>
+            {' · '}Всего выплачено: <strong>{fmt(executor.totalPaid)}</strong>
+          </p>
         </div>
-        <input
-          type="text"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          className="flex-1 rounded-lg border border-amber-300 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-          placeholder="Примечание (необязательно)"
-        />
-      </div>
-      {!valid && amount !== '' && (
-        <p className="text-xs text-red-600">
-          Сумма должна быть от 1 до {fmt(executor.totalDebt)} (общий долг).
-        </p>
-      )}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setConfirming(true)}
-          disabled={mutation.isPending || !valid}
-          className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-        >
-          <HandCoins size={14} aria-hidden="true" />
-          {mutation.isPending ? 'Записываем…' : 'Записать выплату'}
-        </button>
-        <button
-          onClick={onDone}
-          className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          Отмена
-        </button>
+        {pending.length > 0 && (
+          <button onClick={toggleAll} className="text-sm text-blue-600 hover:underline">
+            {selected.size === pending.length ? 'Снять все' : 'Выбрать все'}
+          </button>
+        )}
       </div>
 
-      {confirming && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="payment-confirm-title"
-        >
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h2 id="payment-confirm-title" className="text-lg font-bold text-gray-900">
-              Подтвердить выплату сотруднику?
-            </h2>
-            <div className="mt-4 space-y-2 rounded-xl bg-gray-50 p-4 text-sm">
-              <p><span className="text-gray-500">Сотрудник:</span> <strong>{executor.username}</strong></p>
-              <p><span className="text-gray-500">Сумма:</span> <strong>{fmt(parsed)}</strong></p>
-            </div>
-            <p className="mt-4 text-sm text-gray-600">
-              После подтверждения выплата будет записана в историю.
-            </p>
-            <div className="mt-6 flex justify-end gap-2">
+      {/* Table */}
+      <div className="flex-1 overflow-auto rounded-xl border border-gray-200 bg-white">
+        {allRows.length === 0 ? (
+          <div className="flex items-center justify-center h-32 text-gray-400 text-sm">
+            Начислений нет
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide sticky top-0">
+                <th className="py-2.5 pl-4 w-8" />
+                <th className="py-2.5 px-3 text-left">Заказ</th>
+                <th className="py-2.5 px-3 text-left">Дата</th>
+                <th className="py-2.5 px-3 text-right">База (без дост.)</th>
+                <th className="py-2.5 px-3 text-right">%</th>
+                <th className="py-2.5 px-3 text-right">ЗП</th>
+                <th className="py-2.5 px-3 pr-4 text-right">Остаток</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allRows.map((a) => (
+                <AccrualRow
+                  key={a.id}
+                  accrual={a}
+                  checked={selected.has(a.id)}
+                  onChange={toggle}
+                />
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Footer */}
+      {(pending.length > 0 || paidResult) && (
+        <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+
+          {paidResult && (
+            <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+              <span className="text-green-700 text-sm font-medium">
+                ✓ Выплачено {fmt(paidResult.totalAmount)} — {paidResult.accruals.length} заказ(а)
+              </span>
               <button
-                onClick={() => setConfirming(false)}
-                disabled={mutation.isPending}
-                className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                onClick={() => printPaymentReceipt(executor, paidResult)}
+                className="text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors font-medium"
+              >
+                Скачать PDF
+              </button>
+            </div>
+          )}
+
+          {pending.length > 0 && (
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Примечание (необязательно)"
+                className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <div className="text-right shrink-0 min-w-[90px]">
+                <div className="text-xs text-gray-400">Выбрано: {selected.size}</div>
+                <div className="font-bold text-gray-900 tabular-nums">{fmt(selectedTotal)}</div>
+              </div>
+              <button
+                disabled={selected.size === 0 || mutation.isPending}
+                onClick={() => setConfirm(true)}
+                className="shrink-0 bg-blue-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {mutation.isPending ? 'Выплата...' : 'Выплатить'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Confirm modal */}
+      {confirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 shadow-2xl w-full max-w-sm">
+            <h3 className="font-bold text-lg mb-3">Подтвердите выплату</h3>
+            <div className="space-y-1 text-sm text-gray-600 mb-5">
+              <p>Исполнитель: <strong>{executor.username}</strong></p>
+              <p>Заказов: <strong>{selected.size}</strong></p>
+              <p>Сумма: <strong className="text-blue-600 text-base">{fmt(selectedTotal)}</strong></p>
+              {note && <p>Примечание: {note}</p>}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirm(false)}
+                className="flex-1 border border-gray-300 rounded-lg py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors"
               >
                 Отмена
               </button>
               <button
                 onClick={() => mutation.mutate()}
                 disabled={mutation.isPending}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                className="flex-1 bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
-                {mutation.isPending ? 'Записываем…' : 'Подтвердить выплату'}
+                Подтвердить
               </button>
             </div>
           </div>
@@ -170,249 +342,116 @@ function PayForm({ executor, onDone }: PayFormProps) {
   );
 }
 
-interface ExecutorCardProps {
-  ex: ExecutorSalaryData;
-}
+// ── Main page ─────────────────────────────────────────────────────────────────
 
-function ExecutorCard({ ex }: ExecutorCardProps) {
-  const [expanded, setExpanded] = useState(false);
-  const [paying, setPaying] = useState(false);
-
-  return (
-    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 gap-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-900">{ex.username}</span>
-              {!ex.isActive && (
-                <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-600">неактивен</span>
-              )}
-              <span className="text-xs text-gray-400 font-mono bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
-                {ex.ratePercent === null ? 'Ставка не назначена' : `${ex.ratePercent}%`}
-              </span>
-            </div>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {ex.pendingAccruals.length > 0
-                ? `${ex.pendingAccruals.length} незакрытых начислений`
-                : 'Нет долга'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-6 shrink-0">
-          {ex.totalDebt > 0 ? (
-            <div className="text-right">
-              <p className="text-xs text-gray-400">Долг</p>
-              <p className="text-lg font-bold text-red-600">{fmt(ex.totalDebt)}</p>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1 text-emerald-600 text-sm">
-              <CheckCircle2 size={15} /> Долга нет
-            </div>
-          )}
-
-          <div className="flex items-center gap-2">
-            {ex.totalDebt > 0 && !paying && (
-              <button
-                onClick={() => setPaying(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-              >
-                <HandCoins size={14} /> Выплатить
-              </button>
-            )}
-            <button
-              onClick={() => setExpanded((v) => !v)}
-              className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
-              aria-label={expanded ? 'Свернуть' : 'Развернуть'}
-            >
-              {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Pay form */}
-      {paying && (
-        <div className="px-5 pb-4">
-          <PayForm executor={ex} onDone={() => setPaying(false)} />
-        </div>
-      )}
-
-      {/* Expanded accruals */}
-      {expanded && (
-        <div className="border-t border-gray-50">
-          {ex.pendingAccruals.length > 0 && (
-            <>
-              <div className="px-5 pt-3 pb-1 flex items-center gap-2">
-                <Clock size={12} className="text-amber-500" />
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">К выплате</span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="text-xs text-gray-400 border-b border-gray-50">
-                      <th className="px-3 py-2 text-left">Заказ</th>
-                      <th className="px-3 py-2 text-left">Дата</th>
-                      <th className="px-3 py-2 text-right">Чистая база</th>
-                      <th className="px-3 py-2 text-right">Ставка</th>
-                      <th className="px-3 py-2 text-right">Начислено</th>
-                      <th className="px-3 py-2 text-right">Выплачено</th>
-                      <th className="px-3 py-2 text-right">Долг</th>
-                      <th className="px-3 py-2">Статус</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ex.pendingAccruals.map((a) => (
-                      <AccrualRow key={a.id} a={a} />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-
-          {ex.closedAccruals.length > 0 && (
-            <>
-              <div className="px-5 pt-3 pb-1 flex items-center gap-2">
-                <CheckCircle2 size={12} className="text-emerald-500" />
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Закрытые начисления</span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="text-xs text-gray-400 border-b border-gray-50">
-                      <th className="px-3 py-2 text-left">Заказ</th>
-                      <th className="px-3 py-2 text-left">Дата</th>
-                      <th className="px-3 py-2 text-right">Начислено</th>
-                      <th className="px-3 py-2 text-right">Выплачено</th>
-                      <th className="px-3 py-2">Статус</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ex.closedAccruals.map((a) => (
-                      <tr key={a.id} className="border-b border-gray-50 text-sm">
-                        <td className="px-3 py-2 font-mono font-semibold text-indigo-800">{a.orderNumber}</td>
-                        <td className="px-3 py-2 text-gray-500">
-                          {a.completedAt
-                            ? new Date(a.completedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
-                            : '—'}
-                        </td>
-                        <td className="px-3 py-2 text-right font-semibold text-gray-800">{fmt(a.salaryAmount)}</td>
-                        <td className="px-3 py-2 text-right text-emerald-600">{fmt(a.paidAmount)}</td>
-                        <td className="px-3 py-2 text-xs text-emerald-600">
-                          {ACCRUAL_STATUS_LABELS[a.status] ?? a.status}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-
-          {ex.recentPayments.length > 0 && (
-            <>
-              <div className="px-5 pt-4 pb-1 flex items-center gap-2">
-                <Wallet size={12} className="text-indigo-500" />
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">История выплат</span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="text-xs text-gray-400 border-b border-gray-50">
-                      <th className="px-3 py-2 text-left">Сотрудник</th>
-                      <th className="px-3 py-2 text-left">Дата</th>
-                      <th className="px-3 py-2 text-right">Сумма</th>
-                      <th className="px-3 py-2 text-left">Комментарий</th>
-                      <th className="px-3 py-2 text-left">Подтвердил</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ex.recentPayments.map((payment) => (
-                      <tr key={payment.id} className="border-b border-gray-50 text-sm">
-                        <td className="px-3 py-2 font-semibold text-gray-800">{ex.username}</td>
-                        <td className="px-3 py-2 text-gray-500">
-                          {new Date(payment.createdAt).toLocaleString('ru-RU')}
-                        </td>
-                        <td className="px-3 py-2 text-right font-semibold text-emerald-700">{fmt(payment.amount)}</td>
-                        <td className="px-3 py-2 text-gray-600">{payment.note || '—'}</td>
-                        <td className="px-3 py-2 text-gray-600">{payment.paidBy.username}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-
-          {ex.pendingAccruals.length === 0 && ex.closedAccruals.length === 0 && (
-            <p className="px-5 py-4 text-sm text-gray-400 text-center">Начислений нет</p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export function SalaryPage() {
-  const { data, isLoading } = useQuery({
+export default function SalaryPage() {
+  const { data: executors = [], isLoading, error, refetch } = useQuery({
     queryKey: ['salary-summary'],
-    queryFn: salaryApi.getSummary,
+    queryFn: () => salaryApi.getSummary(),
   });
 
-  const totalDebt = data?.reduce((s, ex) => s + ex.totalDebt, 0) ?? 0;
-  const executorsWithDebt = data?.filter((ex) => ex.totalDebt > 0).length ?? 0;
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const selected = useMemo(
+    () => executors.find((e) => e.id === selectedId) ?? null,
+    [executors, selectedId],
+  );
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-400">Загрузка...</div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-500">
+        Ошибка загрузки
+      </div>
+    );
+  }
+
+  const withDebt = executors.filter((e) => e.totalDebt > 0);
+  const settled = executors.filter((e) => e.totalDebt === 0);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-indigo-950 border-b border-indigo-900 sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 flex items-center gap-3">
-          <Link
-            to="/crm"
-            className="p-1.5 text-indigo-300 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors"
-          >
-            <ArrowLeft size={16} />
-          </Link>
-          <div className="flex items-center gap-2">
-            <Wallet size={16} className="text-amber-400" />
-            <h1 className="text-sm font-bold text-white">Зарплата исполнителей</h1>
-          </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-4">
+          <a href="/crm" className="text-gray-400 hover:text-gray-600 transition-colors text-sm">
+            ← Заказы
+          </a>
+          <h1 className="text-lg font-bold text-gray-900">Зарплата исполнителей</h1>
+        </div>
+        <div className="flex items-center gap-4 text-sm">
+          <a href="/crm/reports" className="text-blue-600 hover:underline">Финансовый отчёт</a>
+          <a href="/crm/users" className="text-gray-500 hover:text-gray-700">Пользователи</a>
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-4">
-        {isLoading ? (
-          <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500" />
-          </div>
-        ) : !data ? (
-          <div className="text-center py-20 text-gray-400">Не удалось загрузить данные</div>
-        ) : (
-          <>
-            {/* Summary bar */}
-            {totalDebt > 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex items-center gap-4">
-                <HandCoins size={20} className="text-amber-600 shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold text-amber-900">
-                    Общий долг: <span className="font-bold">{fmt(totalDebt)}</span>
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left panel */}
+        <aside className="w-72 shrink-0 bg-white border-r border-gray-200 overflow-y-auto p-3">
+          {executors.length === 0 ? (
+            <p className="text-gray-400 text-sm p-4">Исполнителей нет</p>
+          ) : (
+            <>
+              {withDebt.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 mb-1.5">
+                    Есть долг
                   </p>
-                  <p className="text-xs text-amber-700">
-                    {executorsWithDebt} {executorsWithDebt === 1 ? 'исполнитель' : 'исполнителей'} ожидают выплаты
-                  </p>
+                  <div className="space-y-0.5">
+                    {withDebt.map((ex) => (
+                      <ExecutorListItem
+                        key={ex.id}
+                        ex={ex}
+                        active={ex.id === selectedId}
+                        onClick={() => setSelectedId(ex.id)}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+              {settled.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 mb-1.5">
+                    Долг погашен
+                  </p>
+                  <div className="space-y-0.5">
+                    {settled.map((ex) => (
+                      <ExecutorListItem
+                        key={ex.id}
+                        ex={ex}
+                        active={ex.id === selectedId}
+                        onClick={() => setSelectedId(ex.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </aside>
 
-            {data.length === 0 ? (
-              <p className="text-center py-16 text-gray-400">Нет исполнителей</p>
-            ) : (
-              data.map((ex) => <ExecutorCard key={ex.id} ex={ex} />)
-            )}
-          </>
-        )}
+        {/* Right panel */}
+        <main className="flex-1 overflow-hidden p-6">
+          {selected ? (
+            <ExecutorDetail
+              key={selected.id}
+              executor={selected}
+              onPaymentDone={() => void refetch()}
+            />
+          ) : (
+            <div className="h-full flex items-center justify-center text-gray-400">
+              <div className="text-center">
+                <div className="text-4xl mb-3">💼</div>
+                <p className="text-lg font-medium">Выберите исполнителя</p>
+                <p className="text-sm mt-1">для просмотра начислений и выплаты</p>
+              </div>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );
