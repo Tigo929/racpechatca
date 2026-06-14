@@ -1,7 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import type { Prisma } from 'src/generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { calculateSalarySnapshot } from 'src/salary/salary-calculation';
 
 type FinancialClient = PrismaService | Prisma.TransactionClient;
 
@@ -50,17 +49,18 @@ export class OrderFinancialIntegrityService {
     });
     if (!accrual) return;
 
-    const snapshot = calculateSalarySnapshot(
-      totalOrder,
-      deliveryCost,
-      accrual.rateBasisPoints,
+    // Считаем «неломающимся» способом: база не уходит в минус, ошибок не бросаем —
+    // пересчёт не должен блокировать редактирование заказа.
+    const salaryBase = Math.max(0, totalOrder - deliveryCost);
+    const salaryAmount = Math.round(
+      (salaryBase * accrual.rateBasisPoints) / 10_000,
     );
     await client.salaryAccrual.update({
       where: { id: accrual.id },
       data: {
-        salaryBase: snapshot.salaryBase,
-        salaryAmount: snapshot.salaryAmount,
-        status: snapshot.status,
+        salaryBase,
+        salaryAmount,
+        status: salaryAmount === 0 ? 'SETTLED' : 'PENDING',
       },
     });
   }
