@@ -161,8 +161,10 @@ export class OrderPhotoService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const where: Prisma.OrderPhotoWhereInput = {
+      // «Все» = только активные заказы. Закрытые/особые состояния (SENT, PAID, LEAD)
+      // прячем — у каждого есть своя вкладка-фильтр.
       status: query.status ?? {
-        notIn: [EnumStatus.SENT, EnumStatus.LEAD],
+        notIn: [EnumStatus.SENT, EnumStatus.PAID, EnumStatus.LEAD],
       },
       sourceOrder: query.sourceOrder,
       productCategory: query.productCategory,
