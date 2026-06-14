@@ -1,35 +1,27 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { reportsApi, expensesApi } from '../api/orders';
-import type { MonthData, ExpenseOrder, CreateExpenseDto } from '../types';
+import { reportsApi } from '../api/reports';
+import { expensesApi } from '../api/expenses';
+import type { MonthData, ExpenseOrder, CreateExpenseDto } from '../types/index';
 import { getErrorMessage } from '../utils/get-error-message';
-
-const fmt = (n: number) =>
-  n.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 });
-
-const fmtDate = (s: string) =>
-  new Date(s).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' });
+import { formatCurrency as fmt, formatDate as fmtDate } from '../utils/format';
 
 const CATEGORY_LABEL: Record<string, string> = { PHOTO: 'Фото', TSHIRT: 'Футболки' };
 
-// ── Month table row ───────────────────────────────────────────────────────────
+// ── Month table cell ──────────────────────────────────────────────────────────
 
-function MonthRow({ m, isTotal }: { m: MonthData & { label?: string }; isTotal?: boolean }) {
-  const base = isTotal
-    ? 'bg-gray-50 font-bold border-t-2 border-gray-300 text-sm'
-    : 'border-b border-gray-100 hover:bg-gray-50 text-sm';
-
-  const Cell = ({
-    value,
-    dim,
-    highlight,
-    neg,
-  }: {
-    value: string;
-    dim?: boolean;
-    highlight?: boolean;
-    neg?: boolean;
-  }) => (
+function Cell({
+  value,
+  dim,
+  highlight,
+  neg,
+}: {
+  value: string;
+  dim?: boolean;
+  highlight?: boolean;
+  neg?: boolean;
+}) {
+  return (
     <td
       className={`py-2.5 px-3 text-right tabular-nums ${
         dim ? 'text-gray-400' : ''
@@ -38,6 +30,14 @@ function MonthRow({ m, isTotal }: { m: MonthData & { label?: string }; isTotal?:
       {value}
     </td>
   );
+}
+
+// ── Month table row ───────────────────────────────────────────────────────────
+
+function MonthRow({ m, isTotal }: { m: MonthData & { label?: string }; isTotal?: boolean }) {
+  const base = isTotal
+    ? 'bg-gray-50 font-bold border-t-2 border-gray-300 text-sm'
+    : 'border-b border-gray-100 hover:bg-gray-50 text-sm';
 
   const totalExpenses = m.expensePhoto + m.expenseTshirt;
 
@@ -198,7 +198,11 @@ function ExpenseList({ year }: { year: number }) {
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-400">{fmtDate(exp.createdAt)}</span>
             <button
-              onClick={() => deleteMutation.mutate(exp.id)}
+              onClick={() => {
+                if (window.confirm(`Удалить расходный ордер на ${fmt(exp.amount)}?`)) {
+                  deleteMutation.mutate(exp.id);
+                }
+              }}
               disabled={deleteMutation.isPending}
               className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition-opacity disabled:opacity-30"
             >

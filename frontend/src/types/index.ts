@@ -1,7 +1,14 @@
 export type EnumProductCategory = 'PHOTO' | 'TSHIRT';
 
 export type EnumTshirtSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
-export type EnumPrintLocation = 'FRONT' | 'BACK' | 'FRONT_BACK' | 'BY_TZ';
+export type EnumPrintLocation =
+  | 'FRONT'
+  | 'BACK'
+  | 'FRONT_BACK'
+  | 'SLEEVE_LEFT'
+  | 'SLEEVE_RIGHT'
+  | 'FULL'
+  | 'BY_TZ';
 
 export type EnumStatus =
   | 'LEAD'
@@ -206,43 +213,14 @@ export interface OrdersQuery {
   productCategory?: EnumProductCategory;
 }
 
-// ── Legacy salary types (старая страница зарплаты) ───────────────────────────
-
-export interface SalaryOrder {
-  id: string;
-  numberOrder: string;
-  createdAt: string;
-  updatedAt: string;
-  status: EnumStatus;
-  totalOrder: number;
-  deliveryCost: number;
-  cleanTotal: number;
-  employeeShare: number;
-  ownerShare: number;
-}
-
-export interface SalarySummary {
-  ratePercent: number;
-  toPay: SalaryOrder[];
-  paid: SalaryOrder[];
-  summary: {
-    toPayCount: number;
-    toPayClean: number;
-    toPayEmployee: number;
-    toPayOwner: number;
-    paidCount: number;
-    paidClean: number;
-    paidEmployee: number;
-    paidOwner: number;
-  };
-}
-
-// ── New salary types ──────────────────────────────────────────────────────────
+// ── Salary types ──────────────────────────────────────────────────────────────
 
 export interface AccrualBrief {
   id: string;
   orderNumber: string;
   completedAt: string | null;
+  urlCommunication?: string | null;
+  communicationPlatform?: EnumCommunication | null;
   salaryBase: number;
   rateBasisPoints: number;
   salaryAmount: number;

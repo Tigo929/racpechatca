@@ -25,9 +25,12 @@ interface PrismaStub {
   user: { findUnique: AsyncMock };
   salaryAccrual: {
     findFirst: AsyncMock;
+    findMany: AsyncMock;
     create: AsyncMock;
     count: AsyncMock;
+    deleteMany: AsyncMock;
   };
+  paymentAccrualLink: { deleteMany: AsyncMock };
   statusHistory: { create: AsyncMock };
   orderAssignment: { create: AsyncMock };
 }
@@ -50,9 +53,12 @@ function createPrismaStub(): PrismaStub {
     user: { findUnique: asyncMock() },
     salaryAccrual: {
       findFirst: asyncMock(),
+      findMany: asyncMock(),
       create: asyncMock(),
       count: asyncMock(),
+      deleteMany: asyncMock(),
     },
+    paymentAccrualLink: { deleteMany: asyncMock() },
     statusHistory: { create: asyncMock() },
     orderAssignment: { create: asyncMock() },
   };
@@ -263,14 +269,34 @@ describe('salary accrual integrity', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
-  it('blocks hard delete when any accrual history exists with 409', async () => {
+  it('cascade-deletes accruals and their payment links when deleting an order', async () => {
     const stub = createPrismaStub();
     stub.orderPhoto.findUnique.mockResolvedValue(makeOrder());
-    stub.salaryAccrual.count.mockResolvedValue(1);
+    stub.salaryAccrual.findMany.mockResolvedValue([
+      { id: 'accrual-1' },
+      { id: 'accrual-2' },
+    ]);
+    stub.paymentAccrualLink.deleteMany.mockResolvedValue({ count: 2 });
+    stub.salaryAccrual.deleteMany.mockResolvedValue({ count: 2 });
+    stub.orderPhoto.delete.mockResolvedValue({
+      ...makeOrder(),
+      items: [],
+      tshirtItems: [],
+    });
     const service = createOrderService(stub);
 
-    await expect(service.deleteOrder('order-1')).rejects.toBeInstanceOf(
-      ConflictException,
+    const result = await service.deleteOrder('order-1');
+
+    // Платёжные связи удаляются раньше начислений (FK-целостность)
+    expect(stub.paymentAccrualLink.deleteMany).toHaveBeenCalledWith({
+      where: { accrualId: { in: ['accrual-1', 'accrual-2'] } },
+    });
+    expect(stub.salaryAccrual.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['accrual-1', 'accrual-2'] } },
+    });
+    expect(stub.orderPhoto.delete).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(
+      expect.objectContaining({ message: 'Заказ удалён успешно' }),
     );
   });
 });

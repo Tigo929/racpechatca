@@ -4,11 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EnumRole } from 'src/generated/prisma/enums';
+import type { Prisma } from 'src/generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import calculatorTotalPrice from 'src/utils/caculator-total-price';
 import DtoUpdateItemOrder from './dto/update-item.dto';
 import DtoCreateItemOrder from './dto/create-item-order.dto';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
+import { calcItemPricePosition, calcOrderTotal } from './order-pricing';
 
 @Injectable()
 export class OrderItemService {
@@ -40,79 +41,80 @@ export class OrderItemService {
 
   async updateItemOrder(idItem: string, dto: DtoUpdateItemOrder) {
     const item = await this.getItemById(idItem);
-    await this.financialIntegrity.assertOrderFinanciallyEditable(item.orderId);
-    await this.prisma.itemPhoto.update({
-      where: { id: idItem },
-      data: {
-        formatPaper: dto.formatPaper ?? item.formatPaper,
-        typePaper: dto.typePaper ?? item.typePaper,
-        quantity: dto.quantity ?? item.quantity,
-        price: dto.price ?? item.price,
-        pricePosition:
-          (dto.price ?? item.price) * (dto.quantity ?? item.quantity),
-      },
-    });
-    const order = await this.prisma.orderPhoto.findUnique({
-      where: { id: item.orderId },
-      include: { items: true },
-    });
-    if (!order) throw new NotFoundException('Заказ не найден');
-    return this.prisma.orderPhoto.update({
-      where: { id: item.orderId },
-      include: { items: true, tshirtItems: true },
-      data: {
-        totalOrder: calculatorTotalPrice(order.items, order.deliveryCost),
-      },
+
+    return this.prisma.$transaction(async (tx) => {
+      await this.financialIntegrity.assertOrderFinanciallyEditable(
+        item.orderId,
+        tx,
+      );
+
+      const quantity = dto.quantity ?? item.quantity;
+      const price = dto.price ?? item.price;
+
+      await tx.itemPhoto.update({
+        where: { id: idItem },
+        data: {
+          formatPaper: dto.formatPaper ?? item.formatPaper,
+          typePaper: dto.typePaper ?? item.typePaper,
+          quantity,
+          price,
+          pricePosition: calcItemPricePosition(price, quantity),
+        },
+      });
+
+      return this.recalcAndReturn(tx, item.orderId);
     });
   }
 
   async deleteItemOrder(idItem: string) {
     const item = await this.getItemById(idItem);
-    await this.financialIntegrity.assertOrderFinanciallyEditable(item.orderId);
-    await this.prisma.itemPhoto.delete({ where: { id: idItem } });
-    const order = await this.prisma.orderPhoto.findUnique({
-      where: { id: item.orderId },
-      include: { items: true, tshirtItems: true },
-    });
-    if (!order) throw new NotFoundException('Заказ не найден');
-    return this.prisma.orderPhoto.update({
-      where: { id: item.orderId },
-      include: { items: true, tshirtItems: true },
-      data: {
-        totalOrder: calculatorTotalPrice(order.items, order.deliveryCost),
-      },
+
+    return this.prisma.$transaction(async (tx) => {
+      await this.financialIntegrity.assertOrderFinanciallyEditable(
+        item.orderId,
+        tx,
+      );
+      await tx.itemPhoto.delete({ where: { id: idItem } });
+      return this.recalcAndReturn(tx, item.orderId);
     });
   }
 
   async addItemToOrder(idOrder: string, dto: DtoCreateItemOrder) {
-    const orderExists = await this.prisma.orderPhoto.findUnique({
-      where: { id: idOrder },
-      select: { id: true },
-    });
-    if (!orderExists) throw new NotFoundException('Заказ не найден');
+    return this.prisma.$transaction(async (tx) => {
+      const orderExists = await tx.orderPhoto.findUnique({
+        where: { id: idOrder },
+        select: { id: true },
+      });
+      if (!orderExists) throw new NotFoundException('Заказ не найден');
 
-    await this.financialIntegrity.assertOrderFinanciallyEditable(idOrder);
-    await this.prisma.itemPhoto.create({
-      data: {
-        formatPaper: dto.formatPaper,
-        typePaper: dto.typePaper,
-        quantity: dto.quantity,
-        price: dto.price,
-        pricePosition: dto.quantity * dto.price,
-        orderId: idOrder,
-      },
+      await this.financialIntegrity.assertOrderFinanciallyEditable(idOrder, tx);
+
+      await tx.itemPhoto.create({
+        data: {
+          formatPaper: dto.formatPaper,
+          typePaper: dto.typePaper,
+          quantity: dto.quantity,
+          price: dto.price,
+          pricePosition: calcItemPricePosition(dto.price, dto.quantity),
+          orderId: idOrder,
+        },
+      });
+
+      return this.recalcAndReturn(tx, idOrder);
     });
-    const order = await this.prisma.orderPhoto.findUnique({
-      where: { id: idOrder },
+  }
+
+  /** Пересчитывает totalOrder заказа и возвращает его с позициями. */
+  private async recalcAndReturn(tx: Prisma.TransactionClient, orderId: string) {
+    const order = await tx.orderPhoto.findUnique({
+      where: { id: orderId },
       include: { items: true, tshirtItems: true },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
-    return this.prisma.orderPhoto.update({
-      where: { id: idOrder },
+    return tx.orderPhoto.update({
+      where: { id: orderId },
       include: { items: true, tshirtItems: true },
-      data: {
-        totalOrder: calculatorTotalPrice(order.items, order.deliveryCost),
-      },
+      data: { totalOrder: calcOrderTotal(order.items, order.deliveryCost) },
     });
   }
 }

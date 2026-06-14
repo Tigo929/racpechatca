@@ -4,15 +4,15 @@ import { Plus, Search, ChevronLeft, ChevronRight, Printer, RefreshCw, LogOut, Us
 import { getDeadlineInfo } from '../utils/deadline';
 import { Link } from 'react-router-dom';
 import { ordersApi } from '../api/orders';
-import { StatusBadge } from '../components/StatusBadge';
-import { Modal } from '../components/Modal';
-import { CreateOrderForm } from '../components/CreateOrderForm';
-import { OrderDetail } from '../components/OrderDetail';
-import { FilterChip } from '../components/FilterChip';
-import { DeliveryBadge } from '../components/DeliveryBadge';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import { Modal } from '../components/ui/Modal';
+import { CreateOrderForm } from '../components/orders/CreateOrderForm';
+import { OrderDetail } from '../components/orders/OrderDetail';
+import { FilterChip } from '../components/ui/FilterChip';
+import { DeliveryBadge } from '../components/ui/DeliveryBadge';
 import { STATUS_FLOW, STATUS_LABELS } from '../constants';
 import { useAuth } from '../context/useAuth';
-import type { EnumStatus, EnumProductCategory, OrdersQuery } from '../types';
+import type { EnumStatus, EnumProductCategory, OrdersQuery } from '../types/index';
 
 const PAGE_SIZE = 10;
 

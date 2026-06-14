@@ -1,4 +1,3 @@
-import axios from 'axios';
 import type {
   OrdersResponse,
   OrderPhoto,
@@ -11,37 +10,8 @@ import type {
   ItemTshirt,
   CreateTshirtItemDto,
   UpdateTshirtItemDto,
-  SalarySummary,
-  ExecutorSalaryData,
-  CreatePaymentDto,
-  CreatePaymentByAccrualsDto,
-  PaymentByAccrualsResult,
-  RecentPayment,
-  MonthlyReport,
-  ExpenseOrder,
-  CreateExpenseDto,
-} from '../types';
-
-const api = axios.create({
-  baseURL: '',
-});
-
-api.interceptors.request.use((cfg) => {
-  const token = localStorage.getItem('access_token');
-  if (token) cfg.headers.Authorization = `Bearer ${token}`;
-  return cfg;
-});
-
-api.interceptors.response.use(
-  (r) => r,
-  (err) => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem('access_token');
-      window.location.href = '/crm/login';
-    }
-    return Promise.reject(err);
-  },
-);
+} from '../types/index';
+import { api } from './client';
 
 export const ordersApi = {
   getAll: async (query: OrdersQuery = {}): Promise<OrdersResponse> => {
@@ -62,19 +32,13 @@ export const ordersApi = {
 
   assignExecutor: async (
     orderId: string,
-    executorId: string,
+    executorId: string | null,
     note?: string,
   ): Promise<OrderPhoto> => {
     const { data } = await api.patch<OrderPhoto>(`/order-photo/${orderId}/assign`, {
-      executorId,
+      executorId: executorId || null,
       note,
     });
-    return data;
-  },
-
-  // Legacy salary endpoint (backward compat)
-  getSalary: async (): Promise<SalarySummary> => {
-    const { data } = await api.get<SalarySummary>('/order-photo/salary/summary');
     return data;
   },
 
@@ -130,67 +94,5 @@ export const ordersApi = {
   deleteTshirtItem: async (itemId: string): Promise<OrderPhoto> => {
     const { data } = await api.delete<OrderPhoto>(`/order-photo/tshirt-items/${itemId}`);
     return data;
-  },
-};
-
-export const salaryApi = {
-  getSummary: async (): Promise<ExecutorSalaryData[]> => {
-    const { data } = await api.get<ExecutorSalaryData[]>('/salary/summary');
-    return data;
-  },
-
-  getAccruals: async (executorId: string) => {
-    const { data } = await api.get(`/salary/accruals/${executorId}`);
-    return data;
-  },
-
-  getPayments: async (executorId: string): Promise<RecentPayment[]> => {
-    const { data } = await api.get<RecentPayment[]>(`/salary/payments/${executorId}`);
-    return data;
-  },
-
-  createPayment: async (dto: CreatePaymentDto): Promise<RecentPayment> => {
-    const { data } = await api.post<RecentPayment>('/salary/payments', dto);
-    return data;
-  },
-
-  createPaymentByAccruals: async (
-    dto: CreatePaymentByAccrualsDto,
-  ): Promise<PaymentByAccrualsResult> => {
-    const { data } = await api.post<PaymentByAccrualsResult>(
-      '/salary/payments/by-accruals',
-      dto,
-    );
-    return data;
-  },
-};
-
-export const reportsApi = {
-  getMonthly: async (year: number): Promise<MonthlyReport> => {
-    const { data } = await api.get<MonthlyReport>(`/reports/monthly?year=${year}`);
-    return data;
-  },
-
-  getYears: async (): Promise<number[]> => {
-    const { data } = await api.get<number[]>('/reports/years');
-    return data;
-  },
-};
-
-export const expensesApi = {
-  getAll: async (year?: number): Promise<ExpenseOrder[]> => {
-    const { data } = await api.get<ExpenseOrder[]>(
-      year ? `/expenses?year=${year}` : '/expenses',
-    );
-    return data;
-  },
-
-  create: async (dto: CreateExpenseDto): Promise<ExpenseOrder> => {
-    const { data } = await api.post<ExpenseOrder>('/expenses', dto);
-    return data;
-  },
-
-  remove: async (id: string): Promise<void> => {
-    await api.delete(`/expenses/${id}`);
   },
 };

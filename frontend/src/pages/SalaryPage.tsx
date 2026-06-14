@@ -1,81 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { salaryApi } from '../api/orders';
-import type { ExecutorSalaryData, AccrualBrief, PaymentByAccrualsResult } from '../types';
+import { salaryApi } from '../api/salary';
+import type { ExecutorSalaryData, AccrualBrief, PaymentByAccrualsResult } from '../types/index';
 import { getErrorMessage } from '../utils/get-error-message';
-
-const fmt = (n: number) =>
-  n.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 });
-
-const fmtDate = (s: string | null | undefined) =>
-  s
-    ? new Date(s).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })
-    : '—';
-
-// ── PDF receipt ───────────────────────────────────────────────────────────────
-
-function printPaymentReceipt(
-  executor: ExecutorSalaryData,
-  result: PaymentByAccrualsResult,
-) {
-  const rows = result.accruals
-    .map(
-      (a) => `<tr>
-        <td>${a.orderNumber}</td>
-        <td>${fmtDate(a.orderDate)}</td>
-        <td>${fmt(a.totalOrder)}</td>
-        <td>${fmt(a.deliveryCost)}</td>
-        <td>${fmt(a.salaryBase)}</td>
-        <td>${(a.rateBasisPoints / 100).toFixed(0)}%</td>
-        <td><strong>${fmt(a.salaryAmount)}</strong></td>
-      </tr>`,
-    )
-    .join('');
-
-  const html = `<!DOCTYPE html>
-<html lang="ru"><head><meta charset="UTF-8"/>
-<title>Расчётный листок — ${executor.username}</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#111;padding:40px}
-h1{font-size:22px;margin-bottom:4px}
-.sub{color:#666;margin-bottom:28px;font-size:12px}
-.meta{display:flex;gap:40px;margin-bottom:28px;padding:16px;background:#f8f8f8;border-radius:8px}
-.meta-item label{font-size:11px;color:#888;display:block;margin-bottom:2px}
-.meta-item span{font-weight:700;font-size:15px}
-table{width:100%;border-collapse:collapse;margin-bottom:28px}
-th{background:#f0f0f0;text-align:left;padding:9px 12px;font-size:11px;color:#666;border-bottom:2px solid #ddd;text-transform:uppercase;letter-spacing:.5px}
-td{padding:9px 12px;border-bottom:1px solid #eee}
-.total td{background:#f8f8f8;font-weight:700;font-size:14px;border-top:2px solid #ccc;border-bottom:none}
-.footer{margin-top:48px;display:flex;justify-content:space-between}
-.sig{border-top:1px solid #bbb;padding-top:6px;width:220px;text-align:center;font-size:12px;color:#666}
-@media print{body{padding:20px}}
-</style></head>
-<body>
-<h1>Расчётный листок</h1>
-<p class="sub">Дата формирования: ${fmtDate(result.paidAt)}</p>
-<div class="meta">
-  <div class="meta-item"><label>Исполнитель</label><span>${executor.username}</span></div>
-  <div class="meta-item"><label>Ставка</label><span>${executor.ratePercent ?? '—'}%</span></div>
-  <div class="meta-item"><label>Дата выплаты</label><span>${fmtDate(result.paidAt)}</span></div>
-  <div class="meta-item"><label>Кол-во заказов</label><span>${result.accruals.length}</span></div>
-</div>
-<table>
-<thead><tr><th>№ заказа</th><th>Дата</th><th>Выручка</th><th>Доставка</th><th>База</th><th>%</th><th>ЗП</th></tr></thead>
-<tbody>
-${rows}
-<tr class="total"><td colspan="6">Итого выплачено</td><td>${fmt(result.totalAmount)}</td></tr>
-</tbody></table>
-<div class="footer">
-  <div class="sig">Выплатил: _______________</div>
-  <div class="sig">Получил: _______________</div>
-</div>
-<script>window.onload=()=>window.print()</script>
-</body></html>`;
-
-  const w = window.open('', '_blank', 'width=960,height=720');
-  if (w) { w.document.write(html); w.document.close(); }
-}
+import { formatCurrency as fmt, formatDate as fmtDate } from '../utils/format';
+import { printReceipt } from '../features/salary/receipt';
 
 // ── Executor list item ────────────────────────────────────────────────────────
 
@@ -134,7 +63,24 @@ function AccrualRow({
           />
         )}
       </td>
-      <td className="py-2.5 px-3 font-mono text-sm font-medium">{accrual.orderNumber}</td>
+      <td className="py-2.5 px-3 font-mono text-sm font-medium">
+        <div className="flex items-center gap-1.5">
+          <span>{accrual.orderNumber}</span>
+          {accrual.urlCommunication && (
+            <a
+              href={accrual.urlCommunication}
+              target="_blank"
+              rel="noreferrer"
+              title={accrual.communicationPlatform ?? 'Ссылка на общение'}
+              className="text-blue-400 hover:text-blue-600 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+          )}
+        </div>
+      </td>
       <td className="py-2.5 px-3 text-sm text-gray-500">{fmtDate(accrual.completedAt)}</td>
       <td className="py-2.5 px-3 text-right tabular-nums">{fmt(accrual.salaryBase)}</td>
       <td className="py-2.5 px-3 text-right text-gray-400 text-xs">
@@ -187,7 +133,8 @@ function ExecutorDetail({
   const toggle = (id: string, v: boolean) =>
     setSelected((prev) => {
       const next = new Set(prev);
-      v ? next.add(id) : next.delete(id);
+      if (v) next.add(id);
+      else next.delete(id);
       return next;
     });
 
@@ -276,10 +223,10 @@ function ExecutorDetail({
                 ✓ Выплачено {fmt(paidResult.totalAmount)} — {paidResult.accruals.length} заказ(а)
               </span>
               <button
-                onClick={() => printPaymentReceipt(executor, paidResult)}
+                onClick={() => printReceipt(executor, paidResult)}
                 className="text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors font-medium"
               >
-                Скачать PDF
+                Печать / PDF
               </button>
             </div>
           )}
@@ -371,8 +318,10 @@ export default function SalaryPage() {
     );
   }
 
-  const withDebt = executors.filter((e) => e.totalDebt > 0);
-  const settled = executors.filter((e) => e.totalDebt === 0);
+  const active = executors.filter((e) => e.isActive);
+  const withDebt = active.filter((e) => e.totalDebt > 0);
+  const settled = active.filter((e) => e.totalDebt === 0);
+  const inactive = executors.filter((e) => !e.isActive && e.totalDebt > 0);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -420,6 +369,23 @@ export default function SalaryPage() {
                   </p>
                   <div className="space-y-0.5">
                     {settled.map((ex) => (
+                      <ExecutorListItem
+                        key={ex.id}
+                        ex={ex}
+                        active={ex.id === selectedId}
+                        onClick={() => setSelectedId(ex.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {inactive.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-red-300 uppercase tracking-wider px-2 mb-1.5">
+                    Деактивированы (долг)
+                  </p>
+                  <div className="space-y-0.5">
+                    {inactive.map((ex) => (
                       <ExecutorListItem
                         key={ex.id}
                         ex={ex}

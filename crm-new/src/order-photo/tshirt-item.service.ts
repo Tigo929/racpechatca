@@ -4,10 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EnumRole } from 'src/generated/prisma/enums';
+import type { Prisma } from 'src/generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DtoCreateTshirtItem } from './dto/create-tshirt-item.dto';
 import { DtoUpdateTshirtItem } from './dto/update-tshirt-item.dto';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
+import { calcItemPricePosition, calcOrderTotal } from './order-pricing';
 
 @Injectable()
 export class TshirtItemService {
@@ -16,95 +18,75 @@ export class TshirtItemService {
     private readonly financialIntegrity: OrderFinancialIntegrityService,
   ) {}
 
-  private async recalcTotal(orderId: string, tx = this.prisma) {
-    const order = await tx.orderPhoto.findUnique({
-      where: { id: orderId },
-      include: { tshirtItems: true },
-    });
-    if (!order) return;
-    const total =
-      order.tshirtItems.reduce((s, i) => s + i.pricePosition, 0) +
-      order.deliveryCost;
-    await tx.orderPhoto.update({
-      where: { id: orderId },
-      data: { totalOrder: total },
-    });
-  }
-
   async addTshirtItem(orderId: string, dto: DtoCreateTshirtItem) {
-    const order = await this.prisma.orderPhoto.findUnique({
-      where: { id: orderId },
-    });
-    if (!order) throw new NotFoundException('Заказ не найден');
-    await this.financialIntegrity.assertOrderFinanciallyEditable(orderId);
+    return this.prisma.$transaction(async (tx) => {
+      const order = await tx.orderPhoto.findUnique({ where: { id: orderId } });
+      if (!order) throw new NotFoundException('Заказ не найден');
+      await this.financialIntegrity.assertOrderFinanciallyEditable(orderId, tx);
 
-    const designCost = dto.designCost ?? 0;
-    await this.prisma.itemTshirt.create({
-      data: {
-        orderId,
-        color: dto.color,
-        size: dto.size,
-        printLocation: dto.printLocation,
-        quantity: dto.quantity,
-        price: dto.price,
-        pricePosition: dto.price * dto.quantity + designCost,
-        designCost,
-        designUrl: dto.designUrl,
-        designNote: dto.designNote,
-      },
-    });
+      const designCost = dto.designCost ?? 0;
+      await tx.itemTshirt.create({
+        data: {
+          orderId,
+          color: dto.color,
+          size: dto.size,
+          printLocation: dto.printLocation,
+          quantity: dto.quantity,
+          price: dto.price,
+          pricePosition: calcItemPricePosition(
+            dto.price,
+            dto.quantity,
+            designCost,
+          ),
+          designCost,
+          designUrl: dto.designUrl,
+          designNote: dto.designNote,
+        },
+      });
 
-    await this.recalcTotal(orderId);
-
-    return this.prisma.orderPhoto.findUnique({
-      where: { id: orderId },
-      include: { items: true, tshirtItems: true },
+      return this.recalcAndReturn(tx, orderId);
     });
   }
 
   async updateTshirtItem(itemId: string, dto: DtoUpdateTshirtItem) {
-    const item = await this.prisma.itemTshirt.findUnique({
-      where: { id: itemId },
-    });
-    if (!item) throw new NotFoundException('Позиция не найдена');
-    await this.financialIntegrity.assertOrderFinanciallyEditable(item.orderId);
+    return this.prisma.$transaction(async (tx) => {
+      const item = await tx.itemTshirt.findUnique({ where: { id: itemId } });
+      if (!item) throw new NotFoundException('Позиция не найдена');
+      await this.financialIntegrity.assertOrderFinanciallyEditable(
+        item.orderId,
+        tx,
+      );
 
-    const quantity = dto.quantity ?? item.quantity;
-    const price = dto.price ?? item.price;
-    const designCost = dto.designCost ?? item.designCost;
+      const quantity = dto.quantity ?? item.quantity;
+      const price = dto.price ?? item.price;
+      const designCost = dto.designCost ?? item.designCost;
 
-    await this.prisma.itemTshirt.update({
-      where: { id: itemId },
-      data: {
-        ...dto,
-        quantity,
-        price,
-        designCost,
-        pricePosition: price * quantity + designCost,
-      },
-    });
+      await tx.itemTshirt.update({
+        where: { id: itemId },
+        data: {
+          ...dto,
+          quantity,
+          price,
+          designCost,
+          pricePosition: calcItemPricePosition(price, quantity, designCost),
+        },
+      });
 
-    await this.recalcTotal(item.orderId);
-
-    return this.prisma.orderPhoto.findUnique({
-      where: { id: item.orderId },
-      include: { items: true, tshirtItems: true },
+      return this.recalcAndReturn(tx, item.orderId);
     });
   }
 
   async deleteTshirtItem(itemId: string) {
-    const item = await this.prisma.itemTshirt.findUnique({
-      where: { id: itemId },
-    });
-    if (!item) throw new NotFoundException('Позиция не найдена');
-    await this.financialIntegrity.assertOrderFinanciallyEditable(item.orderId);
+    return this.prisma.$transaction(async (tx) => {
+      const item = await tx.itemTshirt.findUnique({ where: { id: itemId } });
+      if (!item) throw new NotFoundException('Позиция не найдена');
+      await this.financialIntegrity.assertOrderFinanciallyEditable(
+        item.orderId,
+        tx,
+      );
 
-    await this.prisma.itemTshirt.delete({ where: { id: itemId } });
-    await this.recalcTotal(item.orderId);
-
-    return this.prisma.orderPhoto.findUnique({
-      where: { id: item.orderId },
-      include: { items: true, tshirtItems: true },
+      await tx.itemTshirt.delete({ where: { id: itemId } });
+      return this.recalcAndReturn(tx, item.orderId);
     });
   }
 
@@ -127,5 +109,19 @@ export class TshirtItemService {
       }
     }
     return item;
+  }
+
+  /** Пересчитывает totalOrder заказа и возвращает его с позициями. */
+  private async recalcAndReturn(tx: Prisma.TransactionClient, orderId: string) {
+    const order = await tx.orderPhoto.findUnique({
+      where: { id: orderId },
+      include: { items: true, tshirtItems: true },
+    });
+    if (!order) throw new NotFoundException('Заказ не найден');
+    return tx.orderPhoto.update({
+      where: { id: orderId },
+      include: { items: true, tshirtItems: true },
+      data: { totalOrder: calcOrderTotal(order.tshirtItems, order.deliveryCost) },
+    });
   }
 }

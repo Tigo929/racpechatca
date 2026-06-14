@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Plus, Trash2, X, Check, ArrowLeft, Pencil, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { authApi } from '../api/auth';
+import { usersApi } from '../api/users';
 import { useAuth } from '../context/useAuth';
-import type { AppUser, EnumRole } from '../types';
+import type { AppUser, EnumRole } from '../types/index';
 import { getErrorMessage } from '../utils/get-error-message';
 
 const inputCls =
@@ -41,7 +41,7 @@ function RateEditor({ user, onClose }: RateEditorProps) {
 
   const mutation = useMutation({
     mutationFn: (rateBasisPoints: number) =>
-      authApi.updateUser(user.id, { rateBasisPoints }),
+      usersApi.update(user.id, { rateBasisPoints }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] });
       toast.success('Ставка обновлена');
@@ -91,11 +91,11 @@ export function UsersPage() {
 
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
-    queryFn: authApi.getUsers,
+    queryFn: usersApi.getAll,
   });
 
   const createMutation = useMutation({
-    mutationFn: () => authApi.createUser(form.username, form.password, form.role),
+    mutationFn: () => usersApi.create(form.username, form.password, form.role),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] });
       setAdding(false);
@@ -107,7 +107,7 @@ export function UsersPage() {
 
   const toggleActiveMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      authApi.updateUser(id, { isActive }),
+      usersApi.update(id, { isActive }),
     onSuccess: (_, { isActive }) => {
       qc.invalidateQueries({ queryKey: ['users'] });
       toast.success(isActive ? 'Пользователь активирован' : 'Пользователь деактивирован');
@@ -116,7 +116,7 @@ export function UsersPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: authApi.deleteUser,
+    mutationFn: usersApi.remove,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] });
       toast.success('Удалён');

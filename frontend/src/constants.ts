@@ -1,12 +1,11 @@
 import type {
   EnumStatus,
-  EnumSourceOrder,
   EnumCommunication,
   EnumDeliveryMethod,
   EnumTypePaper,
   EnumTshirtSize,
   EnumPrintLocation,
-} from './types';
+} from './types/index';
 
 export const STATUS_LABELS: Record<EnumStatus, string> = {
   LEAD: 'Обратился',
@@ -20,20 +19,6 @@ export const STATUS_LABELS: Record<EnumStatus, string> = {
   READY_FOR_REVIEW: 'На проверке',
   COMPLETED: 'Завершён',
   CANCELLED: 'Отменён',
-};
-
-export const STATUS_COLORS: Record<EnumStatus, string> = {
-  LEAD: 'bg-pink-100 text-pink-700',
-  NEW: 'bg-blue-100 text-blue-800',
-  FOLDER_STRUCTURE_CREATED: 'bg-purple-100 text-purple-800',
-  PRINTED: 'bg-yellow-100 text-yellow-800',
-  READY: 'bg-green-100 text-green-800',
-  DONE: 'bg-cyan-100 text-cyan-800',
-  SENT: 'bg-orange-100 text-orange-800',
-  PAID: 'bg-emerald-100 text-emerald-800',
-  READY_FOR_REVIEW: 'bg-violet-100 text-violet-800',
-  COMPLETED: 'bg-emerald-200 text-emerald-900',
-  CANCELLED: 'bg-red-100 text-red-700',
 };
 
 // Поток статусов для фотографий (без нового executor-flow)
@@ -72,20 +57,6 @@ export const TSHIRT_STATUS_LABELS: Record<EnumStatus, string> = {
   CANCELLED: 'Отменён',
 };
 
-export const SOURCE_LABELS: Record<EnumSourceOrder, string> = {
-  AVITO: 'Авито',
-  OZON: 'Ozon',
-  WB: 'Wildberries',
-  LOCAL: 'Местный',
-};
-
-export const SOURCE_COLORS: Record<EnumSourceOrder, string> = {
-  AVITO: 'bg-sky-100 text-sky-800',
-  OZON: 'bg-blue-100 text-blue-800',
-  WB: 'bg-violet-100 text-violet-800',
-  LOCAL: 'bg-gray-100 text-gray-800',
-};
-
 export const COMMUNICATION_LABELS: Record<EnumCommunication, string> = {
   AVITO: 'Авито',
   TELEGRAM: 'Telegram',
@@ -114,6 +85,9 @@ export const PRINT_LOCATION_LABELS: Record<EnumPrintLocation, string> = {
   FRONT: 'Грудь',
   BACK: 'Спина',
   FRONT_BACK: 'Двусторонняя',
+  SLEEVE_LEFT: 'Левый рукав',
+  SLEEVE_RIGHT: 'Правый рукав',
+  FULL: 'Полная запечатка',
   BY_TZ: 'По ТЗ',
 };
 

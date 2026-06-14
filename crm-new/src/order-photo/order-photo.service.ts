@@ -1,13 +1,12 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import DtoCreateOrder from './dto/create-order.dto';
-import calculatorTotalPrice from 'src/utils/caculator-total-price';
+import { calcOrderTotal } from './order-pricing';
 import fullDate from 'src/utils/full-date';
 import DtoAllOrdersforQuery from './dto/all-oreders-for-query.dto';
 import UpdateStatus from './dto/update-status.dto';
@@ -45,7 +44,6 @@ export class OrderPhotoService {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(1001)`;
 
       const now = new Date();
-      const datePrefix = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
       const monthPrefix = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
 
       const seqResult = await tx.$queryRaw<{ max: number }[]>`
@@ -56,8 +54,6 @@ export class OrderPhotoService {
       const lastSeq = Number(seqResult[0]?.max ?? 0);
       const lengthOrder = String(lastSeq + 1).padStart(3, '0');
 
-      void datePrefix;
-
       const isTshirt = dto.productCategory === 'TSHIRT';
       const itemsForTotal = isTshirt
         ? (dto.tshirtItems ?? [])
@@ -66,7 +62,7 @@ export class OrderPhotoService {
       return tx.orderPhoto.create({
         data: {
           numberOrder: fullDate(lengthOrder),
-          totalOrder: calculatorTotalPrice(itemsForTotal, dto.deliveryCost),
+          totalOrder: calcOrderTotal(itemsForTotal, dto.deliveryCost),
           deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
 
           ...(dto.status ? { status: dto.status } : {}),
@@ -170,6 +166,7 @@ export class OrderPhotoService {
       },
       sourceOrder: query.sourceOrder,
       productCategory: query.productCategory,
+      ...(currentUserRole === 'EXECUTOR' ? { executorId: currentUserId } : {}),
     };
 
     const [orders, count] = await this.prisma.$transaction([
@@ -240,34 +237,75 @@ export class OrderPhotoService {
       where: { id: orderId },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
-    await this.financialIntegrity.assertOrderFinanciallyEditable(orderId);
 
-    const executor = await this.prisma.user.findUnique({
-      where: { id: dto.executorId },
-    });
-    if (!executor) throw new NotFoundException('Исполнитель не найден');
-    if (!executor.isActive)
-      throw new BadRequestException('Исполнитель деактивирован');
+    const isUnassign = !dto.executorId;
+
+    let executor: { id: string; rateBasisPoints: number | null; isActive: boolean } | null = null;
+    if (!isUnassign) {
+      executor = await this.prisma.user.findUnique({
+        where: { id: dto.executorId! },
+      });
+      if (!executor) throw new NotFoundException('Исполнитель не найден');
+      if (!executor.isActive)
+        throw new BadRequestException('Исполнитель деактивирован');
+    }
 
     return this.prisma.$transaction(async (tx) => {
+      // Если заказ в SENT — управляем начислением
+      if (order.status === EnumStatus.SENT) {
+        const oldAccrual = await tx.salaryAccrual.findFirst({
+          where: { orderId, status: { in: ['PENDING', 'PARTIALLY_PAID'] } },
+        });
+
+        if (oldAccrual) {
+          if (oldAccrual.paidAmount === 0) {
+            await tx.salaryAccrual.delete({ where: { id: oldAccrual.id } });
+          } else {
+            await tx.salaryAccrual.update({
+              where: { id: oldAccrual.id },
+              data: { status: 'REVERSED' },
+            });
+          }
+        }
+
+        // Создаём начисление только при назначении (не при снятии)
+        if (!isUnassign && executor && executor.rateBasisPoints !== null) {
+          const snapshot = calculateSalarySnapshot(
+            order.totalOrder,
+            order.deliveryCost,
+            executor.rateBasisPoints,
+          );
+          await tx.salaryAccrual.create({
+            data: { orderId, executorId: dto.executorId!, ...snapshot },
+          });
+        }
+      }
+
       await tx.orderPhoto.update({
         where: { id: orderId },
-        data: { executorId: dto.executorId },
+        data: { executorId: isUnassign ? null : dto.executorId },
       });
-      await tx.orderAssignment.create({
-        data: {
-          orderId,
-          executorId: dto.executorId,
-          assignedBy: adminId,
-          note: dto.note,
-        },
-      });
+
+      if (!isUnassign) {
+        await tx.orderAssignment.create({
+          data: {
+            orderId,
+            executorId: dto.executorId!,
+            assignedBy: adminId,
+            note: dto.note,
+          },
+        });
+      }
+
       return tx.orderPhoto.findUnique({
         where: { id: orderId },
         include: {
           items: true,
           tshirtItems: true,
           executor: { select: { id: true, username: true } },
+          accruals: {
+            select: { id: true, status: true, salaryAmount: true, paidAmount: true, rateBasisPoints: true },
+          },
         },
       });
     });
@@ -445,7 +483,7 @@ export class OrderPhotoService {
           : order.urlCommunication,
         deliveryMethod: dto.deliveryMethod ?? order.deliveryMethod,
         deliveryCost: dto.deliveryCost ?? order.deliveryCost,
-        totalOrder: calculatorTotalPrice(
+        totalOrder: calcOrderTotal(
           order.productCategory === 'TSHIRT' ? order.tshirtItems : order.items,
           dto.deliveryCost ?? order.deliveryCost,
         ),
@@ -458,84 +496,25 @@ export class OrderPhotoService {
   async deleteOrder(idOrder: string) {
     await this.getOrderById(idOrder, '', EnumRole.ADMIN);
 
-    const accrualCount = await this.prisma.salaryAccrual.count({
-      where: { orderId: idOrder },
-    });
-    if (accrualCount > 0) {
-      throw new ConflictException(
-        'Нельзя удалить заказ с финансовой историей.\n' +
-          'Используйте отмену или архив.',
-      );
-    }
+    return this.prisma.$transaction(async (tx) => {
+      // Удаляем все начисления (любой статус) и их платёжные связи
+      const accruals = await tx.salaryAccrual.findMany({
+        where: { orderId: idOrder },
+        select: { id: true },
+      });
+      if (accruals.length > 0) {
+        const ids = accruals.map((a) => a.id);
+        await tx.paymentAccrualLink.deleteMany({ where: { accrualId: { in: ids } } });
+        await tx.salaryAccrual.deleteMany({ where: { id: { in: ids } } });
+      }
 
-    const deleted = await this.prisma.orderPhoto.delete({
-      where: { id: idOrder },
-      include: { items: true, tshirtItems: true },
-    });
+      const deleted = await tx.orderPhoto.delete({
+        where: { id: idOrder },
+        include: { items: true, tshirtItems: true },
+      });
 
-    return {
-      message: 'Заказ удалён успешно',
-      data: deleted,
-    };
+      return { message: 'Заказ удалён успешно', data: deleted };
+    });
   }
 
-  // ── Legacy salary summary (backward compat) ──────────────────────────────────
-
-  private static readonly EMPLOYEE_RATE = 0.3;
-
-  async getSalarySummary() {
-    const rate = OrderPhotoService.EMPLOYEE_RATE;
-
-    const orders = await this.prisma.orderPhoto.findMany({
-      where: {
-        productCategory: 'PHOTO',
-
-        status: { in: [EnumStatus.SENT, EnumStatus.PAID] },
-      },
-      orderBy: { updatedAt: 'desc' },
-      include: { items: true },
-    });
-
-    const mapOrder = (o: (typeof orders)[number]) => {
-      const cleanTotal = (o.totalOrder ?? 0) - (o.deliveryCost ?? 0);
-      const employeeShare = Math.round(cleanTotal * rate);
-      const ownerShare = cleanTotal - employeeShare;
-      return {
-        id: o.id,
-        numberOrder: o.numberOrder,
-        createdAt: o.createdAt,
-        updatedAt: o.updatedAt,
-        status: o.status,
-        totalOrder: o.totalOrder ?? 0,
-        deliveryCost: o.deliveryCost ?? 0,
-        cleanTotal,
-        employeeShare,
-        ownerShare,
-      };
-    };
-
-    const toPay = orders.filter((o) => o.status === 'SENT').map(mapOrder);
-    const paid = orders.filter((o) => o.status === 'PAID').map(mapOrder);
-
-    const sum = (
-      arr: ReturnType<typeof mapOrder>[],
-      key: 'cleanTotal' | 'employeeShare' | 'ownerShare',
-    ) => arr.reduce((acc, o) => acc + o[key], 0);
-
-    return {
-      ratePercent: Math.round(rate * 100),
-      toPay,
-      paid,
-      summary: {
-        toPayCount: toPay.length,
-        toPayClean: sum(toPay, 'cleanTotal'),
-        toPayEmployee: sum(toPay, 'employeeShare'),
-        toPayOwner: sum(toPay, 'ownerShare'),
-        paidCount: paid.length,
-        paidClean: sum(paid, 'cleanTotal'),
-        paidEmployee: sum(paid, 'employeeShare'),
-        paidOwner: sum(paid, 'ownerShare'),
-      },
-    };
-  }
 }

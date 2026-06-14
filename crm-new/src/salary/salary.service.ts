@@ -26,6 +26,8 @@ export class SalaryService {
                 completedAt: true,
                 totalOrder: true,
                 deliveryCost: true,
+                urlCommunication: true,
+                communicationPlatform: true,
               },
             },
           },
@@ -42,10 +44,15 @@ export class SalaryService {
 
     return executors.map((ex) => {
       const pending = ex.salaryAccruals.filter(
-        (a) => a.status === 'PENDING' || a.status === 'PARTIALLY_PAID',
+        (a) =>
+          (a.status === 'PENDING' || a.status === 'PARTIALLY_PAID') &&
+          a.paidAmount < a.salaryAmount,
       );
       const closed = ex.salaryAccruals.filter(
-        (a) => a.status === 'PAID' || a.status === 'SETTLED',
+        (a) =>
+          a.status === 'PAID' ||
+          a.status === 'SETTLED' ||
+          a.paidAmount >= a.salaryAmount,
       );
       const totalDebt = pending.reduce(
         (s, a) => s + a.salaryAmount - a.paidAmount,
@@ -68,6 +75,8 @@ export class SalaryService {
           id: a.id,
           orderNumber: a.order.numberOrder,
           completedAt: a.order.completedAt,
+          urlCommunication: a.order.urlCommunication,
+          communicationPlatform: a.order.communicationPlatform,
           salaryBase: a.salaryBase,
           rateBasisPoints: a.rateBasisPoints,
           salaryAmount: a.salaryAmount,
@@ -245,6 +254,8 @@ export class SalaryService {
               deliveryCost: true,
               createdAt: true,
               status: true,
+              urlCommunication: true,
+              communicationPlatform: true,
             },
           },
         },
@@ -284,22 +295,11 @@ export class SalaryService {
         await tx.paymentAccrualLink.create({
           data: { paymentId: payment.id, accrualId: accrual.id, amount },
         });
-
-        // Переводим заказ в статус PAID
-        if (accrual.order.status === 'SENT') {
-          await tx.orderPhoto.update({
-            where: { id: accrual.orderId },
-            data: { status: 'PAID' },
-          });
-          await tx.statusHistory.create({
-            data: {
-              orderId: accrual.orderId,
-              fromStatus: 'SENT',
-              toStatus: 'PAID',
-              changedBy: paidById,
-            },
-          });
-        }
+        // Переводим заказ в PAID
+        await tx.orderPhoto.update({
+          where: { id: accrual.orderId },
+          data: { status: 'PAID' },
+        });
       }
 
       return {

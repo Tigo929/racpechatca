@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { EnumRole } from 'src/generated/prisma/enums';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -14,6 +14,9 @@ export class ReportsController {
   @Get('monthly')
   getMonthly(@Query('year') year?: string) {
     const y = year ? parseInt(year, 10) : new Date().getFullYear();
+    if (isNaN(y) || y < 2000 || y > 2100) {
+      throw new BadRequestException('Некорректный год');
+    }
     return this.reportsService.getMonthlyReport(y);
   }
 
