@@ -23,6 +23,7 @@ model User {
   authorizedPayments SalaryPayment[]   @relation("SalaryPaymentAuthor")
   assignedOrders     OrderPhoto[]      @relation("OrderExecutor")
   rateHistory        UserRateHistory[]
+  expenseOrders      ExpenseOrder[]
 }
 
 enum EnumRole {
@@ -271,4 +272,17 @@ model UserRateHistory {
   oldRateBasisPoints Int?
   newRateBasisPoints Int
   changedBy          String
+}
+
+model ExpenseOrder {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  category EnumProductCategory
+  amount   Int
+  note     String?
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
 }

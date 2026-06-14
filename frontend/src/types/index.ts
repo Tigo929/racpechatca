@@ -323,10 +323,31 @@ export interface MonthData {
   netRevenue: number;
   photoCount: number;
   tshirtCount: number;
+  expensePhoto: number;
+  expenseTshirt: number;
+  salaryPaid: number;
+  profit: number;
 }
 
 export interface MonthlyReport {
   year: number;
   months: MonthData[];
   totals: Omit<MonthData, 'month' | 'label'>;
+}
+
+// ── Expense Order types ───────────────────────────────────────────────────────
+
+export interface ExpenseOrder {
+  id: string;
+  createdAt: string;
+  category: EnumProductCategory;
+  amount: number;
+  note?: string | null;
+  createdBy: { id: string; username: string };
+}
+
+export interface CreateExpenseDto {
+  category: EnumProductCategory;
+  amount: number;
+  note?: string;
 }

@@ -17,19 +17,23 @@ export class ReportsService {
     const startOfYear = new Date(year, 0, 1);
     const endOfYear = new Date(year + 1, 0, 1);
 
-    const orders = await this.prisma.orderPhoto.findMany({
-      where: {
-        createdAt: { gte: startOfYear, lt: endOfYear },
-        status: { notIn: EXCLUDED_STATUSES },
-      },
-      select: {
-        createdAt: true,
-        totalOrder: true,
-        deliveryCost: true,
-        productCategory: true,
-        status: true,
-      },
-    });
+    const [orders, expenses, salaryPayments] = await Promise.all([
+      this.prisma.orderPhoto.findMany({
+        where: {
+          createdAt: { gte: startOfYear, lt: endOfYear },
+          status: { notIn: EXCLUDED_STATUSES },
+        },
+        select: { createdAt: true, totalOrder: true, deliveryCost: true, productCategory: true },
+      }),
+      this.prisma.expenseOrder.findMany({
+        where: { createdAt: { gte: startOfYear, lt: endOfYear } },
+        select: { createdAt: true, amount: true, category: true },
+      }),
+      this.prisma.salaryPayment.findMany({
+        where: { createdAt: { gte: startOfYear, lt: endOfYear } },
+        select: { createdAt: true, amount: true },
+      }),
+    ]);
 
     const months = Array.from({ length: 12 }, (_, i) => ({
       month: i + 1,
@@ -40,11 +44,14 @@ export class ReportsService {
       netRevenue: 0,
       photoCount: 0,
       tshirtCount: 0,
+      expensePhoto: 0,
+      expenseTshirt: 0,
+      salaryPaid: 0,
+      profit: 0,
     }));
 
     for (const order of orders) {
-      const idx = order.createdAt.getMonth();
-      const m = months[idx];
+      const m = months[order.createdAt.getMonth()];
       const total = order.totalOrder ?? 0;
       const delivery = order.deliveryCost ?? 0;
       m.orderCount += 1;
@@ -55,22 +62,38 @@ export class ReportsService {
       else m.tshirtCount += 1;
     }
 
+    for (const expense of expenses) {
+      const m = months[expense.createdAt.getMonth()];
+      if (expense.category === 'PHOTO') m.expensePhoto += expense.amount;
+      else m.expenseTshirt += expense.amount;
+    }
+
+    for (const payment of salaryPayments) {
+      const m = months[payment.createdAt.getMonth()];
+      m.salaryPaid += payment.amount;
+    }
+
+    for (const m of months) {
+      m.profit = m.netRevenue - m.expensePhoto - m.expenseTshirt - m.salaryPaid;
+    }
+
     const totals = months.reduce(
       (acc, m) => ({
-        orderCount: acc.orderCount + m.orderCount,
-        totalRevenue: acc.totalRevenue + m.totalRevenue,
-        deliveryCost: acc.deliveryCost + m.deliveryCost,
-        netRevenue: acc.netRevenue + m.netRevenue,
-        photoCount: acc.photoCount + m.photoCount,
-        tshirtCount: acc.tshirtCount + m.tshirtCount,
+        orderCount:    acc.orderCount    + m.orderCount,
+        totalRevenue:  acc.totalRevenue  + m.totalRevenue,
+        deliveryCost:  acc.deliveryCost  + m.deliveryCost,
+        netRevenue:    acc.netRevenue    + m.netRevenue,
+        photoCount:    acc.photoCount    + m.photoCount,
+        tshirtCount:   acc.tshirtCount   + m.tshirtCount,
+        expensePhoto:  acc.expensePhoto  + m.expensePhoto,
+        expenseTshirt: acc.expenseTshirt + m.expenseTshirt,
+        salaryPaid:    acc.salaryPaid    + m.salaryPaid,
+        profit:        acc.profit        + m.profit,
       }),
       {
-        orderCount: 0,
-        totalRevenue: 0,
-        deliveryCost: 0,
-        netRevenue: 0,
-        photoCount: 0,
-        tshirtCount: 0,
+        orderCount: 0, totalRevenue: 0, deliveryCost: 0, netRevenue: 0,
+        photoCount: 0, tshirtCount: 0, expensePhoto: 0, expenseTshirt: 0,
+        salaryPaid: 0, profit: 0,
       },
     );
 
