@@ -24,7 +24,17 @@ function ExecutorListItem({
         active ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-800'
       }`}
     >
-      <div className="font-semibold">{ex.username}</div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-semibold">{ex.username}</span>
+        <span
+          className={`text-xs px-1.5 py-0.5 rounded-full shrink-0 ${
+            active ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
+          }`}
+          title="Всего заказов с начислением"
+        >
+          {ex.pendingAccruals.length + ex.closedAccruals.length} зак.
+        </span>
+      </div>
       <div className={`text-sm mt-0.5 ${active ? 'text-blue-200' : 'text-gray-500'}`}>
         {ex.ratePercent ? `${ex.ratePercent}%` : 'ставка не задана'} ·{' '}
         {ex.totalDebt > 0 ? (
@@ -170,6 +180,14 @@ function ExecutorDetail({
               {fmt(executor.totalDebt)}
             </strong>
             {' · '}Всего выплачено: <strong>{fmt(executor.totalPaid)}</strong>
+          </p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Заказов всего:{' '}
+            <strong className="text-gray-900">
+              {pending.length + executor.closedAccruals.length}
+            </strong>
+            {' · '}к оплате: <strong className="text-orange-600">{pending.length}</strong>
+            {' · '}оплачено: <strong className="text-green-600">{executor.closedAccruals.length}</strong>
           </p>
         </div>
         {pending.length > 0 && (
