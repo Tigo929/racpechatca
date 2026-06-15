@@ -93,5 +93,7 @@ export const PRINT_LOCATION_LABELS: Record<EnumPrintLocation, string> = {
 
 export const TSHIRT_COLORS = ['Белый', 'Чёрный'];
 
-// Финальные статусы — на этих статусах заказ уже закрыт
-export const TERMINAL_STATUSES: EnumStatus[] = ['COMPLETED', 'CANCELLED', 'PAID', 'SENT'];
+// Финальные статусы — на них заказ закрыт и менять его уже нельзя.
+// SENT сюда НЕ входит: из «Отправлен» админ может перейти в «Оплачен»
+// или вернуть назад в «Готов» (степпер показывает кнопки перехода).
+export const TERMINAL_STATUSES: EnumStatus[] = ['COMPLETED', 'CANCELLED', 'PAID'];
