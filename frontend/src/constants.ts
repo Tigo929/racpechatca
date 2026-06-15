@@ -31,7 +31,9 @@ export const STATUS_FLOW: EnumStatus[] = [
   'PAID',
 ];
 
-// Поток статусов для футболок (новый executor-flow)
+// Поток статусов для футболок: производственные шаги + денежный хвост SENT→PAID
+// (как у фото). Так футболочный заказ доходит до «Отправлен»/«Оплачен» и
+// формирует зарплату — иначе у SENT-заказа не было кнопок смены статуса.
 export const TSHIRT_STATUS_FLOW: EnumStatus[] = [
   'LEAD',
   'NEW',
@@ -39,8 +41,8 @@ export const TSHIRT_STATUS_FLOW: EnumStatus[] = [
   'PRINTED',
   'READY',
   'DONE',
-  'READY_FOR_REVIEW',
-  'COMPLETED',
+  'SENT',
+  'PAID',
 ];
 
 export const TSHIRT_STATUS_LABELS: Record<EnumStatus, string> = {
