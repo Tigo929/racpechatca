@@ -59,10 +59,16 @@ export class OrderPhotoService {
         ? (dto.tshirtItems ?? [])
         : (dto.items ?? []);
 
+      // Свободная цена: итог задан вручную; иначе считаем из позиций.
+      const totalOrder =
+        dto.customTotal != null
+          ? dto.customTotal
+          : calcOrderTotal(itemsForTotal, dto.deliveryCost);
+
       return tx.orderPhoto.create({
         data: {
           numberOrder: fullDate(lengthOrder),
-          totalOrder: calcOrderTotal(itemsForTotal, dto.deliveryCost),
+          totalOrder,
           deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
 
           ...(dto.status ? { status: dto.status } : {}),

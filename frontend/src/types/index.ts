@@ -157,6 +157,8 @@ export interface CreateOrderDto {
   note?: string;
   productCategory?: EnumProductCategory;
   status?: EnumStatus;
+  /** Свободная (договорная) цена заказа — итог вместо расчёта из позиций. */
+  customTotal?: number;
   items?: CreateItemDto[];
   tshirtItems?: CreateTshirtItemDto[];
 }

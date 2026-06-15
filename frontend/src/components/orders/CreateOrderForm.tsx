@@ -39,6 +39,8 @@ const baseSchema = z.object({
   deliveryMethod: z.enum(['YANDEX_PVZ', 'OZON_PVZ', 'PICKUP', 'OZON_SELLER', 'WB_SELLER']),
   deliveryCost: z.coerce.number().int().min(0),
   note: z.string().optional(),
+  freePrice: z.boolean().optional(),
+  customTotal: z.coerce.number().int().min(0).optional(),
   items: z.array(photoItemSchema).optional(),
   tshirtItems: z.array(tshirtItemSchema).optional(),
 }).superRefine((data, ctx) => {
@@ -64,6 +66,13 @@ const baseSchema = z.object({
 
 // Схема для обычной заявки (позиции обязательны)
 const fullSchema = baseSchema.superRefine((data, ctx) => {
+  // Свободная цена: позиции не нужны, но нужна сумма заказа.
+  if (data.freePrice) {
+    if (!data.customTotal || data.customTotal <= 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Укажите сумму заказа', path: ['customTotal'] });
+    }
+    return;
+  }
   if (data.productCategory === 'PHOTO' && (!data.items || data.items.length === 0)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Добавьте хотя бы одну позицию', path: ['items'] });
   }
@@ -91,6 +100,7 @@ export function CreateOrderForm({ onClose }: Props) {
       communicationPlatform: 'TELEGRAM',
       deliveryMethod: 'PICKUP',
       deliveryCost: 0,
+      freePrice: false,
       items: [{ formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }],
       tshirtItems: [{
         color: 'Белый', size: 'M', printLocation: 'FRONT',
@@ -101,16 +111,31 @@ export function CreateOrderForm({ onClose }: Props) {
 
   const productCategory = useWatch({ control, name: 'productCategory' });
   const communicationPlatform = useWatch({ control, name: 'communicationPlatform' });
+  const freePrice = useWatch({ control, name: 'freePrice' });
 
-  // При смене категории очищаем массив позиций другой категории,
-  // чтобы Zod-валидация не падала на невидимых полях
+  // Чистим/восстанавливаем позиции, чтобы Zod не падал на скрытых полях:
+  // при свободной цене позиций нет вовсе; иначе — одна позиция активной категории.
   useEffect(() => {
+    if (freePrice) {
+      setValue('items', []);
+      setValue('tshirtItems', []);
+      return;
+    }
     if (productCategory === 'TSHIRT') {
       setValue('items', []);
+      if ((getValues('tshirtItems')?.length ?? 0) === 0) {
+        setValue('tshirtItems', [{
+          color: 'Белый', size: 'M', printLocation: 'FRONT',
+          quantity: 1, price: 500, designCost: 0, designUrl: '', designNote: '',
+        }]);
+      }
     } else {
       setValue('tshirtItems', []);
+      if ((getValues('items')?.length ?? 0) === 0) {
+        setValue('items', [{ formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }]);
+      }
     }
-  }, [productCategory, setValue]);
+  }, [freePrice, productCategory, setValue, getValues]);
 
   const photoFields = useFieldArray({ control, name: 'items' });
   const tshirtFields = useFieldArray({ control, name: 'tshirtItems' });
@@ -127,9 +152,16 @@ export function CreateOrderForm({ onClose }: Props) {
 
   const onSubmit = (data: FormValues) => {
     mutation.mutate({
-      ...data,
-      items: data.productCategory === 'PHOTO' ? data.items : undefined,
-      tshirtItems: data.productCategory === 'TSHIRT' ? data.tshirtItems : undefined,
+      sourceOrder: data.sourceOrder,
+      communicationPlatform: data.communicationPlatform,
+      urlCommunication: data.urlCommunication,
+      deliveryMethod: data.deliveryMethod,
+      deliveryCost: data.deliveryCost,
+      note: data.note,
+      productCategory: data.productCategory,
+      customTotal: data.freePrice ? data.customTotal : undefined,
+      items: data.freePrice ? undefined : data.productCategory === 'PHOTO' ? data.items : undefined,
+      tshirtItems: data.freePrice ? undefined : data.productCategory === 'TSHIRT' ? data.tshirtItems : undefined,
     });
   };
 
@@ -234,6 +266,21 @@ export function CreateOrderForm({ onClose }: Props) {
         <textarea rows={2} className={inputCls + ' resize-none'} {...register('note')} />
       </div>
 
+      {/* Свободная (договорная) цена заказа */}
+      <label className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 cursor-pointer hover:border-amber-300 transition-colors">
+        <input type="checkbox" {...register('freePrice')} className="w-4 h-4 accent-amber-600" />
+        <span className="text-sm font-medium text-gray-700">Свободная цена — указать сумму заказа вручную</span>
+      </label>
+
+      {freePrice ? (
+        <div>
+          <label className={labelCls}>Сумма заказа, ₽</label>
+          <input type="number" min={0} className={inputCls} placeholder="Например: 2500" {...register('customTotal')} />
+          {errors.customTotal && <p className={errorCls}>{errors.customTotal.message}</p>}
+          <p className="text-xs text-gray-400 mt-1">Позиции не нужны — итог берётся из этого поля.</p>
+        </div>
+      ) : (
+      <>
       {/* ── Позиции фотографий ── */}
       {productCategory === 'PHOTO' && (
         <div>
@@ -360,6 +407,8 @@ export function CreateOrderForm({ onClose }: Props) {
             ))}
           </div>
         </div>
+      )}
+      </>
       )}
 
       <div className="pt-2 border-t border-gray-100 space-y-2">

@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  Min,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
@@ -42,6 +43,16 @@ export default class DtoCreateOrder {
   @IsNumber()
   @Type(() => Number)
   deliveryCost!: number;
+
+  /**
+   * Свободная (договорная) цена заказа. Если задана — итог берётся отсюда,
+   * а не считается из позиций (позиции при этом можно не передавать).
+   */
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  customTotal?: number;
 
   @IsOptional()
   @IsEnum(EnumProductCategory)
