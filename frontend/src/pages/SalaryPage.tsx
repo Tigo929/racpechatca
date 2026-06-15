@@ -130,7 +130,7 @@ function ExecutorDetail({
   const allRows: AccrualBrief[] = [
     ...pending,
     ...executor.closedAccruals.map((c) => ({ ...c, debt: 0, salaryBase: 0, rateBasisPoints: 0 })),
-  ];
+  ].sort((a, b) => a.orderNumber.localeCompare(b.orderNumber));
 
   const selectedTotal = useMemo(
     () => pending.filter((a) => selected.has(a.id)).reduce((s, a) => s + a.debt, 0),

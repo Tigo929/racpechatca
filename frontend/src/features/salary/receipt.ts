@@ -21,7 +21,8 @@ function buildReceiptHtml(
   executor: ExecutorSalaryData,
   result: PaymentByAccrualsResult,
 ): string {
-  const rows = result.accruals
+  const rows = [...result.accruals]
+    .sort((a, b) => a.orderNumber.localeCompare(b.orderNumber))
     .map(
       (a) => `<tr>
         <td>${escapeHtml(a.orderNumber)}</td>
