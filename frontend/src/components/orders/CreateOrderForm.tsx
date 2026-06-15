@@ -31,6 +31,13 @@ const tshirtItemSchema = z.object({
   designNote: z.string().optional(),
 });
 
+// Свободная позиция: произвольное название + цена. Имя не валидируем строго здесь
+// (скрытые строки не должны рушить форму) — проверяем в superRefine при freePrice.
+const freeItemSchema = z.object({
+  name: z.string(),
+  price: z.coerce.number().int().min(0),
+});
+
 const baseSchema = z.object({
   productCategory: z.enum(['PHOTO', 'TSHIRT']),
   sourceOrder: z.enum(['AVITO', 'OZON', 'WB', 'LOCAL']),
@@ -40,7 +47,7 @@ const baseSchema = z.object({
   deliveryCost: z.coerce.number().int().min(0),
   note: z.string().optional(),
   freePrice: z.boolean().optional(),
-  customTotal: z.coerce.number().int().min(0).optional(),
+  freeItems: z.array(freeItemSchema).optional(),
   items: z.array(photoItemSchema).optional(),
   tshirtItems: z.array(tshirtItemSchema).optional(),
 }).superRefine((data, ctx) => {
@@ -66,10 +73,17 @@ const baseSchema = z.object({
 
 // Схема для обычной заявки (позиции обязательны)
 const fullSchema = baseSchema.superRefine((data, ctx) => {
-  // Свободная цена: позиции не нужны, но нужна сумма заказа.
+  // Свободная цена: вместо позиций — произвольные строки «название — цена».
   if (data.freePrice) {
-    if (!data.customTotal || data.customTotal <= 0) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Укажите сумму заказа', path: ['customTotal'] });
+    const fi = data.freeItems ?? [];
+    if (fi.length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Добавьте хотя бы один товар', path: ['freeItems'] });
+    } else {
+      fi.forEach((it, i) => {
+        if (!it.name || !it.name.trim()) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Укажите название', path: ['freeItems', i, 'name'] });
+        }
+      });
     }
     return;
   }
@@ -101,6 +115,7 @@ export function CreateOrderForm({ onClose }: Props) {
       deliveryMethod: 'PICKUP',
       deliveryCost: 0,
       freePrice: false,
+      freeItems: [{ name: '', price: 0 }],
       items: [{ formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }],
       tshirtItems: [{
         color: 'Белый', size: 'M', printLocation: 'FRONT',
@@ -139,6 +154,7 @@ export function CreateOrderForm({ onClose }: Props) {
 
   const photoFields = useFieldArray({ control, name: 'items' });
   const tshirtFields = useFieldArray({ control, name: 'tshirtItems' });
+  const freeFields = useFieldArray({ control, name: 'freeItems' });
 
   const mutation = useMutation({
     mutationFn: ordersApi.create,
@@ -151,6 +167,26 @@ export function CreateOrderForm({ onClose }: Props) {
   });
 
   const onSubmit = (data: FormValues) => {
+    if (data.freePrice) {
+      // Свободные строки «название — цена» сохраняем как позиции (формат = название).
+      const freeItems = (data.freeItems ?? []).filter((i) => i.name.trim());
+      mutation.mutate({
+        sourceOrder: data.sourceOrder,
+        communicationPlatform: data.communicationPlatform,
+        urlCommunication: data.urlCommunication,
+        deliveryMethod: data.deliveryMethod,
+        deliveryCost: data.deliveryCost,
+        note: data.note,
+        productCategory: 'PHOTO',
+        items: freeItems.map((i) => ({
+          formatPaper: i.name.trim(),
+          typePaper: 'GLOSS',
+          quantity: 1,
+          price: i.price,
+        })),
+      });
+      return;
+    }
     mutation.mutate({
       sourceOrder: data.sourceOrder,
       communicationPlatform: data.communicationPlatform,
@@ -159,9 +195,8 @@ export function CreateOrderForm({ onClose }: Props) {
       deliveryCost: data.deliveryCost,
       note: data.note,
       productCategory: data.productCategory,
-      customTotal: data.freePrice ? data.customTotal : undefined,
-      items: data.freePrice ? undefined : data.productCategory === 'PHOTO' ? data.items : undefined,
-      tshirtItems: data.freePrice ? undefined : data.productCategory === 'TSHIRT' ? data.tshirtItems : undefined,
+      items: data.productCategory === 'PHOTO' ? data.items : undefined,
+      tshirtItems: data.productCategory === 'TSHIRT' ? data.tshirtItems : undefined,
     });
   };
 
@@ -269,15 +304,48 @@ export function CreateOrderForm({ onClose }: Props) {
       {/* Свободная (договорная) цена заказа */}
       <label className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 cursor-pointer hover:border-amber-300 transition-colors">
         <input type="checkbox" {...register('freePrice')} className="w-4 h-4 accent-amber-600" />
-        <span className="text-sm font-medium text-gray-700">Свободная цена — указать сумму заказа вручную</span>
+        <span className="text-sm font-medium text-gray-700">Свободная цена — произвольные позиции «название — цена»</span>
       </label>
 
       {freePrice ? (
         <div>
-          <label className={labelCls}>Сумма заказа, ₽</label>
-          <input type="number" min={0} className={inputCls} placeholder="Например: 2500" {...register('customTotal')} />
-          {errors.customTotal && <p className={errorCls}>{errors.customTotal.message}</p>}
-          <p className="text-xs text-gray-400 mt-1">Позиции не нужны — итог берётся из этого поля.</p>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900">Позиции — свободная цена</h3>
+            <button type="button"
+              onClick={() => freeFields.append({ name: '', price: 0 })}
+              className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
+              <Plus size={14} /> Добавить
+            </button>
+          </div>
+          {errors.freeItems && typeof errors.freeItems.message === 'string' && (
+            <p className={errorCls}>{errors.freeItems.message}</p>
+          )}
+          <div className="space-y-3">
+            {freeFields.fields.map((field, idx) => (
+              <div key={field.id} className="grid grid-cols-[1fr_110px_36px] gap-2 items-end">
+                <div>
+                  {idx === 0 && <label className={labelCls}>Название товара</label>}
+                  <input className={inputCls} placeholder="Кружка с принтом, баннер…" {...register(`freeItems.${idx}.name`)} />
+                  {errors.freeItems?.[idx]?.name && (
+                    <p className={errorCls}>{errors.freeItems[idx]?.name?.message}</p>
+                  )}
+                </div>
+                <div>
+                  {idx === 0 && <label className={labelCls}>Цена ₽</label>}
+                  <input type="number" min={0} className={inputCls} {...register(`freeItems.${idx}.price`)} />
+                </div>
+                <div>
+                  {idx === 0 && <div className="mb-1 h-5" />}
+                  <button type="button" onClick={() => freeFields.remove(idx)}
+                    disabled={freeFields.fields.length === 1}
+                    className="p-2 text-gray-400 hover:text-red-500 disabled:opacity-30">
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-2">Итог заказа = сумма цен этих позиций.</p>
         </div>
       ) : (
       <>
