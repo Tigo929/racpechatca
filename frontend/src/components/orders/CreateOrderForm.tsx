@@ -180,9 +180,11 @@ export function CreateOrderForm({ onClose }: Props) {
         note: data.note,
         productCategory: 'PHOTO',
         items: freeItems.map((i) => ({
-          formatPaper: i.name.trim(),
+          // Цена — итоговая за позицию (НЕ умножаем на количество).
+          // Кол-во просто фиксируем в названии для справки.
+          formatPaper: i.quantity > 1 ? `${i.name.trim()} (${i.quantity} шт)` : i.name.trim(),
           typePaper: 'GLOSS',
-          quantity: i.quantity,
+          quantity: 1,
           price: i.price,
         })),
       });
@@ -350,7 +352,7 @@ export function CreateOrderForm({ onClose }: Props) {
               </div>
             ))}
           </div>
-          <p className="text-xs text-gray-400 mt-2">Итог заказа = сумма цен этих позиций.</p>
+          <p className="text-xs text-gray-400 mt-2">Цена — итоговая за позицию (на количество не умножается). Итог заказа = сумма этих цен.</p>
         </div>
       ) : (
       <>
