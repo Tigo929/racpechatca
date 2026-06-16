@@ -35,7 +35,6 @@ const tshirtItemSchema = z.object({
 // (скрытые строки не должны рушить форму) — проверяем в superRefine при freePrice.
 const freeItemSchema = z.object({
   name: z.string(),
-  quantity: z.coerce.number().int().positive(),
   price: z.coerce.number().int().min(0),
 });
 
@@ -116,7 +115,7 @@ export function CreateOrderForm({ onClose }: Props) {
       deliveryMethod: 'PICKUP',
       deliveryCost: 0,
       freePrice: false,
-      freeItems: [{ name: '', quantity: 1, price: 0 }],
+      freeItems: [{ name: '', price: 0 }],
       items: [{ formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }],
       tshirtItems: [{
         color: 'Белый', size: 'M', printLocation: 'FRONT',
@@ -180,9 +179,9 @@ export function CreateOrderForm({ onClose }: Props) {
         note: data.note,
         productCategory: 'PHOTO',
         items: freeItems.map((i) => ({
-          // Цена — итоговая за позицию (НЕ умножаем на количество).
-          // Кол-во просто фиксируем в названии для справки.
-          formatPaper: i.quantity > 1 ? `${i.name.trim()} (${i.quantity} шт)` : i.name.trim(),
+          // Свободная цена: вводимая цена — это итог позиции. Кол-во всегда 1,
+          // чтобы сумма позиции = введённой цене (без умножения).
+          formatPaper: i.name.trim(),
           typePaper: 'GLOSS',
           quantity: 1,
           price: i.price,
@@ -315,7 +314,7 @@ export function CreateOrderForm({ onClose }: Props) {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-900">Позиции — свободная цена</h3>
             <button type="button"
-              onClick={() => freeFields.append({ name: '', quantity: 1, price: 0 })}
+              onClick={() => freeFields.append({ name: '', price: 0 })}
               className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
               <Plus size={14} /> Добавить
             </button>
@@ -325,7 +324,7 @@ export function CreateOrderForm({ onClose }: Props) {
           )}
           <div className="space-y-3">
             {freeFields.fields.map((field, idx) => (
-              <div key={field.id} className="grid grid-cols-[1fr_80px_90px_36px] gap-2 items-end">
+              <div key={field.id} className="grid grid-cols-[1fr_110px_36px] gap-2 items-end">
                 <div>
                   {idx === 0 && <label className={labelCls}>Название товара</label>}
                   <input className={inputCls} placeholder="Кружка с принтом, баннер…" {...register(`freeItems.${idx}.name`)} />
@@ -334,11 +333,7 @@ export function CreateOrderForm({ onClose }: Props) {
                   )}
                 </div>
                 <div>
-                  {idx === 0 && <label className={labelCls}>Кол-во</label>}
-                  <input type="number" min={1} className={inputCls} {...register(`freeItems.${idx}.quantity`)} />
-                </div>
-                <div>
-                  {idx === 0 && <label className={labelCls}>Цена ₽</label>}
+                  {idx === 0 && <label className={labelCls}>Цена ₽ (итог)</label>}
                   <input type="number" min={0} className={inputCls} {...register(`freeItems.${idx}.price`)} />
                 </div>
                 <div>
@@ -352,7 +347,7 @@ export function CreateOrderForm({ onClose }: Props) {
               </div>
             ))}
           </div>
-          <p className="text-xs text-gray-400 mt-2">Цена — итоговая за позицию (на количество не умножается). Итог заказа = сумма этих цен.</p>
+          <p className="text-xs text-gray-400 mt-2">Цена — итоговая за позицию. Итог заказа = сумма этих цен. (Нужно число штук — впишите в название.)</p>
         </div>
       ) : (
       <>
