@@ -19,14 +19,14 @@ interface EditState {
 export function ItemsTable({ order }: Props) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
+  // Свободная цена — свойство заказа: цена позиции = её итог, кол-во не умножается.
+  const freePrice = order.isFreePrice ?? false;
 
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editState, setEditState] = useState<EditState | null>(null);
   const [adding, setAdding] = useState(false);
   const [newItem, setNewItem] = useState<EditState>({ formatPaper: '', typePaper: 'GLOSS', quantity: '1', price: '10' });
-  // Свободная цена: quantity скрыт, цена = итого позиции (quantity=1 на бэкенд)
-  const [freePrice, setFreePrice] = useState(false);
 
   const invalidate = (updated: OrderPhoto) => {
     qc.setQueryData(['order', order.id], updated);
@@ -60,18 +60,25 @@ export function ItemsTable({ order }: Props) {
 
   const saveEdit = (id: string) => {
     if (!editState) return;
-    const qty = freePrice ? 1 : Number(editState.quantity);
-    const prc = Number(editState.price);
-    updateMutation.mutate({ id, data: { formatPaper: editState.formatPaper, typePaper: editState.typePaper, quantity: qty, price: prc } });
+    updateMutation.mutate({ id, data: {
+      formatPaper: editState.formatPaper,
+      typePaper: editState.typePaper,
+      quantity: Number(editState.quantity) || 1,
+      price: Number(editState.price),
+    } });
   };
 
   const saveNew = () => {
-    const qty = freePrice ? 1 : Number(newItem.quantity);
-    const prc = Number(newItem.price);
-    addMutation.mutate({ formatPaper: newItem.formatPaper, typePaper: newItem.typePaper, quantity: qty, price: prc });
+    addMutation.mutate({
+      formatPaper: newItem.formatPaper,
+      typePaper: newItem.typePaper,
+      quantity: Number(newItem.quantity) || 1,
+      price: Number(newItem.price),
+    });
   };
 
-  const colSpanTotal = isAdmin ? (freePrice ? 3 : 4) : 2;
+  // Кол-во колонок слева от ячейки «Итого/Цена» (для colspan футера).
+  const colSpanTotal = 1 + (freePrice ? 0 : 1) + 1 + (isAdmin && !freePrice ? 1 : 0);
 
   return (
     <div>
@@ -90,38 +97,26 @@ export function ItemsTable({ order }: Props) {
       )}
 
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-700">Позиции ({order.items.length})</h3>
-        <div className="flex items-center gap-3">
-          {/* Свободная цена — только для администратора */}
-          {isAdmin && (
-            <label className="flex items-center gap-1.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={freePrice}
-                onChange={e => setFreePrice(e.target.checked)}
-                className="w-3.5 h-3.5 rounded accent-amber-500"
-              />
-              <span className="text-xs text-gray-500">Свободная цена</span>
-            </label>
-          )}
-          {isAdmin && (
-            <button onClick={() => setAdding(true)}
-              className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
-              <Plus size={14} /> Добавить
-            </button>
-          )}
-        </div>
+        <h3 className="text-sm font-semibold text-gray-700">
+          Позиции ({order.items.length}){freePrice && <span className="ml-2 text-xs font-normal text-amber-600">свободная цена</span>}
+        </h3>
+        {isAdmin && (
+          <button onClick={() => setAdding(true)}
+            className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
+            <Plus size={14} /> Добавить
+          </button>
+        )}
       </div>
 
       <div className="border border-gray-100 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>
-              <th scope="col" className="px-4 py-2 text-left">Формат</th>
-              <th scope="col" className="px-4 py-2 text-left">Тип</th>
-              {!freePrice && <th scope="col" className="px-4 py-2 text-right">Кол-во</th>}
+              <th scope="col" className="px-4 py-2 text-left">{freePrice ? 'Название' : 'Формат'}</th>
+              {!freePrice && <th scope="col" className="px-4 py-2 text-left">Тип</th>}
+              <th scope="col" className="px-4 py-2 text-right">Кол-во</th>
               {isAdmin && !freePrice && <th scope="col" className="px-4 py-2 text-right">Цена / шт</th>}
-              {isAdmin && <th scope="col" className="px-4 py-2 text-right">{freePrice ? 'Сумма' : 'Итого'}</th>}
+              {isAdmin && <th scope="col" className="px-4 py-2 text-right">{freePrice ? 'Цена (итог)' : 'Итого'}</th>}
               {isAdmin && <th scope="col" className="px-3 py-2"><span className="sr-only">Действия</span></th>}
             </tr>
           </thead>
@@ -131,28 +126,34 @@ export function ItemsTable({ order }: Props) {
                 {isAdmin && editingId === item.id && editState ? (
                   <>
                     <td className="px-4 py-2">
-                      <input className={inputCls} placeholder="10×15, Polaroid…" value={editState.formatPaper}
+                      <input className={inputCls} placeholder={freePrice ? 'Название товара' : '10×15, Polaroid…'} value={editState.formatPaper}
                         onChange={e => setEditState({ ...editState, formatPaper: e.target.value })} />
-                    </td>
-                    <td className="px-4 py-2">
-                      <select className={selectCls} value={editState.typePaper}
-                        onChange={e => setEditState({ ...editState, typePaper: e.target.value })}>
-                        <option value="GLOSS">Глянец</option>
-                        <option value="MATTE">Матт</option>
-                      </select>
                     </td>
                     {!freePrice && (
                       <td className="px-4 py-2">
-                        <input type="number" min={1} className={inputCls + ' text-right'} value={editState.quantity}
-                          onChange={e => setEditState({ ...editState, quantity: e.target.value })} />
+                        <select className={selectCls} value={editState.typePaper}
+                          onChange={e => setEditState({ ...editState, typePaper: e.target.value })}>
+                          <option value="GLOSS">Глянец</option>
+                          <option value="MATTE">Матт</option>
+                        </select>
                       </td>
                     )}
                     <td className="px-4 py-2">
-                      <input type="number" min={0} className={inputCls + ' text-right'} value={editState.price}
-                        onChange={e => setEditState({ ...editState, price: e.target.value })}
-                        placeholder={freePrice ? 'Сумма ₽' : 'Цена ₽'} />
+                      <input type="number" min={1} className={inputCls + ' text-right'} value={editState.quantity}
+                        onChange={e => setEditState({ ...editState, quantity: e.target.value })} />
                     </td>
-                    {!freePrice && <td className="px-4 py-2 text-right text-gray-400">—</td>}
+                    {isAdmin && !freePrice && (
+                      <td className="px-4 py-2">
+                        <input type="number" min={0} className={inputCls + ' text-right'} value={editState.price}
+                          onChange={e => setEditState({ ...editState, price: e.target.value })} placeholder="Цена ₽" />
+                      </td>
+                    )}
+                    {isAdmin && freePrice && (
+                      <td className="px-4 py-2">
+                        <input type="number" min={0} className={inputCls + ' text-right'} value={editState.price}
+                          onChange={e => setEditState({ ...editState, price: e.target.value })} placeholder="Цена ₽ (итог)" />
+                      </td>
+                    )}
                     <td className="px-3 py-2">
                       <div className="flex gap-1">
                         <button onClick={() => saveEdit(item.id)} disabled={updateMutation.isPending}
@@ -165,8 +166,8 @@ export function ItemsTable({ order }: Props) {
                 ) : (
                   <>
                     <td className="px-4 py-2.5 font-medium text-gray-800">{item.formatPaper}</td>
-                    <td className="px-4 py-2.5 text-gray-600">{TYPE_LABELS[item.typePaper]}</td>
-                    {!freePrice && <td className="px-4 py-2.5 text-right">{item.quantity}</td>}
+                    {!freePrice && <td className="px-4 py-2.5 text-gray-600">{TYPE_LABELS[item.typePaper]}</td>}
+                    <td className="px-4 py-2.5 text-right">{item.quantity}</td>
                     {isAdmin && !freePrice && <td className="px-4 py-2.5 text-right">{item.price.toLocaleString()} ₽</td>}
                     {isAdmin && <td className="px-4 py-2.5 text-right font-medium">{item.pricePosition.toLocaleString()} ₽</td>}
                     {isAdmin && (
@@ -186,28 +187,27 @@ export function ItemsTable({ order }: Props) {
             {isAdmin && adding && (
               <tr className="bg-amber-50">
                 <td className="px-4 py-2">
-                  <input className={inputCls} placeholder="10×15, Polaroid…" value={newItem.formatPaper}
+                  <input className={inputCls} placeholder={freePrice ? 'Название товара' : '10×15, Polaroid…'} value={newItem.formatPaper}
                     onChange={e => setNewItem({ ...newItem, formatPaper: e.target.value })} />
-                </td>
-                <td className="px-4 py-2">
-                  <select className={selectCls} value={newItem.typePaper}
-                    onChange={e => setNewItem({ ...newItem, typePaper: e.target.value })}>
-                    <option value="GLOSS">Глянец</option>
-                    <option value="MATTE">Матт</option>
-                  </select>
                 </td>
                 {!freePrice && (
                   <td className="px-4 py-2">
-                    <input type="number" min={1} className={inputCls + ' text-right'} value={newItem.quantity}
-                      onChange={e => setNewItem({ ...newItem, quantity: e.target.value })} />
+                    <select className={selectCls} value={newItem.typePaper}
+                      onChange={e => setNewItem({ ...newItem, typePaper: e.target.value })}>
+                      <option value="GLOSS">Глянец</option>
+                      <option value="MATTE">Матт</option>
+                    </select>
                   </td>
                 )}
                 <td className="px-4 py-2">
+                  <input type="number" min={1} className={inputCls + ' text-right'} value={newItem.quantity}
+                    onChange={e => setNewItem({ ...newItem, quantity: e.target.value })} />
+                </td>
+                <td className="px-4 py-2">
                   <input type="number" min={0} className={inputCls + ' text-right'} value={newItem.price}
                     onChange={e => setNewItem({ ...newItem, price: e.target.value })}
-                    placeholder={freePrice ? 'Сумма ₽' : 'Цена ₽'} />
+                    placeholder={freePrice ? 'Цена ₽ (итог)' : 'Цена ₽'} />
                 </td>
-                {!freePrice && <td className="px-4 py-2 text-right text-gray-400">—</td>}
                 <td className="px-3 py-2">
                   <div className="flex gap-1">
                     <button onClick={saveNew} disabled={addMutation.isPending}

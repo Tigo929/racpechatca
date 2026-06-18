@@ -48,6 +48,8 @@ model OrderPhoto {
   productCategory       EnumProductCategory @default(PHOTO)
   deadline              DateTime?
   isUrgent              Boolean             @default(false)
+  // Свободная (договорная) цена: сумма позиции = её цене, количество НЕ умножается.
+  isFreePrice           Boolean             @default(false)
 
   executorId   String?
   executor     User?     @relation("OrderExecutor", fields: [executorId], references: [id])

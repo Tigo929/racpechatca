@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsEnum,
   IsNumber,
   IsOptional,
@@ -53,6 +54,11 @@ export default class DtoCreateOrder {
   @Type(() => Number)
   @Min(0)
   customTotal?: number;
+
+  /** Заказ со свободной (договорной) ценой: количество не умножается на цену. */
+  @IsOptional()
+  @IsBoolean()
+  freePrice?: boolean;
 
   @IsOptional()
   @IsEnum(EnumProductCategory)

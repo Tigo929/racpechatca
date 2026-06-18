@@ -100,6 +100,8 @@ export interface OrderPhoto {
   productCategory: EnumProductCategory;
   deadline?: string | null;
   isUrgent: boolean;
+  /** Свободная (договорная) цена: сумма позиции = её цене, кол-во не умножается. */
+  isFreePrice?: boolean;
   executorId?: string | null;
   executor?: OrderExecutor | null;
   completedAt?: string | null;
@@ -157,7 +159,9 @@ export interface CreateOrderDto {
   note?: string;
   productCategory?: EnumProductCategory;
   status?: EnumStatus;
-  /** Свободная (договорная) цена заказа — итог вместо расчёта из позиций. */
+  /** Свободная (договорная) цена: кол-во не умножается на цену. */
+  freePrice?: boolean;
+  /** Ручной итог заказа (если задан) — вместо расчёта из позиций. */
   customTotal?: number;
   items?: CreateItemDto[];
   tshirtItems?: CreateTshirtItemDto[];

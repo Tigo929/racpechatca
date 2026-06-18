@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import DtoCreateOrder from './dto/create-order.dto';
-import { calcOrderTotal } from './order-pricing';
+import { calcItemPricePosition, calcOrderTotal } from './order-pricing';
 import fullDate from 'src/utils/full-date';
 import DtoAllOrdersforQuery from './dto/all-oreders-for-query.dto';
 import UpdateStatus from './dto/update-status.dto';
@@ -59,16 +59,19 @@ export class OrderPhotoService {
         ? (dto.tshirtItems ?? [])
         : (dto.items ?? []);
 
-      // Свободная цена: итог задан вручную; иначе считаем из позиций.
+      // Свободная цена: сумма позиции = её цене (кол-во не умножается);
+      // обычная — считаем из позиций. customTotal оставлен как ручной итог.
+      const freePrice = dto.freePrice ?? false;
       const totalOrder =
         dto.customTotal != null
           ? dto.customTotal
-          : calcOrderTotal(itemsForTotal, dto.deliveryCost);
+          : calcOrderTotal(itemsForTotal, dto.deliveryCost, freePrice);
 
       return tx.orderPhoto.create({
         data: {
           numberOrder: fullDate(lengthOrder),
           totalOrder,
+          isFreePrice: freePrice,
           deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
 
           ...(dto.status ? { status: dto.status } : {}),
@@ -90,7 +93,12 @@ export class OrderPhotoService {
                   typePaper: e.typePaper,
                   quantity: e.quantity,
                   price: e.price,
-                  pricePosition: e.price * e.quantity,
+                  pricePosition: calcItemPricePosition(
+                    e.price,
+                    e.quantity,
+                    0,
+                    freePrice,
+                  ),
                 })),
               },
           tshirtItems: isTshirt
@@ -495,6 +503,7 @@ export class OrderPhotoService {
         totalOrder: calcOrderTotal(
           order.productCategory === 'TSHIRT' ? order.tshirtItems : order.items,
           dto.deliveryCost ?? order.deliveryCost,
+          order.isFreePrice,
         ),
         note: dto.note ?? order.note,
         isUrgent: dto.isUrgent !== undefined ? dto.isUrgent : order.isUrgent,

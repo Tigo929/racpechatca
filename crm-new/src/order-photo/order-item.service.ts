@@ -48,6 +48,11 @@ export class OrderItemService {
         tx,
       );
 
+      const order = await tx.orderPhoto.findUnique({
+        where: { id: item.orderId },
+        select: { isFreePrice: true },
+      });
+      const freePrice = order?.isFreePrice ?? false;
       const quantity = dto.quantity ?? item.quantity;
       const price = dto.price ?? item.price;
 
@@ -58,7 +63,7 @@ export class OrderItemService {
           typePaper: dto.typePaper ?? item.typePaper,
           quantity,
           price,
-          pricePosition: calcItemPricePosition(price, quantity),
+          pricePosition: calcItemPricePosition(price, quantity, 0, freePrice),
         },
       });
 
@@ -83,7 +88,7 @@ export class OrderItemService {
     return this.prisma.$transaction(async (tx) => {
       const orderExists = await tx.orderPhoto.findUnique({
         where: { id: idOrder },
-        select: { id: true },
+        select: { id: true, isFreePrice: true },
       });
       if (!orderExists) throw new NotFoundException('Заказ не найден');
 
@@ -95,7 +100,12 @@ export class OrderItemService {
           typePaper: dto.typePaper,
           quantity: dto.quantity,
           price: dto.price,
-          pricePosition: calcItemPricePosition(dto.price, dto.quantity),
+          pricePosition: calcItemPricePosition(
+            dto.price,
+            dto.quantity,
+            0,
+            orderExists.isFreePrice,
+          ),
           orderId: idOrder,
         },
       });
@@ -114,7 +124,13 @@ export class OrderItemService {
     const updated = await tx.orderPhoto.update({
       where: { id: orderId },
       include: { items: true, tshirtItems: true },
-      data: { totalOrder: calcOrderTotal(order.items, order.deliveryCost) },
+      data: {
+        totalOrder: calcOrderTotal(
+          order.items,
+          order.deliveryCost,
+          order.isFreePrice,
+        ),
+      },
     });
     // Невыплаченное начисление подгоняем под новую сумму заказа.
     await this.financialIntegrity.recalcPendingAccrual(

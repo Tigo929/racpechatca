@@ -16,29 +16,38 @@ export interface PricedItem {
 }
 
 /**
- * Стоимость одной позиции = цена × количество + стоимость дизайна.
- * Используется при создании/обновлении позиции (поле pricePosition).
+ * Стоимость одной позиции.
+ *  - обычная: цена × количество + стоимость дизайна;
+ *  - свободная цена (freePrice): сумма = введённой цене, количество НЕ умножается.
  */
 export function calcItemPricePosition(
   price: number,
   quantity: number,
   designCost = 0,
+  freePrice = false,
 ): number {
+  if (freePrice) return price;
   return price * quantity + designCost;
 }
 
 /**
  * Итоговая сумма заказа = сумма всех позиций + доставка.
- * Считает из «сырых» полей позиции (price/quantity/designCost),
- * поэтому корректна даже если pricePosition ещё не пересчитан.
+ * При freePrice сумма позиции = её цене (количество только для справки).
  */
 export function calcOrderTotal(
   items: PricedItem[],
   deliveryCost: number,
+  freePrice = false,
 ): number {
   const itemsTotal = items.reduce(
     (sum, item) =>
-      sum + calcItemPricePosition(item.price, item.quantity, item.designCost ?? 0),
+      sum +
+      calcItemPricePosition(
+        item.price,
+        item.quantity,
+        item.designCost ?? 0,
+        freePrice,
+      ),
     0,
   );
   return itemsTotal + deliveryCost;
