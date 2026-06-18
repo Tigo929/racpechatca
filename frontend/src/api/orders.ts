@@ -21,7 +21,13 @@ export const ordersApi = {
     if (query.status) params.set('status', query.status);
     if (query.sourceOrder) params.set('sourceOrder', query.sourceOrder);
     if (query.productCategory) params.set('productCategory', query.productCategory);
+    if (query.reviewLeft !== undefined) params.set('reviewLeft', String(query.reviewLeft));
     const { data } = await api.get<OrdersResponse>(`/order-photo?${params}`);
+    return data;
+  },
+
+  setReview: async (orderId: string, reviewLeft: boolean): Promise<OrderPhoto> => {
+    const { data } = await api.patch<OrderPhoto>(`/order-photo/${orderId}/review`, { reviewLeft });
     return data;
   },
 

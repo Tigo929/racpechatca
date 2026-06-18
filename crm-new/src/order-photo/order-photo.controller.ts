@@ -28,6 +28,7 @@ import DtoCreateItemOrder from './dto/create-item-order.dto';
 import { DtoCreateTshirtItem } from './dto/create-tshirt-item.dto';
 import { DtoUpdateTshirtItem } from './dto/update-tshirt-item.dto';
 import { DtoAssignExecutor } from './dto/assign-executor.dto';
+import { DtoSetReview } from './dto/set-review.dto';
 
 interface RequestUser {
   id: string;
@@ -75,6 +76,14 @@ export class OrderPhotoController {
     @CurrentUser() me: RequestUser,
   ) {
     return this.orderPhotoService.assignExecutor(idOrder, dto, me.id);
+  }
+
+  // ── Admin-only: отметка отзыва клиента ──────────────────────────────────────
+
+  @Patch(':idOrder/review')
+  @Roles(EnumRole.ADMIN)
+  setReview(@Param('idOrder') idOrder: string, @Body() dto: DtoSetReview) {
+    return this.orderPhotoService.setReviewLeft(idOrder, dto.reviewLeft);
   }
 
   // ── Admin-only: add / update / delete items ────────────────────────────────

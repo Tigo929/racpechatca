@@ -57,12 +57,12 @@ export function StatusStepper({ order }: Props) {
         const isNext = idx === currentIdx + 1;
         const isPrev = idx === currentIdx - 1;
 
-        // Для исполнителя — только переход в READY_FOR_REVIEW с предыдущего шага
-        const executorCanClick =
-          !isAdmin && isNext && status === 'READY_FOR_REVIEW';
-        const adminCanGoNext = isAdmin && isNext;
-        const adminCanGoBack = isAdmin && isPrev;
-        const clickable = executorCanClick || adminCanGoNext || adminCanGoBack;
+        // Финансовые статусы — только админ; остальные исполнитель ставит сам.
+        const adminOnly = status === 'SENT' || status === 'PAID' || status === 'CANCELLED';
+        const canSetTarget = isAdmin || !adminOnly;
+        const canGoNext = isNext && canSetTarget;
+        const canGoBack = isPrev && canSetTarget;
+        const clickable = canGoNext || canGoBack;
 
         return (
           <div key={status} className="flex items-center gap-1">
@@ -71,15 +71,15 @@ export function StatusStepper({ order }: Props) {
               onClick={() => mutation.mutate(status)}
               tabIndex={clickable ? 0 : -1}
               aria-current={isCurrent ? 'step' : undefined}
-              title={isAdmin && isPrev ? 'Вернуть на предыдущий статус' : undefined}
+              title={isPrev && clickable ? 'Вернуть на предыдущий статус' : undefined}
               className={`
                 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500
                 ${isCurrent ? 'bg-amber-600 text-white shadow-sm cursor-default' : ''}
-                ${isDone && !adminCanGoBack ? 'bg-green-100 text-green-700 cursor-default' : ''}
-                ${adminCanGoBack ? 'bg-green-100 text-green-700 hover:bg-orange-100 hover:text-orange-700 cursor-pointer border border-dashed border-green-300' : ''}
-                ${(adminCanGoNext || executorCanClick) ? 'bg-gray-100 text-gray-600 hover:bg-amber-100 hover:text-amber-700 cursor-pointer border border-dashed border-gray-300' : ''}
+                ${isDone && !canGoBack ? 'bg-green-100 text-green-700 cursor-default' : ''}
+                ${canGoBack ? 'bg-green-100 text-green-700 hover:bg-orange-100 hover:text-orange-700 cursor-pointer border border-dashed border-green-300' : ''}
+                ${canGoNext ? 'bg-gray-100 text-gray-600 hover:bg-amber-100 hover:text-amber-700 cursor-pointer border border-dashed border-gray-300' : ''}
                 ${idx > currentIdx + 1 ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : ''}
-                ${!isAdmin && isNext && status !== 'READY_FOR_REVIEW' ? 'bg-gray-50 text-gray-300 cursor-not-allowed' : ''}
+                ${isNext && !canSetTarget ? 'bg-gray-50 text-gray-300 cursor-not-allowed' : ''}
               `}
             >
               {isDone && <Check size={11} aria-hidden="true" />}

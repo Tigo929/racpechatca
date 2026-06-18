@@ -116,6 +116,8 @@ export interface OrderPhoto {
   isUrgent: boolean;
   /** Свободная (договорная) цена: сумма позиции = её цене, кол-во не умножается. */
   isFreePrice?: boolean;
+  /** Оставил ли клиент отзыв (отмечается вручную в списке заказов). */
+  clientReviewLeft?: boolean;
   executorId?: string | null;
   executor?: OrderExecutor | null;
   completedAt?: string | null;
@@ -231,6 +233,7 @@ export interface OrdersQuery {
   status?: EnumStatus;
   sourceOrder?: EnumSourceOrder;
   productCategory?: EnumProductCategory;
+  reviewLeft?: boolean;
 }
 
 // ── Salary types ──────────────────────────────────────────────────────────────

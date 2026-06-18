@@ -184,6 +184,9 @@ export class OrderPhotoService {
       },
       sourceOrder: query.sourceOrder,
       productCategory: query.productCategory,
+      ...(query.reviewLeft !== undefined
+        ? { clientReviewLeft: query.reviewLeft }
+        : {}),
       ...(currentUserRole === 'EXECUTOR' ? { executorId: currentUserId } : {}),
     };
 
@@ -341,31 +344,25 @@ export class OrderPhotoService {
 
     const newStatus = dto.status;
 
-    // Исполнитель может переводить только в READY_FOR_REVIEW, если назначен на этот заказ.
+    // Финансовые/складские статусы — только администратор (списание склада,
+    // начисление и выплата зарплаты). Остальные «рабочие» статусы исполнитель
+    // (назначенный на заказ) ставит сам, отражая ход выполнения.
+    const ADMIN_ONLY_STATUSES: EnumStatus[] = [
+      EnumStatus.SENT,
+      EnumStatus.PAID,
+      EnumStatus.CANCELLED,
+    ];
     if (!isAdmin) {
-      if (newStatus !== 'READY_FOR_REVIEW') {
-        throw new ForbiddenException(
-          'Исполнитель может переводить заказ только в статус «Готов к проверке».',
-        );
-      }
       if (order.executorId !== userId) {
         throw new ForbiddenException(
           'Вы не назначены исполнителем этого заказа.',
         );
       }
-    }
-
-    // Только ADMIN может переводить в SENT, PAID, COMPLETED, CANCELLED
-    if (
-      (newStatus === 'SENT' ||
-        newStatus === 'PAID' ||
-        newStatus === 'COMPLETED' ||
-        newStatus === 'CANCELLED') &&
-      !isAdmin
-    ) {
-      throw new ForbiddenException(
-        'Только администратор может устанавливать этот статус.',
-      );
+      if (ADMIN_ONLY_STATUSES.includes(newStatus)) {
+        throw new ForbiddenException(
+          'Этот статус может установить только администратор.',
+        );
+      }
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -531,6 +528,20 @@ export class OrderPhotoService {
       );
     }
     return updated;
+  }
+
+  /** Отметить, оставил ли клиент отзыв (вручную из списка заказов). */
+  async setReviewLeft(idOrder: string, value: boolean) {
+    await this.getOrderById(idOrder, '', EnumRole.ADMIN);
+    return this.prisma.orderPhoto.update({
+      where: { id: idOrder },
+      data: { clientReviewLeft: value },
+      include: {
+        items: true,
+        tshirtItems: true,
+        executor: { select: { id: true, username: true } },
+      },
+    });
   }
 
   async deleteOrder(idOrder: string) {

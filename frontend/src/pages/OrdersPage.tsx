@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, ChevronLeft, ChevronRight, Printer, RefreshCw, LogOut, Users, Flame, Clock, Camera, Shirt, Wallet, Boxes, LayoutList, Sparkles, CheckCircle2, TrendingUp } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
+import { Plus, Search, ChevronLeft, ChevronRight, Printer, RefreshCw, LogOut, Users, Flame, Clock, Camera, Shirt, Wallet, Boxes, LayoutList, Sparkles, CheckCircle2, TrendingUp, Star } from 'lucide-react';
 import { getDeadlineInfo } from '../utils/deadline';
 import { Link } from 'react-router-dom';
 import { ordersApi } from '../api/orders';
@@ -29,6 +30,8 @@ export function OrdersPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  const qc = useQueryClient();
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['orders', query],
     queryFn: () => ordersApi.getAll(query),
@@ -43,6 +46,19 @@ export function OrdersPage() {
 
   const setProductCategory = (productCategory: EnumProductCategory | undefined) =>
     setQuery(q => ({ ...q, productCategory, page: 1 }));
+
+  const setReviewFilter = (reviewLeft: boolean | undefined) =>
+    setQuery(q => ({ ...q, reviewLeft, page: 1 }));
+
+  const reviewMutation = useMutation({
+    mutationFn: ({ id, reviewLeft }: { id: string; reviewLeft: boolean }) =>
+      ordersApi.setReview(id, reviewLeft),
+    onSuccess: (u) => {
+      void qc.invalidateQueries({ queryKey: ['orders'] });
+      toast.success(u.clientReviewLeft ? 'Отзыв отмечен' : 'Отметка снята');
+    },
+    onError: () => toast.error('Не удалось изменить отметку отзыва'),
+  });
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--brand-bg)' }}>
@@ -178,6 +194,21 @@ export function OrdersPage() {
               ))}
             </div>
           </div>
+          {/* Фильтр по отзыву — только для администратора */}
+          {isAdmin && (
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">Отзыв</span>
+              <div className="flex gap-1.5 flex-wrap">
+                <FilterChip active={query.reviewLeft === undefined} onClick={() => setReviewFilter(undefined)}>Все</FilterChip>
+                <FilterChip active={query.reviewLeft === true} onClick={() => setReviewFilter(true)}>
+                  <Star size={11} aria-hidden="true" className="inline mr-1" />Оставлен
+                </FilterChip>
+                <FilterChip active={query.reviewLeft === false} onClick={() => setReviewFilter(false)}>
+                  Без отзыва
+                </FilterChip>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Таблица */}
@@ -207,6 +238,9 @@ export function OrdersPage() {
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Статус</th>
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Доставка</th>
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Позиций</th>
+                    {isAdmin && (
+                      <th scope="col" className="px-5 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Отзыв</th>
+                    )}
                     {isAdmin && (
                       <th scope="col" className="px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Сумма</th>
                     )}
@@ -270,6 +304,26 @@ export function OrdersPage() {
                           {(order.items?.length ?? 0) + (order.tshirtItems?.length ?? 0)} шт.
                         </span>
                       </td>
+                      {isAdmin && (
+                        <td className="px-5 py-3.5 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              reviewMutation.mutate({ id: order.id, reviewLeft: !order.clientReviewLeft });
+                            }}
+                            disabled={reviewMutation.isPending}
+                            title={order.clientReviewLeft ? 'Отзыв оставлен — снять отметку' : 'Отметить, что клиент оставил отзыв'}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 ${
+                              order.clientReviewLeft
+                                ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                : 'bg-gray-100 text-gray-400 hover:bg-amber-100 hover:text-amber-700'
+                            }`}
+                          >
+                            <Star size={11} aria-hidden="true" className={order.clientReviewLeft ? 'fill-emerald-600' : ''} />
+                            {order.clientReviewLeft ? 'Оставил' : 'Нет'}
+                          </button>
+                        </td>
+                      )}
                       {isAdmin && (
                         <td className="px-5 py-3.5 text-right">
                           <span className="text-sm font-bold text-gray-900 tabular-nums">

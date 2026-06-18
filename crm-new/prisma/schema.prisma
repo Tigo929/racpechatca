@@ -50,6 +50,8 @@ model OrderPhoto {
   isUrgent              Boolean             @default(false)
   // Свободная (договорная) цена: сумма позиции = её цене, количество НЕ умножается.
   isFreePrice           Boolean             @default(false)
+  // Оставил ли клиент отзыв (отмечается вручную в списке заказов).
+  clientReviewLeft      Boolean             @default(false)
 
   executorId   String?
   executor     User?     @relation("OrderExecutor", fields: [executorId], references: [id])
