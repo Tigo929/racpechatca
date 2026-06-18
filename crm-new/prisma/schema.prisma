@@ -56,11 +56,39 @@ model OrderPhoto {
   completedAt  DateTime?
   clientPaidAt DateTime?
 
-  items         ItemPhoto[]
-  tshirtItems   ItemTshirt[]
-  accruals      SalaryAccrual[]
-  statusHistory StatusHistory[]
-  assignments   OrderAssignment[]
+  items          ItemPhoto[]
+  tshirtItems    ItemTshirt[]
+  accruals       SalaryAccrual[]
+  statusHistory  StatusHistory[]
+  assignments    OrderAssignment[]
+  stockMovements StockMovement[]
+}
+
+/// Остаток футболок на складе по размеру и цвету (6 размеров × 2 цвета).
+model TshirtStock {
+  id        String         @id @default(uuid())
+  size      EnumTshirtSize
+  color     String
+  quantity  Int            @default(0)
+  updatedAt DateTime       @updatedAt
+
+  @@unique([size, color])
+}
+
+/// Журнал списаний склада по заказу (положительное quantity = списано).
+/// Возврат при откате из «Отправлен»/удалении возвращает ровно списанное.
+model StockMovement {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  orderId String
+  order   OrderPhoto @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  size     EnumTshirtSize
+  color    String
+  quantity Int
+
+  @@index([orderId])
 }
 
 enum EnumProductCategory {

@@ -6,6 +6,7 @@ import { UsersModule } from './users/users.module';
 import { SalaryModule } from './salary/salary.module';
 import { ReportsModule } from './reports/reports.module';
 import { ExpensesModule } from './expenses/expenses.module';
+import { StockModule } from './stock/stock.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ExpensesModule } from './expenses/expenses.module';
     SalaryModule,
     ReportsModule,
     ExpensesModule,
+    StockModule,
   ],
   controllers: [],
   providers: [],

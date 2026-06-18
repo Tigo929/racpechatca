@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, ChevronLeft, ChevronRight, Printer, RefreshCw, LogOut, Users, Flame, Clock, Camera, Shirt, Wallet, LayoutList, Sparkles, CheckCircle2, TrendingUp } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, Printer, RefreshCw, LogOut, Users, Flame, Clock, Camera, Shirt, Wallet, Boxes, LayoutList, Sparkles, CheckCircle2, TrendingUp } from 'lucide-react';
 import { getDeadlineInfo } from '../utils/deadline';
 import { Link } from 'react-router-dom';
 import { ordersApi } from '../api/orders';
@@ -83,6 +83,13 @@ export function OrdersPage() {
                   className="p-2 text-indigo-300 hover:text-amber-400 rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                 >
                   <Wallet size={15} aria-hidden="true" />
+                </Link>
+                <Link
+                  to="/crm/stock"
+                  aria-label="Склад футболок"
+                  className="p-2 text-indigo-300 hover:text-amber-400 rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                >
+                  <Boxes size={15} aria-hidden="true" />
                 </Link>
                 <Link
                   to="/crm/users"

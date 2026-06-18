@@ -6,8 +6,10 @@ import { OrderPhotoController } from './order-photo.controller';
 import { LeadController } from './lead.controller';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
+import { StockModule } from 'src/stock/stock.module';
 
 @Module({
+  imports: [StockModule],
   controllers: [LeadController, OrderPhotoController],
   providers: [
     OrderPhotoService,

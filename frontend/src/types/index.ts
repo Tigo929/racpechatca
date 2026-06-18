@@ -1,5 +1,19 @@
 export type EnumProductCategory = 'PHOTO' | 'TSHIRT';
 
+export interface TshirtStock {
+  id: string;
+  size: EnumTshirtSize;
+  color: string;
+  quantity: number;
+  updatedAt: string;
+}
+
+export interface SetStockDto {
+  size: EnumTshirtSize;
+  color: string;
+  quantity: number;
+}
+
 export type EnumTshirtSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
 export type EnumPrintLocation =
   | 'FRONT'

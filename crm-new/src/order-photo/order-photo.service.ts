@@ -21,6 +21,7 @@ import {
 import type { Prisma } from 'src/generated/prisma/client';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
 import { calculateSalarySnapshot } from 'src/salary/salary-calculation';
+import { StockService } from 'src/stock/stock.service';
 
 function buildCommunicationUrl(
   platform: EnumCommunication,
@@ -37,6 +38,7 @@ export class OrderPhotoService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly financialIntegrity: OrderFinancialIntegrityService,
+    private readonly stock: StockService,
   ) {}
 
   async createOrder(dto: DtoCreateOrder) {
@@ -395,6 +397,17 @@ export class OrderPhotoService {
         },
       });
 
+      // Склад: списываем остаток при переходе в «Отправлен» (блок при нехватке),
+      // возвращаем при уходе из «Отправлен».
+      if (newStatus === EnumStatus.SENT && lockedOrder.status !== EnumStatus.SENT) {
+        await this.stock.consumeForOrder(id, tx);
+      } else if (
+        lockedOrder.status === EnumStatus.SENT &&
+        newStatus !== EnumStatus.SENT
+      ) {
+        await this.stock.returnForOrder(id, tx);
+      }
+
       // При переводе в SENT создаём начисление зарплаты исполнителю
       if (newStatus === EnumStatus.SENT && isAdmin && lockedOrder.executorId) {
         const executor = await tx.user.findUnique({
@@ -524,6 +537,9 @@ export class OrderPhotoService {
     await this.getOrderById(idOrder, '', EnumRole.ADMIN);
 
     return this.prisma.$transaction(async (tx) => {
+      // Возвращаем списанный со склада остаток (если заказ был отправлен).
+      await this.stock.returnForOrder(idOrder, tx);
+
       // Удаляем все начисления (любой статус) и их платёжные связи
       const accruals = await tx.salaryAccrual.findMany({
         where: { orderId: idOrder },

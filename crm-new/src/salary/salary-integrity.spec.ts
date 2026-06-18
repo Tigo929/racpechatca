@@ -7,6 +7,7 @@ import { EnumRole, EnumStatus } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderFinancialIntegrityService } from 'src/order-photo/order-financial-integrity.service';
 import { OrderPhotoService } from 'src/order-photo/order-photo.service';
+import { StockService } from 'src/stock/stock.service';
 import { SalaryService } from './salary.service';
 import { calculateSalarySnapshot } from './salary-calculation';
 
@@ -105,11 +106,18 @@ function makeOrder(productCategory: 'PHOTO' | 'TSHIRT' = 'PHOTO') {
 function createOrderService(stub: PrismaStub) {
   const financialIntegrity = {
     assertOrderFinanciallyEditable: jest.fn<Promise<void>, [string]>(),
+    recalcPendingAccrual: jest.fn<Promise<void>, unknown[]>(),
   };
   financialIntegrity.assertOrderFinanciallyEditable.mockResolvedValue();
+  financialIntegrity.recalcPendingAccrual.mockResolvedValue();
+  const stock = {
+    consumeForOrder: jest.fn<Promise<void>, unknown[]>().mockResolvedValue(),
+    returnForOrder: jest.fn<Promise<void>, unknown[]>().mockResolvedValue(),
+  };
   return new OrderPhotoService(
     stub as unknown as PrismaService,
     financialIntegrity as unknown as OrderFinancialIntegrityService,
+    stock as unknown as StockService,
   );
 }
 
@@ -473,5 +481,156 @@ describe('salary payment integrity', () => {
         0,
       ),
     ).toBe(80);
+  });
+});
+
+// ── Склад футболок ──────────────────────────────────────────────────────────
+
+interface StockRow { id: string; size: string; color: string; quantity: number }
+interface Movement { orderId: string; size: string; color: string; quantity: number }
+
+function makeStockHarness(
+  stock: StockRow[],
+  items: { size: string; color: string; quantity: number }[],
+  movements: Movement[] = [],
+) {
+  return {
+    stock,
+    movements,
+    $queryRaw: jest.fn(() => Promise.resolve([])),
+    itemTshirt: {
+      findMany: jest.fn(() => Promise.resolve(items)),
+    },
+    stockMovement: {
+      count: jest.fn(({ where }: { where: { orderId: string } }) =>
+        Promise.resolve(
+          movements.filter((m) => m.orderId === where.orderId).length,
+        ),
+      ),
+      findMany: jest.fn(({ where }: { where: { orderId: string } }) =>
+        Promise.resolve(movements.filter((m) => m.orderId === where.orderId)),
+      ),
+      create: jest.fn(({ data }: { data: Movement }) => {
+        movements.push(data);
+        return Promise.resolve(data);
+      }),
+      deleteMany: jest.fn(({ where }: { where: { orderId: string } }) => {
+        for (let i = movements.length - 1; i >= 0; i--) {
+          if (movements[i].orderId === where.orderId) movements.splice(i, 1);
+        }
+        return Promise.resolve({ count: 0 });
+      }),
+    },
+    tshirtStock: {
+      findUnique: jest.fn(
+        ({ where }: { where: { size_color: { size: string; color: string } } }) =>
+          Promise.resolve(
+            stock.find(
+              (s) =>
+                s.size === where.size_color.size &&
+                s.color === where.size_color.color,
+            ) ?? null,
+          ),
+      ),
+      update: jest.fn(
+        ({ where, data }: { where: { id: string }; data: { quantity: number } }) => {
+          const row = stock.find((s) => s.id === where.id);
+          if (row) row.quantity = data.quantity;
+          return Promise.resolve(row);
+        },
+      ),
+      updateMany: jest.fn(
+        ({
+          where,
+          data,
+        }: {
+          where: { size: string; color: string };
+          data: { quantity: { increment: number } };
+        }) => {
+          const row = stock.find(
+            (s) => s.size === where.size && s.color === where.color,
+          );
+          if (row) row.quantity += data.quantity.increment;
+          return Promise.resolve({ count: row ? 1 : 0 });
+        },
+      ),
+    },
+  };
+}
+
+describe('tshirt stock', () => {
+  function service(h: ReturnType<typeof makeStockHarness>) {
+    return new StockService(h as unknown as PrismaService);
+  }
+
+  it('blocks sending when stock is insufficient (409)', async () => {
+    const h = makeStockHarness(
+      [{ id: 's1', size: 'S', color: 'Белый', quantity: 3 }],
+      [{ size: 'S', color: 'Белый', quantity: 5 }],
+    );
+    await expect(
+      service(h).consumeForOrder('order-1', h as never),
+    ).rejects.toBeInstanceOf(ConflictException);
+    // остаток не тронут при блокировке
+    expect(h.stock[0].quantity).toBe(3);
+    expect(h.movements).toHaveLength(0);
+  });
+
+  it('decrements stock and records a movement on consume', async () => {
+    const h = makeStockHarness(
+      [{ id: 's1', size: 'S', color: 'Белый', quantity: 5 }],
+      [{ size: 'S', color: 'Белый', quantity: 5 }],
+    );
+    await service(h).consumeForOrder('order-1', h as never);
+    expect(h.stock[0].quantity).toBe(0);
+    expect(h.movements).toEqual([
+      { orderId: 'order-1', size: 'S', color: 'Белый', quantity: 5 },
+    ]);
+  });
+
+  it('is idempotent — does not double-consume', async () => {
+    const h = makeStockHarness(
+      [{ id: 's1', size: 'S', color: 'Белый', quantity: 5 }],
+      [{ size: 'S', color: 'Белый', quantity: 2 }],
+      [{ orderId: 'order-1', size: 'S', color: 'Белый', quantity: 2 }],
+    );
+    await service(h).consumeForOrder('order-1', h as never);
+    expect(h.stock[0].quantity).toBe(5); // не списали повторно
+  });
+
+  it('returns exactly what was consumed on return', async () => {
+    const h = makeStockHarness(
+      [{ id: 's1', size: 'S', color: 'Белый', quantity: 0 }],
+      [],
+      [{ orderId: 'order-1', size: 'S', color: 'Белый', quantity: 5 }],
+    );
+    await service(h).returnForOrder('order-1', h as never);
+    expect(h.stock[0].quantity).toBe(5);
+    expect(h.movements).toHaveLength(0);
+  });
+
+  it('aggregates multiple items of the same size/color', async () => {
+    const h = makeStockHarness(
+      [{ id: 's1', size: 'M', color: 'Чёрный', quantity: 10 }],
+      [
+        { size: 'M', color: 'Чёрный', quantity: 3 },
+        { size: 'M', color: 'Чёрный', quantity: 4 },
+      ],
+    );
+    await service(h).consumeForOrder('order-1', h as never);
+    expect(h.stock[0].quantity).toBe(3); // 10 - (3+4)
+    expect(h.movements).toEqual([
+      { orderId: 'order-1', size: 'M', color: 'Чёрный', quantity: 7 },
+    ]);
+  });
+
+  it('skips untracked size/color (no stock row)', async () => {
+    const h = makeStockHarness(
+      [{ id: 's1', size: 'S', color: 'Белый', quantity: 5 }],
+      [{ size: 'XS', color: 'Красный', quantity: 100 }],
+    );
+    await service(h).consumeForOrder('order-1', h as never);
+    expect(h.stock[0].quantity).toBe(5); // не тронут
+    expect(h.movements).toHaveLength(0); // нет движения для неотслеживаемого
   });
 });
