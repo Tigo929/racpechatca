@@ -1,5 +1,5 @@
-import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsNumber, IsOptional } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsEnum, IsIn, IsNumber, IsOptional } from 'class-validator';
 import {
   EnumProductCategory,
   EnumSourceOrder,
@@ -24,9 +24,9 @@ export default class DtoAllOrdersforQuery {
   @IsEnum(EnumProductCategory)
   @IsOptional()
   productCategory?: EnumProductCategory;
-  // Фильтр по отметке отзыва: true/false (строкой из query).
-  @IsBoolean()
+  // Фильтр по отметке отзыва. Строкой ('true'/'false'), чтобы implicit-conversion
+  // не превратил 'false' в boolean true. Сравниваем явно в сервисе.
+  @IsIn(['true', 'false'])
   @IsOptional()
-  @Transform(({ value }) => value === true || value === 'true')
-  reviewLeft?: boolean;
+  reviewLeft?: 'true' | 'false';
 }

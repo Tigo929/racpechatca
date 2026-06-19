@@ -185,7 +185,7 @@ export class OrderPhotoService {
       sourceOrder: query.sourceOrder,
       productCategory: query.productCategory,
       ...(query.reviewLeft !== undefined
-        ? { clientReviewLeft: query.reviewLeft }
+        ? { clientReviewLeft: query.reviewLeft === 'true' }
         : {}),
       ...(currentUserRole === 'EXECUTOR' ? { executorId: currentUserId } : {}),
     };
