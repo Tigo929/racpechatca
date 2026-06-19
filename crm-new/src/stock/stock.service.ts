@@ -6,6 +6,7 @@ import { DtoSetStock } from './dto/set-stock.dto';
 
 /** Порядок размеров для вывода (S..3XL); enum-порядок не гарантирован. */
 const SIZE_ORDER: EnumTshirtSize[] = [
+  EnumTshirtSize.XS,
   EnumTshirtSize.S,
   EnumTshirtSize.M,
   EnumTshirtSize.L,

@@ -295,11 +295,21 @@ export class SalaryService {
         await tx.paymentAccrualLink.create({
           data: { paymentId: payment.id, accrualId: accrual.id, amount },
         });
-        // Переводим заказ в PAID
-        await tx.orderPhoto.update({
-          where: { id: accrual.orderId },
-          data: { status: 'PAID' },
-        });
+        // Переводим заказ в PAID только если он ещё не PAID (идемпотентно)
+        if (accrual.order.status !== 'PAID') {
+          await tx.orderPhoto.update({
+            where: { id: accrual.orderId },
+            data: { status: 'PAID' },
+          });
+          await tx.statusHistory.create({
+            data: {
+              orderId: accrual.orderId,
+              fromStatus: accrual.order.status,
+              toStatus: 'PAID',
+              changedBy: paidById,
+            },
+          });
+        }
       }
 
       return {

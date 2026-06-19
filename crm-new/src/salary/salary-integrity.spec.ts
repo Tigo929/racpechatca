@@ -633,4 +633,176 @@ describe('tshirt stock', () => {
     expect(h.stock[0].quantity).toBe(5); // не тронут
     expect(h.movements).toHaveLength(0); // нет движения для неотслеживаемого
   });
+
+  it('lists XS before S in sorted output', async () => {
+    const stock = new StockService({
+      tshirtStock: {
+        findMany: jest.fn(() =>
+          Promise.resolve([
+            { id: 's1', size: 'S', color: 'Белый', quantity: 5, updatedAt: new Date() },
+            { id: 'xs1', size: 'XS', color: 'Белый', quantity: 2, updatedAt: new Date() },
+            { id: 'm1', size: 'M', color: 'Белый', quantity: 3, updatedAt: new Date() },
+          ]),
+        ),
+      },
+    } as unknown as PrismaService);
+    const result = await stock.list() as { size: string }[];
+    expect(result[0].size).toBe('XS');
+    expect(result[1].size).toBe('S');
+    expect(result[2].size).toBe('M');
+  });
+});
+
+// ── createPaymentByAccruals — аудит-трейл ──────────────────────────────────
+
+interface AccrualByIdRow {
+  id: string;
+  orderId: string;
+  executorId: string;
+  salaryBase: number;
+  rateBasisPoints: number;
+  salaryAmount: number;
+  paidAmount: number;
+  status: 'PENDING' | 'PARTIALLY_PAID' | 'PAID';
+  createdAt: Date;
+  order: {
+    numberOrder: string;
+    totalOrder: number;
+    deliveryCost: number;
+    createdAt: Date;
+    status: string;
+    urlCommunication: string;
+    communicationPlatform: string;
+  };
+}
+
+function makePaymentByAccrualsHarness(accruals: AccrualByIdRow[]) {
+  const orders: Record<string, string> = {};
+  for (const a of accruals) {
+    orders[a.orderId] = a.order.status;
+  }
+
+  const statusHistoryCreated: unknown[] = [];
+
+  const harness = {
+    _orders: orders,
+    _accruals: accruals,
+    statusHistoryCreated,
+
+    salaryAccrual: {
+      findMany: jest.fn(() => Promise.resolve(accruals)),
+      update: jest.fn(({ where, data }: { where: { id: string }; data: { paidAmount: number; status: string } }) => {
+        const a = accruals.find((x) => x.id === where.id);
+        if (a) { a.paidAmount = data.paidAmount; a.status = data.status as 'PAID'; }
+        return Promise.resolve(a);
+      }),
+    },
+
+    salaryPayment: {
+      create: jest.fn(({ data }: { data: unknown }) =>
+        Promise.resolve({ id: 'payment-1', createdAt: new Date(), ...data }),
+      ),
+    },
+
+    paymentAccrualLink: {
+      create: jest.fn(() => Promise.resolve({ id: 'link-1' })),
+    },
+
+    orderPhoto: {
+      update: jest.fn(({ where, data }: { where: { id: string }; data: { status: string } }) => {
+        orders[where.id] = data.status;
+        return Promise.resolve({ id: where.id, status: data.status });
+      }),
+    },
+
+    statusHistory: {
+      create: jest.fn((args: { data: unknown }) => {
+        statusHistoryCreated.push(args.data);
+        return Promise.resolve({ id: 'hist-1' });
+      }),
+    },
+
+    $transaction<T>(cb: (tx: typeof harness) => Promise<T>): Promise<T> {
+      return cb(harness);
+    },
+  };
+  return harness;
+}
+
+describe('createPaymentByAccruals — StatusHistory audit trail', () => {
+  function svc(h: ReturnType<typeof makePaymentByAccrualsHarness>) {
+    return new SalaryService(h as unknown as PrismaService);
+  }
+
+  it('creates a StatusHistory entry when setting order to PAID', async () => {
+    const harness = makePaymentByAccrualsHarness([
+      {
+        id: 'accrual-1',
+        orderId: 'order-1',
+        executorId: 'executor-1',
+        salaryBase: 900,
+        rateBasisPoints: 3000,
+        salaryAmount: 270,
+        paidAmount: 0,
+        status: 'PENDING',
+        createdAt: new Date('2026-06-01'),
+        order: {
+          numberOrder: '202606-001',
+          totalOrder: 1000,
+          deliveryCost: 100,
+          createdAt: new Date('2026-06-01'),
+          status: 'SENT',
+          urlCommunication: 'https://t.me/client',
+          communicationPlatform: 'TELEGRAM',
+        },
+      },
+    ]);
+    await svc(harness).createPaymentByAccruals(
+      { executorId: 'executor-1', accrualIds: ['accrual-1'] },
+      'admin-1',
+    );
+
+    expect(harness.orderPhoto.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { status: 'PAID' } }),
+    );
+    expect(harness.statusHistory.create).toHaveBeenCalledTimes(1);
+    expect(harness.statusHistoryCreated[0]).toMatchObject({
+      orderId: 'order-1',
+      fromStatus: 'SENT',
+      toStatus: 'PAID',
+      changedBy: 'admin-1',
+    });
+  });
+
+  it('skips orderPhoto.update and statusHistory.create if order is already PAID', async () => {
+    const harness = makePaymentByAccrualsHarness([
+      {
+        id: 'accrual-2',
+        orderId: 'order-2',
+        executorId: 'executor-1',
+        salaryBase: 500,
+        rateBasisPoints: 3000,
+        salaryAmount: 150,
+        paidAmount: 0,
+        status: 'PENDING',
+        createdAt: new Date('2026-06-02'),
+        order: {
+          numberOrder: '202606-002',
+          totalOrder: 600,
+          deliveryCost: 100,
+          createdAt: new Date('2026-06-02'),
+          status: 'PAID',
+          urlCommunication: 'https://t.me/client2',
+          communicationPlatform: 'TELEGRAM',
+        },
+      },
+    ]);
+    await svc(harness).createPaymentByAccruals(
+      { executorId: 'executor-1', accrualIds: ['accrual-2'] },
+      'admin-1',
+    );
+
+    expect(harness.orderPhoto.update).not.toHaveBeenCalled();
+    expect(harness.statusHistory.create).not.toHaveBeenCalled();
+  });
 });
