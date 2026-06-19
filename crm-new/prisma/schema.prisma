@@ -64,6 +64,12 @@ model OrderPhoto {
   statusHistory  StatusHistory[]
   assignments    OrderAssignment[]
   stockMovements StockMovement[]
+
+  @@index([status])
+  @@index([executorId])
+  @@index([createdAt])
+  @@index([productCategory])
+  @@index([status, productCategory])
 }
 
 /// Остаток футболок на складе по размеру и цвету (6 размеров × 2 цвета).
@@ -236,6 +242,9 @@ model SalaryAccrual {
   paidAmount Int               @default(0)
 
   paymentLinks PaymentAccrualLink[]
+
+  @@index([executorId, status])
+  @@index([orderId, status])
 }
 
 model SalaryPayment {
