@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Plus, Search, ChevronLeft, ChevronRight, Printer, RefreshCw, LogOut, Users, Flame, Clock, Camera, Shirt, Wallet, Boxes, LayoutList, Sparkles, CheckCircle2, TrendingUp, Star } from 'lucide-react';
@@ -29,8 +29,17 @@ export function OrdersPage() {
   });
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState('');
 
   const qc = useQueryClient();
+
+  // debounce: отправляем поиск через 350ms после последнего нажатия
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setQuery(q => ({ ...q, search: searchInput.trim() || undefined, page: 1 }));
+    }, 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['orders', query],
@@ -157,6 +166,19 @@ export function OrdersPage() {
             ))}
           </div>
         )}
+
+        {/* Поиск */}
+        <div className="relative">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" aria-hidden="true" />
+          <input
+            type="search"
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            placeholder="Поиск по номеру заказа, контакту или заметке…"
+            className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-shadow"
+            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+          />
+        </div>
 
         {/* Фильтры */}
         <div className="bg-white rounded-2xl border border-gray-100/80 px-4 py-3 space-y-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>

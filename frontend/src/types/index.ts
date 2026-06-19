@@ -234,6 +234,7 @@ export interface OrdersQuery {
   sourceOrder?: EnumSourceOrder;
   productCategory?: EnumProductCategory;
   reviewLeft?: boolean;
+  search?: string;
 }
 
 // ── Salary types ──────────────────────────────────────────────────────────────

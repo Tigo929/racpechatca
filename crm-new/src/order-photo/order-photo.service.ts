@@ -188,6 +188,15 @@ export class OrderPhotoService {
         ? { clientReviewLeft: query.reviewLeft === 'true' }
         : {}),
       ...(currentUserRole === 'EXECUTOR' ? { executorId: currentUserId } : {}),
+      ...(query.search
+        ? {
+            OR: [
+              { numberOrder: { contains: query.search, mode: 'insensitive' } },
+              { urlCommunication: { contains: query.search, mode: 'insensitive' } },
+              { note: { contains: query.search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
     };
 
     const [orders, count] = await this.prisma.$transaction([
