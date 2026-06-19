@@ -22,6 +22,7 @@ export const ordersApi = {
     if (query.sourceOrder) params.set('sourceOrder', query.sourceOrder);
     if (query.productCategory) params.set('productCategory', query.productCategory);
     if (query.reviewLeft !== undefined) params.set('reviewLeft', String(query.reviewLeft));
+    if (query.search) params.set('search', query.search);
     const { data } = await api.get<OrdersResponse>(`/order-photo?${params}`);
     return data;
   },
