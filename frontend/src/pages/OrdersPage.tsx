@@ -146,26 +146,36 @@ export function OrdersPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-4">
 
         {/* Статистика */}
-        {meta && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { label: 'Всего заявок', value: meta.quantityElements, icon: <LayoutList size={18} />, color: 'from-indigo-500 to-indigo-600', bg: 'bg-indigo-50', text: 'text-indigo-600' },
-              { label: 'Новых', value: orders.filter(o => o.status === 'NEW').length, icon: <Sparkles size={18} />, color: 'from-amber-500 to-amber-600', bg: 'bg-amber-50', text: 'text-amber-600' },
-              { label: 'Готовы', value: orders.filter(o => o.status === 'READY').length, icon: <CheckCircle2 size={18} />, color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50', text: 'text-emerald-600' },
-              { label: 'Оплачено', value: orders.filter(o => o.status === 'PAID').length, icon: <TrendingUp size={18} />, color: 'from-violet-500 to-violet-600', bg: 'bg-violet-50', text: 'text-violet-600' },
-            ].map(stat => (
-              <div key={stat.label} className="bg-white rounded-2xl p-4 shadow-sm border border-white/80 flex items-center gap-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 8px rgba(0,0,0,0.04)' }}>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${stat.color} text-white shadow-sm`}>
-                  {stat.icon}
+        {meta && (() => {
+          const overdueCount = orders.filter(o => {
+            if (o.status === 'PAID' || o.status === 'SENT') return false;
+            const dl = getDeadlineInfo(o.deadline, o.createdAt);
+            return dl.daysLeft !== null && dl.daysLeft <= 0;
+          }).length;
+          const urgentCount = orders.filter(o => o.isUrgent && o.status !== 'PAID' && o.status !== 'SENT').length;
+          const alertCount = Math.max(overdueCount, urgentCount);
+          const stats = [
+            { label: 'Всего заявок', value: meta.quantityElements, icon: <LayoutList size={18} />, color: 'from-indigo-500 to-indigo-600', text: 'text-indigo-600' },
+            { label: 'Новых', value: orders.filter(o => o.status === 'NEW').length, icon: <Sparkles size={18} />, color: 'from-amber-500 to-amber-600', text: 'text-amber-600' },
+            { label: 'Готовы', value: orders.filter(o => o.status === 'READY').length, icon: <CheckCircle2 size={18} />, color: 'from-emerald-500 to-emerald-600', text: 'text-emerald-600' },
+            { label: alertCount > 0 ? 'Просроченных!' : 'В порядке', value: alertCount, icon: alertCount > 0 ? <Flame size={18} /> : <TrendingUp size={18} />, color: alertCount > 0 ? 'from-red-500 to-red-600' : 'from-violet-500 to-violet-600', text: alertCount > 0 ? 'text-red-600' : 'text-violet-600' },
+          ];
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {stats.map(stat => (
+                <div key={stat.label} className="bg-white rounded-2xl p-4 shadow-sm border border-white/80 flex items-center gap-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 8px rgba(0,0,0,0.04)' }}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${stat.color} text-white shadow-sm`}>
+                    {stat.icon}
+                  </div>
+                  <div>
+                    <p className={`text-2xl font-bold tabular-nums ${stat.text}`}>{stat.value}</p>
+                    <p className="text-xs text-gray-400 leading-tight">{stat.label}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className={`text-2xl font-bold tabular-nums ${stat.text}`}>{stat.value}</p>
-                  <p className="text-xs text-gray-400 leading-tight">{stat.label}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Поиск */}
         <div className="relative">
