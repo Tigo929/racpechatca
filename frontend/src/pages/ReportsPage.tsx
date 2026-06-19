@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { reportsApi } from '../api/reports';
 import { expensesApi } from '../api/expenses';
-import type { MonthData, ExpenseOrder, CreateExpenseDto, EnumExpenseCategory } from '../types/index';
+import type { MonthData, ExpenseOrder, CreateExpenseDto, EnumExpenseCategory, FunnelReport } from '../types/index';
 import { EXPENSE_CATEGORY_LABELS } from '../types/index';
 import { getErrorMessage } from '../utils/get-error-message';
 import { formatCurrency as fmt, formatDate as fmtDate } from '../utils/format';
@@ -221,8 +221,14 @@ export function ReportsPage() {
     staleTime: 30_000,
   });
 
+  const { data: funnel } = useQuery<FunnelReport>({
+    queryKey: ['funnel-report', year],
+    queryFn: () => reportsApi.getFunnel(year),
+    staleTime: 60_000,
+  });
+
   const totalExpenses = report
-    ? report.totals.expensePhoto + report.totals.expenseTshirt
+    ? report.totals.expensePhoto + report.totals.expenseTshirt + report.totals.expenseOther
     : 0;
 
   return (
@@ -361,6 +367,57 @@ export function ReportsPage() {
             year={year}
           />
         </div>
+
+        {/* Воронка лидов */}
+        {funnel && (
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 className="font-semibold text-gray-800 mb-4">Воронка заявок с сайта — {year}</h3>
+            {funnel.totalLeads === 0 ? (
+              <p className="text-gray-400 text-sm">Лидов с сайта за {year} год не поступало.</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-4 mb-5">
+                  {[
+                    { label: 'Лидов получено', value: funnel.totalLeads, color: 'bg-indigo-100 text-indigo-700' },
+                    { label: `Конвертировано (${funnel.conversionRate}%)`, value: funnel.totalConverted, color: 'bg-amber-100 text-amber-700' },
+                    { label: `Дошли до оплаты (${funnel.closeRate}%)`, value: funnel.paidFromLeads, color: 'bg-emerald-100 text-emerald-700' },
+                  ].map(s => (
+                    <div key={s.label} className={`rounded-lg px-4 py-3 ${s.color}`}>
+                      <p className="text-2xl font-bold tabular-nums">{s.value}</p>
+                      <p className="text-xs mt-0.5 opacity-80">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-100">
+                        <th className="text-left pb-2 text-gray-400 font-medium">Месяц</th>
+                        {funnel.byMonth.filter(m => m.leads > 0 || m.converted > 0).map(m => (
+                          <th key={m.month} className="text-center pb-2 text-gray-400 font-medium px-2">{m.label.slice(0, 3)}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="py-1.5 text-gray-500">Лидов</td>
+                        {funnel.byMonth.filter(m => m.leads > 0 || m.converted > 0).map(m => (
+                          <td key={m.month} className="text-center py-1.5 font-semibold tabular-nums text-indigo-600">{m.leads}</td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td className="py-1.5 text-gray-500">Конвертировано</td>
+                        {funnel.byMonth.filter(m => m.leads > 0 || m.converted > 0).map(m => (
+                          <td key={m.month} className="text-center py-1.5 font-semibold tabular-nums text-emerald-600">{m.converted}</td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {showAddExpense && (

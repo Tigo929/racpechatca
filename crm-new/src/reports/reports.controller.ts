@@ -24,4 +24,13 @@ export class ReportsController {
   getYears() {
     return this.reportsService.getAvailableYears();
   }
+
+  @Get('funnel')
+  getFunnel(@Query('year') year?: string) {
+    const y = year ? parseInt(year, 10) : new Date().getFullYear();
+    if (isNaN(y) || y < 2000 || y > 2100) {
+      throw new BadRequestException('Некорректный год');
+    }
+    return this.reportsService.getFunnelReport(y);
+  }
 }

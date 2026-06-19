@@ -120,4 +120,71 @@ export class ReportsService {
     for (let y = startYear; y <= currentYear; y++) years.push(y);
     return years.reverse();
   }
+
+  /**
+   * Воронка конверсии LEAD → заказ за год.
+   * Показывает, сколько лидов пришло, сколько перешло в работу и сколько дошло
+   * до оплаты — позволяет оценить качество обработки заявок с сайта.
+   */
+  async getFunnelReport(year: number) {
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year + 1, 0, 1);
+
+    const leads = await this.prisma.orderPhoto.findMany({
+      where: {
+        status: EnumStatus.LEAD,
+        createdAt: { gte: startOfYear, lt: endOfYear },
+      },
+      select: { createdAt: true },
+    });
+
+    // Заказы, созданные из LEAD (проверяем StatusHistory: есть переход LEAD→NEW)
+    const converted = await this.prisma.statusHistory.findMany({
+      where: {
+        fromStatus: EnumStatus.LEAD,
+        toStatus: EnumStatus.NEW,
+        createdAt: { gte: startOfYear, lt: endOfYear },
+      },
+      select: { orderId: true, createdAt: true },
+    });
+
+    // Из конвертированных — сколько дошло до SENT/PAID
+    const paidFromLeads = converted.length > 0
+      ? await this.prisma.orderPhoto.count({
+          where: {
+            id: { in: converted.map(c => c.orderId) },
+            status: { in: [EnumStatus.SENT, EnumStatus.PAID] },
+          },
+        })
+      : 0;
+
+    const totalLeads = leads.length;
+    const totalConverted = converted.length;
+    const conversionRate = totalLeads > 0
+      ? Math.round((totalConverted / totalLeads) * 100)
+      : 0;
+    const closeRate = totalConverted > 0
+      ? Math.round((paidFromLeads / totalConverted) * 100)
+      : 0;
+
+    // По месяцам: сколько лидов пришло
+    const byMonth = Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      label: MONTH_LABELS[i],
+      leads: 0,
+      converted: 0,
+    }));
+    for (const l of leads) byMonth[l.createdAt.getMonth()].leads += 1;
+    for (const c of converted) byMonth[c.createdAt.getMonth()].converted += 1;
+
+    return {
+      year,
+      totalLeads,
+      totalConverted,
+      paidFromLeads,
+      conversionRate,
+      closeRate,
+      byMonth,
+    };
+  }
 }

@@ -327,6 +327,7 @@ export interface MonthData {
   tshirtCount: number;
   expensePhoto: number;
   expenseTshirt: number;
+  expenseOther: number;
   salaryPaid: number;
   profit: number;
 }
@@ -335,6 +336,23 @@ export interface MonthlyReport {
   year: number;
   months: MonthData[];
   totals: Omit<MonthData, 'month' | 'label'>;
+}
+
+export interface FunnelMonthData {
+  month: number;
+  label: string;
+  leads: number;
+  converted: number;
+}
+
+export interface FunnelReport {
+  year: number;
+  totalLeads: number;
+  totalConverted: number;
+  paidFromLeads: number;
+  conversionRate: number;
+  closeRate: number;
+  byMonth: FunnelMonthData[];
 }
 
 // ── Expense Order types ───────────────────────────────────────────────────────
