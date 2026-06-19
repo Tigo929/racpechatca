@@ -20,10 +20,15 @@ export class ReportsService {
     const [orders, expenses, salaryPayments] = await Promise.all([
       this.prisma.orderPhoto.findMany({
         where: {
-          createdAt: { gte: startOfYear, lt: endOfYear },
-          status: { notIn: EXCLUDED_STATUSES },
+          // Считаем выручку по дате отправки (когда деньги фактически получены).
+          // Для старых заказов без sentAt — fallback на createdAt.
+          OR: [
+            { sentAt: { gte: startOfYear, lt: endOfYear } },
+            { sentAt: null, createdAt: { gte: startOfYear, lt: endOfYear } },
+          ],
+          status: { in: [EnumStatus.SENT, EnumStatus.PAID] },
         },
-        select: { createdAt: true, totalOrder: true, deliveryCost: true, productCategory: true },
+        select: { sentAt: true, createdAt: true, totalOrder: true, deliveryCost: true, productCategory: true },
       }),
       this.prisma.expenseOrder.findMany({
         where: { createdAt: { gte: startOfYear, lt: endOfYear } },
@@ -51,7 +56,8 @@ export class ReportsService {
     }));
 
     for (const order of orders) {
-      const m = months[order.createdAt.getMonth()];
+      const bucketDate = order.sentAt ?? order.createdAt;
+      const m = months[bucketDate.getMonth()];
       const total = order.totalOrder ?? 0;
       const delivery = order.deliveryCost ?? 0;
       m.orderCount += 1;

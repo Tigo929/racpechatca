@@ -470,6 +470,9 @@ export class OrderPhotoService {
         where: { id },
         data: {
           status: dto.status,
+          ...(newStatus === EnumStatus.SENT && !lockedOrder.sentAt
+            ? { sentAt: new Date() }
+            : {}),
           ...(newStatus === EnumStatus.COMPLETED
             ? { completedAt: lockedOrder.completedAt ?? new Date() }
             : {}),

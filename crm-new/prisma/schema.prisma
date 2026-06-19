@@ -56,6 +56,7 @@ model OrderPhoto {
   executorId   String?
   executor     User?     @relation("OrderExecutor", fields: [executorId], references: [id])
   completedAt  DateTime?
+  sentAt       DateTime?
   clientPaidAt DateTime?
 
   items          ItemPhoto[]
