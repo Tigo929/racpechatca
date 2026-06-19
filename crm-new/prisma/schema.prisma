@@ -105,6 +105,15 @@ enum EnumProductCategory {
   TSHIRT
 }
 
+enum EnumExpenseCategory {
+  MATERIALS_PHOTO
+  MATERIALS_TSHIRT
+  DELIVERY_SUPPLIES
+  EQUIPMENT
+  MARKETING
+  OTHER
+}
+
 enum EnumSourceOrder {
   AVITO
   OZON
@@ -321,7 +330,7 @@ model ExpenseOrder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  category EnumProductCategory
+  category EnumExpenseCategory
   amount   Int
   note     String?
 

@@ -1,9 +1,9 @@
 import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
-import { EnumProductCategory } from 'src/generated/prisma/enums';
+import { EnumExpenseCategory } from 'src/generated/prisma/enums';
 
 export class DtoCreateExpense {
-  @IsEnum(EnumProductCategory)
-  category!: EnumProductCategory;
+  @IsEnum(EnumExpenseCategory)
+  category!: EnumExpenseCategory;
 
   @IsInt()
   @Min(1)

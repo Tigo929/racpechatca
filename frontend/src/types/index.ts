@@ -339,17 +339,34 @@ export interface MonthlyReport {
 
 // ── Expense Order types ───────────────────────────────────────────────────────
 
+export type EnumExpenseCategory =
+  | 'MATERIALS_PHOTO'
+  | 'MATERIALS_TSHIRT'
+  | 'DELIVERY_SUPPLIES'
+  | 'EQUIPMENT'
+  | 'MARKETING'
+  | 'OTHER';
+
+export const EXPENSE_CATEGORY_LABELS: Record<EnumExpenseCategory, string> = {
+  MATERIALS_PHOTO:   'Материалы — Фото',
+  MATERIALS_TSHIRT:  'Материалы — Футболки',
+  DELIVERY_SUPPLIES: 'Упаковка / Доставка',
+  EQUIPMENT:         'Оборудование',
+  MARKETING:         'Реклама',
+  OTHER:             'Прочее',
+};
+
 export interface ExpenseOrder {
   id: string;
   createdAt: string;
-  category: EnumProductCategory;
+  category: EnumExpenseCategory;
   amount: number;
   note?: string | null;
   createdBy: { id: string; username: string };
 }
 
 export interface CreateExpenseDto {
-  category: EnumProductCategory;
+  category: EnumExpenseCategory;
   amount: number;
   note?: string;
 }

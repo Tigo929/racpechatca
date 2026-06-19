@@ -2,11 +2,10 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { reportsApi } from '../api/reports';
 import { expensesApi } from '../api/expenses';
-import type { MonthData, ExpenseOrder, CreateExpenseDto } from '../types/index';
+import type { MonthData, ExpenseOrder, CreateExpenseDto, EnumExpenseCategory } from '../types/index';
+import { EXPENSE_CATEGORY_LABELS } from '../types/index';
 import { getErrorMessage } from '../utils/get-error-message';
 import { formatCurrency as fmt, formatDate as fmtDate } from '../utils/format';
-
-const CATEGORY_LABEL: Record<string, string> = { PHOTO: 'Фото', TSHIRT: 'Футболки' };
 
 // ── Month table cell ──────────────────────────────────────────────────────────
 
@@ -66,7 +65,7 @@ function AddExpenseModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const [category, setCategory] = useState<'PHOTO' | 'TSHIRT'>('TSHIRT');
+  const [category, setCategory] = useState<EnumExpenseCategory>('MATERIALS_TSHIRT');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
@@ -91,22 +90,15 @@ function AddExpenseModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Категория</label>
-            <div className="flex gap-2">
-              {(['TSHIRT', 'PHOTO'] as const).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCategory(c)}
-                  className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                    category === c
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-gray-300 text-gray-700 hover:border-blue-400'
-                  }`}
-                >
-                  {CATEGORY_LABEL[c]}
-                </button>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value as EnumExpenseCategory)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {(Object.keys(EXPENSE_CATEGORY_LABELS) as EnumExpenseCategory[]).map((c) => (
+                <option key={c} value={c}>{EXPENSE_CATEGORY_LABELS[c]}</option>
               ))}
-            </div>
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Сумма (₽)</label>
@@ -181,14 +173,8 @@ function ExpenseList({ year }: { year: number }) {
           className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50 group"
         >
           <div className="flex items-center gap-3">
-            <span
-              className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                exp.category === 'TSHIRT'
-                  ? 'bg-purple-100 text-purple-700'
-                  : 'bg-blue-100 text-blue-700'
-              }`}
-            >
-              {CATEGORY_LABEL[exp.category]}
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+              {EXPENSE_CATEGORY_LABELS[exp.category] ?? exp.category}
             </span>
             <div>
               <span className="font-semibold text-sm tabular-nums">{fmt(exp.amount)}</span>

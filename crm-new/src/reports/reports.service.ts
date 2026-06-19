@@ -51,6 +51,7 @@ export class ReportsService {
       tshirtCount: 0,
       expensePhoto: 0,
       expenseTshirt: 0,
+      expenseOther: 0,
       salaryPaid: 0,
       profit: 0,
     }));
@@ -70,8 +71,9 @@ export class ReportsService {
 
     for (const expense of expenses) {
       const m = months[expense.createdAt.getMonth()];
-      if (expense.category === 'PHOTO') m.expensePhoto += expense.amount;
-      else m.expenseTshirt += expense.amount;
+      if (expense.category === 'MATERIALS_PHOTO') m.expensePhoto += expense.amount;
+      else if (expense.category === 'MATERIALS_TSHIRT') m.expenseTshirt += expense.amount;
+      else m.expenseOther += expense.amount;
     }
 
     for (const payment of salaryPayments) {
@@ -80,7 +82,7 @@ export class ReportsService {
     }
 
     for (const m of months) {
-      m.profit = m.netRevenue - m.expensePhoto - m.expenseTshirt - m.salaryPaid;
+      m.profit = m.netRevenue - m.expensePhoto - m.expenseTshirt - m.expenseOther - m.salaryPaid;
     }
 
     const totals = months.reduce(
@@ -93,13 +95,14 @@ export class ReportsService {
         tshirtCount:   acc.tshirtCount   + m.tshirtCount,
         expensePhoto:  acc.expensePhoto  + m.expensePhoto,
         expenseTshirt: acc.expenseTshirt + m.expenseTshirt,
+        expenseOther:  acc.expenseOther  + m.expenseOther,
         salaryPaid:    acc.salaryPaid    + m.salaryPaid,
         profit:        acc.profit        + m.profit,
       }),
       {
         orderCount: 0, totalRevenue: 0, deliveryCost: 0, netRevenue: 0,
         photoCount: 0, tshirtCount: 0, expensePhoto: 0, expenseTshirt: 0,
-        salaryPaid: 0, profit: 0,
+        expenseOther: 0, salaryPaid: 0, profit: 0,
       },
     );
 
