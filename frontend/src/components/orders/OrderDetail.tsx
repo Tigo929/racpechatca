@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { Pencil, Trash2, Flame, Clock, Copy, UserCheck, X } from 'lucide-react';
 import { usersApi } from '../../api/users';
 import { businessConfig } from '../../config/business';
-import { DELIVERY_LABELS } from '../../constants';
+import { COMMUNICATION_LABELS, DELIVERY_LABELS } from '../../constants';
 
 function pvzReminder(deliveryMethod: string): string[] {
   if (deliveryMethod === 'YANDEX_PVZ') {
@@ -145,7 +145,6 @@ import { StatusBadge } from '../ui/StatusBadge';
 import { InfoRow } from '../ui/InfoRow';
 import { OrderEditForm } from './OrderEditForm';
 import { TshirtItemsTable } from './TshirtItemsTable';
-import { COMMUNICATION_LABELS, DELIVERY_LABELS } from '../../constants';
 import { useAuth } from '../../context/useAuth';
 import type { AppUser, UpdateOrderDto, OrderPhoto } from '../../types/index';
 import { getErrorMessage } from '../../utils/get-error-message';
