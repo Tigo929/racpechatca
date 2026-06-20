@@ -176,24 +176,31 @@ export class OrderPhotoService {
   ) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
+
+    // Strip leading @ so "@username" matches "https://t.me/username"
+    const searchTerm = query.search?.replace(/^@/, '').trim() || undefined;
+
     const where: Prisma.OrderPhotoWhereInput = {
-      // «Все» = только активные заказы. Закрытые/особые состояния (SENT, PAID, LEAD)
-      // прячем — у каждого есть своя вкладка-фильтр.
-      status: query.status ?? {
-        notIn: [EnumStatus.SENT, EnumStatus.PAID, EnumStatus.LEAD],
-      },
+      // When searching by contact/number, don't restrict by status —
+      // the order the user is looking for might already be SENT/PAID/LEAD.
+      // Without search: hide closed statuses (each has its own filter chip).
+      status: query.status
+        ? query.status
+        : searchTerm
+          ? undefined
+          : { notIn: [EnumStatus.SENT, EnumStatus.PAID, EnumStatus.LEAD] },
       sourceOrder: query.sourceOrder,
       productCategory: query.productCategory,
       ...(query.reviewLeft !== undefined
         ? { clientReviewLeft: query.reviewLeft === 'true' }
         : {}),
       ...(currentUserRole === 'EXECUTOR' ? { executorId: currentUserId } : {}),
-      ...(query.search
+      ...(searchTerm
         ? {
             OR: [
-              { numberOrder: { contains: query.search, mode: 'insensitive' } },
-              { urlCommunication: { contains: query.search, mode: 'insensitive' } },
-              { note: { contains: query.search, mode: 'insensitive' } },
+              { numberOrder: { contains: searchTerm, mode: 'insensitive' } },
+              { urlCommunication: { contains: searchTerm, mode: 'insensitive' } },
+              { note: { contains: searchTerm, mode: 'insensitive' } },
             ],
           }
         : {}),
