@@ -232,8 +232,7 @@ export class OrderPhotoService {
         where,
         take: limit,
         skip: (page - 1) * limit,
-        // Срочные/просроченные всплывают первыми; null-дедлайны — в конце.
-        orderBy: [{ isUrgent: 'desc' }, { deadline: 'asc' }, { createdAt: 'asc' }],
+        orderBy: [{ createdAt: 'asc' }],
         include: {
           items: true,
           tshirtItems: true,
