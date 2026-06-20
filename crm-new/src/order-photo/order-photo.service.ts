@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -52,6 +53,8 @@ function escapeHtml(s: string): string {
 
 @Injectable()
 export class OrderPhotoService {
+  private readonly logger = new Logger(OrderPhotoService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly financialIntegrity: OrderFinancialIntegrityService,
@@ -366,13 +369,19 @@ export class OrderPhotoService {
       });
     });
 
-    if (!isUnassign && executor?.telegramUsername && result) {
-      const text = this.buildAssignmentMessage(
-        result,
-        executor.telegramUsername,
-        dto.note,
-      );
-      this.telegram.sendToGroup(text).catch(() => {});
+    if (!isUnassign && result) {
+      if (executor?.telegramUsername) {
+        const text = this.buildAssignmentMessage(
+          result,
+          executor.telegramUsername,
+          dto.note,
+        );
+        this.telegram.sendToGroup(text).catch(() => {});
+      } else {
+        this.logger.warn(
+          `Заказ ${result.numberOrder}: у исполнителя не задан Telegram-юзернейм — уведомление в группу пропущено`,
+        );
+      }
     }
 
     return result;
