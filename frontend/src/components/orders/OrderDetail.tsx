@@ -342,14 +342,16 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           )}
           {isAdmin && (
             <>
-              {/* Кнопки копирования текста клиенту */}
-              {(order.status === 'NEW' || order.status === 'READY') && (() => {
-                const text = order.status === 'NEW'
-                  ? generateConfirmationText(order)
-                  : generateReadyText(order);
-                const label = order.status === 'NEW'
-                  ? 'Скопировать подтверждение'
-                  : 'Скопировать сообщение готовности';
+              {/* Копирование текста клиенту.
+                  Фото: кнопка при NEW (подтверждение) и READY (готов).
+                  Футболки: кнопка при NEW (подтверждение) и DONE (готов). */}
+              {(() => {
+                const isTshirt = order.productCategory === 'TSHIRT';
+                const isNew = order.status === 'NEW';
+                const isReady = isTshirt ? order.status === 'DONE' : order.status === 'READY';
+                if (!isNew && !isReady) return null;
+                const text = isNew ? generateConfirmationText(order) : generateReadyText(order);
+                const label = isNew ? 'Скопировать подтверждение' : 'Скопировать сообщение готовности';
                 const copyText = () => {
                   try {
                     if (navigator.clipboard && window.isSecureContext) {
