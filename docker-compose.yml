@@ -23,6 +23,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: 7d
       PORT: 3000
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
     networks:
       - internal
     # Применяет накопленные миграции и запускает сервер

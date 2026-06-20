@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Plus, Trash2, X, Check, ArrowLeft, Pencil, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Trash2, X, Check, ArrowLeft, Pencil, ToggleLeft, ToggleRight, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { usersApi } from '../api/users';
 import { useAuth } from '../context/useAuth';
@@ -82,11 +82,70 @@ function RateEditor({ user, onClose }: RateEditorProps) {
   );
 }
 
+interface TelegramEditorProps {
+  user: AppUser;
+  onClose: () => void;
+}
+
+function TelegramEditor({ user, onClose }: TelegramEditorProps) {
+  const qc = useQueryClient();
+  const [chatId, setChatId] = useState(user.telegramChatId ?? '');
+
+  const mutation = useMutation({
+    mutationFn: (telegramChatId: string | null) =>
+      usersApi.update(user.id, { telegramChatId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+      toast.success('Telegram Chat ID сохранён');
+      onClose();
+    },
+    onError: (error: unknown) => toast.error(getErrorMessage(error, 'Ошибка')),
+  });
+
+  return (
+    <div className="flex flex-col gap-2 mt-2">
+      <p className="text-xs text-gray-500">
+        Исполнитель должен написать <span className="font-mono bg-gray-100 px-1 rounded">/start</span> боту, бот ответит Chat ID.
+      </p>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={chatId}
+          onChange={(e) => setChatId(e.target.value)}
+          className="flex-1 rounded-lg border border-sky-300 px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          placeholder="123456789"
+        />
+        <button
+          onClick={() => mutation.mutate(chatId.trim() || null)}
+          disabled={mutation.isPending}
+          className="flex items-center gap-1 px-3 py-1.5 bg-sky-600 text-white text-sm rounded-lg hover:bg-sky-700 disabled:opacity-50"
+        >
+          <Check size={13} /> {mutation.isPending ? '…' : 'Сохранить'}
+        </button>
+        {user.telegramChatId && (
+          <button
+            onClick={() => mutation.mutate(null)}
+            disabled={mutation.isPending}
+            className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 text-sm rounded-lg hover:bg-red-100 disabled:opacity-50"
+            title="Отвязать Telegram"
+          >
+            <X size={13} />
+          </button>
+        )}
+        <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600">
+          <X size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function UsersPage() {
   const { user: me } = useAuth();
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [editingRateId, setEditingRateId] = useState<string | null>(null);
+  const [editingTelegramId, setEditingTelegramId] = useState<string | null>(null);
   const [form, setForm] = useState({ username: '', password: '', role: 'EXECUTOR' as EnumRole });
 
   const { data: users = [] } = useQuery({
@@ -234,16 +293,30 @@ export function UsersPage() {
                 {/* Right: rate badge + actions */}
                 <div className="flex items-center gap-2 shrink-0">
                   {u.role === 'EXECUTOR' && (
-                    <button
-                      onClick={() => setEditingRateId(editingRateId === u.id ? null : u.id)}
-                      className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors font-mono"
-                      title="Изменить ставку"
-                    >
-                      {u.rateBasisPoints === null
-                        ? 'Ставка не назначена'
-                        : `${bpToPercent(u.rateBasisPoints)}%`}
-                      <Pencil size={10} />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setEditingRateId(editingRateId === u.id ? null : u.id)}
+                        className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors font-mono"
+                        title="Изменить ставку"
+                      >
+                        {u.rateBasisPoints === null
+                          ? 'Ставка не назначена'
+                          : `${bpToPercent(u.rateBasisPoints)}%`}
+                        <Pencil size={10} />
+                      </button>
+                      <button
+                        onClick={() => setEditingTelegramId(editingTelegramId === u.id ? null : u.id)}
+                        className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                          u.telegramChatId
+                            ? 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100'
+                            : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
+                        }`}
+                        title={u.telegramChatId ? `Telegram Chat ID: ${u.telegramChatId}` : 'Привязать Telegram'}
+                      >
+                        <Send size={10} />
+                        {u.telegramChatId ? 'TG привязан' : 'TG не привязан'}
+                      </button>
+                    </>
                   )}
 
                   {u.id !== me?.id && (
@@ -277,6 +350,11 @@ export function UsersPage() {
               {/* Rate editor (inline) */}
               {editingRateId === u.id && (
                 <RateEditor user={u} onClose={() => setEditingRateId(null)} />
+              )}
+
+              {/* Telegram Chat ID editor (inline) */}
+              {editingTelegramId === u.id && (
+                <TelegramEditor user={u} onClose={() => setEditingTelegramId(null)} />
               )}
             </div>
           ))}

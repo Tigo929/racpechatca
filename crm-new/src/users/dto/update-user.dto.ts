@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class DtoUpdateUser {
@@ -12,4 +12,8 @@ export class DtoUpdateUser {
   @Max(10000)
   @Type(() => Number)
   rateBasisPoints?: number;
+
+  @IsOptional()
+  @IsString()
+  telegramChatId?: string | null;
 }

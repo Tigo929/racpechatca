@@ -37,10 +37,11 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('Пользователь не найден');
 
-    const data: { isActive?: boolean; rateBasisPoints?: number } = {};
+    const data: { isActive?: boolean; rateBasisPoints?: number; telegramChatId?: string | null } = {};
 
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
     if (dto.rateBasisPoints !== undefined) data.rateBasisPoints = dto.rateBasisPoints;
+    if ('telegramChatId' in dto) data.telegramChatId = dto.telegramChatId ?? null;
 
     const updated = await this.prisma.$transaction(async (tx) => {
       if (dto.rateBasisPoints !== undefined) {

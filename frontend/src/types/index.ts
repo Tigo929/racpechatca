@@ -224,6 +224,7 @@ export interface AppUser {
   role: EnumRole;
   isActive: boolean;
   rateBasisPoints: number | null;
+  telegramChatId: string | null;
   createdAt: string;
 }
 

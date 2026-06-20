@@ -7,9 +7,10 @@ import { LeadController } from './lead.controller';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
 import { StockModule } from 'src/stock/stock.module';
+import { TelegramModule } from 'src/telegram/telegram.module';
 
 @Module({
-  imports: [StockModule],
+  imports: [StockModule, TelegramModule],
   controllers: [LeadController, OrderPhotoController],
   providers: [
     OrderPhotoService,

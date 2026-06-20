@@ -22,6 +22,7 @@ import type { Prisma } from 'src/generated/prisma/client';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
 import { calculateSalarySnapshot } from 'src/salary/salary-calculation';
 import { StockService } from 'src/stock/stock.service';
+import { TelegramService } from 'src/telegram/telegram.service';
 
 function buildCommunicationUrl(
   platform: EnumCommunication,
@@ -39,6 +40,7 @@ export class OrderPhotoService {
     private readonly prisma: PrismaService,
     private readonly financialIntegrity: OrderFinancialIntegrityService,
     private readonly stock: StockService,
+    private readonly telegram: TelegramService,
   ) {}
 
   async createOrder(dto: DtoCreateOrder) {
@@ -278,7 +280,7 @@ export class OrderPhotoService {
 
     const isUnassign = !dto.executorId;
 
-    let executor: { id: string; rateBasisPoints: number | null; isActive: boolean } | null = null;
+    let executor: { id: string; rateBasisPoints: number | null; isActive: boolean; telegramChatId: string | null } | null = null;
     if (!isUnassign) {
       executor = await this.prisma.user.findUnique({
         where: { id: dto.executorId! },
@@ -288,7 +290,7 @@ export class OrderPhotoService {
         throw new BadRequestException('Исполнитель деактивирован');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // Если заказ в SENT — управляем начислением
       if (order.status === EnumStatus.SENT) {
         const oldAccrual = await tx.salaryAccrual.findFirst({
@@ -347,6 +349,15 @@ export class OrderPhotoService {
         },
       });
     });
+
+    if (!isUnassign && executor?.telegramChatId) {
+      const text =
+        `📋 Вам назначен заказ <b>${order.numberOrder}</b>` +
+        (dto.note ? `\n📝 ${dto.note}` : '');
+      this.telegram.sendMessage(executor.telegramChatId, text).catch(() => {});
+    }
+
+    return result;
   }
 
   async updateStatusOrder(
