@@ -147,12 +147,13 @@ export function OrdersPage() {
 
         {/* Статистика */}
         {meta && (() => {
+          const closedStatuses = new Set(['PAID', 'SENT', 'DONE', 'COMPLETED', 'CANCELLED']);
           const overdueCount = orders.filter(o => {
-            if (o.status === 'PAID' || o.status === 'SENT') return false;
+            if (closedStatuses.has(o.status)) return false;
             const dl = getDeadlineInfo(o.deadline, o.createdAt);
             return dl.daysLeft !== null && dl.daysLeft <= 0;
           }).length;
-          const urgentCount = orders.filter(o => o.isUrgent && o.status !== 'PAID' && o.status !== 'SENT').length;
+          const urgentCount = orders.filter(o => o.isUrgent && !closedStatuses.has(o.status)).length;
           const alertCount = Math.max(overdueCount, urgentCount);
           const stats = [
             { label: 'Всего заявок', value: meta.quantityElements, icon: <LayoutList size={18} />, color: 'from-indigo-500 to-indigo-600', text: 'text-indigo-600' },
@@ -281,14 +282,22 @@ export function OrdersPage() {
                 <tbody>
                   {orders.map((order, idx) => {
                     const dl = getDeadlineInfo(order.deadline, order.createdAt);
+                    // Статусы, при которых заказ уже закрыт/выполнен —
+                    // срочность и дедлайн-предупреждения больше не нужны.
+                    const isClosed = (
+                      order.status === 'PAID' ||
+                      order.status === 'SENT' ||
+                      order.status === 'DONE' ||
+                      order.status === 'COMPLETED' ||
+                      order.status === 'CANCELLED'
+                    );
                     const isPaid = order.status === 'PAID';
-                    const isSent = order.status === 'SENT';
-                    const showUrgent = order.isUrgent && !isPaid && !isSent;
+                    const showUrgent = order.isUrgent && !isClosed;
                     const rowBg = isPaid
                       ? 'opacity-50'
                       : showUrgent
                         ? 'bg-red-50 hover:bg-red-100'
-                        : (!isSent && dl.rowClass) || (idx % 2 === 0 ? 'hover:bg-indigo-50/40' : 'bg-slate-50/60 hover:bg-indigo-50/40');
+                        : (!isClosed && dl.rowClass) || (idx % 2 === 0 ? 'hover:bg-indigo-50/40' : 'bg-slate-50/60 hover:bg-indigo-50/40');
                     return (
                     <tr
                       key={order.id}
@@ -321,7 +330,7 @@ export function OrdersPage() {
                         {new Date(order.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                       </td>
                       <td className="px-5 py-3.5">
-                        {!isSent && !isPaid && dl.label ? (
+                        {!isClosed && dl.label ? (
                           <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-medium ${dl.badgeClass}`}>
                             <Clock size={10} aria-hidden="true" /> {dl.label}
                           </span>
