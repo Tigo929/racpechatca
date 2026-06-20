@@ -25,6 +25,11 @@ services:
       PORT: 3000
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_GROUP_CHAT_ID: ${TELEGRAM_GROUP_CHAT_ID}
+    # Хостинг (РФ) режет TCP 443 до большинства IP Telegram и резолвит
+    # api.telegram.org только в IPv6 (недоступен). Пинуем домен на рабочий
+    # IPv4 Bot API — иначе fetch к Telegram отваливается по таймауту.
+    extra_hosts:
+      - "api.telegram.org:149.154.167.220"
     networks:
       - internal
     # Применяет накопленные миграции и запускает сервер
