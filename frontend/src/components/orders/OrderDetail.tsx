@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { Pencil, Trash2, Flame, Clock, Copy, UserCheck, X } from 'lucide-react';
 import { usersApi } from '../../api/users';
 import { businessConfig } from '../../config/business';
+import { DELIVERY_LABELS } from '../../constants';
 
 function pvzReminder(deliveryMethod: string): string[] {
   if (deliveryMethod === 'YANDEX_PVZ') {
@@ -62,7 +63,7 @@ function generateConfirmationText(order: OrderPhoto): string {
     '',
     separator,
     `💰 Сумма по позициям: ${itemsTotal.toLocaleString('ru-RU')} ₽`,
-    ...(delivery > 0 ? [`🚚 Доставка: ${delivery.toLocaleString('ru-RU')} ₽`] : []),
+    ...(delivery > 0 ? [`🚚 Доставка (${DELIVERY_LABELS[order.deliveryMethod as keyof typeof DELIVERY_LABELS] ?? order.deliveryMethod}): ${delivery.toLocaleString('ru-RU')} ₽`] : []),
     `📦 Итого к оплате: ${total.toLocaleString('ru-RU')} ₽`,
     '',
     `⏳ Срок изготовления: до ${deadlineStr}`,
@@ -117,7 +118,7 @@ function generateReadyText(order: OrderPhoto): string {
     '',
     separator,
     `💰 Сумма по позициям: ${itemsTotal.toLocaleString('ru-RU')} ₽`,
-    ...(delivery > 0 ? [`🚚 Доставка: ${delivery.toLocaleString('ru-RU')} ₽`] : []),
+    ...(delivery > 0 ? [`🚚 Доставка (${DELIVERY_LABELS[order.deliveryMethod as keyof typeof DELIVERY_LABELS] ?? order.deliveryMethod}): ${delivery.toLocaleString('ru-RU')} ₽`] : []),
     `📦 Итого к оплате: ${total.toLocaleString('ru-RU')} ₽`,
     '',
     separator,
