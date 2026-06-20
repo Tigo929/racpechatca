@@ -35,8 +35,12 @@ function generateConfirmationText(order: OrderPhoto): string {
 
   const lines: string[] = [];
   items.forEach(i => {
-    const type = i.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
-    lines.push(`• ${i.formatPaper} (${type}) × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
+    if (order.isFreePrice) {
+      lines.push(`• ${i.formatPaper} × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
+    } else {
+      const type = i.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
+      lines.push(`• ${i.formatPaper} (${type}) × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
+    }
   });
   tshirtItems.forEach(i => {
     lines.push(`• Футболка ${i.color}, р-р ${i.size} × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
@@ -79,7 +83,6 @@ function generateConfirmationText(order: OrderPhoto): string {
     `   ${businessConfig.payment.recipient}`,
     '',
     '👉 Как только внесёте оплату, пожалуйста, пришлите чек.',
-    ...pvzReminder(order.deliveryMethod),
     '',
     'Спасибо за доверие! Приступаем к работе 🙌',
   ].join('\n');
@@ -95,8 +98,12 @@ function generateReadyText(order: OrderPhoto): string {
 
   const lines: string[] = [];
   items.forEach(i => {
-    const type = i.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
-    lines.push(`• ${i.formatPaper} (${type}) × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
+    if (order.isFreePrice) {
+      lines.push(`• ${i.formatPaper} × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
+    } else {
+      const type = i.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
+      lines.push(`• ${i.formatPaper} (${type}) × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
+    }
   });
   tshirtItems.forEach(i => {
     lines.push(`• Футболка ${i.color}, р-р ${i.size} × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);

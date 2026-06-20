@@ -178,7 +178,7 @@ export function CreateOrderForm({ onClose }: Props) {
         deliveryMethod: data.deliveryMethod,
         deliveryCost: data.deliveryCost,
         note: data.note,
-        productCategory: 'PHOTO',
+        productCategory: data.productCategory,
         freePrice: true,
         items: freeItems.map((i) => ({
           // Свободная цена: цена — это итог позиции; количество сохраняется,

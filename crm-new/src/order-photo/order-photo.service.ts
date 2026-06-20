@@ -370,11 +370,7 @@ export class OrderPhotoService {
 
     if (!isUnassign && result) {
       if (executor?.telegramUsername) {
-        const text = this.buildAssignmentMessage(
-          result,
-          executor.telegramUsername,
-          dto.note,
-        );
+        const text = this.buildAssignmentMessage(result, executor.telegramUsername);
         this.telegram.sendToGroup(text).catch(() => {});
       } else {
         this.logger.warn(
@@ -392,18 +388,23 @@ export class OrderPhotoService {
       numberOrder: string;
       deadline: Date | null;
       productCategory: string;
+      isFreePrice: boolean | null;
+      note: string | null;
       items: { formatPaper: string; typePaper: string; quantity: number }[];
       tshirtItems: { color: string; size: string; quantity: number }[];
     },
     username: string,
-    note?: string | null,
   ): string {
     const handle = `@${username.replace(/^@/, '')}`;
 
     const lines: string[] = [];
     for (const i of order.items) {
-      const type = i.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
-      lines.push(`• ${escapeHtml(i.formatPaper)} (${type}) × ${i.quantity} шт`);
+      if (order.isFreePrice) {
+        lines.push(`• ${escapeHtml(i.formatPaper)} × ${i.quantity} шт`);
+      } else {
+        const type = i.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
+        lines.push(`• ${escapeHtml(i.formatPaper)} (${type}) × ${i.quantity} шт`);
+      }
     }
     for (const i of order.tshirtItems) {
       lines.push(`• Футболка ${escapeHtml(i.color)}, р-р ${i.size} × ${i.quantity} шт`);
@@ -412,6 +413,10 @@ export class OrderPhotoService {
 
     const deadlineStr = order.deadline ? `до ${formatRuDate(order.deadline)}` : 'не указан';
     const category = order.productCategory === 'TSHIRT' ? 'Футболки' : 'Фотопечать';
+
+    const noteBlock = order.note
+      ? ['', '─────────────────', `📝 <b>Примечание:</b>`, `<i>${escapeHtml(order.note)}</i>`]
+      : [];
 
     return [
       `🔔 ${handle}, вам назначена задача!`,
@@ -422,7 +427,7 @@ export class OrderPhotoService {
       '',
       '📦 Состав заказа:',
       ...lines,
-      ...(note ? ['', `📝 Примечание: ${escapeHtml(note)}`] : []),
+      ...noteBlock,
     ].join('\n');
   }
 
