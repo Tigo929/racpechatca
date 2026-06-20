@@ -5,6 +5,22 @@ import { Pencil, Trash2, Flame, Clock, Copy, UserCheck, X } from 'lucide-react';
 import { usersApi } from '../../api/users';
 import { businessConfig } from '../../config/business';
 
+function pvzReminder(deliveryMethod: string): string[] {
+  if (deliveryMethod === 'YANDEX_PVZ') {
+    return [
+      '',
+      '📦 После оплаты пришлите чек и сообщите удобный Яндекс ПВЗ + номер телефона — оформим заявку на доставку.',
+    ];
+  }
+  if (deliveryMethod === 'OZON_PVZ') {
+    return [
+      '',
+      '📦 После оплаты пришлите чек и сообщите удобный Ozon ПВЗ + номер телефона — оформим заявку на доставку.',
+    ];
+  }
+  return [];
+}
+
 function generateConfirmationText(order: OrderPhoto): string {
   const items = order.items ?? [];
   const tshirtItems = order.tshirtItems ?? [];
@@ -29,8 +45,10 @@ function generateConfirmationText(order: OrderPhoto): string {
   const separator = '─────────────────';
 
   const isPickup = order.deliveryMethod === 'PICKUP';
+  const pickupAddr = order.productCategory === 'TSHIRT'
+    ? businessConfig.tshirtPickupAddress
+    : businessConfig.pickupAddress;
 
-  // Фраза для остатка зависит от способа доставки
   const restLabel = isPickup
     ? `👉 Остаток — ${rest.toLocaleString('ru-RU')} ₽ при самовывозе`
     : `👉 Остаток — ${rest.toLocaleString('ru-RU')} ₽ при подтверждении фото доставки`;
@@ -53,13 +71,14 @@ function generateConfirmationText(order: OrderPhoto): string {
     '💳 Для подтверждения заказа:',
     `👉 Предоплата 50% — ${prepay.toLocaleString('ru-RU')} ₽ (сейчас)`,
     restLabel,
-    ...(isPickup ? ['', `📍 Самовывоз: ${businessConfig.pickupAddress}`] : []),
+    ...(isPickup ? ['', `📍 Самовывоз: ${pickupAddr}`] : []),
     '',
     `📲 Реквизиты для перевода (${businessConfig.payment.label}):`,
     `   ${businessConfig.payment.phone}`,
     `   ${businessConfig.payment.recipient}`,
     '',
     '👉 Как только внесёте оплату, пожалуйста, пришлите чек.',
+    ...pvzReminder(order.deliveryMethod),
     '',
     'Спасибо за доверие! Приступаем к работе 🙌',
   ].join('\n');
@@ -85,6 +104,9 @@ function generateReadyText(order: OrderPhoto): string {
   const itemsTotal = [...items, ...tshirtItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0);
   const separator = '─────────────────';
   const isPickup = order.deliveryMethod === 'PICKUP';
+  const pickupAddr = order.productCategory === 'TSHIRT'
+    ? businessConfig.tshirtPickupAddress
+    : businessConfig.pickupAddress;
 
   return [
     '🎉 Ваш заказ готов!',
@@ -102,13 +124,14 @@ function generateReadyText(order: OrderPhoto): string {
     '💳 Остаток к оплате:',
     `👉 Предоплата 50% — ${prepay.toLocaleString('ru-RU')} ₽ (уже внесена)`,
     `👉 Остаток — ${rest.toLocaleString('ru-RU')} ₽`,
-    ...(isPickup ? ['', `📍 Самовывоз: ${businessConfig.pickupAddress}`] : []),
+    ...(isPickup ? ['', `📍 Самовывоз: ${pickupAddr}`] : []),
     '',
     `📲 Реквизиты для перевода (${businessConfig.payment.label}):`,
     `   ${businessConfig.payment.phone}`,
     `   ${businessConfig.payment.recipient}`,
     '',
     '👉 Пожалуйста, оплатите остаток и пришлите чек по тем же реквизитам.',
+    ...pvzReminder(order.deliveryMethod),
     '',
     'Спасибо! Ждём вас 🙌',
   ].join('\n');
@@ -278,25 +301,31 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-2xl font-bold text-gray-900">#{order.numberOrder}</span>
             <StatusBadge status={order.status} productCategory={order.productCategory} />
-            {/* Дедлайн — только для активных заказов */}
-            {order.status !== 'SENT' && order.status !== 'PAID' && (() => {
+            {/* Дедлайн и срочность — только для незакрытых заказов */}
+            {(() => {
+              const isClosed = ['PAID','SENT','DONE','COMPLETED','CANCELLED'].includes(order.status);
+              if (isClosed) return null;
               const dl = getDeadlineInfo(order.deadline, order.createdAt);
-              return dl.label ? (
-                <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${dl.badgeClass}`}>
-                  <Clock size={10} /> {dl.label}
-                </span>
-              ) : null;
+              return (
+                <>
+                  {dl.label && (
+                    <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${dl.badgeClass}`}>
+                      <Clock size={10} /> {dl.label}
+                    </span>
+                  )}
+                  {order.isUrgent && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold border border-red-300 motion-safe:animate-pulse">
+                      <Flame size={11} aria-hidden="true" /> Срочно
+                    </span>
+                  )}
+                </>
+              );
             })()}
-            {order.isUrgent && order.status !== 'SENT' && order.status !== 'PAID' && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold border border-red-300 motion-safe:animate-pulse">
-                <Flame size={11} aria-hidden="true" /> Срочно
-              </span>
-            )}
           </div>
         </div>
         <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
-          {/* Кнопка Срочно — только пока не отправлен */}
-          {order.status !== 'SENT' && order.status !== 'PAID' && (
+          {/* Кнопка Срочно — только для незакрытых заказов */}
+          {!['PAID','SENT','DONE','COMPLETED','CANCELLED'].includes(order.status) && (
             <button
               onClick={toggleUrgent}
               disabled={updateMutation.isPending}
