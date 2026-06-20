@@ -16,8 +16,8 @@ model User {
   password        String
   role            EnumRole @default(EXECUTOR)
   isActive        Boolean  @default(true)
-  rateBasisPoints Int?
-  telegramChatId  String?
+  rateBasisPoints  Int?
+  telegramUsername String?
 
   salaryAccruals     SalaryAccrual[]
   salaryPayments     SalaryPayment[]   @relation("SalaryPaymentExecutor")

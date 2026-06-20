@@ -89,14 +89,14 @@ interface TelegramEditorProps {
 
 function TelegramEditor({ user, onClose }: TelegramEditorProps) {
   const qc = useQueryClient();
-  const [chatId, setChatId] = useState(user.telegramChatId ?? '');
+  const [username, setUsername] = useState(user.telegramUsername ?? '');
 
   const mutation = useMutation({
-    mutationFn: (telegramChatId: string | null) =>
-      usersApi.update(user.id, { telegramChatId }),
+    mutationFn: (telegramUsername: string | null) =>
+      usersApi.update(user.id, { telegramUsername }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] });
-      toast.success('Telegram Chat ID сохранён');
+      toast.success('Telegram-юзернейм сохранён');
       onClose();
     },
     onError: (error: unknown) => toast.error(getErrorMessage(error, 'Ошибка')),
@@ -105,24 +105,28 @@ function TelegramEditor({ user, onClose }: TelegramEditorProps) {
   return (
     <div className="flex flex-col gap-2 mt-2">
       <p className="text-xs text-gray-500">
-        Исполнитель должен написать <span className="font-mono bg-gray-100 px-1 rounded">/start</span> боту, бот ответит Chat ID.
+        Юзернейм в Telegram — бот тегнёт его в общей группе при назначении заказа.
+        Исполнитель должен состоять в группе.
       </p>
       <div className="flex items-center gap-2">
-        <input
-          type="text"
-          value={chatId}
-          onChange={(e) => setChatId(e.target.value)}
-          className="flex-1 rounded-lg border border-sky-300 px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-          placeholder="123456789"
-        />
+        <div className="relative flex-1">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span>
+          <input
+            type="text"
+            value={username.replace(/^@/, '')}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full rounded-lg border border-sky-300 pl-6 pr-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+            placeholder="username"
+          />
+        </div>
         <button
-          onClick={() => mutation.mutate(chatId.trim() || null)}
+          onClick={() => mutation.mutate(username.trim() || null)}
           disabled={mutation.isPending}
           className="flex items-center gap-1 px-3 py-1.5 bg-sky-600 text-white text-sm rounded-lg hover:bg-sky-700 disabled:opacity-50"
         >
           <Check size={13} /> {mutation.isPending ? '…' : 'Сохранить'}
         </button>
-        {user.telegramChatId && (
+        {user.telegramUsername && (
           <button
             onClick={() => mutation.mutate(null)}
             disabled={mutation.isPending}
@@ -307,14 +311,14 @@ export function UsersPage() {
                       <button
                         onClick={() => setEditingTelegramId(editingTelegramId === u.id ? null : u.id)}
                         className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-colors ${
-                          u.telegramChatId
+                          u.telegramUsername
                             ? 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100'
                             : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
                         }`}
-                        title={u.telegramChatId ? `Telegram Chat ID: ${u.telegramChatId}` : 'Привязать Telegram'}
+                        title={u.telegramUsername ? `Telegram: @${u.telegramUsername}` : 'Привязать Telegram'}
                       >
                         <Send size={10} />
-                        {u.telegramChatId ? 'TG привязан' : 'TG не привязан'}
+                        {u.telegramUsername ? `@${u.telegramUsername}` : 'TG не привязан'}
                       </button>
                     </>
                   )}

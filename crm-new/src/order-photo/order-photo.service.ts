@@ -34,6 +34,22 @@ function buildCommunicationUrl(
   return raw;
 }
 
+const RU_MONTHS = [
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+];
+
+/** «25 июня» — формат срока без зависимости от ICU. */
+function formatRuDate(d: Date): string {
+  const date = new Date(d);
+  return `${date.getDate()} ${RU_MONTHS[date.getMonth()]}`;
+}
+
+/** Экранируем спецсимволы для parse_mode=HTML в Telegram. */
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 @Injectable()
 export class OrderPhotoService {
   constructor(
@@ -280,7 +296,7 @@ export class OrderPhotoService {
 
     const isUnassign = !dto.executorId;
 
-    let executor: { id: string; rateBasisPoints: number | null; isActive: boolean; telegramChatId: string | null } | null = null;
+    let executor: { id: string; rateBasisPoints: number | null; isActive: boolean; telegramUsername: string | null } | null = null;
     if (!isUnassign) {
       executor = await this.prisma.user.findUnique({
         where: { id: dto.executorId! },
@@ -350,14 +366,56 @@ export class OrderPhotoService {
       });
     });
 
-    if (!isUnassign && executor?.telegramChatId) {
-      const text =
-        `📋 Вам назначен заказ <b>${order.numberOrder}</b>` +
-        (dto.note ? `\n📝 ${dto.note}` : '');
-      this.telegram.sendMessage(executor.telegramChatId, text).catch(() => {});
+    if (!isUnassign && executor?.telegramUsername && result) {
+      const text = this.buildAssignmentMessage(
+        result,
+        executor.telegramUsername,
+        dto.note,
+      );
+      this.telegram.sendToGroup(text).catch(() => {});
     }
 
     return result;
+  }
+
+  /** Текст уведомления в общую группу при назначении исполнителя на заказ. */
+  private buildAssignmentMessage(
+    order: {
+      numberOrder: string;
+      deadline: Date | null;
+      productCategory: string;
+      items: { formatPaper: string; typePaper: string; quantity: number }[];
+      tshirtItems: { color: string; size: string; quantity: number }[];
+    },
+    username: string,
+    note?: string | null,
+  ): string {
+    const handle = `@${username.replace(/^@/, '')}`;
+
+    const lines: string[] = [];
+    for (const i of order.items) {
+      const type = i.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
+      lines.push(`• ${escapeHtml(i.formatPaper)} (${type}) × ${i.quantity} шт`);
+    }
+    for (const i of order.tshirtItems) {
+      lines.push(`• Футболка ${escapeHtml(i.color)}, р-р ${i.size} × ${i.quantity} шт`);
+    }
+    if (lines.length === 0) lines.push('• (позиции не добавлены)');
+
+    const deadlineStr = order.deadline ? `до ${formatRuDate(order.deadline)}` : 'не указан';
+    const category = order.productCategory === 'TSHIRT' ? 'Футболки' : 'Фотопечать';
+
+    return [
+      `🔔 ${handle}, вам назначена задача!`,
+      '',
+      `📋 Заказ: <b>${escapeHtml(order.numberOrder)}</b>`,
+      `🏷 Категория: ${category}`,
+      `⏳ Срок: ${deadlineStr}`,
+      '',
+      '📦 Состав заказа:',
+      ...lines,
+      ...(note ? ['', `📝 Примечание: ${escapeHtml(note)}`] : []),
+    ].join('\n');
   }
 
   async updateStatusOrder(

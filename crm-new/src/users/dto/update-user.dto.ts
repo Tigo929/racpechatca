@@ -15,5 +15,5 @@ export class DtoUpdateUser {
 
   @IsOptional()
   @IsString()
-  telegramChatId?: string | null;
+  telegramUsername?: string | null;
 }
