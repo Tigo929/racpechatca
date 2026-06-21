@@ -38,6 +38,7 @@ const freeItemSchema = z.object({
   name: z.string(),
   quantity: z.coerce.number().int().positive(),
   price: z.coerce.number().int().min(0),
+  clientItem: z.boolean().optional(),
 });
 
 const baseSchema = z.object({
@@ -317,7 +318,7 @@ export function CreateOrderForm({ onClose }: Props) {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-900">Позиции — свободная цена</h3>
             <button type="button"
-              onClick={() => freeFields.append({ name: '', quantity: 1, price: 0 })}
+              onClick={() => freeFields.append({ name: '', quantity: 1, price: 0, clientItem: false })}
               className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
               <Plus size={14} /> Добавить
             </button>
@@ -327,30 +328,38 @@ export function CreateOrderForm({ onClose }: Props) {
           )}
           <div className="space-y-3">
             {freeFields.fields.map((field, idx) => (
-              <div key={field.id} className="grid grid-cols-[1fr_70px_90px_36px] gap-2 items-end">
-                <div>
-                  {idx === 0 && <label className={labelCls}>Название товара</label>}
-                  <input className={inputCls} placeholder="Кружка с принтом, баннер…" {...register(`freeItems.${idx}.name`)} />
-                  {errors.freeItems?.[idx]?.name && (
-                    <p className={errorCls}>{errors.freeItems[idx]?.name?.message}</p>
-                  )}
+              <div key={field.id} className="space-y-1.5">
+                <div className={`grid gap-2 items-end ${productCategory === 'TSHIRT' ? 'grid-cols-[1fr_70px_90px_36px]' : 'grid-cols-[1fr_70px_90px_36px]'}`}>
+                  <div>
+                    {idx === 0 && <label className={labelCls}>Название товара</label>}
+                    <input className={inputCls} placeholder="Кружка с принтом, баннер…" {...register(`freeItems.${idx}.name`)} />
+                    {errors.freeItems?.[idx]?.name && (
+                      <p className={errorCls}>{errors.freeItems[idx]?.name?.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    {idx === 0 && <label className={labelCls}>Кол-во</label>}
+                    <input type="number" min={1} className={inputCls} {...register(`freeItems.${idx}.quantity`)} />
+                  </div>
+                  <div>
+                    {idx === 0 && <label className={labelCls}>Цена ₽ (итог)</label>}
+                    <input type="number" min={0} className={inputCls} {...register(`freeItems.${idx}.price`)} />
+                  </div>
+                  <div>
+                    {idx === 0 && <div className="mb-1 h-5" />}
+                    <button type="button" onClick={() => freeFields.remove(idx)}
+                      disabled={freeFields.fields.length === 1}
+                      className="p-2 text-gray-400 hover:text-red-500 disabled:opacity-30">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  {idx === 0 && <label className={labelCls}>Кол-во</label>}
-                  <input type="number" min={1} className={inputCls} {...register(`freeItems.${idx}.quantity`)} />
-                </div>
-                <div>
-                  {idx === 0 && <label className={labelCls}>Цена ₽ (итог)</label>}
-                  <input type="number" min={0} className={inputCls} {...register(`freeItems.${idx}.price`)} />
-                </div>
-                <div>
-                  {idx === 0 && <div className="mb-1 h-5" />}
-                  <button type="button" onClick={() => freeFields.remove(idx)}
-                    disabled={freeFields.fields.length === 1}
-                    className="p-2 text-gray-400 hover:text-red-500 disabled:opacity-30">
-                    <Trash2 size={15} />
-                  </button>
-                </div>
+                {productCategory === 'TSHIRT' && (
+                  <label className="flex items-center gap-2 cursor-pointer pl-0.5">
+                    <input type="checkbox" {...register(`freeItems.${idx}.clientItem`)} className="w-4 h-4 accent-amber-600" />
+                    <span className="text-xs text-gray-600">Изделие клиента — склад не списывается</span>
+                  </label>
+                )}
               </div>
             ))}
           </div>
