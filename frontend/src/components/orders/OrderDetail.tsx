@@ -453,7 +453,9 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
 
       {/* Items — исполнители видят только фото-позиции */}
       {order.productCategory === 'TSHIRT' && isAdmin
-        ? <TshirtItemsTable order={order} />
+        ? order.isFreePrice
+          ? <ItemsTable order={order} />
+          : <TshirtItemsTable order={order} />
         : order.productCategory === 'PHOTO'
           ? <ItemsTable order={order} />
           : null
