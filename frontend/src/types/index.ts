@@ -322,26 +322,46 @@ export interface PaymentByAccrualsResult {
 
 // ── Reports types ─────────────────────────────────────────────────────────────
 
-export interface MonthData {
-  month: number;
-  label: string;
+/** Единый набор P&L-метрик за период (месяц/неделя/итог). */
+export interface PnlMetrics {
+  // Объём
   orderCount: number;
-  totalRevenue: number;
-  deliveryCost: number;
-  netRevenue: number;
   photoCount: number;
   tshirtCount: number;
-  expensePhoto: number;
-  expenseTshirt: number;
-  expenseOther: number;
+  avgCheck: number;
+  // Выручка
+  totalRevenue: number;   // оборот (брутто)
+  photoRevenue: number;
+  tshirtRevenue: number;
+  deliveryCost: number;   // транзитная доставка
+  netRevenue: number;     // оборот − доставка
+  // Себестоимость (материалы)
+  materialsPhoto: number;
+  materialsTshirt: number;
+  cogs: number;           // materialsPhoto + materialsTshirt
+  grossProfit: number;    // netRevenue − cogs
+  // Операционные расходы
+  deliverySupplies: number;
+  equipment: number;
+  marketing: number;
+  other: number;
+  operatingExpenses: number; // сумма 4 операционных
+  totalExpenses: number;     // cogs + operatingExpenses (все расходные ордера)
+  // Зарплата и итог
   salaryPaid: number;
-  profit: number;
+  netProfit: number;      // grossProfit − operatingExpenses − salaryPaid
+  margin: number;         // netProfit / totalRevenue, %
+}
+
+export interface MonthData extends PnlMetrics {
+  month: number;
+  label: string;
 }
 
 export interface MonthlyReport {
   year: number;
   months: MonthData[];
-  totals: Omit<MonthData, 'month' | 'label'>;
+  totals: PnlMetrics;
 }
 
 export interface FunnelMonthData {
@@ -361,16 +381,10 @@ export interface FunnelReport {
   byMonth: FunnelMonthData[];
 }
 
-export interface WeekData {
+export interface WeekData extends PnlMetrics {
   weekNum: number;
   displayStart: string;
   displayEnd: string;
-  orderCount: number;
-  photoCount: number;
-  tshirtCount: number;
-  totalRevenue: number;
-  expenses: number;
-  profit: number;
 }
 
 export interface WeeklyReport {
@@ -378,7 +392,7 @@ export interface WeeklyReport {
   month: number;
   monthLabel: string;
   weeks: WeekData[];
-  totals: Omit<WeekData, 'weekNum' | 'displayStart' | 'displayEnd'>;
+  totals: PnlMetrics;
 }
 
 // ── Expense Order types ───────────────────────────────────────────────────────
