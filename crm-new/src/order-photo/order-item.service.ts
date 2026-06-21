@@ -121,15 +121,12 @@ export class OrderItemService {
       include: { items: true, tshirtItems: true },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
+    const tshirtTotal = order.tshirtItems.reduce((s, i) => s + (i.pricePosition ?? 0), 0);
     const updated = await tx.orderPhoto.update({
       where: { id: orderId },
       include: { items: true, tshirtItems: true },
       data: {
-        totalOrder: calcOrderTotal(
-          order.items,
-          order.deliveryCost,
-          order.isFreePrice,
-        ),
+        totalOrder: calcOrderTotal(order.items, order.deliveryCost, order.isFreePrice ?? false) + tshirtTotal,
       },
     });
     // Невыплаченное начисление подгоняем под новую сумму заказа.
