@@ -1,4 +1,4 @@
-import type { MonthlyReport, FunnelReport } from '../types/index';
+import type { MonthlyReport, FunnelReport, WeeklyReport } from '../types/index';
 import { api } from './client';
 
 export const reportsApi = {
@@ -14,6 +14,11 @@ export const reportsApi = {
 
   getFunnel: async (year: number): Promise<FunnelReport> => {
     const { data } = await api.get<FunnelReport>(`/reports/funnel?year=${year}`);
+    return data;
+  },
+
+  getWeekly: async (year: number, month: number): Promise<WeeklyReport> => {
+    const { data } = await api.get<WeeklyReport>(`/reports/weekly?year=${year}&month=${month}`);
     return data;
   },
 };

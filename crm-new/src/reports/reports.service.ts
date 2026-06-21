@@ -187,4 +187,103 @@ export class ReportsService {
       byMonth,
     };
   }
+
+  async getWeeklyReport(year: number, month: number) {
+    const startOfMonth = new Date(year, month - 1, 1);
+    const endOfMonthExclusive = new Date(year, month, 1);
+
+    const [orders, expenses] = await Promise.all([
+      this.prisma.orderPhoto.findMany({
+        where: {
+          createdAt: { gte: startOfMonth, lt: endOfMonthExclusive },
+          status: { notIn: [EnumStatus.LEAD, EnumStatus.CANCELLED] },
+        },
+        select: { createdAt: true, totalOrder: true, productCategory: true },
+      }),
+      this.prisma.expenseOrder.findMany({
+        where: { createdAt: { gte: startOfMonth, lt: endOfMonthExclusive } },
+        select: { createdAt: true, amount: true },
+      }),
+    ]);
+
+    const weekDefs = this.buildWeeks(year, month);
+
+    const weeks = weekDefs.map((w) => {
+      const wo = orders.filter((o) => o.createdAt >= w.start && o.createdAt < w.endExclusive);
+      const we = expenses.filter((e) => e.createdAt >= w.start && e.createdAt < w.endExclusive);
+
+      const orderCount = wo.length;
+      const photoCount = wo.filter((o) => o.productCategory === 'PHOTO').length;
+      const tshirtCount = wo.filter((o) => o.productCategory === 'TSHIRT').length;
+      const totalRevenue = wo.reduce((s, o) => s + (o.totalOrder ?? 0), 0);
+      const expenseTotal = we.reduce((s, e) => s + e.amount, 0);
+
+      return {
+        weekNum: w.weekNum,
+        displayStart: w.displayStart,
+        displayEnd: w.displayEnd,
+        orderCount,
+        photoCount,
+        tshirtCount,
+        totalRevenue,
+        expenses: expenseTotal,
+        profit: totalRevenue - expenseTotal,
+      };
+    });
+
+    const totals = weeks.reduce(
+      (acc, w) => ({
+        orderCount:   acc.orderCount   + w.orderCount,
+        photoCount:   acc.photoCount   + w.photoCount,
+        tshirtCount:  acc.tshirtCount  + w.tshirtCount,
+        totalRevenue: acc.totalRevenue + w.totalRevenue,
+        expenses:     acc.expenses     + w.expenses,
+        profit:       acc.profit       + w.profit,
+      }),
+      { orderCount: 0, photoCount: 0, tshirtCount: 0, totalRevenue: 0, expenses: 0, profit: 0 },
+    );
+
+    return { year, month, monthLabel: MONTH_LABELS[month - 1], weeks, totals };
+  }
+
+  private buildWeeks(year: number, month: number) {
+    const firstDay = new Date(year, month - 1, 1);
+    const lastDay  = new Date(year, month, 0); // last day of month
+
+    // Monday of the week that contains firstDay
+    const dow = firstDay.getDay(); // 0=Sun…6=Sat
+    const daysFromMon = dow === 0 ? 6 : dow - 1;
+    const firstMonday = new Date(firstDay);
+    firstMonday.setDate(firstDay.getDate() - daysFromMon);
+
+    const pad  = (n: number) => String(n).padStart(2, '0');
+    const disp = (d: Date)   => `${pad(d.getDate())}.${pad(d.getMonth() + 1)}`;
+
+    const result: { weekNum: number; start: Date; endExclusive: Date; displayStart: string; displayEnd: string }[] = [];
+    let cur = new Date(firstMonday);
+    let num = 1;
+
+    while (cur <= lastDay) {
+      const sun = new Date(cur);
+      sun.setDate(cur.getDate() + 6);
+
+      const clampStart = cur < firstDay ? new Date(firstDay) : new Date(cur);
+      const clampEnd   = sun > lastDay  ? new Date(lastDay)  : new Date(sun);
+
+      const endExclusive = new Date(clampEnd);
+      endExclusive.setDate(clampEnd.getDate() + 1);
+
+      result.push({
+        weekNum: num++,
+        start: clampStart,
+        endExclusive,
+        displayStart: disp(clampStart),
+        displayEnd:   disp(clampEnd),
+      });
+
+      cur.setDate(cur.getDate() + 7);
+    }
+
+    return result;
+  }
 }

@@ -33,4 +33,14 @@ export class ReportsController {
     }
     return this.reportsService.getFunnelReport(y);
   }
+
+  @Get('weekly')
+  getWeekly(@Query('year') year?: string, @Query('month') month?: string) {
+    const now = new Date();
+    const y = year ? parseInt(year, 10) : now.getFullYear();
+    const m = month ? parseInt(month, 10) : now.getMonth() + 1;
+    if (isNaN(y) || y < 2000 || y > 2100) throw new BadRequestException('Некорректный год');
+    if (isNaN(m) || m < 1 || m > 12) throw new BadRequestException('Некорректный месяц');
+    return this.reportsService.getWeeklyReport(y, m);
+  }
 }

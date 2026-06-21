@@ -359,6 +359,26 @@ export interface FunnelReport {
   byMonth: FunnelMonthData[];
 }
 
+export interface WeekData {
+  weekNum: number;
+  displayStart: string;
+  displayEnd: string;
+  orderCount: number;
+  photoCount: number;
+  tshirtCount: number;
+  totalRevenue: number;
+  expenses: number;
+  profit: number;
+}
+
+export interface WeeklyReport {
+  year: number;
+  month: number;
+  monthLabel: string;
+  weeks: WeekData[];
+  totals: Omit<WeekData, 'weekNum' | 'displayStart' | 'displayEnd'>;
+}
+
 // ── Expense Order types ───────────────────────────────────────────────────────
 
 export type EnumExpenseCategory =

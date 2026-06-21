@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { reportsApi } from '../api/reports';
 import { expensesApi } from '../api/expenses';
-import type { MonthData, ExpenseOrder, CreateExpenseDto, EnumExpenseCategory, FunnelReport } from '../types/index';
+import type { MonthData, ExpenseOrder, CreateExpenseDto, EnumExpenseCategory, FunnelReport, WeekData, WeeklyReport } from '../types/index';
 import { EXPENSE_CATEGORY_LABELS } from '../types/index';
 import { getErrorMessage } from '../utils/get-error-message';
 import { formatCurrency as fmt, formatDate as fmtDate } from '../utils/format';
@@ -53,6 +53,100 @@ function MonthRow({ m, isTotal }: { m: MonthData & { label?: string }; isTotal?:
       <Cell value={m.salaryPaid > 0 ? fmt(m.salaryPaid) : '—'} dim={m.salaryPaid === 0} neg={m.salaryPaid > 0} />
       <Cell value={fmt(m.profit)} highlight={m.profit > 0} neg={m.profit < 0} />
     </tr>
+  );
+}
+
+// ── Week table row ────────────────────────────────────────────────────────────
+
+const MONTH_LABELS_SHORT = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+const MONTH_LABELS_FULL  = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
+function WeekRow({ w, isTotal }: { w: WeekData & { label?: string }; isTotal?: boolean }) {
+  const base = isTotal
+    ? 'bg-gray-50 font-bold border-t-2 border-gray-300 text-sm'
+    : 'border-b border-gray-100 hover:bg-gray-50 text-sm';
+  return (
+    <tr className={base}>
+      <td className={`py-2.5 px-4 ${isTotal ? 'font-bold' : 'text-gray-700'}`}>
+        {isTotal ? 'Итого' : `Нед. ${w.weekNum} (${w.displayStart} — ${w.displayEnd})`}
+      </td>
+      <Cell value={String(w.orderCount)} dim />
+      <td className="py-2.5 px-3 text-right text-xs text-gray-400 tabular-nums">
+        {isTotal ? '' : `${w.photoCount} / ${w.tshirtCount}`}
+      </td>
+      <Cell value={fmt(w.totalRevenue)} />
+      <Cell value={w.expenses > 0 ? fmt(w.expenses) : '—'} dim={w.expenses === 0} neg={w.expenses > 0} />
+      <Cell value={fmt(w.profit)} highlight={w.profit > 0} neg={w.profit < 0} />
+    </tr>
+  );
+}
+
+// ── Weekly report section ─────────────────────────────────────────────────────
+
+function WeeklySection({ year }: { year: number }) {
+  const now = new Date();
+  const [month, setMonth] = useState(
+    year === now.getFullYear() ? now.getMonth() + 1 : 1,
+  );
+
+  const { data: report, isLoading } = useQuery<WeeklyReport>({
+    queryKey: ['weekly-report', year, month],
+    queryFn: () => reportsApi.getWeekly(year, month),
+    staleTime: 30_000,
+  });
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
+        <h2 className="font-semibold text-gray-900">Еженедельная сводка</h2>
+        <div className="flex flex-wrap gap-1.5">
+          {MONTH_LABELS_SHORT.map((label, idx) => (
+            <button
+              key={idx}
+              onClick={() => setMonth(idx + 1)}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                month === idx + 1
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12 text-gray-400 text-sm">Загрузка...</div>
+      ) : !report ? null : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                  <th className="py-3 px-4 text-left">{MONTH_LABELS_FULL[report.month - 1]} {report.year}</th>
+                  <th className="py-3 px-3 text-right">Заказов</th>
+                  <th className="py-3 px-3 text-right">Фото / Футб</th>
+                  <th className="py-3 px-3 text-right">Сумма</th>
+                  <th className="py-3 px-3 text-right">Расходы</th>
+                  <th className="py-3 px-3 text-right">Прибыль</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.weeks.map((w) => <WeekRow key={w.weekNum} w={w} />)}
+                <WeekRow
+                  w={{ weekNum: 0, displayStart: '', displayEnd: '', ...report.totals }}
+                  isTotal
+                />
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-gray-400 px-5 py-3">
+            Учитываются заказы со статусом NEW и выше (LEAD и CANCELLED не считаются). Недели по пн–вс.
+          </p>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -345,6 +439,9 @@ export function ReportsPage() {
             </div>
           )}
         </div>
+
+        {/* Weekly breakdown */}
+        <WeeklySection year={year} />
 
         <p className="text-xs text-gray-400">
           Прибыль = Чистая выручка (без доставки) − Расходные ордера − Зарплата выплаченная.
