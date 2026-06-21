@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { EnumPrintLocation, EnumTshirtSize } from 'src/generated/prisma/enums';
 
 export class DtoCreateTshirtItem {
@@ -35,4 +35,8 @@ export class DtoCreateTshirtItem {
   @IsOptional()
   @IsString()
   designNote?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  clientItem?: boolean;
 }

@@ -138,6 +138,7 @@ export class OrderPhotoService {
                     designCost: dc,
                     designUrl: e.designUrl,
                     designNote: e.designNote,
+                    clientItem: e.clientItem ?? false,
                   };
                 }),
               }

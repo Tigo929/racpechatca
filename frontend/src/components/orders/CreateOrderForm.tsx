@@ -29,6 +29,7 @@ const tshirtItemSchema = z.object({
   designCost: z.coerce.number().int().min(0).optional(),
   designUrl: z.string().optional(),
   designNote: z.string().optional(),
+  clientItem: z.boolean().optional(),
 });
 
 // Свободная позиция: произвольное название + цена. Имя не валидируем строго здесь
@@ -120,7 +121,7 @@ export function CreateOrderForm({ onClose }: Props) {
       items: [{ formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }],
       tshirtItems: [{
         color: 'Белый', size: 'M', printLocation: 'FRONT',
-        quantity: 1, price: 500, designCost: 0, designUrl: '', designNote: '',
+        quantity: 1, price: 500, designCost: 0, designUrl: '', designNote: '', clientItem: false,
       }],
     },
   });
@@ -415,7 +416,7 @@ export function CreateOrderForm({ onClose }: Props) {
             <button type="button"
               onClick={() => tshirtFields.append({
                 color: 'Белый', size: 'M', printLocation: 'FRONT',
-                quantity: 1, price: 500, designCost: 0, designUrl: '', designNote: '',
+                quantity: 1, price: 500, designCost: 0, designUrl: '', designNote: '', clientItem: false,
               })}
               className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
               <Plus size={14} /> Добавить
@@ -479,6 +480,10 @@ export function CreateOrderForm({ onClose }: Props) {
                   <label className={labelCls}>Описание дизайна</label>
                   <input className={inputCls} placeholder="Логотип на груди, белый фон, высота 10 см..." {...register(`tshirtItems.${idx}.designNote`)} />
                 </div>
+                <label className="flex items-center gap-2.5 p-2.5 rounded-lg border border-gray-200 cursor-pointer hover:border-amber-300 transition-colors">
+                  <input type="checkbox" {...register(`tshirtItems.${idx}.clientItem`)} className="w-4 h-4 accent-amber-600" />
+                  <span className="text-sm text-gray-700">Изделие клиента — склад не списывается</span>
+                </label>
               </div>
             ))}
           </div>

@@ -41,6 +41,7 @@ export class TshirtItemService {
           designCost,
           designUrl: dto.designUrl,
           designNote: dto.designNote,
+          clientItem: dto.clientItem ?? false,
         },
       });
 

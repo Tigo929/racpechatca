@@ -190,6 +190,7 @@ model ItemTshirt {
   designCost    Int               @default(0)
   designUrl     String?
   designNote    String?
+  clientItem    Boolean           @default(false)
 }
 
 enum EnumTshirtSize {

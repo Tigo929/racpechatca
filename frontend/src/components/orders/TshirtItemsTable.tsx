@@ -26,12 +26,13 @@ type EditState = {
   printLocation: EnumPrintLocation;
   quantity: string; price: string; designCost: string;
   designUrl: string; designNote: string;
+  clientItem: boolean;
 };
 
 const EMPTY: EditState = {
   color: 'Белый', size: 'M',
   printLocation: 'FRONT',
-  quantity: '1', price: '500', designCost: '0', designUrl: '', designNote: '',
+  quantity: '1', price: '500', designCost: '0', designUrl: '', designNote: '', clientItem: false,
 };
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -83,6 +84,12 @@ function EditForm({
         <Row label="Описание дизайна">
           <input className={inputCls} placeholder="Логотип на белом фоне..." value={state.designNote} onChange={(event) => onChange({ ...state, designNote: event.target.value })} />
         </Row>
+        <Row label="Изделие клиента">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={state.clientItem} onChange={(e) => onChange({ ...state, clientItem: e.target.checked })} className="w-4 h-4 accent-amber-600" />
+            <span className="text-sm text-gray-700">Клиент приносит своё — склад не трогаем</span>
+          </label>
+        </Row>
       </tbody>
     </table>
   );
@@ -130,6 +137,7 @@ export function TshirtItemsTable({ order }: Props) {
       quantity: String(item.quantity), price: String(item.price),
       designCost: String(item.designCost ?? 0),
       designUrl: item.designUrl ?? '', designNote: item.designNote ?? '',
+      clientItem: item.clientItem ?? false,
     });
   };
 
@@ -139,6 +147,7 @@ export function TshirtItemsTable({ order }: Props) {
     quantity: Number(s.quantity), price: Number(s.price),
     designCost: Number(s.designCost),
     designUrl: s.designUrl || undefined, designNote: s.designNote || undefined,
+    clientItem: s.clientItem,
   });
 
   return (
@@ -171,8 +180,11 @@ export function TshirtItemsTable({ order }: Props) {
         {order.tshirtItems.map((item, idx) => (
           <div key={item.id} className="border border-gray-100 rounded-xl overflow-hidden">
             <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-100">
-              <span className="text-sm font-medium text-gray-700">
+              <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 #{idx + 1} — {item.color}, {TSHIRT_SIZE_LABELS[item.size]}
+                {item.clientItem && (
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-medium">Изделие клиента</span>
+                )}
               </span>
               {isAdmin && (
                 <div className="flex gap-1">

@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { EnumPrintLocation, EnumTshirtSize } from 'src/generated/prisma/enums';
 
 export class DtoUpdateTshirtItem {
@@ -11,4 +11,5 @@ export class DtoUpdateTshirtItem {
   @IsOptional() @IsNumber() @Type(() => Number) @Min(0) designCost?: number;
   @IsOptional() @IsString() designUrl?: string;
   @IsOptional() @IsString() designNote?: string;
+  @IsOptional() @IsBoolean() clientItem?: boolean;
 }

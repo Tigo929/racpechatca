@@ -1,0 +1,1 @@
+ALTER TABLE "ItemTshirt" ADD COLUMN "clientItem" BOOLEAN NOT NULL DEFAULT false;

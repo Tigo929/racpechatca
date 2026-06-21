@@ -71,6 +71,7 @@ export interface ItemTshirt {
   designCost: number;
   designUrl?: string | null;
   designNote?: string | null;
+  clientItem: boolean;
 }
 
 export interface ItemPhoto {
@@ -153,6 +154,7 @@ export interface CreateTshirtItemDto {
   designCost?: number;
   designUrl?: string;
   designNote?: string;
+  clientItem?: boolean;
 }
 
 export interface UpdateTshirtItemDto {
@@ -164,6 +166,7 @@ export interface UpdateTshirtItemDto {
   designCost?: number;
   designUrl?: string;
   designNote?: string;
+  clientItem?: boolean;
 }
 
 export interface CreateOrderDto {

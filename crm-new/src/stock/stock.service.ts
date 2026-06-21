@@ -49,7 +49,7 @@ export class StockService {
     if (already > 0) return;
 
     const items = await tx.itemTshirt.findMany({
-      where: { orderId },
+      where: { orderId, clientItem: false },
       select: { size: true, color: true, quantity: true },
     });
     if (items.length === 0) return;
