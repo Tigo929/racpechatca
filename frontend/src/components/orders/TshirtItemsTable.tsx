@@ -36,6 +36,9 @@ const EMPTY: EditState = {
   quantity: '1', price: '500', designCost: '0', designUrl: '', designNote: '', clientItem: false,
 };
 
+type FreeState = { name: string; quantity: string; price: string };
+const EMPTY_FREE: FreeState = { name: '', quantity: '1', price: '0' };
+
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <tr className="border-b border-gray-50">
@@ -53,7 +56,7 @@ function EditForm({
   onChange: (state: EditState) => void;
 }) {
   return (
-    <table className="w-full text-sm border border-gray-100 rounded-lg overflow-hidden mb-2">
+    <table className="w-full text-sm border border-gray-100 rounded-lg overflow-hidden mb-2 bg-white">
       <tbody>
         <Row label="Цвет">
           <select className={selectCls} value={state.color} onChange={(event) => onChange({ ...state, color: event.target.value })}>
@@ -96,20 +99,48 @@ function EditForm({
   );
 }
 
+function FreeForm({
+  state,
+  onChange,
+}: {
+  state: FreeState;
+  onChange: (state: FreeState) => void;
+}) {
+  return (
+    <table className="w-full text-sm border border-gray-100 rounded-lg overflow-hidden mb-2 bg-white">
+      <tbody>
+        <Row label="Название">
+          <input className={inputCls} placeholder="Кружка с принтом, баннер…" value={state.name}
+            onChange={(e) => onChange({ ...state, name: e.target.value })} />
+        </Row>
+        <Row label="Кол-во">
+          <input type="number" min={1} className={inputCls} value={state.quantity}
+            onChange={(e) => onChange({ ...state, quantity: e.target.value })} />
+        </Row>
+        <Row label="Цена ₽ (итог)">
+          <input type="number" min={0} className={inputCls} value={state.price}
+            onChange={(e) => onChange({ ...state, price: e.target.value })} />
+        </Row>
+      </tbody>
+    </table>
+  );
+}
+
 export function TshirtItemsTable({ order }: Props) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
   const qc = useQueryClient();
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editState, setEditState] = useState<EditState>(EMPTY);
-  const [adding, setAdding] = useState(false);
-  const [newItem, setNewItem] = useState<EditState>(EMPTY);
 
-  const EMPTY_FREE = { name: '', quantity: '1', price: '0' };
-  const [addingFree, setAddingFree] = useState(false);
-  const [newFreeItem, setNewFreeItem] = useState(EMPTY_FREE);
+  const [adding, setAdding] = useState(false);
+  const [addFree, setAddFree] = useState(false);
+  const [newItem, setNewItem] = useState<EditState>(EMPTY);
+  const [newFreeItem, setNewFreeItem] = useState<FreeState>(EMPTY_FREE);
+
   const [editingFreeId, setEditingFreeId] = useState<string | null>(null);
-  const [editFreeState, setEditFreeState] = useState(EMPTY_FREE);
+  const [editFreeState, setEditFreeState] = useState<FreeState>(EMPTY_FREE);
 
   const invalidate = (updated: OrderPhoto) => {
     qc.setQueryData(['order', order.id], updated);
@@ -132,13 +163,13 @@ export function TshirtItemsTable({ order }: Props) {
   const addMutation = useMutation({
     mutationFn: (data: object) =>
       ordersApi.addTshirtItem(order.id, data as Parameters<typeof ordersApi.addTshirtItem>[1]),
-    onSuccess: (u) => { invalidate(u); setAdding(false); setNewItem(EMPTY); toast.success('Позиция добавлена'); },
+    onSuccess: (u) => { invalidate(u); closeAdd(); toast.success('Позиция добавлена'); },
     onError: () => toast.error('Ошибка добавления'),
   });
 
   const addFreeMutation = useMutation({
     mutationFn: (data: Parameters<typeof ordersApi.addItem>[1]) => ordersApi.addItem(order.id, data),
-    onSuccess: (u) => { invalidate(u); setAddingFree(false); setNewFreeItem(EMPTY_FREE); toast.success('Позиция добавлена'); },
+    onSuccess: (u) => { invalidate(u); closeAdd(); toast.success('Позиция добавлена'); },
     onError: () => toast.error('Ошибка добавления'),
   });
 
@@ -155,21 +186,39 @@ export function TshirtItemsTable({ order }: Props) {
     onError: () => toast.error('Ошибка удаления'),
   });
 
-  const saveFreeNew = () => addFreeMutation.mutate({
-    formatPaper: newFreeItem.name,
-    typePaper: 'GLOSS',
-    quantity: Number(newFreeItem.quantity) || 1,
-    price: Number(newFreeItem.price) || 0,
-  });
+  const closeAdd = () => {
+    setAdding(false);
+    setAddFree(false);
+    setNewItem(EMPTY);
+    setNewFreeItem(EMPTY_FREE);
+  };
 
-  const saveFreeEdit = (item: ItemPhoto) => updateFreeMutation.mutate({
-    id: item.id,
-    data: {
-      formatPaper: editFreeState.name,
-      quantity: Number(editFreeState.quantity) || 1,
-      price: Number(editFreeState.price) || 0,
-    },
-  });
+  const handleAdd = () => {
+    if (addFree) {
+      if (!newFreeItem.name.trim()) { toast.error('Укажите название позиции'); return; }
+      addFreeMutation.mutate({
+        formatPaper: newFreeItem.name.trim(),
+        typePaper: 'GLOSS',
+        quantity: Number(newFreeItem.quantity) || 1,
+        price: Number(newFreeItem.price) || 0,
+        isFreePrice: true,
+      });
+    } else {
+      addMutation.mutate(toPayload(newItem));
+    }
+  };
+
+  const saveFreeEdit = (item: ItemPhoto) => {
+    if (!editFreeState.name.trim()) { toast.error('Укажите название позиции'); return; }
+    updateFreeMutation.mutate({
+      id: item.id,
+      data: {
+        formatPaper: editFreeState.name.trim(),
+        quantity: Number(editFreeState.quantity) || 1,
+        price: Number(editFreeState.price) || 0,
+      },
+    });
+  };
 
   const startEdit = (item: ItemTshirt) => {
     setEditingId(item.id);
@@ -192,6 +241,12 @@ export function TshirtItemsTable({ order }: Props) {
     clientItem: s.clientItem,
   });
 
+  const totalPositions =
+    order.tshirtItems.reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
+    order.items.reduce((s, i) => s + (i.pricePosition ?? 0), 0);
+
+  const adding_pending = addMutation.isPending || addFreeMutation.isPending;
+
   return (
     <div>
       {/* Ссылка на клиента */}
@@ -209,8 +264,10 @@ export function TshirtItemsTable({ order }: Props) {
       )}
 
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-700">Позиции ({order.tshirtItems.length})</h3>
-        {isAdmin && (
+        <h3 className="text-sm font-semibold text-gray-700">
+          Позиции ({order.tshirtItems.length + order.items.length})
+        </h3>
+        {isAdmin && !adding && (
           <button onClick={() => setAdding(true)}
             className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
             <Plus size={14} /> Добавить
@@ -219,6 +276,7 @@ export function TshirtItemsTable({ order }: Props) {
       </div>
 
       <div className="space-y-3">
+        {/* Футболочные позиции */}
         {order.tshirtItems.map((item, idx) => (
           <div key={item.id} className="border border-gray-100 rounded-xl overflow-hidden">
             <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-100">
@@ -278,16 +336,68 @@ export function TshirtItemsTable({ order }: Props) {
           </div>
         ))}
 
+        {/* Свободные позиции (ItemPhoto, произвольная цена) */}
+        {order.items.map((item) => (
+          <div key={item.id} className="border border-gray-100 rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 bg-amber-50/60 border-b border-gray-100">
+              <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                {item.formatPaper}
+                <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">свободная цена</span>
+              </span>
+              {isAdmin && (
+                <div className="flex gap-1">
+                  {editingFreeId === item.id ? (
+                    <>
+                      <button onClick={() => saveFreeEdit(item)} disabled={updateFreeMutation.isPending}
+                        className="p-1 text-green-600 hover:text-green-800"><Check size={14} /></button>
+                      <button onClick={() => setEditingFreeId(null)}
+                        className="p-1 text-gray-400 hover:text-gray-600"><X size={14} /></button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => { setEditingFreeId(item.id); setEditFreeState({ name: item.formatPaper, quantity: String(item.quantity), price: String(item.price) }); }}
+                        className="p-1 text-gray-400 hover:text-indigo-600"><Pencil size={13} /></button>
+                      <button onClick={() => deleteFreeMutation.mutate(item.id)} disabled={deleteFreeMutation.isPending}
+                        className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={13} /></button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {isAdmin && editingFreeId === item.id ? (
+              <div className="p-3">
+                <FreeForm state={editFreeState} onChange={setEditFreeState} />
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <tbody>
+                  <Row label="Количество">{item.quantity} шт.</Row>
+                  {isAdmin && <Row label="Итого"><span className="font-semibold">{item.pricePosition.toLocaleString()} ₽</span></Row>}
+                </tbody>
+              </table>
+            )}
+          </div>
+        ))}
+
+        {/* Форма добавления — с переключателем «свободная цена» */}
         {isAdmin && adding && (
           <div className="border border-amber-100 rounded-xl overflow-hidden bg-amber-50 p-3">
-            <p className="text-xs font-semibold text-amber-700 mb-2">Новая позиция</p>
-            <EditForm state={newItem} onChange={setNewItem} />
+            <label className="flex items-center gap-2 mb-3 cursor-pointer">
+              <input type="checkbox" checked={addFree} onChange={(e) => setAddFree(e.target.checked)} className="w-4 h-4 accent-amber-600" />
+              <span className="text-sm font-medium text-amber-800">Свободная цена — произвольная позиция (название, кол-во, цена)</span>
+            </label>
+
+            {addFree
+              ? <FreeForm state={newFreeItem} onChange={setNewFreeItem} />
+              : <EditForm state={newItem} onChange={setNewItem} />}
+
             <div className="flex gap-2">
-              <button onClick={() => addMutation.mutate(toPayload(newItem))} disabled={addMutation.isPending}
+              <button onClick={handleAdd} disabled={adding_pending}
                 className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 disabled:opacity-50">
-                <Check size={13} /> {addMutation.isPending ? 'Добавляем...' : 'Добавить'}
+                <Check size={13} /> {adding_pending ? 'Добавляем...' : 'Добавить'}
               </button>
-              <button onClick={() => setAdding(false)}
+              <button onClick={closeAdd}
                 className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200">
                 <X size={13} /> Отмена
               </button>
@@ -295,141 +405,13 @@ export function TshirtItemsTable({ order }: Props) {
           </div>
         )}
 
-        {isAdmin && order.tshirtItems.length > 0 && (
+        {isAdmin && (order.tshirtItems.length > 0 || order.items.length > 0) && (
           <div className="flex justify-end px-2 py-1 text-sm">
             <span className="text-gray-500 mr-2">Итого по позициям</span>
-            <span className="font-semibold">
-              {order.tshirtItems.reduce((s, i) => s + (i.pricePosition ?? 0), 0).toLocaleString()} ₽
-            </span>
+            <span className="font-semibold">{totalPositions.toLocaleString()} ₽</span>
           </div>
         )}
       </div>
-
-      {/* ── Дополнительные позиции (свободная цена) ── */}
-      {isAdmin && (
-        <div className="mt-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-700">
-              Доп. позиции
-              {order.items.length > 0 && <span className="ml-1 font-normal text-gray-400">({order.items.length})</span>}
-              <span className="ml-2 text-xs font-normal text-amber-600">свободная цена</span>
-            </h3>
-            <button onClick={() => setAddingFree(true)}
-              className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
-              <Plus size={14} /> Добавить
-            </button>
-          </div>
-
-          <div className="border border-gray-100 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
-                <tr>
-                  <th className="px-4 py-2 text-left">Название</th>
-                  <th className="px-3 py-2 text-right">Кол-во</th>
-                  <th className="px-3 py-2 text-right">Цена ₽</th>
-                  <th className="px-3 py-2 text-right">Итого</th>
-                  <th className="px-3 py-2 w-16" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {order.items.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    {editingFreeId === item.id ? (
-                      <>
-                        <td className="px-4 py-2">
-                          <input className={inputCls} value={editFreeState.name}
-                            onChange={e => setEditFreeState({ ...editFreeState, name: e.target.value })} />
-                        </td>
-                        <td className="px-3 py-2">
-                          <input type="number" min={1} className={inputCls + ' text-right'} value={editFreeState.quantity}
-                            onChange={e => setEditFreeState({ ...editFreeState, quantity: e.target.value })} />
-                        </td>
-                        <td className="px-3 py-2">
-                          <input type="number" min={0} className={inputCls + ' text-right'} value={editFreeState.price}
-                            onChange={e => setEditFreeState({ ...editFreeState, price: e.target.value })} />
-                        </td>
-                        <td className="px-3 py-2 text-right text-gray-400 text-xs">
-                          {((Number(editFreeState.price) || 0) * (Number(editFreeState.quantity) || 1)).toLocaleString()} ₽
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="flex gap-1 justify-end">
-                            <button onClick={() => saveFreeEdit(item)} disabled={updateFreeMutation.isPending}
-                              className="p-1 text-green-600 hover:text-green-800"><Check size={14} /></button>
-                            <button onClick={() => setEditingFreeId(null)}
-                              className="p-1 text-gray-400 hover:text-gray-600"><X size={14} /></button>
-                          </div>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="px-4 py-2.5 font-medium text-gray-800">{item.formatPaper}</td>
-                        <td className="px-3 py-2.5 text-right text-gray-600">{item.quantity}</td>
-                        <td className="px-3 py-2.5 text-right text-gray-600">{item.price.toLocaleString()} ₽</td>
-                        <td className="px-3 py-2.5 text-right font-medium">{item.pricePosition.toLocaleString()} ₽</td>
-                        <td className="px-3 py-2.5">
-                          <div className="flex gap-1 justify-end">
-                            <button onClick={() => { setEditingFreeId(item.id); setEditFreeState({ name: item.formatPaper, quantity: String(item.quantity), price: String(item.price) }); }}
-                              className="p-1 text-gray-400 hover:text-indigo-600"><Pencil size={13} /></button>
-                            <button onClick={() => deleteFreeMutation.mutate(item.id)} disabled={deleteFreeMutation.isPending}
-                              className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={13} /></button>
-                          </div>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                ))}
-
-                {addingFree && (
-                  <tr className="bg-amber-50">
-                    <td className="px-4 py-2">
-                      <input className={inputCls} placeholder="Название товара"
-                        value={newFreeItem.name} onChange={e => setNewFreeItem({ ...newFreeItem, name: e.target.value })} />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input type="number" min={1} className={inputCls + ' text-right'} value={newFreeItem.quantity}
-                        onChange={e => setNewFreeItem({ ...newFreeItem, quantity: e.target.value })} />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input type="number" min={0} className={inputCls + ' text-right'} placeholder="Цена ₽"
-                        value={newFreeItem.price} onChange={e => setNewFreeItem({ ...newFreeItem, price: e.target.value })} />
-                    </td>
-                    <td className="px-3 py-2 text-right text-gray-400 text-xs">
-                      {((Number(newFreeItem.price) || 0) * (Number(newFreeItem.quantity) || 1)).toLocaleString()} ₽
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex gap-1 justify-end">
-                        <button onClick={saveFreeNew} disabled={addFreeMutation.isPending}
-                          className="p-1 text-green-600 hover:text-green-800"><Check size={14} /></button>
-                        <button onClick={() => { setAddingFree(false); setNewFreeItem(EMPTY_FREE); }}
-                          className="p-1 text-gray-400 hover:text-gray-600"><X size={14} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-
-                {order.items.length === 0 && !addingFree && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-3 text-center text-xs text-gray-400">
-                      Нет доп. позиций — нажмите «Добавить»
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-              {order.items.length > 0 && (
-                <tfoot className="bg-gray-50">
-                  <tr>
-                    <td colSpan={3} className="px-4 py-2 text-right text-xs text-gray-500">Итого</td>
-                    <td className="px-3 py-2 text-right text-sm font-semibold">
-                      {order.items.reduce((s, i) => s + (i.pricePosition ?? 0), 0).toLocaleString()} ₽
-                    </td>
-                    <td />
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

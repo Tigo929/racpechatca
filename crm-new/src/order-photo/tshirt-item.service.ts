@@ -9,7 +9,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { DtoCreateTshirtItem } from './dto/create-tshirt-item.dto';
 import { DtoUpdateTshirtItem } from './dto/update-tshirt-item.dto';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
-import { calcItemPricePosition, calcOrderTotal } from './order-pricing';
+import { calcItemPricePosition } from './order-pricing';
 
 @Injectable()
 export class TshirtItemService {
@@ -119,11 +119,13 @@ export class TshirtItemService {
       include: { items: true, tshirtItems: true },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
-    const freeItemsTotal = order.items.reduce((s, i) => s + (i.pricePosition ?? 0), 0);
+    // Сумма заказа = все сохранённые pricePosition (футболки + фото) + доставка.
+    const tshirtTotal = order.tshirtItems.reduce((s, i) => s + (i.pricePosition ?? 0), 0);
+    const itemsTotal = order.items.reduce((s, i) => s + (i.pricePosition ?? 0), 0);
     const updated = await tx.orderPhoto.update({
       where: { id: orderId },
       include: { items: true, tshirtItems: true },
-      data: { totalOrder: calcOrderTotal(order.tshirtItems, order.deliveryCost) + freeItemsTotal },
+      data: { totalOrder: tshirtTotal + itemsTotal + order.deliveryCost },
     });
     // Невыплаченное начисление подгоняем под новую сумму заказа.
     await this.financialIntegrity.recalcPendingAccrual(

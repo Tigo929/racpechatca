@@ -9,7 +9,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import DtoUpdateItemOrder from './dto/update-item.dto';
 import DtoCreateItemOrder from './dto/create-item-order.dto';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
-import { calcItemPricePosition, calcOrderTotal } from './order-pricing';
+import { calcItemPricePosition } from './order-pricing';
 
 @Injectable()
 export class OrderItemService {
@@ -52,7 +52,8 @@ export class OrderItemService {
         where: { id: item.orderId },
         select: { isFreePrice: true },
       });
-      const freePrice = order?.isFreePrice ?? false;
+      // Свободная цена, если так помечен заказ ИЛИ сама позиция.
+      const freePrice = (order?.isFreePrice ?? false) || item.isFreePrice;
       const quantity = dto.quantity ?? item.quantity;
       const price = dto.price ?? item.price;
 
@@ -94,17 +95,22 @@ export class OrderItemService {
 
       await this.financialIntegrity.assertOrderFinanciallyEditable(idOrder, tx);
 
+      // Позиция свободна по цене, если так помечен заказ ИЛИ сама позиция.
+      const itemFreePrice = dto.isFreePrice ?? false;
+      const effectiveFreePrice = orderExists.isFreePrice || itemFreePrice;
+
       await tx.itemPhoto.create({
         data: {
           formatPaper: dto.formatPaper,
           typePaper: dto.typePaper,
           quantity: dto.quantity,
           price: dto.price,
+          isFreePrice: itemFreePrice,
           pricePosition: calcItemPricePosition(
             dto.price,
             dto.quantity,
             0,
-            orderExists.isFreePrice,
+            effectiveFreePrice,
           ),
           orderId: idOrder,
         },
@@ -121,13 +127,14 @@ export class OrderItemService {
       include: { items: true, tshirtItems: true },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
+    // Сумма заказа = все сохранённые pricePosition (фото + футболки) + доставка.
+    // pricePosition уже посчитан с учётом свободной цены каждой позиции.
+    const itemsTotal = order.items.reduce((s, i) => s + (i.pricePosition ?? 0), 0);
     const tshirtTotal = order.tshirtItems.reduce((s, i) => s + (i.pricePosition ?? 0), 0);
     const updated = await tx.orderPhoto.update({
       where: { id: orderId },
       include: { items: true, tshirtItems: true },
-      data: {
-        totalOrder: calcOrderTotal(order.items, order.deliveryCost, order.isFreePrice ?? false) + tshirtTotal,
-      },
+      data: { totalOrder: itemsTotal + tshirtTotal + order.deliveryCost },
     });
     // Невыплаченное начисление подгоняем под новую сумму заказа.
     await this.financialIntegrity.recalcPendingAccrual(

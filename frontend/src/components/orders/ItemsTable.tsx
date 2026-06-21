@@ -27,6 +27,10 @@ export function ItemsTable({ order }: Props) {
   const [editState, setEditState] = useState<EditState | null>(null);
   const [adding, setAdding] = useState(false);
   const [newItem, setNewItem] = useState<EditState>({ formatPaper: '', typePaper: 'GLOSS', quantity: '1', price: '10' });
+  // Пометить добавляемую позицию свободной ценой (для обычных заказов).
+  const [newItemFree, setNewItemFree] = useState(false);
+  // Эффективная свободная цена для строки добавления: заказ свободный ИЛИ позиция помечена.
+  const newFree = freePrice || newItemFree;
 
   const invalidate = (updated: OrderPhoto) => {
     qc.setQueryData(['order', order.id], updated);
@@ -49,7 +53,13 @@ export function ItemsTable({ order }: Props) {
   const addMutation = useMutation({
     mutationFn: (data: object) =>
       ordersApi.addItem(order.id, data as Parameters<typeof ordersApi.addItem>[1]),
-    onSuccess: (u) => { invalidate(u); setAdding(false); toast.success('Позиция добавлена'); },
+    onSuccess: (u) => {
+      invalidate(u);
+      setAdding(false);
+      setNewItemFree(false);
+      setNewItem({ formatPaper: '', typePaper: 'GLOSS', quantity: '1', price: '10' });
+      toast.success('Позиция добавлена');
+    },
     onError: () => toast.error('Ошибка добавления'),
   });
 
@@ -74,6 +84,7 @@ export function ItemsTable({ order }: Props) {
       typePaper: newItem.typePaper,
       quantity: Number(newItem.quantity) || 1,
       price: Number(newItem.price),
+      isFreePrice: newFree,
     });
   };
 
@@ -131,11 +142,15 @@ export function ItemsTable({ order }: Props) {
                     </td>
                     {!freePrice && (
                       <td className="px-4 py-2">
-                        <select className={selectCls} value={editState.typePaper}
-                          onChange={e => setEditState({ ...editState, typePaper: e.target.value })}>
-                          <option value="GLOSS">Глянец</option>
-                          <option value="MATTE">Матт</option>
-                        </select>
+                        {item.isFreePrice ? (
+                          <span className="text-xs text-gray-400">произвольная</span>
+                        ) : (
+                          <select className={selectCls} value={editState.typePaper}
+                            onChange={e => setEditState({ ...editState, typePaper: e.target.value })}>
+                            <option value="GLOSS">Глянец</option>
+                            <option value="MATTE">Матт</option>
+                          </select>
+                        )}
                       </td>
                     )}
                     <td className="px-4 py-2">
@@ -145,7 +160,7 @@ export function ItemsTable({ order }: Props) {
                     {isAdmin && !freePrice && (
                       <td className="px-4 py-2">
                         <input type="number" min={0} className={inputCls + ' text-right'} value={editState.price}
-                          onChange={e => setEditState({ ...editState, price: e.target.value })} placeholder="Цена ₽" />
+                          onChange={e => setEditState({ ...editState, price: e.target.value })} placeholder={item.isFreePrice ? 'Цена ₽ (итог)' : 'Цена ₽'} />
                       </td>
                     )}
                     {isAdmin && freePrice && (
@@ -165,10 +180,17 @@ export function ItemsTable({ order }: Props) {
                   </>
                 ) : (
                   <>
-                    <td className="px-4 py-2.5 font-medium text-gray-800">{item.formatPaper}</td>
-                    {!freePrice && <td className="px-4 py-2.5 text-gray-600">{TYPE_LABELS[item.typePaper]}</td>}
+                    <td className="px-4 py-2.5 font-medium text-gray-800">
+                      <span className="inline-flex items-center gap-2">
+                        {item.formatPaper}
+                        {item.isFreePrice && !freePrice && (
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">своб.</span>
+                        )}
+                      </span>
+                    </td>
+                    {!freePrice && <td className="px-4 py-2.5 text-gray-600">{item.isFreePrice ? '—' : TYPE_LABELS[item.typePaper]}</td>}
                     <td className="px-4 py-2.5 text-right">{item.quantity}</td>
-                    {isAdmin && !freePrice && <td className="px-4 py-2.5 text-right">{item.price.toLocaleString()} ₽</td>}
+                    {isAdmin && !freePrice && <td className="px-4 py-2.5 text-right">{item.isFreePrice ? '—' : `${item.price.toLocaleString()} ₽`}</td>}
                     {isAdmin && <td className="px-4 py-2.5 text-right font-medium">{item.pricePosition.toLocaleString()} ₽</td>}
                     {isAdmin && (
                       <td className="px-3 py-2.5">
@@ -184,19 +206,33 @@ export function ItemsTable({ order }: Props) {
               </tr>
             ))}
 
+            {isAdmin && adding && !freePrice && (
+              <tr className="bg-amber-50 border-t border-amber-100">
+                <td colSpan={6} className="px-4 pt-2 pb-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={newItemFree} onChange={e => setNewItemFree(e.target.checked)} className="w-4 h-4 accent-amber-600" />
+                    <span className="text-sm text-amber-800">Свободная цена — произвольная позиция (название, кол-во, цена)</span>
+                  </label>
+                </td>
+              </tr>
+            )}
             {isAdmin && adding && (
               <tr className="bg-amber-50">
                 <td className="px-4 py-2">
-                  <input className={inputCls} placeholder={freePrice ? 'Название товара' : '10×15, Polaroid…'} value={newItem.formatPaper}
+                  <input className={inputCls} placeholder={newFree ? 'Название товара' : '10×15, Polaroid…'} value={newItem.formatPaper}
                     onChange={e => setNewItem({ ...newItem, formatPaper: e.target.value })} />
                 </td>
                 {!freePrice && (
                   <td className="px-4 py-2">
-                    <select className={selectCls} value={newItem.typePaper}
-                      onChange={e => setNewItem({ ...newItem, typePaper: e.target.value })}>
-                      <option value="GLOSS">Глянец</option>
-                      <option value="MATTE">Матт</option>
-                    </select>
+                    {newItemFree ? (
+                      <span className="text-xs text-gray-400">произвольная</span>
+                    ) : (
+                      <select className={selectCls} value={newItem.typePaper}
+                        onChange={e => setNewItem({ ...newItem, typePaper: e.target.value })}>
+                        <option value="GLOSS">Глянец</option>
+                        <option value="MATTE">Матт</option>
+                      </select>
+                    )}
                   </td>
                 )}
                 <td className="px-4 py-2">
@@ -206,13 +242,13 @@ export function ItemsTable({ order }: Props) {
                 <td className="px-4 py-2">
                   <input type="number" min={0} className={inputCls + ' text-right'} value={newItem.price}
                     onChange={e => setNewItem({ ...newItem, price: e.target.value })}
-                    placeholder={freePrice ? 'Цена ₽ (итог)' : 'Цена ₽'} />
+                    placeholder={newFree ? 'Цена ₽ (итог)' : 'Цена ₽'} />
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex gap-1">
                     <button onClick={saveNew} disabled={addMutation.isPending}
                       className="p-1 text-green-600 hover:text-green-800"><Check size={14} /></button>
-                    <button onClick={() => setAdding(false)}
+                    <button onClick={() => { setAdding(false); setNewItemFree(false); }}
                       className="p-1 text-gray-400 hover:text-gray-600"><X size={14} /></button>
                   </div>
                 </td>

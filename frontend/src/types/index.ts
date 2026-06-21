@@ -84,6 +84,7 @@ export interface ItemPhoto {
   quantity: number;
   price: number;
   pricePosition: number;
+  isFreePrice?: boolean;
 }
 
 export interface OrderExecutor {
@@ -143,6 +144,7 @@ export interface CreateItemDto {
   typePaper: EnumTypePaper;
   quantity: number;
   price: number;
+  isFreePrice?: boolean;
 }
 
 export interface CreateTshirtItemDto {

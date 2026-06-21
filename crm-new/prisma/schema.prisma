@@ -164,6 +164,8 @@ model ItemPhoto {
   quantity      Int
   price         Int
   pricePosition Int
+  // Позиция со свободной (договорной) ценой: pricePosition = price, кол-во не умножается.
+  isFreePrice   Boolean @default(false)
 }
 
 enum EnumTypePaper {
