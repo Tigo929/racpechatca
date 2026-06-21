@@ -25,15 +25,13 @@ const selectCls = inputCls;
 type EditState = {
   color: string; size: EnumTshirtSize;
   printLocation: EnumPrintLocation;
-  quantity: string; price: string; designCost: string;
-  designUrl: string; designNote: string;
+  quantity: string; price: string;
   clientItem: boolean;
 };
 
 const EMPTY: EditState = {
-  color: 'Белый', size: 'M',
-  printLocation: 'FRONT',
-  quantity: '1', price: '500', designCost: '0', designUrl: '', designNote: '', clientItem: false,
+  color: 'Белый', size: 'M', printLocation: 'FRONT',
+  quantity: '1', price: '500', clientItem: false,
 };
 
 type FreeState = { name: string; quantity: string; price: string };
@@ -48,81 +46,58 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-function EditForm({
-  state,
-  onChange,
-}: {
-  state: EditState;
-  onChange: (state: EditState) => void;
-}) {
+/** Поля обычной футболочной позиции (фрагмент строк таблицы). */
+function TshirtRows({ state, onChange }: { state: EditState; onChange: (s: EditState) => void }) {
   return (
-    <table className="w-full text-sm border border-gray-100 rounded-lg overflow-hidden mb-2 bg-white">
-      <tbody>
-        <Row label="Цвет">
-          <select className={selectCls} value={state.color} onChange={(event) => onChange({ ...state, color: event.target.value })}>
-            {TSHIRT_COLORS.map((color) => <option key={color}>{color}</option>)}
-          </select>
-        </Row>
-        <Row label="Размер">
-          <select className={selectCls} value={state.size} onChange={(event) => onChange({ ...state, size: event.target.value as EnumTshirtSize })}>
-            {Object.entries(TSHIRT_SIZE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
-        </Row>
-        <Row label="Место печати">
-          <select className={selectCls} value={state.printLocation} onChange={(event) => onChange({ ...state, printLocation: event.target.value as EnumPrintLocation })}>
-            {Object.entries(PRINT_LOCATION_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
-        </Row>
-        <Row label="Кол-во">
-          <input type="number" min={1} className={inputCls} value={state.quantity} onChange={(event) => onChange({ ...state, quantity: event.target.value })} />
-        </Row>
-        <Row label="Цена ₽">
-          <input type="number" min={0} className={inputCls} value={state.price} onChange={(event) => onChange({ ...state, price: event.target.value })} />
-        </Row>
-        <Row label="Стоимость дизайна ₽">
-          <input type="number" min={0} className={inputCls} value={state.designCost} onChange={(event) => onChange({ ...state, designCost: event.target.value })} />
-        </Row>
-        <Row label="Ссылка на макет">
-          <input className={inputCls} placeholder="https://..." value={state.designUrl} onChange={(event) => onChange({ ...state, designUrl: event.target.value })} />
-        </Row>
-        <Row label="Описание дизайна">
-          <input className={inputCls} placeholder="Логотип на белом фоне..." value={state.designNote} onChange={(event) => onChange({ ...state, designNote: event.target.value })} />
-        </Row>
-        <Row label="Изделие клиента">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={state.clientItem} onChange={(e) => onChange({ ...state, clientItem: e.target.checked })} className="w-4 h-4 accent-amber-600" />
-            <span className="text-sm text-gray-700">Клиент приносит своё — склад не трогаем</span>
-          </label>
-        </Row>
-      </tbody>
-    </table>
+    <>
+      <Row label="Цвет">
+        <select className={selectCls} value={state.color} onChange={(e) => onChange({ ...state, color: e.target.value })}>
+          {TSHIRT_COLORS.map((c) => <option key={c}>{c}</option>)}
+        </select>
+      </Row>
+      <Row label="Размер">
+        <select className={selectCls} value={state.size} onChange={(e) => onChange({ ...state, size: e.target.value as EnumTshirtSize })}>
+          {Object.entries(TSHIRT_SIZE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      </Row>
+      <Row label="Место печати">
+        <select className={selectCls} value={state.printLocation} onChange={(e) => onChange({ ...state, printLocation: e.target.value as EnumPrintLocation })}>
+          {Object.entries(PRINT_LOCATION_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      </Row>
+      <Row label="Кол-во">
+        <input type="number" min={1} className={inputCls} value={state.quantity} onChange={(e) => onChange({ ...state, quantity: e.target.value })} />
+      </Row>
+      <Row label="Цена ₽">
+        <input type="number" min={0} className={inputCls} value={state.price} onChange={(e) => onChange({ ...state, price: e.target.value })} />
+      </Row>
+      <Row label="Изделие клиента">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked={state.clientItem} onChange={(e) => onChange({ ...state, clientItem: e.target.checked })} className="w-4 h-4 accent-amber-600" />
+          <span className="text-sm text-gray-700">Клиент приносит своё — склад не трогаем</span>
+        </label>
+      </Row>
+    </>
   );
 }
 
-function FreeForm({
-  state,
-  onChange,
-}: {
-  state: FreeState;
-  onChange: (state: FreeState) => void;
-}) {
+/** Поля свободной (произвольной) позиции. */
+function FreeRows({ state, onChange }: { state: FreeState; onChange: (s: FreeState) => void }) {
   return (
-    <table className="w-full text-sm border border-gray-100 rounded-lg overflow-hidden mb-2 bg-white">
-      <tbody>
-        <Row label="Название">
-          <input className={inputCls} placeholder="Кружка с принтом, баннер…" value={state.name}
-            onChange={(e) => onChange({ ...state, name: e.target.value })} />
-        </Row>
-        <Row label="Кол-во">
-          <input type="number" min={1} className={inputCls} value={state.quantity}
-            onChange={(e) => onChange({ ...state, quantity: e.target.value })} />
-        </Row>
-        <Row label="Цена ₽ (итог)">
-          <input type="number" min={0} className={inputCls} value={state.price}
-            onChange={(e) => onChange({ ...state, price: e.target.value })} />
-        </Row>
-      </tbody>
-    </table>
+    <>
+      <Row label="Название">
+        <input className={inputCls} placeholder="Кружка с принтом, баннер…" value={state.name}
+          onChange={(e) => onChange({ ...state, name: e.target.value })} />
+      </Row>
+      <Row label="Кол-во">
+        <input type="number" min={1} className={inputCls} value={state.quantity}
+          onChange={(e) => onChange({ ...state, quantity: e.target.value })} />
+      </Row>
+      <Row label="Цена ₽ (итог)">
+        <input type="number" min={0} className={inputCls} value={state.price}
+          onChange={(e) => onChange({ ...state, price: e.target.value })} />
+      </Row>
+    </>
   );
 }
 
@@ -223,21 +198,15 @@ export function TshirtItemsTable({ order }: Props) {
   const startEdit = (item: ItemTshirt) => {
     setEditingId(item.id);
     setEditState({
-      color: item.color, size: item.size,
-      printLocation: item.printLocation,
+      color: item.color, size: item.size, printLocation: item.printLocation,
       quantity: String(item.quantity), price: String(item.price),
-      designCost: String(item.designCost ?? 0),
-      designUrl: item.designUrl ?? '', designNote: item.designNote ?? '',
       clientItem: item.clientItem ?? false,
     });
   };
 
   const toPayload = (s: EditState) => ({
-    color: s.color, size: s.size,
-    printLocation: s.printLocation,
+    color: s.color, size: s.size, printLocation: s.printLocation,
     quantity: Number(s.quantity), price: Number(s.price),
-    designCost: Number(s.designCost),
-    designUrl: s.designUrl || undefined, designNote: s.designNote || undefined,
     clientItem: s.clientItem,
   });
 
@@ -245,7 +214,7 @@ export function TshirtItemsTable({ order }: Props) {
     order.tshirtItems.reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
     order.items.reduce((s, i) => s + (i.pricePosition ?? 0), 0);
 
-  const adding_pending = addMutation.isPending || addFreeMutation.isPending;
+  const addPending = addMutation.isPending || addFreeMutation.isPending;
 
   return (
     <div>
@@ -309,7 +278,9 @@ export function TshirtItemsTable({ order }: Props) {
 
             {isAdmin && editingId === item.id ? (
               <div className="p-3">
-                <EditForm state={editState} onChange={setEditState} />
+                <table className="w-full text-sm border border-gray-100 rounded-lg overflow-hidden bg-white">
+                  <tbody><TshirtRows state={editState} onChange={setEditState} /></tbody>
+                </table>
               </div>
             ) : (
               <table className="w-full text-sm">
@@ -317,26 +288,14 @@ export function TshirtItemsTable({ order }: Props) {
                   <Row label="Место печати">{PRINT_LOCATION_LABELS[item.printLocation]}</Row>
                   <Row label="Количество">{item.quantity} шт.</Row>
                   {isAdmin && <Row label="Цена за шт.">{item.price.toLocaleString()} ₽</Row>}
-                  {isAdmin && (item.designCost ?? 0) > 0 && (
-                    <Row label="Стоимость дизайна">{(item.designCost ?? 0).toLocaleString()} ₽</Row>
-                  )}
                   {isAdmin && <Row label="Итого"><span className="font-semibold">{item.pricePosition.toLocaleString()} ₽</span></Row>}
-                  {item.designUrl && (
-                    <Row label="Макет">
-                      <a href={item.designUrl} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-indigo-600 hover:underline text-xs">
-                        <ExternalLink size={11} /> Открыть макет
-                      </a>
-                    </Row>
-                  )}
-                  {item.designNote && <Row label="Описание">{item.designNote}</Row>}
                 </tbody>
               </table>
             )}
           </div>
         ))}
 
-        {/* Свободные позиции (ItemPhoto, произвольная цена) */}
+        {/* Свободные позиции (произвольная цена) */}
         {order.items.map((item) => (
           <div key={item.id} className="border border-gray-100 rounded-xl overflow-hidden">
             <div className="flex items-center justify-between px-4 py-2 bg-amber-50/60 border-b border-gray-100">
@@ -367,7 +326,9 @@ export function TshirtItemsTable({ order }: Props) {
 
             {isAdmin && editingFreeId === item.id ? (
               <div className="p-3">
-                <FreeForm state={editFreeState} onChange={setEditFreeState} />
+                <table className="w-full text-sm border border-gray-100 rounded-lg overflow-hidden bg-white">
+                  <tbody><FreeRows state={editFreeState} onChange={setEditFreeState} /></tbody>
+                </table>
               </div>
             ) : (
               <table className="w-full text-sm">
@@ -380,22 +341,26 @@ export function TshirtItemsTable({ order }: Props) {
           </div>
         ))}
 
-        {/* Форма добавления — с переключателем «свободная цена» */}
+        {/* Форма добавления — чекбокс «свободная цена» как первое поле позиции */}
         {isAdmin && adding && (
           <div className="border border-amber-100 rounded-xl overflow-hidden bg-amber-50 p-3">
-            <label className="flex items-center gap-2 mb-3 cursor-pointer">
-              <input type="checkbox" checked={addFree} onChange={(e) => setAddFree(e.target.checked)} className="w-4 h-4 accent-amber-600" />
-              <span className="text-sm font-medium text-amber-800">Свободная цена — произвольная позиция (название, кол-во, цена)</span>
-            </label>
-
-            {addFree
-              ? <FreeForm state={newFreeItem} onChange={setNewFreeItem} />
-              : <EditForm state={newItem} onChange={setNewItem} />}
-
+            <table className="w-full text-sm border border-gray-100 rounded-lg overflow-hidden bg-white mb-2">
+              <tbody>
+                <Row label="Тип позиции">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={addFree} onChange={(e) => setAddFree(e.target.checked)} className="w-4 h-4 accent-amber-600" />
+                    <span className="text-sm text-gray-700">Свободная цена — произвольная позиция (название и цена)</span>
+                  </label>
+                </Row>
+                {addFree
+                  ? <FreeRows state={newFreeItem} onChange={setNewFreeItem} />
+                  : <TshirtRows state={newItem} onChange={setNewItem} />}
+              </tbody>
+            </table>
             <div className="flex gap-2">
-              <button onClick={handleAdd} disabled={adding_pending}
+              <button onClick={handleAdd} disabled={addPending}
                 className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 disabled:opacity-50">
-                <Check size={13} /> {adding_pending ? 'Добавляем...' : 'Добавить'}
+                <Check size={13} /> {addPending ? 'Добавляем...' : 'Добавить'}
               </button>
               <button onClick={closeAdd}
                 className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200">

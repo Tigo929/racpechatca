@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import DtoCreateOrder from './dto/create-order.dto';
-import { calcItemPricePosition, calcOrderTotal } from './order-pricing';
+import { calcItemPricePosition } from './order-pricing';
 import fullDate from 'src/utils/full-date';
 import DtoAllOrdersforQuery from './dto/all-oreders-for-query.dto';
 import UpdateStatus from './dto/update-status.dto';
@@ -77,18 +77,44 @@ export class OrderPhotoService {
       const lastSeq = Number(seqResult[0]?.max ?? 0);
       const lengthOrder = String(lastSeq + 1).padStart(3, '0');
 
-      const isTshirt = dto.productCategory === 'TSHIRT';
-      const itemsForTotal = isTshirt
-        ? (dto.tshirtItems ?? [])
-        : (dto.items ?? []);
-
-      // Свободная цена: сумма позиции = её цене (кол-во не умножается);
-      // обычная — считаем из позиций. customTotal оставлен как ручной итог.
       const freePrice = dto.freePrice ?? false;
+
+      // Позиции считаем независимо от категории: заказ может содержать и обычные
+      // позиции, и свободные (произвольные «название — цена»). Свободная цена
+      // позиции = её цене (кол-во не умножается).
+      const photoCreate = (dto.items ?? []).map((e) => {
+        const itemFree = e.isFreePrice ?? freePrice;
+        return {
+          formatPaper: e.formatPaper,
+          typePaper: e.typePaper,
+          quantity: e.quantity,
+          price: e.price,
+          isFreePrice: itemFree,
+          pricePosition: calcItemPricePosition(e.price, e.quantity, 0, itemFree),
+        };
+      });
+      const tshirtCreate = (dto.tshirtItems ?? []).map((e) => {
+        const dc = e.designCost ?? 0;
+        return {
+          color: e.color,
+          size: e.size,
+          printLocation: e.printLocation,
+          quantity: e.quantity,
+          price: e.price,
+          pricePosition: e.price * e.quantity + dc,
+          designCost: dc,
+          designUrl: e.designUrl,
+          designNote: e.designNote,
+          clientItem: e.clientItem ?? false,
+        };
+      });
+
+      // Сумма заказа = все позиции (фото + футболки) + доставка. customTotal — ручной итог.
+      const positionsTotal =
+        photoCreate.reduce((s, i) => s + i.pricePosition, 0) +
+        tshirtCreate.reduce((s, i) => s + i.pricePosition, 0);
       const totalOrder =
-        dto.customTotal != null
-          ? dto.customTotal
-          : calcOrderTotal(itemsForTotal, dto.deliveryCost, freePrice);
+        dto.customTotal != null ? dto.customTotal : positionsTotal + dto.deliveryCost;
 
       return tx.orderPhoto.create({
         data: {
@@ -108,41 +134,8 @@ export class OrderPhotoService {
           deliveryCost: dto.deliveryCost,
           note: dto.note,
           productCategory: dto.productCategory ?? 'PHOTO',
-          items: isTshirt
-            ? undefined
-            : {
-                create: (dto.items ?? []).map((e) => ({
-                  formatPaper: e.formatPaper,
-                  typePaper: e.typePaper,
-                  quantity: e.quantity,
-                  price: e.price,
-                  pricePosition: calcItemPricePosition(
-                    e.price,
-                    e.quantity,
-                    0,
-                    freePrice,
-                  ),
-                })),
-              },
-          tshirtItems: isTshirt
-            ? {
-                create: (dto.tshirtItems ?? []).map((e) => {
-                  const dc = e.designCost ?? 0;
-                  return {
-                    color: e.color,
-                    size: e.size,
-                    printLocation: e.printLocation,
-                    quantity: e.quantity,
-                    price: e.price,
-                    pricePosition: e.price * e.quantity + dc,
-                    designCost: dc,
-                    designUrl: e.designUrl,
-                    designNote: e.designNote,
-                    clientItem: e.clientItem ?? false,
-                  };
-                }),
-              }
-            : undefined,
+          items: photoCreate.length ? { create: photoCreate } : undefined,
+          tshirtItems: tshirtCreate.length ? { create: tshirtCreate } : undefined,
         },
         include: { items: true, tshirtItems: true },
       });
@@ -613,11 +606,11 @@ export class OrderPhotoService {
           : order.urlCommunication,
         deliveryMethod: dto.deliveryMethod ?? order.deliveryMethod,
         deliveryCost: dto.deliveryCost ?? order.deliveryCost,
-        totalOrder: calcOrderTotal(
-          order.productCategory === 'TSHIRT' ? order.tshirtItems : order.items,
-          dto.deliveryCost ?? order.deliveryCost,
-          order.isFreePrice,
-        ),
+        // Сумма = все сохранённые pricePosition (фото + футболки) + доставка.
+        totalOrder:
+          order.items.reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
+          order.tshirtItems.reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
+          (dto.deliveryCost ?? order.deliveryCost),
         note: dto.note ?? order.note,
         isUrgent: dto.isUrgent !== undefined ? dto.isUrgent : order.isUrgent,
       },

@@ -21,14 +21,14 @@ const photoItemSchema = z.object({
 });
 
 const tshirtItemSchema = z.object({
+  // Позиция со свободной ценой: вместо цвета/размера — произвольное название.
+  freePrice: z.boolean().optional(),
+  name: z.string().optional(),
   color: z.string().min(1, 'Укажите цвет'),
   size: z.enum(['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']),
   printLocation: z.enum(['FRONT', 'BACK', 'FRONT_BACK', 'BY_TZ']),
   quantity: z.coerce.number().int().positive(),
   price: z.coerce.number().int().min(0),
-  designCost: z.coerce.number().int().min(0).optional(),
-  designUrl: z.string().optional(),
-  designNote: z.string().optional(),
   clientItem: z.boolean().optional(),
 });
 
@@ -93,8 +93,16 @@ const fullSchema = baseSchema.superRefine((data, ctx) => {
   if (data.productCategory === 'PHOTO' && (!data.items || data.items.length === 0)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Добавьте хотя бы одну позицию', path: ['items'] });
   }
-  if (data.productCategory === 'TSHIRT' && (!data.tshirtItems || data.tshirtItems.length === 0)) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Добавьте хотя бы одну позицию', path: ['tshirtItems'] });
+  if (data.productCategory === 'TSHIRT') {
+    if (!data.tshirtItems || data.tshirtItems.length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Добавьте хотя бы одну позицию', path: ['tshirtItems'] });
+    } else {
+      data.tshirtItems.forEach((it, i) => {
+        if (it.freePrice && !it.name?.trim()) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Укажите название', path: ['tshirtItems', i, 'name'] });
+        }
+      });
+    }
   }
 });
 
@@ -121,8 +129,9 @@ export function CreateOrderForm({ onClose }: Props) {
       freeItems: [{ name: '', quantity: 1, price: 0 }],
       items: [{ formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }],
       tshirtItems: [{
+        freePrice: false, name: '',
         color: 'Белый', size: 'M', printLocation: 'FRONT',
-        quantity: 1, price: 500, designCost: 0, designUrl: '', designNote: '', clientItem: false,
+        quantity: 1, price: 500, clientItem: false,
       }],
     },
   });
@@ -130,10 +139,17 @@ export function CreateOrderForm({ onClose }: Props) {
   const productCategory = useWatch({ control, name: 'productCategory' });
   const communicationPlatform = useWatch({ control, name: 'communicationPlatform' });
   const freePrice = useWatch({ control, name: 'freePrice' });
+  const tshirtItemsWatch = useWatch({ control, name: 'tshirtItems' });
 
   // Чистим/восстанавливаем позиции, чтобы Zod не падал на скрытых полях:
   // при свободной цене позиций нет вовсе; иначе — одна позиция активной категории.
   useEffect(() => {
+    // Для футболок свободная цена назначается по-позиционно (чекбокс на позиции),
+    // а не на весь заказ — поэтому order-level freePrice здесь выключаем.
+    if (productCategory === 'TSHIRT' && freePrice) {
+      setValue('freePrice', false);
+      return;
+    }
     if (freePrice) {
       setValue('items', []);
       setValue('tshirtItems', []);
@@ -143,8 +159,9 @@ export function CreateOrderForm({ onClose }: Props) {
       setValue('items', []);
       if ((getValues('tshirtItems')?.length ?? 0) === 0) {
         setValue('tshirtItems', [{
+          freePrice: false, name: '',
           color: 'Белый', size: 'M', printLocation: 'FRONT',
-          quantity: 1, price: 500, designCost: 0, designUrl: '', designNote: '',
+          quantity: 1, price: 500, clientItem: false,
         }]);
       }
     } else {
@@ -193,17 +210,40 @@ export function CreateOrderForm({ onClose }: Props) {
       });
       return;
     }
-    mutation.mutate({
+    const base = {
       sourceOrder: data.sourceOrder,
       communicationPlatform: data.communicationPlatform,
       urlCommunication: data.urlCommunication,
       deliveryMethod: data.deliveryMethod,
       deliveryCost: data.deliveryCost,
       note: data.note,
-      productCategory: data.productCategory,
-      items: data.productCategory === 'PHOTO' ? data.items : undefined,
-      tshirtItems: data.productCategory === 'TSHIRT' ? data.tshirtItems : undefined,
-    });
+    };
+
+    if (data.productCategory === 'TSHIRT') {
+      const rows = data.tshirtItems ?? [];
+      // Обычные позиции → tshirtItems; помеченные «свободная цена» → произвольные
+      // позиции (items с isFreePrice): цена = итог, кол-во не умножается.
+      const tshirtItems = rows.filter((r) => !r.freePrice).map((r) => ({
+        color: r.color, size: r.size, printLocation: r.printLocation,
+        quantity: r.quantity, price: r.price, clientItem: r.clientItem,
+      }));
+      const items = rows.filter((r) => r.freePrice).map((r) => ({
+        formatPaper: (r.name ?? '').trim(),
+        typePaper: 'GLOSS' as const,
+        quantity: r.quantity,
+        price: r.price,
+        isFreePrice: true,
+      }));
+      mutation.mutate({
+        ...base,
+        productCategory: 'TSHIRT',
+        tshirtItems: tshirtItems.length ? tshirtItems : undefined,
+        items: items.length ? items : undefined,
+      });
+      return;
+    }
+
+    mutation.mutate({ ...base, productCategory: 'PHOTO', items: data.items });
   };
 
   // Создать обращение (LEAD) — позиции не обязательны
@@ -307,11 +347,14 @@ export function CreateOrderForm({ onClose }: Props) {
         <textarea rows={2} className={inputCls + ' resize-none'} {...register('note')} />
       </div>
 
-      {/* Свободная (договорная) цена заказа */}
-      <label className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 cursor-pointer hover:border-amber-300 transition-colors">
-        <input type="checkbox" {...register('freePrice')} className="w-4 h-4 accent-amber-600" />
-        <span className="text-sm font-medium text-gray-700">Свободная цена — произвольные позиции «название — цена»</span>
-      </label>
+      {/* Свободная (договорная) цена заказа — только для фото; у футболок
+          свободная цена назначается по-позиционно (чекбокс на позиции). */}
+      {productCategory === 'PHOTO' && (
+        <label className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 cursor-pointer hover:border-amber-300 transition-colors">
+          <input type="checkbox" {...register('freePrice')} className="w-4 h-4 accent-amber-600" />
+          <span className="text-sm font-medium text-gray-700">Свободная цена — произвольные позиции «название — цена»</span>
+        </label>
+      )}
 
       {freePrice ? (
         <div>
@@ -424,8 +467,9 @@ export function CreateOrderForm({ onClose }: Props) {
             <h3 className="text-sm font-semibold text-gray-900">Позиции — футболки</h3>
             <button type="button"
               onClick={() => tshirtFields.append({
+                freePrice: false, name: '',
                 color: 'Белый', size: 'M', printLocation: 'FRONT',
-                quantity: 1, price: 500, designCost: 0, designUrl: '', designNote: '', clientItem: false,
+                quantity: 1, price: 500, clientItem: false,
               })}
               className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
               <Plus size={14} /> Добавить
@@ -435,7 +479,9 @@ export function CreateOrderForm({ onClose }: Props) {
             <p className={errorCls}>{errors.tshirtItems.message}</p>
           )}
           <div className="space-y-4">
-            {tshirtFields.fields.map((field, idx) => (
+            {tshirtFields.fields.map((field, idx) => {
+              const isFree = tshirtItemsWatch?.[idx]?.freePrice ?? false;
+              return (
               <div key={field.id} className="border border-gray-100 rounded-xl p-4 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-semibold text-gray-500">Позиция #{idx + 1}</span>
@@ -446,55 +492,72 @@ export function CreateOrderForm({ onClose }: Props) {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelCls}>Цвет</label>
-                    <select className={selectCls} {...register(`tshirtItems.${idx}.color`)}>
-                      {TSHIRT_COLORS.map(c => <option key={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelCls}>Размер</label>
-                    <select className={selectCls} {...register(`tshirtItems.${idx}.size`)}>
-                      {Object.entries(TSHIRT_SIZE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelCls}>Место печати</label>
-                    <select className={selectCls} {...register(`tshirtItems.${idx}.printLocation`)}>
-                      {Object.entries(PRINT_LOCATION_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
+                {/* Чекбокс свободной цены — первое поле позиции */}
+                <label className="flex items-center gap-2.5 p-2.5 rounded-lg border border-gray-200 cursor-pointer hover:border-amber-300 transition-colors">
+                  <input type="checkbox" {...register(`tshirtItems.${idx}.freePrice`)} className="w-4 h-4 accent-amber-600" />
+                  <span className="text-sm text-gray-700">Свободная цена — произвольная позиция (название и цена)</span>
+                </label>
+
+                {isFree ? (
+                  <div className="grid grid-cols-[1fr_80px_120px] gap-3">
+                    <div>
+                      <label className={labelCls}>Название</label>
+                      <input className={inputCls} placeholder="Кружка, баннер…" {...register(`tshirtItems.${idx}.name`)} />
+                      {errors.tshirtItems?.[idx]?.name && (
+                        <p className={errorCls}>{errors.tshirtItems[idx]?.name?.message}</p>
+                      )}
+                    </div>
                     <div>
                       <label className={labelCls}>Кол-во</label>
                       <input type="number" min={1} className={inputCls} {...register(`tshirtItems.${idx}.quantity`)} />
                     </div>
                     <div>
-                      <label className={labelCls}>Цена ₽</label>
+                      <label className={labelCls}>Цена ₽ (итог)</label>
                       <input type="number" min={0} className={inputCls} {...register(`tshirtItems.${idx}.price`)} />
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelCls}>Цвет</label>
+                        <select className={selectCls} {...register(`tshirtItems.${idx}.color`)}>
+                          {TSHIRT_COLORS.map(c => <option key={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className={labelCls}>Размер</label>
+                        <select className={selectCls} {...register(`tshirtItems.${idx}.size`)}>
+                          {Object.entries(TSHIRT_SIZE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className={labelCls}>Место печати</label>
+                        <select className={selectCls} {...register(`tshirtItems.${idx}.printLocation`)}>
+                          {Object.entries(PRINT_LOCATION_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className={labelCls}>Кол-во</label>
+                          <input type="number" min={1} className={inputCls} {...register(`tshirtItems.${idx}.quantity`)} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Цена ₽</label>
+                          <input type="number" min={0} className={inputCls} {...register(`tshirtItems.${idx}.price`)} />
+                        </div>
+                      </div>
+                    </div>
 
-                <div>
-                  <label className={labelCls}>Стоимость дизайна ₽</label>
-                  <input type="number" min={0} className={inputCls} {...register(`tshirtItems.${idx}.designCost`)} />
-                </div>
-                <div>
-                  <label className={labelCls}>Ссылка на макет</label>
-                  <input className={inputCls} placeholder="https://disk.yandex.ru/..." {...register(`tshirtItems.${idx}.designUrl`)} />
-                </div>
-                <div>
-                  <label className={labelCls}>Описание дизайна</label>
-                  <input className={inputCls} placeholder="Логотип на груди, белый фон, высота 10 см..." {...register(`tshirtItems.${idx}.designNote`)} />
-                </div>
-                <label className="flex items-center gap-2.5 p-2.5 rounded-lg border border-gray-200 cursor-pointer hover:border-amber-300 transition-colors">
-                  <input type="checkbox" {...register(`tshirtItems.${idx}.clientItem`)} className="w-4 h-4 accent-amber-600" />
-                  <span className="text-sm text-gray-700">Изделие клиента — склад не списывается</span>
-                </label>
+                    <label className="flex items-center gap-2.5 p-2.5 rounded-lg border border-gray-200 cursor-pointer hover:border-amber-300 transition-colors">
+                      <input type="checkbox" {...register(`tshirtItems.${idx}.clientItem`)} className="w-4 h-4 accent-amber-600" />
+                      <span className="text-sm text-gray-700">Изделие клиента — склад не списывается</span>
+                    </label>
+                  </>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
