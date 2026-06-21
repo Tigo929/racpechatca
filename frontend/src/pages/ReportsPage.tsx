@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Camera, Shirt } from 'lucide-react';
 import { reportsApi } from '../api/reports';
 import { expensesApi } from '../api/expenses';
 import type {
   PnlMetrics,
+  MonthData,
   ExpenseOrder,
   CreateExpenseDto,
   EnumExpenseCategory,
-  FunnelReport,
   WeeklyReport,
 } from '../types/index';
 import { EXPENSE_CATEGORY_LABELS } from '../types/index';
@@ -19,84 +20,10 @@ const MONTH_LABELS_FULL = ['Январь', 'Февраль', 'Март', 'Апр
 
 /** Деньги, но «—» вместо «0 ₽» — чтобы пустые ячейки не шумели. */
 const money = (n: number): string => (n !== 0 ? fmt(n) : '—');
-/** Расходная строка со знаком минус. */
-const minus = (n: number): string => (n > 0 ? `−${fmt(n)}` : '—');
+/** Все расходы периода: расходные ордера + выплаченная зарплата. */
+const spent = (m: PnlMetrics): number => m.totalExpenses + m.salaryPaid;
 
-// ── P&L statement (отчёт о прибылях) ──────────────────────────────────────────
-
-function StatementRow({
-  label, value, indent, strong, divider, accent,
-}: {
-  label: string;
-  value: string;
-  indent?: boolean;
-  strong?: boolean;
-  divider?: boolean;
-  accent?: 'red' | 'none';
-}) {
-  return (
-    <div className={`flex items-baseline justify-between gap-4 py-1.5 ${divider ? 'border-t border-gray-200 mt-1 pt-2.5' : ''}`}>
-      <span className={
-        indent ? 'pl-5 text-sm text-gray-400'
-        : strong ? 'font-semibold text-gray-900'
-        : 'text-gray-600'
-      }>
-        {label}
-      </span>
-      <span className={`tabular-nums ${indent ? 'text-sm text-gray-400' : ''} ${strong ? 'font-bold text-gray-900' : ''} ${accent === 'red' ? 'text-red-600' : 'text-gray-900'}`}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function PnlStatement({ m, periodLabel }: { m: PnlMetrics; periodLabel: string }) {
-  return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5">
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-1">
-        <h2 className="font-semibold text-gray-900">Отчёт о прибылях — {periodLabel}</h2>
-        <span className="text-xs text-gray-400">по завершённым заказам (отправлено / оплачено)</span>
-      </div>
-
-      <div className="text-sm">
-        {/* Выручка */}
-        <StatementRow label="Выручка (оборот)" value={fmt(m.totalRevenue)} strong />
-        {m.photoRevenue > 0 && <StatementRow indent label="Фото" value={fmt(m.photoRevenue)} />}
-        {m.tshirtRevenue > 0 && <StatementRow indent label="Футболки" value={fmt(m.tshirtRevenue)} />}
-        <StatementRow label="Доставка (транзит)" value={minus(m.deliveryCost)} accent="red" />
-        <StatementRow label="Чистая выручка" value={fmt(m.netRevenue)} strong divider />
-
-        {/* Себестоимость */}
-        <StatementRow label="Себестоимость материалов" value={minus(m.cogs)} accent="red" />
-        {m.materialsPhoto > 0 && <StatementRow indent label="Фотоматериалы" value={minus(m.materialsPhoto)} />}
-        {m.materialsTshirt > 0 && <StatementRow indent label="Футболки / печать" value={minus(m.materialsTshirt)} />}
-        <StatementRow
-          label={`Валовая прибыль${m.netRevenue > 0 ? `  ·  ${Math.round((m.grossProfit / m.netRevenue) * 100)}%` : ''}`}
-          value={fmt(m.grossProfit)} strong divider
-        />
-
-        {/* Операционные + ЗП */}
-        <StatementRow label="Операционные расходы" value={minus(m.operatingExpenses)} accent="red" />
-        {m.deliverySupplies > 0 && <StatementRow indent label="Упаковка / доставка" value={minus(m.deliverySupplies)} />}
-        {m.equipment > 0 && <StatementRow indent label="Оборудование" value={minus(m.equipment)} />}
-        {m.marketing > 0 && <StatementRow indent label="Реклама" value={minus(m.marketing)} />}
-        {m.other > 0 && <StatementRow indent label="Прочее" value={minus(m.other)} />}
-        <StatementRow label="Зарплата выплаченная" value={minus(m.salaryPaid)} accent="red" />
-
-        {/* Итог */}
-        <div className="flex items-center justify-between gap-4 mt-2 pt-3 border-t-2 border-gray-300">
-          <span className="font-bold text-gray-900">Чистая прибыль</span>
-          <div className="text-right">
-            <div className={`text-xl font-bold tabular-nums ${m.netProfit >= 0 ? 'text-green-700' : 'text-red-600'}`}>{fmt(m.netProfit)}</div>
-            <div className="text-xs text-gray-400">маржа {m.margin}%</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Период-таблица (месяцы / недели) ──────────────────────────────────────────
+// ── Таблица «период × продукты» ──────────────────────────────────────────────
 
 function Cell({ value, dim, highlight, neg }: { value: string; dim?: boolean; highlight?: boolean; neg?: boolean }) {
   return (
@@ -106,46 +33,70 @@ function Cell({ value, dim, highlight, neg }: { value: string; dim?: boolean; hi
   );
 }
 
-function PnlRow({ label, m, isTotal }: { label: string; m: PnlMetrics; isTotal?: boolean }) {
-  const base = isTotal
-    ? 'bg-gray-50 font-bold border-t-2 border-gray-300 text-sm'
-    : 'border-b border-gray-100 hover:bg-gray-50 text-sm';
-  const active = m.orderCount > 0 || m.totalExpenses > 0 || m.salaryPaid > 0;
+function ProductCell({ count, revenue }: { count: number; revenue: number }) {
+  if (count === 0 && revenue === 0) return <td className="py-2.5 px-3 text-right text-gray-300">—</td>;
   return (
-    <tr className={base}>
+    <td className="py-2.5 px-3 text-right whitespace-nowrap">
+      <span className="font-medium tabular-nums">{count} шт</span>
+      <span className="text-gray-400 tabular-nums"> · {fmt(revenue)}</span>
+    </td>
+  );
+}
+
+function PnlRow({
+  label, m, isTotal, onClick, selected,
+}: {
+  label: string;
+  m: PnlMetrics;
+  isTotal?: boolean;
+  onClick?: () => void;
+  selected?: boolean;
+}) {
+  const active = m.orderCount > 0 || spent(m) > 0;
+  const base = isTotal
+    ? 'bg-gray-50 font-bold border-t-2 border-gray-300'
+    : `border-b border-gray-100 ${onClick ? 'cursor-pointer' : ''} ${selected ? 'bg-blue-50' : 'hover:bg-gray-50'}`;
+  return (
+    <tr className={`${base} text-sm`} onClick={onClick}>
       <td className={`py-2.5 px-4 ${isTotal ? 'font-bold' : 'text-gray-700'}`}>{label}</td>
-      <Cell value={active ? String(m.orderCount) : '—'} dim />
+      <ProductCell count={m.photoCount} revenue={m.photoRevenue} />
+      <ProductCell count={m.tshirtCount} revenue={m.tshirtRevenue} />
       <Cell value={money(m.totalRevenue)} />
-      <Cell value={money(m.netRevenue)} dim />
-      <Cell value={money(m.totalExpenses)} neg={m.totalExpenses > 0} dim={m.totalExpenses === 0} />
-      <Cell value={money(m.salaryPaid)} neg={m.salaryPaid > 0} dim={m.salaryPaid === 0} />
+      <Cell value={money(spent(m))} neg={spent(m) > 0} dim={spent(m) === 0} />
       <Cell value={active ? fmt(m.netProfit) : '—'} highlight={active && m.netProfit > 0} neg={m.netProfit < 0} />
-      <td className={`py-2.5 px-3 text-right tabular-nums text-xs ${m.margin > 0 ? 'text-green-600' : m.margin < 0 ? 'text-red-500' : 'text-gray-400'}`}>
-        {active && m.totalRevenue > 0 ? `${m.margin}%` : '—'}
-      </td>
     </tr>
   );
 }
 
-function PnlTable({ firstCol, rows, total }: { firstCol: string; rows: { key: string; label: string; m: PnlMetrics }[]; total: PnlMetrics }) {
+function PnlTable({
+  firstCol, rows, total, onRowClick, selectedKey,
+}: {
+  firstCol: string;
+  rows: { key: string; label: string; m: PnlMetrics }[];
+  total?: PnlMetrics;
+  onRowClick?: (key: string) => void;
+  selectedKey?: string;
+}) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
           <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
             <th className="py-3 px-4 text-left">{firstCol}</th>
-            <th className="py-3 px-3 text-right">Заказов</th>
-            <th className="py-3 px-3 text-right">Оборот</th>
-            <th className="py-3 px-3 text-right">Чистая</th>
+            <th className="py-3 px-3 text-right"><span className="inline-flex items-center gap-1 justify-end"><Camera size={12} /> Фото</span></th>
+            <th className="py-3 px-3 text-right"><span className="inline-flex items-center gap-1 justify-end"><Shirt size={12} /> Футболки</span></th>
+            <th className="py-3 px-3 text-right">Выручка</th>
             <th className="py-3 px-3 text-right">Расходы</th>
-            <th className="py-3 px-3 text-right">ЗП</th>
             <th className="py-3 px-3 text-right">Прибыль</th>
-            <th className="py-3 px-3 text-right">Маржа</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => <PnlRow key={r.key} label={r.label} m={r.m} />)}
-          <PnlRow label="Итого" m={total} isTotal />
+          {rows.map((r) => (
+            <PnlRow key={r.key} label={r.label} m={r.m}
+              onClick={onRowClick ? () => onRowClick(r.key) : undefined}
+              selected={selectedKey === r.key} />
+          ))}
+          {total && <PnlRow label="Итого" m={total} isTotal />}
         </tbody>
       </table>
     </div>
@@ -154,7 +105,7 @@ function PnlTable({ firstCol, rows, total }: { firstCol: string; rows: { key: st
 
 // ── Структура расходов (за период) ────────────────────────────────────────────
 
-function ExpenseStructure({ m }: { m: PnlMetrics }) {
+function ExpenseStructure({ m, periodLabel }: { m: PnlMetrics; periodLabel: string }) {
   const items = [
     { label: 'Фотоматериалы', value: m.materialsPhoto, color: 'bg-sky-400' },
     { label: 'Футболки / печать', value: m.materialsTshirt, color: 'bg-violet-400' },
@@ -170,11 +121,11 @@ function ExpenseStructure({ m }: { m: PnlMetrics }) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-gray-900">Структура расходов</h2>
+        <h2 className="font-semibold text-gray-900">Структура расходов — {periodLabel}</h2>
         <span className="text-sm font-semibold text-gray-700 tabular-nums">{total > 0 ? fmt(total) : '—'}</span>
       </div>
       {total === 0 ? (
-        <p className="text-gray-400 text-sm">Расходов за период нет.</p>
+        <p className="text-gray-400 text-sm">Расходов за {periodLabel} нет.</p>
       ) : (
         <div className="space-y-2.5">
           {items.map((i) => {
@@ -211,68 +162,21 @@ function StatCard({ label, value, hint, tone }: { label: string; value: string; 
   );
 }
 
-// ── Weekly section ────────────────────────────────────────────────────────────
-
-function WeeklySection({ year }: { year: number }) {
-  const now = new Date();
-  const [month, setMonth] = useState(year === now.getFullYear() ? now.getMonth() + 1 : 1);
-
-  const { data: report, isLoading } = useQuery<WeeklyReport>({
-    queryKey: ['weekly-report', year, month],
-    queryFn: () => reportsApi.getWeekly(year, month),
-    staleTime: 30_000,
-  });
-
+/** Краткое «в плюсе / в минусе» + ключевые цифры месяца. */
+function MonthSummary({ m, monthLabel }: { m: PnlMetrics; monthLabel: string }) {
+  const positive = m.netProfit >= 0;
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
-        <h2 className="font-semibold text-gray-900">Понедельная разбивка</h2>
-        <div className="flex flex-wrap gap-1.5">
-          {MONTH_LABELS_SHORT.map((label, idx) => (
-            <button
-              key={idx}
-              onClick={() => setMonth(idx + 1)}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                month === idx + 1 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className={`rounded-xl p-4 border ${positive ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+        <p className={`text-xs uppercase tracking-wide mb-1 ${positive ? 'text-green-600' : 'text-red-600'}`}>
+          {positive ? 'В плюсе' : 'В минусе'} · {monthLabel}
+        </p>
+        <p className={`text-2xl font-bold tabular-nums ${positive ? 'text-green-700' : 'text-red-700'}`}>{fmt(m.netProfit)}</p>
+        <p className={`text-xs mt-0.5 ${positive ? 'text-green-600/80' : 'text-red-600/80'}`}>маржа {m.margin}%</p>
       </div>
-
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12 text-gray-400 text-sm">Загрузка...</div>
-      ) : !report ? null : (
-        <>
-          {/* Сводка за месяц */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-gray-100">
-            {[
-              { label: 'Прибыль', value: fmt(report.totals.netProfit), tone: report.totals.netProfit >= 0 ? 'text-green-700' : 'text-red-600' },
-              { label: 'Оборот', value: fmt(report.totals.totalRevenue), tone: 'text-gray-900' },
-              { label: 'Заказов', value: String(report.totals.orderCount), tone: 'text-gray-900' },
-              { label: 'Маржа', value: `${report.totals.margin}%`, tone: report.totals.margin >= 0 ? 'text-gray-900' : 'text-red-600' },
-            ].map((s) => (
-              <div key={s.label} className="bg-white px-4 py-3">
-                <p className="text-xs text-gray-400">{s.label} · {MONTH_LABELS_FULL[report.month - 1]}</p>
-                <p className={`text-lg font-bold tabular-nums ${s.tone}`}>{s.value}</p>
-              </div>
-            ))}
-          </div>
-
-          <PnlTable
-            firstCol={`${MONTH_LABELS_FULL[report.month - 1]} ${report.year}`}
-            rows={report.weeks.map((w) => ({
-              key: String(w.weekNum),
-              label: `Нед. ${w.weekNum} (${w.displayStart} — ${w.displayEnd})`,
-              m: w,
-            }))}
-            total={report.totals}
-          />
-          <p className="text-xs text-gray-400 px-5 py-3">Недели по пн–вс, крайние обрезаны по границам месяца.</p>
-        </>
-      )}
+      <StatCard label="Выручка" value={fmt(m.totalRevenue)} hint="оборот за месяц" />
+      <StatCard label="Заказов" value={String(m.orderCount)} hint={`Фото ${m.photoCount} · Футболки ${m.tshirtCount}`} />
+      <StatCard label="Расходы" value={fmt(spent(m))} hint="ордера + зарплата" tone="neg" />
     </div>
   );
 }
@@ -328,7 +232,7 @@ function AddExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               Примечание <span className="text-gray-400">(необязательно)</span>
             </label>
             <input
-              type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Например: закупка футболок 50 шт."
+              type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Например: закуп футболок 50 шт."
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -349,11 +253,11 @@ function AddExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   );
 }
 
-// ── Expense list ──────────────────────────────────────────────────────────────
+// ── Expense list (расходные ордера за месяц) ──────────────────────────────────
 
-function ExpenseList({ year }: { year: number }) {
+function ExpenseList({ year, month }: { year: number; month: number }) {
   const qc = useQueryClient();
-  const { data: expenses = [], isLoading } = useQuery({
+  const { data: all = [], isLoading } = useQuery({
     queryKey: ['expenses', year],
     queryFn: () => expensesApi.getAll(year),
   });
@@ -363,9 +267,12 @@ function ExpenseList({ year }: { year: number }) {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['expenses', year] }),
   });
 
+  // Только ордера выбранного месяца.
+  const expenses = all.filter((e: ExpenseOrder) => new Date(e.createdAt).getMonth() === month - 1);
+
   if (isLoading) return <div className="text-gray-400 text-sm py-4 text-center">Загрузка...</div>;
   if (expenses.length === 0)
-    return <div className="text-gray-400 text-sm py-4 text-center">Нет расходных ордеров за {year} год</div>;
+    return <div className="text-gray-400 text-sm py-4 text-center">Нет расходных ордеров за {MONTH_LABELS_FULL[month - 1]}</div>;
 
   return (
     <div className="space-y-1">
@@ -403,8 +310,10 @@ function ExpenseList({ year }: { year: number }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function ReportsPage() {
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const currentYear = now.getFullYear();
   const [year, setYear] = useState(currentYear);
+  const [month, setMonth] = useState(now.getMonth() + 1);
   const [showAddExpense, setShowAddExpense] = useState(false);
   const qc = useQueryClient();
 
@@ -419,13 +328,19 @@ export function ReportsPage() {
     staleTime: 30_000,
   });
 
-  const { data: funnel } = useQuery<FunnelReport>({
-    queryKey: ['funnel-report', year],
-    queryFn: () => reportsApi.getFunnel(year),
-    staleTime: 60_000,
+  const { data: weekly } = useQuery<WeeklyReport>({
+    queryKey: ['weekly-report', year, month],
+    queryFn: () => reportsApi.getWeekly(year, month),
+    staleTime: 30_000,
   });
 
-  const t = report?.totals;
+  const monthData: MonthData | undefined = report?.months[month - 1];
+
+  const refetchAll = () => {
+    void qc.invalidateQueries({ queryKey: ['monthly-report', year] });
+    void qc.invalidateQueries({ queryKey: ['weekly-report', year] });
+    void qc.invalidateQueries({ queryKey: ['expenses', year] });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -468,127 +383,88 @@ export function ReportsPage() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-20 text-gray-400">Загрузка...</div>
-        ) : error || !t || !report ? (
+        ) : error || !report ? (
           <div className="flex items-center justify-center py-20 text-red-500">Ошибка загрузки</div>
         ) : (
           <>
-            {/* Hero KPI */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className={`rounded-xl p-4 border ${t.netProfit >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                <p className={`text-xs uppercase tracking-wide mb-1 ${t.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>Чистая прибыль</p>
-                <p className={`text-2xl font-bold tabular-nums ${t.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>{fmt(t.netProfit)}</p>
-                <p className={`text-xs mt-0.5 ${t.netProfit >= 0 ? 'text-green-600/80' : 'text-red-600/80'}`}>маржа {t.margin}%</p>
-              </div>
-              <StatCard label="Выручка (оборот)" value={fmt(t.totalRevenue)} hint={`${t.orderCount} заказов`} />
-              <StatCard label="Чистая выручка" value={fmt(t.netRevenue)} hint="после доставки" />
-              <StatCard label="Расходы + ЗП" value={fmt(t.totalExpenses + t.salaryPaid)} hint="всё, что списано" tone="neg" />
-            </div>
-
-            {/* Доп. метрики */}
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500 -mt-2 px-1">
-              <span>Средний чек: <b className="text-gray-800 tabular-nums">{fmt(t.avgCheck)}</b></span>
-              <span>Фото: <b className="text-gray-800">{t.photoCount}</b> на <b className="text-gray-800 tabular-nums">{fmt(t.photoRevenue)}</b></span>
-              <span>Футболки: <b className="text-gray-800">{t.tshirtCount}</b> на <b className="text-gray-800 tabular-nums">{fmt(t.tshirtRevenue)}</b></span>
-            </div>
-
-            {/* P&L + структура расходов */}
-            <div className="grid lg:grid-cols-2 gap-6 items-start">
-              <PnlStatement m={t} periodLabel={`${year} год`} />
-              <ExpenseStructure m={t} />
-            </div>
-
-            {/* Месячная динамика */}
+            {/* Динамика по месяцам */}
             <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h2 className="font-semibold text-gray-900">Динамика по месяцам — {year}</h2>
+                <span className="text-xs text-gray-400">нажмите на месяц для детализации</span>
               </div>
               <PnlTable
                 firstCol="Месяц"
                 rows={report.months.map((m) => ({ key: String(m.month), label: m.label, m }))}
-                total={t}
+                total={report.totals}
+                onRowClick={(key) => setMonth(Number(key))}
+                selectedKey={String(month)}
               />
+              <p className="text-xs text-gray-400 px-5 py-3">
+                Прибыль = выручка − доставка (транзит) − расходные ордера − зарплата. Доставка в прибыль не входит.
+                Учитываются завершённые заказы (отправлено / оплачено).
+              </p>
             </div>
 
-            {/* Понедельная разбивка */}
-            <WeeklySection year={year} />
-
-            <p className="text-xs text-gray-400">
-              Учёт по завершённым заказам (статус «отправлено»/«оплачено»), по дате отправки.
-              Доставка — транзит, в прибыль не входит. Чистая прибыль = чистая выручка − материалы − операционные расходы − зарплата.
-            </p>
-
-            {/* Расходные ордера */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-gray-900">Расходные ордера — {year}</h2>
-                <button onClick={() => setShowAddExpense(true)} className="text-sm text-blue-600 hover:underline">+ Добавить</button>
+            {/* Детализация выбранного месяца */}
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-semibold text-gray-900 mr-1">Месяц:</h2>
+                {MONTH_LABELS_SHORT.map((label, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setMonth(idx + 1)}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                      month === idx + 1 ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-blue-400'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
-              <ExpenseList key={year} year={year} />
+
+              {monthData && <MonthSummary m={monthData} monthLabel={MONTH_LABELS_FULL[month - 1]} />}
+
+              <div className="grid lg:grid-cols-2 gap-6 items-start">
+                {/* Понедельная разбивка */}
+                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="px-5 py-4 border-b border-gray-100">
+                    <h2 className="font-semibold text-gray-900">Понедельная разбивка — {MONTH_LABELS_FULL[month - 1]}</h2>
+                  </div>
+                  {!weekly ? (
+                    <div className="py-10 text-center text-gray-400 text-sm">Загрузка...</div>
+                  ) : (
+                    <PnlTable
+                      firstCol="Неделя"
+                      rows={weekly.weeks.map((w) => ({
+                        key: String(w.weekNum),
+                        label: `${w.displayStart}–${w.displayEnd}`,
+                        m: w,
+                      }))}
+                      total={weekly.totals}
+                    />
+                  )}
+                </div>
+
+                {/* Структура расходов за месяц */}
+                {monthData && <ExpenseStructure m={monthData} periodLabel={MONTH_LABELS_FULL[month - 1]} />}
+              </div>
+
+              {/* Расходные ордера за месяц */}
+              <div className="bg-white border border-gray-200 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-semibold text-gray-900">Расходные ордера — {MONTH_LABELS_FULL[month - 1]}</h2>
+                  <button onClick={() => setShowAddExpense(true)} className="text-sm text-blue-600 hover:underline">+ Добавить</button>
+                </div>
+                <ExpenseList year={year} month={month} />
+              </div>
             </div>
-
-            {/* Воронка лидов */}
-            {funnel && (
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <h3 className="font-semibold text-gray-800 mb-4">Воронка заявок с сайта — {year}</h3>
-                {funnel.totalLeads === 0 ? (
-                  <p className="text-gray-400 text-sm">Лидов с сайта за {year} год не поступало.</p>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-3 gap-4 mb-5">
-                      {[
-                        { label: 'Лидов получено', value: funnel.totalLeads, color: 'bg-indigo-100 text-indigo-700' },
-                        { label: `Конвертировано (${funnel.conversionRate}%)`, value: funnel.totalConverted, color: 'bg-amber-100 text-amber-700' },
-                        { label: `Дошли до оплаты (${funnel.closeRate}%)`, value: funnel.paidFromLeads, color: 'bg-emerald-100 text-emerald-700' },
-                      ].map((s) => (
-                        <div key={s.label} className={`rounded-lg px-4 py-3 ${s.color}`}>
-                          <p className="text-2xl font-bold tabular-nums">{s.value}</p>
-                          <p className="text-xs mt-0.5 opacity-80">{s.label}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b border-gray-100">
-                            <th className="text-left pb-2 text-gray-400 font-medium">Месяц</th>
-                            {funnel.byMonth.filter((m) => m.leads > 0 || m.converted > 0).map((m) => (
-                              <th key={m.month} className="text-center pb-2 text-gray-400 font-medium px-2">{m.label.slice(0, 3)}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <td className="py-1.5 text-gray-500">Лидов</td>
-                            {funnel.byMonth.filter((m) => m.leads > 0 || m.converted > 0).map((m) => (
-                              <td key={m.month} className="text-center py-1.5 font-semibold tabular-nums text-indigo-600">{m.leads}</td>
-                            ))}
-                          </tr>
-                          <tr>
-                            <td className="py-1.5 text-gray-500">Конвертировано</td>
-                            {funnel.byMonth.filter((m) => m.leads > 0 || m.converted > 0).map((m) => (
-                              <td key={m.month} className="text-center py-1.5 font-semibold tabular-nums text-emerald-600">{m.converted}</td>
-                            ))}
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
           </>
         )}
       </div>
 
       {showAddExpense && (
-        <AddExpenseModal
-          onClose={() => setShowAddExpense(false)}
-          onSuccess={() => {
-            void qc.invalidateQueries({ queryKey: ['monthly-report', year] });
-            void qc.invalidateQueries({ queryKey: ['weekly-report', year] });
-            void qc.invalidateQueries({ queryKey: ['expenses', year] });
-          }}
-        />
+        <AddExpenseModal onClose={() => setShowAddExpense(false)} onSuccess={refetchAll} />
       )}
     </div>
   );
