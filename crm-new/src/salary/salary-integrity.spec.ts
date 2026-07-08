@@ -236,6 +236,24 @@ describe('salary accrual integrity', () => {
     },
   );
 
+  it('lets an assigned executor send an order and still creates salary', async () => {
+    const { stub, service } = setupCompletion();
+
+    await service.updateStatusOrder(
+      'order-1',
+      { status: EnumStatus.SENT },
+      'executor-1',
+      EnumRole.EXECUTOR,
+    );
+
+    expect(stub.salaryAccrual.create).toHaveBeenCalledTimes(1);
+    const createArg = stub.salaryAccrual.create.mock.calls[0]?.[0] as {
+      data: { executorId: string; salaryAmount: number };
+    };
+    expect(createArg.data.executorId).toBe('executor-1');
+    expect(createArg.data.salaryAmount).toBe(1350);
+  });
+
   it('forbids an executor from opening another executor order', async () => {
     const stub = createPrismaStub();
     stub.orderPhoto.findUnique.mockResolvedValue(makeOrder());

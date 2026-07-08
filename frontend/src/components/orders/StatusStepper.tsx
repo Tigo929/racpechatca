@@ -37,7 +37,8 @@ export function StatusStepper({ order }: Props) {
       toast.error(getErrorMessage(error, 'Ошибка обновления статуса')),
   });
 
-  // Если текущий статус не в flow (например CANCELLED или legacy PAID) — просто показываем бейдж
+  // Если текущий статус не в flow (например CANCELLED) или терминальный —
+  // просто показываем текст без управляющих кнопок.
   if (currentIdx === -1 || isTerminal) {
     return (
       <div className="text-sm text-gray-500">
@@ -54,15 +55,13 @@ export function StatusStepper({ order }: Props) {
       {flow.map((status, idx) => {
         const isDone = idx < currentIdx;
         const isCurrent = idx === currentIdx;
-        const isNext = idx === currentIdx + 1;
-        const isPrev = idx === currentIdx - 1;
-
-        // Финансовые статусы — только админ; остальные исполнитель ставит сам.
-        const adminOnly = status === 'SENT' || status === 'PAID' || status === 'CANCELLED';
+        // Исполнитель может переключаться в любую сторону по рабочему потоку,
+        // но PAID остаётся админским финансовым закрытием.
+        const adminOnly = status === 'PAID' || status === 'CANCELLED';
         const canSetTarget = isAdmin || !adminOnly;
-        const canGoNext = isNext && canSetTarget;
-        const canGoBack = isPrev && canSetTarget;
-        const clickable = canGoNext || canGoBack;
+        const clickable = !isCurrent && canSetTarget;
+        const isPastClickable = idx < currentIdx && clickable;
+        const isFutureClickable = idx > currentIdx && clickable;
 
         return (
           <div key={status} className="flex items-center gap-1">
@@ -71,15 +70,14 @@ export function StatusStepper({ order }: Props) {
               onClick={() => mutation.mutate(status)}
               tabIndex={clickable ? 0 : -1}
               aria-current={isCurrent ? 'step' : undefined}
-              title={isPrev && clickable ? 'Вернуть на предыдущий статус' : undefined}
+              title={clickable ? `Установить статус: ${labels[status] ?? status}` : undefined}
               className={`
                 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500
                 ${isCurrent ? 'bg-amber-600 text-white shadow-sm cursor-default' : ''}
-                ${isDone && !canGoBack ? 'bg-green-100 text-green-700 cursor-default' : ''}
-                ${canGoBack ? 'bg-green-100 text-green-700 hover:bg-orange-100 hover:text-orange-700 cursor-pointer border border-dashed border-green-300' : ''}
-                ${canGoNext ? 'bg-gray-100 text-gray-600 hover:bg-amber-100 hover:text-amber-700 cursor-pointer border border-dashed border-gray-300' : ''}
-                ${idx > currentIdx + 1 ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : ''}
-                ${isNext && !canSetTarget ? 'bg-gray-50 text-gray-300 cursor-not-allowed' : ''}
+                ${isDone && !isPastClickable ? 'bg-green-100 text-green-700 cursor-default' : ''}
+                ${isPastClickable ? 'bg-green-100 text-green-700 hover:bg-orange-100 hover:text-orange-700 cursor-pointer border border-dashed border-green-300' : ''}
+                ${isFutureClickable ? 'bg-gray-100 text-gray-600 hover:bg-amber-100 hover:text-amber-700 cursor-pointer border border-dashed border-gray-300' : ''}
+                ${!isCurrent && !clickable ? 'bg-gray-50 text-gray-300 cursor-not-allowed' : ''}
               `}
             >
               {isDone && <Check size={11} aria-hidden="true" />}

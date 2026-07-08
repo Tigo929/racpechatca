@@ -160,8 +160,8 @@ Main enums:
 ```text
 EnumRole: ADMIN, EXECUTOR
 EnumProductCategory: PHOTO, TSHIRT
-EnumStatus: LEAD, NEW, FOLDER_STRUCTURE_CREATED, PRINTED, READY, DONE,
-            SENT, PAID, READY_FOR_REVIEW, COMPLETED, CANCELLED
+EnumStatus: LEAD, NEW, FOLDER_STRUCTURE_CREATED, IN_PROGRESS, PRINTED, READY,
+            DONE, SENT, PAID, READY_FOR_REVIEW, COMPLETED, CANCELLED
 EnumSourceOrder: AVITO, OZON, WB, LOCAL
 EnumCommunication: AVITO, TELEGRAM, MAX, OZON
 EnumDeliveryMethod: YANDEX_PVZ, OZON_PVZ, PICKUP, OZON_SELLER, WB_SELLER
@@ -193,7 +193,7 @@ flowchart TD
 Photo status flow:
 
 ```text
-LEAD -> NEW -> FOLDER_STRUCTURE_CREATED -> READY -> SENT -> PAID
+LEAD -> NEW -> FOLDER_STRUCTURE_CREATED -> IN_PROGRESS -> READY -> SENT -> PAID
 ```
 
 T-shirt status flow:
@@ -261,6 +261,10 @@ When an order leaves `SENT` or is deleted, stock is returned from
 Stock consumption is idempotent: if movements already exist for an order, the
 same order is not consumed twice.
 
+If an order moves away from `SENT`, stock is returned and an unpaid salary
+accrual for that order is removed. If salary was already paid, the rollback is
+blocked to protect financial history.
+
 ### Access Rules
 
 Admins can manage:
@@ -279,9 +283,12 @@ Executors can:
 
 ```text
 view only assigned orders
-move allowed production statuses
+move assigned orders in any workflow direction before PAID
 not see financial fields in order responses
 ```
+
+`PAID` is an admin-only financial status. `CANCELLED` is also admin-only because
+it removes the order from the normal production flow.
 
 For executors, `StripPricesInterceptor` removes:
 
@@ -491,6 +498,12 @@ TELEGRAM_GROUP_CHAT_ID
 
 Never commit `.env` files or secrets.
 
+Current pickup room used in generated customer messages:
+
+```text
+cabinet 116
+```
+
 ### Backups
 
 `backup-db.sh` dumps production PostgreSQL:
@@ -556,6 +569,13 @@ backup -> git pull -> build -> migrate -> docker compose up -d -> health check
 - Added this living system map.
 - Documented backend modules, domain model, business flows, frontend routes,
   infrastructure, verified checks, and follow-up risks.
+- Added photo workflow status `IN_PROGRESS` / `В обработке`.
+- Allowed assigned executors to move workflow statuses in any direction before
+  `PAID`; `PAID` remains admin-only.
+- Fixed salary consistency when executors move orders to `SENT`.
+- Fixed rollback from `SENT`: unpaid accrual is removed and paid salary blocks
+  rollback.
+- Changed pickup cabinet in customer messages to 116.
 
 ## Update Rule
 
@@ -577,4 +597,3 @@ environment variables
 backup/deploy process
 known risks
 ```
-

@@ -28,6 +28,7 @@ export type EnumStatus =
   | 'LEAD'
   | 'NEW'
   | 'FOLDER_STRUCTURE_CREATED'
+  | 'IN_PROGRESS'
   | 'PRINTED'
   | 'READY'
   | 'DONE'

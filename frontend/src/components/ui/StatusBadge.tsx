@@ -11,6 +11,7 @@ const STATUS_STYLES: Record<EnumStatus, { bg: string; text: string; dot: string 
   LEAD:                     { bg: 'bg-pink-50',    text: 'text-pink-700',    dot: 'bg-pink-400' },
   NEW:                      { bg: 'bg-blue-50',    text: 'text-blue-700',    dot: 'bg-blue-500' },
   FOLDER_STRUCTURE_CREATED: { bg: 'bg-purple-50',  text: 'text-purple-700',  dot: 'bg-purple-500' },
+  IN_PROGRESS:              { bg: 'bg-sky-50',     text: 'text-sky-700',     dot: 'bg-sky-500' },
   PRINTED:                  { bg: 'bg-yellow-50',  text: 'text-yellow-700',  dot: 'bg-yellow-500' },
   READY:                    { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
   DONE:                     { bg: 'bg-cyan-50',    text: 'text-cyan-700',    dot: 'bg-cyan-500' },

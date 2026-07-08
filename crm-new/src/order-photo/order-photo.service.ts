@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -437,11 +438,10 @@ export class OrderPhotoService {
 
     const newStatus = dto.status;
 
-    // Финансовые/складские статусы — только администратор (списание склада,
-    // начисление и выплата зарплаты). Остальные «рабочие» статусы исполнитель
-    // (назначенный на заказ) ставит сам, отражая ход выполнения.
+    // Исполнитель может двигать рабочий поток в любом направлении до оплаты.
+    // PAID закрывает деньги и остаётся админским действием; CANCELLED тоже
+    // оставляем админским, потому что это выводит заказ из рабочего процесса.
     const ADMIN_ONLY_STATUSES: EnumStatus[] = [
-      EnumStatus.SENT,
       EnumStatus.PAID,
       EnumStatus.CANCELLED,
     ];
@@ -495,11 +495,27 @@ export class OrderPhotoService {
         lockedOrder.status === EnumStatus.SENT &&
         newStatus !== EnumStatus.SENT
       ) {
+        const activeAccrual = await tx.salaryAccrual.findFirst({
+          where: {
+            orderId: id,
+            status: { in: ['PENDING', 'SETTLED', 'PARTIALLY_PAID', 'PAID'] },
+          },
+        });
+        if (activeAccrual) {
+          if (activeAccrual.paidAmount > 0 || activeAccrual.status === 'PAID') {
+            throw new ConflictException(
+              'Нельзя вернуть заказ из «Отправлен»: по нему уже была выплата зарплаты.',
+            );
+          }
+          await tx.salaryAccrual.delete({ where: { id: activeAccrual.id } });
+        }
         await this.stock.returnForOrder(id, tx);
       }
 
-      // При переводе в SENT создаём начисление зарплаты исполнителю
-      if (newStatus === EnumStatus.SENT && isAdmin && lockedOrder.executorId) {
+      // При переводе в SENT создаём начисление зарплаты исполнителю.
+      // Это должно работать и для админа, и для назначенного исполнителя:
+      // пользователь двигает статус, а финансовая целостность остаётся серверной.
+      if (newStatus === EnumStatus.SENT && lockedOrder.executorId) {
         const executor = await tx.user.findUnique({
           where: { id: lockedOrder.executorId },
         });
