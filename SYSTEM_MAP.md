@@ -536,11 +536,13 @@ Compose health checks:
 ```text
 postgres -> pg_isready
 backend  -> GET http://localhost:3000/health
-frontend -> GET http://localhost/
+frontend -> GET http://127.0.0.1/
 ```
 
 The backend `/health` endpoint also verifies PostgreSQL with a lightweight
 `SELECT 1`.
+Frontend healthcheck intentionally uses IPv4 `127.0.0.1`, because the nginx
+container resolves `localhost` to IPv6 first while nginx listens on IPv4.
 
 Frontend production runtime:
 
@@ -627,6 +629,7 @@ Docker: active
 PostgreSQL: accepting connections
 backend protected endpoint: 401 Unauthorized, expected without token
 health endpoint: 200 OK, PostgreSQL checked
+frontend container health: healthy
 ```
 
 ## Known Risks And Follow-Ups
@@ -675,6 +678,7 @@ backup -> git pull -> build -> migrate -> docker compose up -d -> health check
 - Added finance/code/production audit document `AUDIT_2026-07-09.md`.
 - Added public `/health` endpoint that checks PostgreSQL.
 - Added Docker Compose health checks for PostgreSQL, backend, and frontend.
+- Fixed frontend Docker healthcheck to use IPv4 loopback inside nginx.
 - Moved `PrismaService` ownership into a single global `PrismaModule`.
 - Strengthened backend DTO validation for money, quantities, pagination, and
   initial order statuses.
