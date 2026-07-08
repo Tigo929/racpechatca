@@ -315,6 +315,7 @@ Orders:
 POST   /order-photo
 POST   /order-photo/lead
 GET    /order-photo
+GET    /order-photo/stats
 GET    /order-photo/:idOrder
 PATCH  /order-photo/:idOrder
 PATCH  /order-photo/:idOrder/status
@@ -442,6 +443,20 @@ components/orders/OrderEditForm.tsx
 components/orders/StatusStepper.tsx
 components/orders/ItemsTable.tsx
 components/orders/TshirtItemsTable.tsx
+```
+
+The Orders page uses `/order-photo/stats` for top-level control cards. These
+cards are calculated on the server across the whole current context, not just
+the visible pagination page:
+
+```text
+active orders
+new orders
+orders in work
+ready orders
+urgent/overdue alerts
+sent but unpaid orders
+orders waiting for client review
 ```
 
 ## Infrastructure Map
@@ -576,6 +591,8 @@ backup -> git pull -> build -> migrate -> docker compose up -d -> health check
 - Fixed rollback from `SENT`: unpaid accrual is removed and paid salary blocks
   rollback.
 - Changed pickup cabinet in customer messages to 116.
+- Added server-side order statistics for the CRM dashboard so operational and
+  financial counters are not limited to the current pagination page.
 
 ## Update Rule
 

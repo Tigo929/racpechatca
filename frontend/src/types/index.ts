@@ -140,6 +140,25 @@ export interface OrdersResponse {
   };
 }
 
+export interface OrdersStats {
+  contextTotal: number;
+  matchingTotal: number;
+  activeCount: number;
+  leadCount: number;
+  newCount: number;
+  inProgressCount: number;
+  readyCount: number;
+  sentUnpaidCount: number;
+  sentUnpaidAmount: number | null;
+  paidCount: number;
+  reviewPendingCount: number | null;
+  overdueCount: number;
+  urgentCount: number;
+  alertCount: number;
+  byStatus: Record<EnumStatus, number>;
+  byProduct: Record<EnumProductCategory, number>;
+}
+
 export interface CreateItemDto {
   formatPaper: string;
   typePaper: EnumTypePaper;

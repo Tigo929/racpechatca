@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Plus, Search, ChevronLeft, ChevronRight, Printer, RefreshCw, LogOut, Users, Flame, Clock, Camera, Shirt, Wallet, Boxes, LayoutList, Sparkles, CheckCircle2, TrendingUp, Star } from 'lucide-react';
@@ -14,6 +14,7 @@ import { DeliveryBadge } from '../components/ui/DeliveryBadge';
 import { STATUS_FLOW, STATUS_LABELS } from '../constants';
 import { useAuth } from '../context/useAuth';
 import type { EnumStatus, EnumProductCategory, OrdersQuery } from '../types/index';
+import { formatCurrency } from '../utils/format';
 
 const PAGE_SIZE = 10;
 
@@ -32,6 +33,22 @@ export function OrdersPage() {
   const [searchInput, setSearchInput] = useState('');
 
   const qc = useQueryClient();
+  const statsQuery = useMemo<OrdersQuery>(
+    () => ({
+      status: query.status,
+      sourceOrder: query.sourceOrder,
+      productCategory: query.productCategory,
+      reviewLeft: query.reviewLeft,
+      search: query.search,
+    }),
+    [
+      query.status,
+      query.sourceOrder,
+      query.productCategory,
+      query.reviewLeft,
+      query.search,
+    ],
+  );
 
   // debounce: отправляем поиск через 350ms после последнего нажатия
   useEffect(() => {
@@ -44,6 +61,12 @@ export function OrdersPage() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['orders', query],
     queryFn: () => ordersApi.getAll(query),
+    placeholderData: (prev) => prev,
+  });
+
+  const { data: stats } = useQuery({
+    queryKey: ['orders', 'stats', statsQuery],
+    queryFn: () => ordersApi.getStats(statsQuery),
     placeholderData: (prev) => prev,
   });
 
@@ -146,24 +169,74 @@ export function OrdersPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-4">
 
         {/* Статистика */}
-        {meta && (() => {
-          const closedStatuses = new Set(['PAID', 'SENT', 'DONE', 'COMPLETED', 'CANCELLED']);
-          const overdueCount = orders.filter(o => {
-            if (closedStatuses.has(o.status)) return false;
-            const dl = getDeadlineInfo(o.deadline, o.createdAt);
-            return dl.daysLeft !== null && dl.daysLeft <= 0;
-          }).length;
-          const urgentCount = orders.filter(o => o.isUrgent && !closedStatuses.has(o.status)).length;
-          const alertCount = Math.max(overdueCount, urgentCount);
-          const stats = [
-            { label: 'Всего заявок', value: meta.quantityElements, icon: <LayoutList size={18} />, color: 'from-indigo-500 to-indigo-600', text: 'text-indigo-600' },
-            { label: 'Новых', value: orders.filter(o => o.status === 'NEW').length, icon: <Sparkles size={18} />, color: 'from-amber-500 to-amber-600', text: 'text-amber-600' },
-            { label: 'Готовы', value: orders.filter(o => o.status === 'READY').length, icon: <CheckCircle2 size={18} />, color: 'from-emerald-500 to-emerald-600', text: 'text-emerald-600' },
-            { label: alertCount > 0 ? 'Просроченных!' : 'В порядке', value: alertCount, icon: alertCount > 0 ? <Flame size={18} /> : <TrendingUp size={18} />, color: alertCount > 0 ? 'from-red-500 to-red-600' : 'from-violet-500 to-violet-600', text: alertCount > 0 ? 'text-red-600' : 'text-violet-600' },
+        {stats && (() => {
+          const statCards = [
+            {
+              label: 'Активных',
+              value: stats.activeCount,
+              hint: `${stats.matchingTotal} в списке`,
+              icon: <LayoutList size={18} />,
+              color: 'from-indigo-500 to-indigo-600',
+              text: 'text-indigo-600',
+            },
+            {
+              label: 'Новых',
+              value: stats.newCount,
+              hint: stats.leadCount > 0 ? `${stats.leadCount} обращ.` : 'ожидают старта',
+              icon: <Sparkles size={18} />,
+              color: 'from-amber-500 to-amber-600',
+              text: 'text-amber-600',
+            },
+            {
+              label: 'В работе',
+              value: stats.inProgressCount,
+              hint: 'обработка/печать',
+              icon: <Printer size={18} />,
+              color: 'from-sky-500 to-sky-600',
+              text: 'text-sky-600',
+            },
+            {
+              label: 'Готовы',
+              value: stats.readyCount,
+              hint: 'к выдаче/отправке',
+              icon: <CheckCircle2 size={18} />,
+              color: 'from-emerald-500 to-emerald-600',
+              text: 'text-emerald-600',
+            },
+            {
+              label: stats.alertCount > 0 ? 'Требуют внимания' : 'В порядке',
+              value: stats.alertCount,
+              hint: `${stats.overdueCount} просроч. · ${stats.urgentCount} сроч.`,
+              icon: stats.alertCount > 0 ? <Flame size={18} /> : <TrendingUp size={18} />,
+              color: stats.alertCount > 0 ? 'from-red-500 to-red-600' : 'from-violet-500 to-violet-600',
+              text: stats.alertCount > 0 ? 'text-red-600' : 'text-violet-600',
+            },
+            ...(isAdmin
+              ? [
+                  {
+                    label: 'Без оплаты',
+                    value: stats.sentUnpaidCount,
+                    hint: stats.sentUnpaidAmount
+                      ? formatCurrency(stats.sentUnpaidAmount)
+                      : 'отправлено',
+                    icon: <Wallet size={18} />,
+                    color: 'from-orange-500 to-orange-600',
+                    text: 'text-orange-600',
+                  },
+                  {
+                    label: 'Без отзыва',
+                    value: stats.reviewPendingCount ?? 0,
+                    hint: 'после выдачи',
+                    icon: <Star size={18} />,
+                    color: 'from-fuchsia-500 to-fuchsia-600',
+                    text: 'text-fuchsia-600',
+                  },
+                ]
+              : []),
           ];
           return (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {stats.map(stat => (
+            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
+              {statCards.map(stat => (
                 <div key={stat.label} className="bg-white rounded-2xl p-4 shadow-sm border border-white/80 flex items-center gap-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 8px rgba(0,0,0,0.04)' }}>
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${stat.color} text-white shadow-sm`}>
                     {stat.icon}
@@ -171,6 +244,7 @@ export function OrdersPage() {
                   <div>
                     <p className={`text-2xl font-bold tabular-nums ${stat.text}`}>{stat.value}</p>
                     <p className="text-xs text-gray-400 leading-tight">{stat.label}</p>
+                    <p className="text-[11px] text-gray-400 leading-tight mt-0.5">{stat.hint}</p>
                   </div>
                 </div>
               ))}

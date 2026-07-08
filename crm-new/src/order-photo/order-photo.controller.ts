@@ -146,6 +146,14 @@ export class OrderPhotoController {
     return this.orderPhotoService.getAllOrders(query, me.id, me.role);
   }
 
+  @Get('stats')
+  getOrderStats(
+    @Query() query: DtoAllOrdersforQuery,
+    @CurrentUser() me: RequestUser,
+  ) {
+    return this.orderPhotoService.getOrderStats(query, me.id, me.role);
+  }
+
   @Get('items/:idItem')
   getItemById(@Param('idItem') idItem: string, @CurrentUser() me: RequestUser) {
     return this.orderItemService.getItemById(idItem, me.id, me.role);

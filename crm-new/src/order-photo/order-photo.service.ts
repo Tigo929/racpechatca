@@ -52,6 +52,33 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+const DEFAULT_LIST_HIDDEN_STATUSES: EnumStatus[] = [
+  EnumStatus.SENT,
+  EnumStatus.PAID,
+  EnumStatus.LEAD,
+];
+
+const CONTROL_CLOSED_STATUSES: EnumStatus[] = [
+  EnumStatus.PAID,
+  EnumStatus.SENT,
+  EnumStatus.DONE,
+  EnumStatus.COMPLETED,
+  EnumStatus.CANCELLED,
+];
+
+const FINISHED_STATUSES: EnumStatus[] = [
+  EnumStatus.PAID,
+  EnumStatus.COMPLETED,
+  EnumStatus.CANCELLED,
+];
+
+const READY_STATUSES: EnumStatus[] = [EnumStatus.READY, EnumStatus.DONE];
+
+const REVIEW_WAITING_STATUSES: EnumStatus[] = [
+  EnumStatus.SENT,
+  EnumStatus.PAID,
+];
+
 @Injectable()
 export class OrderPhotoService {
   private readonly logger = new Logger(OrderPhotoService.name);
@@ -193,34 +220,9 @@ export class OrderPhotoService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
 
-    // Strip leading @ so "@username" matches "https://t.me/username"
-    const searchTerm = query.search?.replace(/^@/, '').trim() || undefined;
-
-    const where: Prisma.OrderPhotoWhereInput = {
-      // When searching by contact/number, don't restrict by status —
-      // the order the user is looking for might already be SENT/PAID/LEAD.
-      // Without search: hide closed statuses (each has its own filter chip).
-      status: query.status
-        ? query.status
-        : searchTerm
-          ? undefined
-          : { notIn: [EnumStatus.SENT, EnumStatus.PAID, EnumStatus.LEAD] },
-      sourceOrder: query.sourceOrder,
-      productCategory: query.productCategory,
-      ...(query.reviewLeft !== undefined
-        ? { clientReviewLeft: query.reviewLeft === 'true' }
-        : {}),
-      ...(currentUserRole === 'EXECUTOR' ? { executorId: currentUserId } : {}),
-      ...(searchTerm
-        ? {
-            OR: [
-              { numberOrder: { contains: searchTerm, mode: 'insensitive' } },
-              { urlCommunication: { contains: searchTerm, mode: 'insensitive' } },
-              { note: { contains: searchTerm, mode: 'insensitive' } },
-            ],
-          }
-        : {}),
-    };
+    const where = this.buildOrdersWhere(query, currentUserId, currentUserRole, {
+      applyListStatusDefaults: true,
+    });
 
     const [orders, count] = await this.prisma.$transaction([
       this.prisma.orderPhoto.findMany({
@@ -247,6 +249,165 @@ export class OrderPhotoService {
         totalPages: Math.ceil(count / limit),
       },
     };
+  }
+
+  async getOrderStats(
+    query: DtoAllOrdersforQuery,
+    currentUserId: string,
+    currentUserRole: string,
+  ) {
+    const contextWhere = this.buildOrdersWhere(
+      query,
+      currentUserId,
+      currentUserRole,
+      { applyListStatusDefaults: false },
+    );
+    const listWhere = this.buildOrdersWhere(query, currentUserId, currentUserRole, {
+      applyListStatusDefaults: true,
+    });
+
+    const [orders, matchingTotal] = await this.prisma.$transaction([
+      this.prisma.orderPhoto.findMany({
+        where: contextWhere,
+        select: {
+          status: true,
+          productCategory: true,
+          isUrgent: true,
+          deadline: true,
+          createdAt: true,
+          totalOrder: true,
+          clientReviewLeft: true,
+        },
+      }),
+      this.prisma.orderPhoto.count({ where: listWhere }),
+    ]);
+
+    const byStatus = Object.values(EnumStatus).reduce(
+      (acc, status) => ({ ...acc, [status]: 0 }),
+      {} as Record<EnumStatus, number>,
+    );
+    const byProduct: Record<'PHOTO' | 'TSHIRT', number> = {
+      PHOTO: 0,
+      TSHIRT: 0,
+    };
+
+    let activeCount = 0;
+    let overdueCount = 0;
+    let urgentCount = 0;
+    let alertCount = 0;
+    let readyCount = 0;
+    let sentUnpaidAmount = 0;
+    let reviewPendingCount = 0;
+
+    for (const order of orders) {
+      byStatus[order.status] += 1;
+      byProduct[order.productCategory] += 1;
+
+      if (!FINISHED_STATUSES.includes(order.status)) {
+        activeCount += 1;
+      }
+
+      if (READY_STATUSES.includes(order.status)) {
+        readyCount += 1;
+      }
+
+      if (order.status === EnumStatus.SENT) {
+        sentUnpaidAmount += order.totalOrder ?? 0;
+      }
+
+      if (REVIEW_WAITING_STATUSES.includes(order.status) && !order.clientReviewLeft) {
+        reviewPendingCount += 1;
+      }
+
+      const isControlClosed = CONTROL_CLOSED_STATUSES.includes(order.status);
+      const isUrgent = order.isUrgent && !isControlClosed;
+      const isOverdue =
+        !isControlClosed &&
+        this.daysLeft(order.deadline, order.createdAt) !== null &&
+        this.daysLeft(order.deadline, order.createdAt)! <= 0;
+
+      if (isUrgent) urgentCount += 1;
+      if (isOverdue) overdueCount += 1;
+      if (isUrgent || isOverdue) alertCount += 1;
+    }
+
+    const isAdmin = currentUserRole === EnumRole.ADMIN;
+
+    return {
+      contextTotal: orders.length,
+      matchingTotal,
+      activeCount,
+      leadCount: byStatus.LEAD,
+      newCount: byStatus.NEW,
+      inProgressCount:
+        byStatus.FOLDER_STRUCTURE_CREATED +
+        byStatus.IN_PROGRESS +
+        byStatus.PRINTED,
+      readyCount,
+      sentUnpaidCount: byStatus.SENT,
+      sentUnpaidAmount: isAdmin ? sentUnpaidAmount : null,
+      paidCount: byStatus.PAID,
+      reviewPendingCount: isAdmin ? reviewPendingCount : null,
+      overdueCount,
+      urgentCount,
+      alertCount,
+      byStatus,
+      byProduct,
+    };
+  }
+
+  private buildOrdersWhere(
+    query: DtoAllOrdersforQuery,
+    currentUserId: string,
+    currentUserRole: string,
+    options: { applyListStatusDefaults: boolean },
+  ): Prisma.OrderPhotoWhereInput {
+    // Strip leading @ so "@username" matches "https://t.me/username".
+    const searchTerm = query.search?.replace(/^@/, '').trim() || undefined;
+
+    return {
+      // When searching by contact/number, don't restrict by status: the order
+      // might already be SENT/PAID/LEAD. Without search, the list hides closed
+      // statuses by default; stats can opt out and count the whole context.
+      ...(options.applyListStatusDefaults
+        ? {
+            status: query.status
+              ? query.status
+              : searchTerm
+                ? undefined
+                : { notIn: DEFAULT_LIST_HIDDEN_STATUSES },
+          }
+        : {}),
+      sourceOrder: query.sourceOrder,
+      productCategory: query.productCategory,
+      ...(query.reviewLeft !== undefined
+        ? { clientReviewLeft: query.reviewLeft === 'true' }
+        : {}),
+      ...(currentUserRole === EnumRole.EXECUTOR
+        ? { executorId: currentUserId }
+        : {}),
+      ...(searchTerm
+        ? {
+            OR: [
+              { numberOrder: { contains: searchTerm, mode: 'insensitive' } },
+              { urlCommunication: { contains: searchTerm, mode: 'insensitive' } },
+              { note: { contains: searchTerm, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+  }
+
+  private daysLeft(deadline: Date | null, createdAt: Date): number | null {
+    const due = deadline
+      ? new Date(deadline)
+      : new Date(createdAt.getTime() + 3 * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const nowDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+    return Math.round(
+      (dueDay.getTime() - nowDay.getTime()) / (1000 * 60 * 60 * 24),
+    );
   }
 
   async getOrderById(

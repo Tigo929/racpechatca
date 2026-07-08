@@ -1,5 +1,6 @@
 import type {
   OrdersResponse,
+  OrdersStats,
   OrderPhoto,
   CreateOrderDto,
   UpdateOrderDto,
@@ -24,6 +25,18 @@ export const ordersApi = {
     if (query.reviewLeft !== undefined) params.set('reviewLeft', String(query.reviewLeft));
     if (query.search) params.set('search', query.search);
     const { data } = await api.get<OrdersResponse>(`/order-photo?${params}`);
+    return data;
+  },
+
+  getStats: async (query: OrdersQuery = {}): Promise<OrdersStats> => {
+    const params = new URLSearchParams();
+    if (query.status) params.set('status', query.status);
+    if (query.sourceOrder) params.set('sourceOrder', query.sourceOrder);
+    if (query.productCategory) params.set('productCategory', query.productCategory);
+    if (query.reviewLeft !== undefined) params.set('reviewLeft', String(query.reviewLeft));
+    if (query.search) params.set('search', query.search);
+    const qs = params.toString();
+    const { data } = await api.get<OrdersStats>(`/order-photo/stats${qs ? `?${qs}` : ''}`);
     return data;
   },
 
