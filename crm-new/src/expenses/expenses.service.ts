@@ -31,7 +31,9 @@ export class ExpensesService {
   }
 
   async remove(id: string) {
-    const expense = await this.prisma.expenseOrder.findUnique({ where: { id } });
+    const expense = await this.prisma.expenseOrder.findUnique({
+      where: { id },
+    });
     if (!expense) throw new NotFoundException('Расходный ордер не найден');
     await this.prisma.expenseOrder.delete({ where: { id } });
   }

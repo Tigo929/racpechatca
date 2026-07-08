@@ -9,6 +9,11 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
     networks:
       - internal
 
@@ -17,7 +22,8 @@ services:
       context: ./crm-new
     restart: always
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://crm_user:${DB_PASSWORD}@postgres:5432/crm
       JWT_SECRET: ${JWT_SECRET}
@@ -32,6 +38,12 @@ services:
       - "api.telegram.org:149.154.167.220"
     networks:
       - internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
     # Применяет накопленные миграции и запускает сервер
     command: >
       sh -c "npx prisma migrate deploy && node dist/src/main"
@@ -43,7 +55,13 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
     networks:
       - internal
 

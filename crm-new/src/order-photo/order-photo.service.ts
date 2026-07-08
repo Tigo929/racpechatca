@@ -17,7 +17,6 @@ import { DtoCreateLead } from './dto/create-lead.dto';
 import { DtoAssignExecutor } from './dto/assign-executor.dto';
 import {
   EnumCommunication,
-  EnumProductCategory,
   EnumRole,
   EnumStatus,
 } from 'src/generated/prisma/enums';
@@ -39,8 +38,18 @@ function buildCommunicationUrl(
 }
 
 const RU_MONTHS = [
-  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+  'января',
+  'февраля',
+  'марта',
+  'апреля',
+  'мая',
+  'июня',
+  'июля',
+  'августа',
+  'сентября',
+  'октября',
+  'ноября',
+  'декабря',
 ];
 
 /** «25 июня» — формат срока без зависимости от ICU. */
@@ -120,7 +129,12 @@ export class OrderPhotoService {
           quantity: e.quantity,
           price: e.price,
           isFreePrice: itemFree,
-          pricePosition: calcItemPricePosition(e.price, e.quantity, 0, itemFree),
+          pricePosition: calcItemPricePosition(
+            e.price,
+            e.quantity,
+            0,
+            itemFree,
+          ),
         };
       });
       const tshirtCreate = (dto.tshirtItems ?? []).map((e) => {
@@ -144,7 +158,9 @@ export class OrderPhotoService {
         photoCreate.reduce((s, i) => s + i.pricePosition, 0) +
         tshirtCreate.reduce((s, i) => s + i.pricePosition, 0);
       const totalOrder =
-        dto.customTotal != null ? dto.customTotal : positionsTotal + dto.deliveryCost;
+        dto.customTotal != null
+          ? dto.customTotal
+          : positionsTotal + dto.deliveryCost;
 
       return tx.orderPhoto.create({
         data: {
@@ -165,7 +181,9 @@ export class OrderPhotoService {
           note: dto.note,
           productCategory: dto.productCategory ?? 'PHOTO',
           items: photoCreate.length ? { create: photoCreate } : undefined,
-          tshirtItems: tshirtCreate.length ? { create: tshirtCreate } : undefined,
+          tshirtItems: tshirtCreate.length
+            ? { create: tshirtCreate }
+            : undefined,
         },
         include: { items: true, tshirtItems: true },
       });
@@ -264,9 +282,14 @@ export class OrderPhotoService {
       currentUserRole,
       { applyListStatusDefaults: false },
     );
-    const listWhere = this.buildOrdersWhere(query, currentUserId, currentUserRole, {
-      applyListStatusDefaults: true,
-    });
+    const listWhere = this.buildOrdersWhere(
+      query,
+      currentUserId,
+      currentUserRole,
+      {
+        applyListStatusDefaults: true,
+      },
+    );
 
     const [orders, matchingTotal] = await this.prisma.$transaction([
       this.prisma.orderPhoto.findMany({
@@ -320,7 +343,10 @@ export class OrderPhotoService {
         sentUnpaidAmount += order.totalOrder ?? 0;
       }
 
-      if (REVIEW_WAITING_STATUSES.includes(order.status) && !order.clientReviewLeft) {
+      if (
+        REVIEW_WAITING_STATUSES.includes(order.status) &&
+        !order.clientReviewLeft
+      ) {
         reviewPendingCount += 1;
       }
 
@@ -400,7 +426,9 @@ export class OrderPhotoService {
         ? {
             OR: [
               { numberOrder: { contains: searchTerm, mode: 'insensitive' } },
-              { urlCommunication: { contains: searchTerm, mode: 'insensitive' } },
+              {
+                urlCommunication: { contains: searchTerm, mode: 'insensitive' },
+              },
               { note: { contains: searchTerm, mode: 'insensitive' } },
             ],
           }
@@ -464,7 +492,12 @@ export class OrderPhotoService {
 
     const isUnassign = !dto.executorId;
 
-    let executor: { id: string; rateBasisPoints: number | null; isActive: boolean; telegramUsername: string | null } | null = null;
+    let executor: {
+      id: string;
+      rateBasisPoints: number | null;
+      isActive: boolean;
+      telegramUsername: string | null;
+    } | null = null;
     if (!isUnassign) {
       executor = await this.prisma.user.findUnique({
         where: { id: dto.executorId! },
@@ -528,7 +561,13 @@ export class OrderPhotoService {
           tshirtItems: true,
           executor: { select: { id: true, username: true } },
           accruals: {
-            select: { id: true, status: true, salaryAmount: true, paidAmount: true, rateBasisPoints: true },
+            select: {
+              id: true,
+              status: true,
+              salaryAmount: true,
+              paidAmount: true,
+              rateBasisPoints: true,
+            },
           },
         },
       });
@@ -536,7 +575,10 @@ export class OrderPhotoService {
 
     if (!isUnassign && result) {
       if (executor?.telegramUsername) {
-        const text = this.buildAssignmentMessage(result, executor.telegramUsername);
+        const text = this.buildAssignmentMessage(
+          result,
+          executor.telegramUsername,
+        );
         this.telegram.sendToGroup(text).catch(() => {});
       } else {
         this.logger.warn(
@@ -569,19 +611,31 @@ export class OrderPhotoService {
         lines.push(`• ${escapeHtml(i.formatPaper)} × ${i.quantity} шт`);
       } else {
         const type = i.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
-        lines.push(`• ${escapeHtml(i.formatPaper)} (${type}) × ${i.quantity} шт`);
+        lines.push(
+          `• ${escapeHtml(i.formatPaper)} (${type}) × ${i.quantity} шт`,
+        );
       }
     }
     for (const i of order.tshirtItems) {
-      lines.push(`• Футболка ${escapeHtml(i.color)}, р-р ${i.size} × ${i.quantity} шт`);
+      lines.push(
+        `• Футболка ${escapeHtml(i.color)}, р-р ${i.size} × ${i.quantity} шт`,
+      );
     }
     if (lines.length === 0) lines.push('• (позиции не добавлены)');
 
-    const deadlineStr = order.deadline ? `до ${formatRuDate(order.deadline)}` : 'не указан';
-    const category = order.productCategory === 'TSHIRT' ? 'Футболки' : 'Фотопечать';
+    const deadlineStr = order.deadline
+      ? `до ${formatRuDate(order.deadline)}`
+      : 'не указан';
+    const category =
+      order.productCategory === 'TSHIRT' ? 'Футболки' : 'Фотопечать';
 
     const noteBlock = order.note
-      ? ['', '─────────────────', `📝 <b>Примечание:</b>`, `<i>${escapeHtml(order.note)}</i>`]
+      ? [
+          '',
+          '─────────────────',
+          `📝 <b>Примечание:</b>`,
+          `<i>${escapeHtml(order.note)}</i>`,
+        ]
       : [];
 
     return [
@@ -660,7 +714,10 @@ export class OrderPhotoService {
 
       // Склад: списываем остаток при переходе в «Отправлен» (блок при нехватке),
       // возвращаем при уходе из «Отправлен».
-      if (newStatus === EnumStatus.SENT && lockedOrder.status !== EnumStatus.SENT) {
+      if (
+        newStatus === EnumStatus.SENT &&
+        lockedOrder.status !== EnumStatus.SENT
+      ) {
         await this.stock.consumeForOrder(id, tx);
       } else if (
         lockedOrder.status === EnumStatus.SENT &&
@@ -841,7 +898,9 @@ export class OrderPhotoService {
       });
       if (accruals.length > 0) {
         const ids = accruals.map((a) => a.id);
-        await tx.paymentAccrualLink.deleteMany({ where: { accrualId: { in: ids } } });
+        await tx.paymentAccrualLink.deleteMany({
+          where: { accrualId: { in: ids } },
+        });
         await tx.salaryAccrual.deleteMany({ where: { id: { in: ids } } });
       }
 
@@ -853,5 +912,4 @@ export class OrderPhotoService {
       return { message: 'Заказ удалён успешно', data: deleted };
     });
   }
-
 }

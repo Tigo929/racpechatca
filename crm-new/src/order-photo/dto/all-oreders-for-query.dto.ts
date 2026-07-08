@@ -1,5 +1,14 @@
 import { Transform, Type } from 'class-transformer';
-import { IsEnum, IsIn, IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsEnum,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import {
   EnumProductCategory,
   EnumSourceOrder,
@@ -7,14 +16,17 @@ import {
 } from 'src/generated/prisma/enums';
 
 export default class DtoAllOrdersforQuery {
-  @IsNumber()
+  @IsInt()
   @IsOptional()
   @Type(() => Number)
+  @Min(1)
   page?: number;
 
-  @IsNumber()
+  @IsInt()
   @IsOptional()
   @Type(() => Number)
+  @Min(1)
+  @Max(100)
   limit?: number;
 
   @IsEnum(EnumStatus)

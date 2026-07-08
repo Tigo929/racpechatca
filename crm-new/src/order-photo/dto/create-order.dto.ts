@@ -3,7 +3,8 @@ import {
   IsArray,
   IsBoolean,
   IsEnum,
-  IsNumber,
+  IsIn,
+  IsInt,
   IsOptional,
   IsString,
   Matches,
@@ -41,8 +42,9 @@ export default class DtoCreateOrder {
   @IsEnum(EnumDeliveryMethod)
   deliveryMethod!: EnumDeliveryMethod;
 
-  @IsNumber()
+  @IsInt()
   @Type(() => Number)
+  @Min(0)
   deliveryCost!: number;
 
   /**
@@ -50,7 +52,7 @@ export default class DtoCreateOrder {
    * а не считается из позиций (позиции при этом можно не передавать).
    */
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   @Type(() => Number)
   @Min(0)
   customTotal?: number;
@@ -65,7 +67,9 @@ export default class DtoCreateOrder {
   productCategory?: EnumProductCategory;
 
   @IsOptional()
-  @IsEnum(EnumStatus)
+  @IsIn([EnumStatus.LEAD, EnumStatus.NEW], {
+    message: 'Начальный статус заказа может быть только LEAD или NEW',
+  })
   status?: EnumStatus;
 
   @IsString()

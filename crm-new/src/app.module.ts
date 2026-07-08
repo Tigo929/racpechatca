@@ -8,10 +8,13 @@ import { SalaryModule } from './salary/salary.module';
 import { ReportsModule } from './reports/reports.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { StockModule } from './stock/stock.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
     // 5 запросов на /lead с одного IP за 60 секунд
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 5 }]),
     AuthModule,
@@ -22,7 +25,7 @@ import { StockModule } from './stock/stock.module';
     ExpensesModule,
     StockModule,
   ],
-  controllers: [],
+  controllers: [HealthController],
   providers: [],
 })
 export class AppModule {}

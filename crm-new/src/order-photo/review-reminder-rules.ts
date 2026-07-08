@@ -1,7 +1,4 @@
-import {
-  EnumProductCategory,
-  EnumStatus,
-} from 'src/generated/prisma/enums';
+import { EnumProductCategory, EnumStatus } from 'src/generated/prisma/enums';
 
 export const REVIEW_REMINDER_DELAY_MS = 84 * 60 * 60 * 1000; // 3.5 days
 

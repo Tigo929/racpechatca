@@ -504,8 +504,18 @@ describe('salary payment integrity', () => {
 
 // ── Склад футболок ──────────────────────────────────────────────────────────
 
-interface StockRow { id: string; size: string; color: string; quantity: number }
-interface Movement { orderId: string; size: string; color: string; quantity: number }
+interface StockRow {
+  id: string;
+  size: string;
+  color: string;
+  quantity: number;
+}
+interface Movement {
+  orderId: string;
+  size: string;
+  color: string;
+  quantity: number;
+}
 
 function makeStockHarness(
   stock: StockRow[],
@@ -541,7 +551,11 @@ function makeStockHarness(
     },
     tshirtStock: {
       findUnique: jest.fn(
-        ({ where }: { where: { size_color: { size: string; color: string } } }) =>
+        ({
+          where,
+        }: {
+          where: { size_color: { size: string; color: string } };
+        }) =>
           Promise.resolve(
             stock.find(
               (s) =>
@@ -551,7 +565,13 @@ function makeStockHarness(
           ),
       ),
       update: jest.fn(
-        ({ where, data }: { where: { id: string }; data: { quantity: number } }) => {
+        ({
+          where,
+          data,
+        }: {
+          where: { id: string };
+          data: { quantity: number };
+        }) => {
           const row = stock.find((s) => s.id === where.id);
           if (row) row.quantity = data.quantity;
           return Promise.resolve(row);
@@ -657,14 +677,32 @@ describe('tshirt stock', () => {
       tshirtStock: {
         findMany: jest.fn(() =>
           Promise.resolve([
-            { id: 's1', size: 'S', color: 'Белый', quantity: 5, updatedAt: new Date() },
-            { id: 'xs1', size: 'XS', color: 'Белый', quantity: 2, updatedAt: new Date() },
-            { id: 'm1', size: 'M', color: 'Белый', quantity: 3, updatedAt: new Date() },
+            {
+              id: 's1',
+              size: 'S',
+              color: 'Белый',
+              quantity: 5,
+              updatedAt: new Date(),
+            },
+            {
+              id: 'xs1',
+              size: 'XS',
+              color: 'Белый',
+              quantity: 2,
+              updatedAt: new Date(),
+            },
+            {
+              id: 'm1',
+              size: 'M',
+              color: 'Белый',
+              quantity: 3,
+              updatedAt: new Date(),
+            },
           ]),
         ),
       },
     } as unknown as PrismaService);
-    const result = await stock.list() as { size: string }[];
+    const result = (await stock.list()) as { size: string }[];
     expect(result[0].size).toBe('XS');
     expect(result[1].size).toBe('S');
     expect(result[2].size).toBe('M');
@@ -694,7 +732,46 @@ interface AccrualByIdRow {
   };
 }
 
-function makePaymentByAccrualsHarness(accruals: AccrualByIdRow[]) {
+type PaymentByAccrualsHarness = {
+  _orders: Record<string, string>;
+  _accruals: AccrualByIdRow[];
+  statusHistoryCreated: unknown[];
+  salaryAccrual: {
+    findMany: jest.Mock<Promise<AccrualByIdRow[]>, []>;
+    update: jest.Mock<
+      Promise<AccrualByIdRow | undefined>,
+      [
+        {
+          where: { id: string };
+          data: { paidAmount: number; status: string };
+        },
+      ]
+    >;
+  };
+  salaryPayment: {
+    create: jest.Mock<
+      Promise<{ id: string; createdAt: Date } & Record<string, unknown>>,
+      [{ data: Record<string, unknown> }]
+    >;
+  };
+  paymentAccrualLink: {
+    create: jest.Mock<Promise<{ id: string }>, [unknown]>;
+  };
+  orderPhoto: {
+    update: jest.Mock<
+      Promise<{ id: string; status: string }>,
+      [{ where: { id: string }; data: { status: string } }]
+    >;
+  };
+  statusHistory: {
+    create: jest.Mock<Promise<{ id: string }>, [{ data: unknown }]>;
+  };
+  $transaction<T>(cb: (tx: PaymentByAccrualsHarness) => Promise<T>): Promise<T>;
+};
+
+function makePaymentByAccrualsHarness(
+  accruals: AccrualByIdRow[],
+): PaymentByAccrualsHarness {
   const orders: Record<string, string> = {};
   for (const a of accruals) {
     orders[a.orderId] = a.order.status;
@@ -702,22 +779,33 @@ function makePaymentByAccrualsHarness(accruals: AccrualByIdRow[]) {
 
   const statusHistoryCreated: unknown[] = [];
 
-  const harness = {
+  const harness: PaymentByAccrualsHarness = {
     _orders: orders,
     _accruals: accruals,
     statusHistoryCreated,
 
     salaryAccrual: {
       findMany: jest.fn(() => Promise.resolve(accruals)),
-      update: jest.fn(({ where, data }: { where: { id: string }; data: { paidAmount: number; status: string } }) => {
-        const a = accruals.find((x) => x.id === where.id);
-        if (a) { a.paidAmount = data.paidAmount; a.status = data.status as 'PAID'; }
-        return Promise.resolve(a);
-      }),
+      update: jest.fn(
+        ({
+          where,
+          data,
+        }: {
+          where: { id: string };
+          data: { paidAmount: number; status: string };
+        }) => {
+          const a = accruals.find((x) => x.id === where.id);
+          if (a) {
+            a.paidAmount = data.paidAmount;
+            a.status = data.status as 'PAID';
+          }
+          return Promise.resolve(a);
+        },
+      ),
     },
 
     salaryPayment: {
-      create: jest.fn(({ data }: { data: unknown }) =>
+      create: jest.fn(({ data }: { data: Record<string, unknown> }) =>
         Promise.resolve({ id: 'payment-1', createdAt: new Date(), ...data }),
       ),
     },
@@ -727,10 +815,18 @@ function makePaymentByAccrualsHarness(accruals: AccrualByIdRow[]) {
     },
 
     orderPhoto: {
-      update: jest.fn(({ where, data }: { where: { id: string }; data: { status: string } }) => {
-        orders[where.id] = data.status;
-        return Promise.resolve({ id: where.id, status: data.status });
-      }),
+      update: jest.fn(
+        ({
+          where,
+          data,
+        }: {
+          where: { id: string };
+          data: { status: string };
+        }) => {
+          orders[where.id] = data.status;
+          return Promise.resolve({ id: where.id, status: data.status });
+        },
+      ),
     },
 
     statusHistory: {
@@ -748,7 +844,7 @@ function makePaymentByAccrualsHarness(accruals: AccrualByIdRow[]) {
 }
 
 describe('createPaymentByAccruals — StatusHistory audit trail', () => {
-  function svc(h: ReturnType<typeof makePaymentByAccrualsHarness>) {
+  function svc(h: PaymentByAccrualsHarness) {
     return new SalaryService(h as unknown as PrismaService);
   }
 

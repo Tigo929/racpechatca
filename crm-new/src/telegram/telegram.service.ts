@@ -32,7 +32,9 @@ export class TelegramService {
       });
       if (!res.ok) {
         const body = await res.text();
-        this.logger.error(`Telegram sendMessage failed [${res.status}]: ${body}`);
+        this.logger.error(
+          `Telegram sendMessage failed [${res.status}]: ${body}`,
+        );
         return false;
       }
       return true;
@@ -45,7 +47,9 @@ export class TelegramService {
   /** Отправляет сообщение в общую рабочую группу (id из TELEGRAM_GROUP_CHAT_ID). */
   async sendToGroup(text: string): Promise<boolean> {
     if (!this.groupChatId) {
-      this.logger.warn('TELEGRAM_GROUP_CHAT_ID not set — group notification skipped');
+      this.logger.warn(
+        'TELEGRAM_GROUP_CHAT_ID not set — group notification skipped',
+      );
       return false;
     }
     return this.sendMessage(this.groupChatId, text);

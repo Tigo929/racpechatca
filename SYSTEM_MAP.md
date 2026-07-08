@@ -1,6 +1,6 @@
 # System Map
 
-Last updated: 2026-07-08
+Last updated: 2026-07-09
 
 This document is the living map of the `racpechatca` CRM. Every meaningful
 change to architecture, business rules, API contracts, deployment, or data
@@ -67,6 +67,7 @@ checks passed.
 ├── backup-db.sh             # Production database backup helper
 ├── AGENTS.md                # Codex working instructions
 ├── AUDIT_REPORT.md          # Previous audit notes
+├── AUDIT_2026-07-09.md      # Latest finance/code/production audit
 ├── REPORT.md                # Previous report
 └── SYSTEM_MAP.md            # This living system map
 ```
@@ -102,6 +103,8 @@ crm-new/src/main.ts
 crm-new/src/app.module.ts
 crm-new/prisma/schema.prisma
 crm-new/src/prisma/prisma.service.ts
+crm-new/src/prisma/prisma.module.ts
+crm-new/src/health.controller.ts
 ```
 
 ### Bootstrap
@@ -120,6 +123,15 @@ enableImplicitConversion: true
 
 Unknown request-body fields are stripped by validation.
 
+Financial DTO safeguards:
+
+```text
+money fields are integer and >= 0
+item quantities are integer and >= 1
+order list limit is capped at 100
+admin-created orders may start only as LEAD or NEW
+```
+
 ### App Modules
 
 ```text
@@ -134,6 +146,10 @@ StockModule
 
 `ConfigModule` is global. `ThrottlerModule` is configured for public lead spam
 protection.
+
+`PrismaModule` is global and owns the single application-level `PrismaService`
+provider. Feature modules inject Prisma through this module instead of declaring
+their own Prisma providers.
 
 ## Domain Model
 
@@ -343,6 +359,7 @@ Auth:
 ```text
 POST /auth/login
 GET  /auth/me
+GET  /health
 ```
 
 Orders:
@@ -514,6 +531,17 @@ Backend startup command:
 npx prisma migrate deploy && node dist/src/main
 ```
 
+Compose health checks:
+
+```text
+postgres -> pg_isready
+backend  -> GET http://localhost:3000/health
+frontend -> GET http://localhost/
+```
+
+The backend `/health` endpoint also verifies PostgreSQL with a lightweight
+`SELECT 1`.
+
 Frontend production runtime:
 
 ```text
@@ -523,7 +551,7 @@ nginx serving /usr/share/nginx/html
 nginx proxies:
 
 ```text
-/(order-photo|auth|users|salary|reports|expenses|stock) -> http://backend:3000
+/(health|order-photo|auth|users|salary|reports|expenses|stock) -> http://backend:3000
 ```
 
 ### Environment
@@ -571,10 +599,11 @@ is still recommended.
 
 ## Verified Checks
 
-Verified on 2026-07-08:
+Verified on 2026-07-09:
 
 ```text
 crm-new:  npm run build
+crm-new:  npm run lint
 crm-new:  npm test -- --runInBand
 frontend: npm run build
 frontend: npm run lint
@@ -584,11 +613,12 @@ Result:
 
 ```text
 backend tests: 28 passed
+backend lint: passed
 frontend build: passed
 frontend lint: passed
 ```
 
-Verified production connectivity on 2026-07-08:
+Verified production connectivity on 2026-07-09:
 
 ```text
 HTTP port 80: reachable, 200 OK
@@ -596,6 +626,7 @@ SSH port 22: reachable
 Docker: active
 PostgreSQL: accepting connections
 backend protected endpoint: 401 Unauthorized, expected without token
+health endpoint: 200 OK, PostgreSQL checked
 ```
 
 ## Known Risks And Follow-Ups
@@ -604,11 +635,10 @@ backend protected endpoint: 401 Unauthorized, expected without token
    Compose-based runtime verification is pending.
 2. `updateOrder` should be reviewed for transaction-level locking around
    total recalculation.
-3. Creation DTOs should restrict allowed initial order statuses.
-4. Frontend types should be kept fully synchronized with Prisma fields,
+3. Frontend types should be kept fully synchronized with Prisma fields,
    especially `sentAt`, `gender`, and `printType`.
-5. Production backups should eventually be copied off-server.
-6. A repeatable deploy script should be added:
+4. Production backups should eventually be copied off-server.
+5. A repeatable deploy script should be added:
 
 ```text
 backup -> git pull -> build -> migrate -> docker compose up -d -> health check
@@ -639,6 +669,17 @@ backup -> git pull -> build -> migrate -> docker compose up -d -> health check
 - Extended review-request detection from only `SENT` orders to `SENT` or `PAID`
   orders, so orders that were paid after shipping are still eligible for a
   review request.
+
+### 2026-07-09
+
+- Added finance/code/production audit document `AUDIT_2026-07-09.md`.
+- Added public `/health` endpoint that checks PostgreSQL.
+- Added Docker Compose health checks for PostgreSQL, backend, and frontend.
+- Moved `PrismaService` ownership into a single global `PrismaModule`.
+- Strengthened backend DTO validation for money, quantities, pagination, and
+  initial order statuses.
+- Synced production and prebuilt Compose files for health checks and Telegram
+  runtime environment.
 
 ## Update Rule
 

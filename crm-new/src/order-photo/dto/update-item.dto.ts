@@ -1,9 +1,10 @@
 import {
   IsEnum,
-  IsNumber,
+  IsInt,
   IsOptional,
   IsString,
   MaxLength,
+  Min,
   MinLength,
 } from 'class-validator';
 import { EnumTypePaper } from 'src/generated/prisma/enums';
@@ -21,13 +22,15 @@ export default class DtoUpdateItemOrder {
   @IsOptional()
   typePaper?: EnumTypePaper;
 
-  @IsNumber()
+  @IsInt()
   @Type(() => Number)
+  @Min(1)
   @IsOptional()
   quantity?: number;
 
-  @IsNumber()
+  @IsInt()
   @Type(() => Number)
+  @Min(0)
   @IsOptional()
   price?: number;
 }

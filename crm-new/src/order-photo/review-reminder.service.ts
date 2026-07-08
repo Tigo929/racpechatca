@@ -146,7 +146,9 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
       }
 
       if (orders.length > 0) {
-        this.logger.log(`Review reminder notifications processed: ${orders.length}`);
+        this.logger.log(
+          `Review reminder notifications processed: ${orders.length}`,
+        );
       }
     } finally {
       this.running = false;

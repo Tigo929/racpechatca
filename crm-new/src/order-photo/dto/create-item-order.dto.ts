@@ -2,10 +2,11 @@ import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
-  IsNumber,
+  IsInt,
   IsOptional,
   IsString,
   MaxLength,
+  Min,
   MinLength,
 } from 'class-validator';
 import { EnumTypePaper } from 'src/generated/prisma/enums';
@@ -20,12 +21,14 @@ export default class DtoCreateItemOrder {
   @IsEnum(EnumTypePaper)
   typePaper!: EnumTypePaper;
 
-  @IsNumber()
+  @IsInt()
   @Type(() => Number)
+  @Min(1)
   quantity!: number;
 
-  @IsNumber()
+  @IsInt()
   @Type(() => Number)
+  @Min(0)
   price!: number;
 
   // Позиция со свободной (договорной) ценой: pricePosition = price, кол-во не умножается.

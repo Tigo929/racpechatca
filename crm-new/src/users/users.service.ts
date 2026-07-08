@@ -37,12 +37,18 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('Пользователь не найден');
 
-    const data: { isActive?: boolean; rateBasisPoints?: number; telegramUsername?: string | null } = {};
+    const data: {
+      isActive?: boolean;
+      rateBasisPoints?: number;
+      telegramUsername?: string | null;
+    } = {};
 
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
-    if (dto.rateBasisPoints !== undefined) data.rateBasisPoints = dto.rateBasisPoints;
+    if (dto.rateBasisPoints !== undefined)
+      data.rateBasisPoints = dto.rateBasisPoints;
     if ('telegramUsername' in dto)
-      data.telegramUsername = dto.telegramUsername?.replace(/^@/, '').trim() || null;
+      data.telegramUsername =
+        dto.telegramUsername?.replace(/^@/, '').trim() || null;
 
     const updated = await this.prisma.$transaction(async (tx) => {
       if (dto.rateBasisPoints !== undefined) {
@@ -50,7 +56,7 @@ export class UsersService {
           data: {
             userId: id,
             oldRateBasisPoints: user.rateBasisPoints,
-            newRateBasisPoints: dto.rateBasisPoints!,
+            newRateBasisPoints: dto.rateBasisPoints,
             changedBy: adminId,
           },
         });

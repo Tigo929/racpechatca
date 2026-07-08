@@ -2,10 +2,11 @@ import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
-  IsNumber,
+  IsInt,
   IsOptional,
   IsString,
   Matches,
+  Min,
   ValidateIf,
 } from 'class-validator';
 import {
@@ -39,9 +40,10 @@ export class DtoUpdateOrder {
   @IsOptional()
   deliveryMethod?: EnumDeliveryMethod;
 
-  @IsNumber()
+  @IsInt()
   @IsOptional()
   @Type(() => Number)
+  @Min(0)
   deliveryCost?: number;
 
   @IsString()

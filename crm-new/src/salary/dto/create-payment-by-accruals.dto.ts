@@ -1,4 +1,10 @@
-import { ArrayMinSize, IsArray, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 export class DtoCreatePaymentByAccruals {
   @IsUUID()

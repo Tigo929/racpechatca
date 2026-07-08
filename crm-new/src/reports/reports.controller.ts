@@ -1,4 +1,10 @@
-import { BadRequestException, Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { EnumRole } from 'src/generated/prisma/enums';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -39,8 +45,10 @@ export class ReportsController {
     const now = new Date();
     const y = year ? parseInt(year, 10) : now.getFullYear();
     const m = month ? parseInt(month, 10) : now.getMonth() + 1;
-    if (isNaN(y) || y < 2000 || y > 2100) throw new BadRequestException('Некорректный год');
-    if (isNaN(m) || m < 1 || m > 12) throw new BadRequestException('Некорректный месяц');
+    if (isNaN(y) || y < 2000 || y > 2100)
+      throw new BadRequestException('Некорректный год');
+    if (isNaN(m) || m < 1 || m > 12)
+      throw new BadRequestException('Некорректный месяц');
     return this.reportsService.getWeeklyReport(y, m);
   }
 }
