@@ -327,7 +327,9 @@ export class OrderPhotoService {
       }
 
       if (
-        order.productCategory === EnumProductCategory.PHOTO &&
+        [EnumProductCategory.PHOTO, EnumProductCategory.TSHIRT].includes(
+          order.productCategory,
+        ) &&
         order.status === EnumStatus.SENT &&
         !order.clientReviewLeft &&
         !order.reviewReminderNotifiedAt &&

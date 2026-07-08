@@ -15,6 +15,10 @@ import { TelegramService } from 'src/telegram/telegram.service';
 const REVIEW_REMINDER_DELAY_MS = 84 * 60 * 60 * 1000; // 3.5 days
 const REVIEW_REMINDER_SCAN_MS = 60 * 60 * 1000;
 const REVIEW_REMINDER_LIMIT = 20;
+const REVIEW_REMINDER_CATEGORIES = [
+  EnumProductCategory.PHOTO,
+  EnumProductCategory.TSHIRT,
+];
 const AVITO_REVIEW_URL =
   'https://www.avito.ru/user/review?fid=2_dJdTVNpmTbcI6Hkpz9w4CujowHx4ZBZ87DElF8B0nlyL6RdaaYzvyPSWRjp4ZyNE';
 
@@ -32,7 +36,31 @@ function formatRuDateTime(d: Date): string {
   });
 }
 
-export function buildReviewRequestText(): string {
+function categoryLabel(category: EnumProductCategory): string {
+  return category === EnumProductCategory.TSHIRT ? 'Футболка' : 'Фото';
+}
+
+export function buildReviewRequestText(
+  productCategory: EnumProductCategory = EnumProductCategory.PHOTO,
+): string {
+  if (productCategory === EnumProductCategory.TSHIRT) {
+    return [
+      'Добрый день! 😊',
+      '',
+      'Спасибо, что выбрали нас для печати футболки. Надеемся, вещь получилась именно такой, как хотелось, и уже радует вас!',
+      '',
+      'Если всё понравилось и у вас найдётся буквально 1–2 минуты, оставьте, пожалуйста, отзыв на Авито. Для нас это очень помогает: по отзывам нас находят новые клиенты, а мы понимаем, что всё сделали хорошо.',
+      '',
+      `Оставить отзыв можно здесь: ${AVITO_REVIEW_URL}`,
+      '',
+      'В благодарность за отзыв при следующем заказе мы подарим:',
+      '🎨 любой макет/дизайн — бесплатно',
+      '🚚 доставку следующего заказа — бесплатно',
+      '',
+      'Спасибо, что выбираете нас! Будем рады снова помочь с печатью 🙌',
+    ].join('\n');
+  }
+
   return [
     'Добрый день! 😊',
     '',
@@ -88,7 +116,7 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
       const cutoff = new Date(Date.now() - REVIEW_REMINDER_DELAY_MS);
       const orders = await this.prisma.orderPhoto.findMany({
         where: {
-          productCategory: EnumProductCategory.PHOTO,
+          productCategory: { in: REVIEW_REMINDER_CATEGORIES },
           status: EnumStatus.SENT,
           clientReviewLeft: false,
           reviewReminderNotifiedAt: null,
@@ -99,6 +127,7 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
         select: {
           id: true,
           numberOrder: true,
+          productCategory: true,
           sentAt: true,
           communicationPlatform: true,
           urlCommunication: true,
@@ -127,6 +156,7 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
 
   private buildGroupNotification(order: {
     numberOrder: string;
+    productCategory: EnumProductCategory;
     sentAt: Date | null;
     communicationPlatform: EnumCommunication;
     urlCommunication: string;
@@ -137,13 +167,15 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
         : order.communicationPlatform;
     const sentAt = order.sentAt ? formatRuDateTime(order.sentAt) : 'не указано';
     const dialogUrl = escapeHtml(order.urlCommunication);
-    const customerText = escapeHtml(buildReviewRequestText());
+    const customerText = escapeHtml(
+      buildReviewRequestText(order.productCategory),
+    );
 
     return [
       '⭐ <b>Пора попросить отзыв</b>',
       '',
       `Заказ: <b>${escapeHtml(order.numberOrder)}</b>`,
-      `Категория: <b>Фото</b>`,
+      `Категория: <b>${escapeHtml(categoryLabel(order.productCategory))}</b>`,
       `Отправлен: ${escapeHtml(sentAt)}`,
       `Канал: ${escapeHtml(platform)}`,
       `Диалог: <a href="${dialogUrl}">открыть переписку</a>`,

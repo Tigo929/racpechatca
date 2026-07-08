@@ -267,12 +267,13 @@ blocked to protect financial history.
 
 ### Review Reminder Rules
 
-CRM automatically detects photo orders that are ready for a review request.
+CRM automatically detects photo and T-shirt orders that are ready for a review
+request.
 
 Eligibility:
 
 ```text
-productCategory = PHOTO
+productCategory = PHOTO or TSHIRT
 status = SENT
 clientReviewLeft = false
 sentAt <= now - 84 hours
@@ -287,6 +288,13 @@ order number
 communication platform
 link to the customer dialog
 ready-to-copy review request text
+```
+
+The customer text is category-specific:
+
+```text
+PHOTO  -> 20 Polaroid-style photos + free next-order delivery
+TSHIRT -> any mockup/design + free next-order delivery
 ```
 
 After a successful group notification, `reviewReminderNotifiedAt` is set so the
@@ -575,7 +583,7 @@ frontend: npm run lint
 Result:
 
 ```text
-backend tests: 23 passed
+backend tests: 26 passed
 frontend build: passed
 frontend lint: passed
 ```
@@ -625,6 +633,9 @@ backup -> git pull -> build -> migrate -> docker compose up -d -> health check
 - Added automatic review-request detection for sent photo orders after 84 hours;
   CRM notifies the working Telegram group once per eligible order with a
   ready-to-copy client message and dialog link.
+- Extended review-request detection to sent T-shirt orders after 84 hours, with
+  a category-specific gift offer: any mockup/design plus free next-order
+  delivery.
 
 ## Update Rule
 
