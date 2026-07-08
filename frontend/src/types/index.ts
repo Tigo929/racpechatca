@@ -121,6 +121,8 @@ export interface OrderPhoto {
   isFreePrice?: boolean;
   /** Оставил ли клиент отзыв (отмечается вручную в списке заказов). */
   clientReviewLeft?: boolean;
+  /** Когда CRM напомнила рабочей группе попросить отзыв. */
+  reviewReminderNotifiedAt?: string | null;
   executorId?: string | null;
   executor?: OrderExecutor | null;
   completedAt?: string | null;
@@ -152,6 +154,7 @@ export interface OrdersStats {
   sentUnpaidAmount: number | null;
   paidCount: number;
   reviewPendingCount: number | null;
+  reviewReminderDueCount: number | null;
   overdueCount: number;
   urgentCount: number;
   alertCount: number;

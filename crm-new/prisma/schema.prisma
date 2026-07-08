@@ -53,6 +53,8 @@ model OrderPhoto {
   isFreePrice           Boolean             @default(false)
   // Оставил ли клиент отзыв (отмечается вручную в списке заказов).
   clientReviewLeft      Boolean             @default(false)
+  // Когда CRM автоматически напомнила рабочей группе попросить отзыв у клиента.
+  reviewReminderNotifiedAt DateTime?
 
   executorId   String?
   executor     User?     @relation("OrderExecutor", fields: [executorId], references: [id])
@@ -72,6 +74,7 @@ model OrderPhoto {
   @@index([createdAt])
   @@index([productCategory])
   @@index([status, productCategory])
+  @@index([productCategory, status, reviewReminderNotifiedAt])
 }
 
 /// Остаток футболок на складе по размеру и цвету (6 размеров × 2 цвета).

@@ -13,10 +13,10 @@ export class TelegramService {
   }
 
   /** Отправляет сообщение в произвольный чат (parse_mode=HTML). */
-  async sendMessage(chatId: string, text: string): Promise<void> {
+  async sendMessage(chatId: string, text: string): Promise<boolean> {
     if (!this.token) {
       this.logger.warn('TELEGRAM_BOT_TOKEN not set — notification skipped');
-      return;
+      return false;
     }
     const url = `https://api.telegram.org/bot${this.token}/sendMessage`;
     try {
@@ -33,18 +33,21 @@ export class TelegramService {
       if (!res.ok) {
         const body = await res.text();
         this.logger.error(`Telegram sendMessage failed [${res.status}]: ${body}`);
+        return false;
       }
+      return true;
     } catch (err) {
       this.logger.error('Telegram sendMessage network error', err);
+      return false;
     }
   }
 
   /** Отправляет сообщение в общую рабочую группу (id из TELEGRAM_GROUP_CHAT_ID). */
-  async sendToGroup(text: string): Promise<void> {
+  async sendToGroup(text: string): Promise<boolean> {
     if (!this.groupChatId) {
       this.logger.warn('TELEGRAM_GROUP_CHAT_ID not set — group notification skipped');
-      return;
+      return false;
     }
-    await this.sendMessage(this.groupChatId, text);
+    return this.sendMessage(this.groupChatId, text);
   }
 }

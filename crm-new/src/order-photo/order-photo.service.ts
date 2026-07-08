@@ -17,6 +17,7 @@ import { DtoCreateLead } from './dto/create-lead.dto';
 import { DtoAssignExecutor } from './dto/assign-executor.dto';
 import {
   EnumCommunication,
+  EnumProductCategory,
   EnumRole,
   EnumStatus,
 } from 'src/generated/prisma/enums';
@@ -78,6 +79,8 @@ const REVIEW_WAITING_STATUSES: EnumStatus[] = [
   EnumStatus.SENT,
   EnumStatus.PAID,
 ];
+
+const REVIEW_REMINDER_DUE_MS = 84 * 60 * 60 * 1000;
 
 @Injectable()
 export class OrderPhotoService {
@@ -275,8 +278,10 @@ export class OrderPhotoService {
           isUrgent: true,
           deadline: true,
           createdAt: true,
+          sentAt: true,
           totalOrder: true,
           clientReviewLeft: true,
+          reviewReminderNotifiedAt: true,
         },
       }),
       this.prisma.orderPhoto.count({ where: listWhere }),
@@ -298,6 +303,8 @@ export class OrderPhotoService {
     let readyCount = 0;
     let sentUnpaidAmount = 0;
     let reviewPendingCount = 0;
+    let reviewReminderDueCount = 0;
+    const reviewCutoff = new Date(Date.now() - REVIEW_REMINDER_DUE_MS);
 
     for (const order of orders) {
       byStatus[order.status] += 1;
@@ -317,6 +324,17 @@ export class OrderPhotoService {
 
       if (REVIEW_WAITING_STATUSES.includes(order.status) && !order.clientReviewLeft) {
         reviewPendingCount += 1;
+      }
+
+      if (
+        order.productCategory === EnumProductCategory.PHOTO &&
+        order.status === EnumStatus.SENT &&
+        !order.clientReviewLeft &&
+        !order.reviewReminderNotifiedAt &&
+        order.sentAt !== null &&
+        order.sentAt <= reviewCutoff
+      ) {
+        reviewReminderDueCount += 1;
       }
 
       const isControlClosed = CONTROL_CLOSED_STATUSES.includes(order.status);
@@ -348,6 +366,7 @@ export class OrderPhotoService {
       sentUnpaidAmount: isAdmin ? sentUnpaidAmount : null,
       paidCount: byStatus.PAID,
       reviewPendingCount: isAdmin ? reviewPendingCount : null,
+      reviewReminderDueCount: isAdmin ? reviewReminderDueCount : null,
       overdueCount,
       urgentCount,
       alertCount,

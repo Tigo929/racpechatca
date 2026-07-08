@@ -8,6 +8,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
 import { StockModule } from 'src/stock/stock.module';
 import { TelegramModule } from 'src/telegram/telegram.module';
+import { ReviewReminderService } from './review-reminder.service';
 
 @Module({
   imports: [StockModule, TelegramModule],
@@ -17,6 +18,7 @@ import { TelegramModule } from 'src/telegram/telegram.module';
     OrderItemService,
     TshirtItemService,
     OrderFinancialIntegrityService,
+    ReviewReminderService,
     PrismaService,
   ],
 })

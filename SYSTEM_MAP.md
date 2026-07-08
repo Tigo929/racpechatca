@@ -265,6 +265,34 @@ If an order moves away from `SENT`, stock is returned and an unpaid salary
 accrual for that order is removed. If salary was already paid, the rollback is
 blocked to protect financial history.
 
+### Review Reminder Rules
+
+CRM automatically detects photo orders that are ready for a review request.
+
+Eligibility:
+
+```text
+productCategory = PHOTO
+status = SENT
+clientReviewLeft = false
+sentAt <= now - 84 hours
+reviewReminderNotifiedAt is null
+```
+
+The backend scans at startup and then roughly once per hour. For each eligible
+order it sends one Telegram notification to the working group with:
+
+```text
+order number
+communication platform
+link to the customer dialog
+ready-to-copy review request text
+```
+
+After a successful group notification, `reviewReminderNotifiedAt` is set so the
+same order is not reminded again. Direct automatic sending into Avito is not
+implemented because the current system has no Avito messaging API credentials.
+
 ### Access Rules
 
 Admins can manage:
@@ -457,6 +485,7 @@ ready orders
 urgent/overdue alerts
 sent but unpaid orders
 orders waiting for client review
+review requests that are due now
 ```
 
 ## Infrastructure Map
@@ -593,6 +622,9 @@ backup -> git pull -> build -> migrate -> docker compose up -d -> health check
 - Changed pickup cabinet in customer messages to 116.
 - Added server-side order statistics for the CRM dashboard so operational and
   financial counters are not limited to the current pagination page.
+- Added automatic review-request detection for sent photo orders after 84 hours;
+  CRM notifies the working Telegram group once per eligible order with a
+  ready-to-copy client message and dialog link.
 
 ## Update Rule
 

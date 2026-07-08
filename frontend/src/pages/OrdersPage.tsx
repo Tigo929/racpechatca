@@ -226,7 +226,7 @@ export function OrdersPage() {
                   {
                     label: 'Без отзыва',
                     value: stats.reviewPendingCount ?? 0,
-                    hint: 'после выдачи',
+                    hint: `${stats.reviewReminderDueCount ?? 0} пора написать`,
                     icon: <Star size={18} />,
                     color: 'from-fuchsia-500 to-fuchsia-600',
                     text: 'text-fuchsia-600',
