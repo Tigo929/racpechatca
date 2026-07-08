@@ -7,18 +7,17 @@ import {
 import {
   EnumCommunication,
   EnumProductCategory,
-  EnumStatus,
 } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TelegramService } from 'src/telegram/telegram.service';
+import {
+  REVIEW_REMINDER_CATEGORIES,
+  REVIEW_REMINDER_DELAY_MS,
+  REVIEW_REMINDER_STATUSES,
+} from './review-reminder-rules';
 
-const REVIEW_REMINDER_DELAY_MS = 84 * 60 * 60 * 1000; // 3.5 days
 const REVIEW_REMINDER_SCAN_MS = 60 * 60 * 1000;
 const REVIEW_REMINDER_LIMIT = 20;
-const REVIEW_REMINDER_CATEGORIES = [
-  EnumProductCategory.PHOTO,
-  EnumProductCategory.TSHIRT,
-];
 const AVITO_REVIEW_URL =
   'https://www.avito.ru/user/review?fid=2_dJdTVNpmTbcI6Hkpz9w4CujowHx4ZBZ87DElF8B0nlyL6RdaaYzvyPSWRjp4ZyNE';
 
@@ -117,7 +116,7 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
       const orders = await this.prisma.orderPhoto.findMany({
         where: {
           productCategory: { in: REVIEW_REMINDER_CATEGORIES },
-          status: EnumStatus.SENT,
+          status: { in: REVIEW_REMINDER_STATUSES },
           clientReviewLeft: false,
           reviewReminderNotifiedAt: null,
           sentAt: { lte: cutoff },

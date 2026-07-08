@@ -274,7 +274,7 @@ Eligibility:
 
 ```text
 productCategory = PHOTO or TSHIRT
-status = SENT
+status = SENT or PAID
 clientReviewLeft = false
 sentAt <= now - 84 hours
 reviewReminderNotifiedAt is null
@@ -583,7 +583,7 @@ frontend: npm run lint
 Result:
 
 ```text
-backend tests: 26 passed
+backend tests: 28 passed
 frontend build: passed
 frontend lint: passed
 ```
@@ -636,6 +636,9 @@ backup -> git pull -> build -> migrate -> docker compose up -d -> health check
 - Extended review-request detection to sent T-shirt orders after 84 hours, with
   a category-specific gift offer: any mockup/design plus free next-order
   delivery.
+- Extended review-request detection from only `SENT` orders to `SENT` or `PAID`
+  orders, so orders that were paid after shipping are still eligible for a
+  review request.
 
 ## Update Rule
 

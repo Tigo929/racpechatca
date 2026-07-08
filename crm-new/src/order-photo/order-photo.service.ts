@@ -26,6 +26,7 @@ import { OrderFinancialIntegrityService } from './order-financial-integrity.serv
 import { calculateSalarySnapshot } from 'src/salary/salary-calculation';
 import { StockService } from 'src/stock/stock.service';
 import { TelegramService } from 'src/telegram/telegram.service';
+import { isReviewReminderEligible } from './review-reminder-rules';
 
 function buildCommunicationUrl(
   platform: EnumCommunication,
@@ -79,8 +80,6 @@ const REVIEW_WAITING_STATUSES: EnumStatus[] = [
   EnumStatus.SENT,
   EnumStatus.PAID,
 ];
-
-const REVIEW_REMINDER_DUE_MS = 84 * 60 * 60 * 1000;
 
 @Injectable()
 export class OrderPhotoService {
@@ -304,7 +303,6 @@ export class OrderPhotoService {
     let sentUnpaidAmount = 0;
     let reviewPendingCount = 0;
     let reviewReminderDueCount = 0;
-    const reviewCutoff = new Date(Date.now() - REVIEW_REMINDER_DUE_MS);
 
     for (const order of orders) {
       byStatus[order.status] += 1;
@@ -326,16 +324,7 @@ export class OrderPhotoService {
         reviewPendingCount += 1;
       }
 
-      if (
-        [EnumProductCategory.PHOTO, EnumProductCategory.TSHIRT].includes(
-          order.productCategory,
-        ) &&
-        order.status === EnumStatus.SENT &&
-        !order.clientReviewLeft &&
-        !order.reviewReminderNotifiedAt &&
-        order.sentAt !== null &&
-        order.sentAt <= reviewCutoff
-      ) {
+      if (isReviewReminderEligible(order)) {
         reviewReminderDueCount += 1;
       }
 
