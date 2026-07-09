@@ -3,21 +3,23 @@ import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Trash2, Camera, Shirt } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { ordersApi } from '../../api/orders';
+import { usersApi } from '../../api/users';
 import {
   TSHIRT_COLORS,
   TSHIRT_SIZE_LABELS,
   PRINT_LOCATION_LABELS,
 } from '../../constants';
-import type { CreateOrderDto } from '../../types/index';
+import type { AppUser, CreateOrderDto } from '../../types/index';
 
 const photoItemSchema = z.object({
+  isFreePrice: z.boolean().optional(),
   formatPaper: z.string().min(1, 'Укажите формат'),
   typePaper: z.enum(['GLOSS', 'MATTE']),
   quantity: z.coerce.number().int().positive(),
-  price: z.coerce.number().int().positive(),
+  price: z.coerce.number().int().min(0),
 });
 
 const tshirtItemSchema = z.object({
@@ -49,6 +51,7 @@ const baseSchema = z.object({
   deliveryMethod: z.enum(['YANDEX_PVZ', 'OZON_PVZ', 'PICKUP', 'OZON_SELLER', 'WB_SELLER']),
   deliveryCost: z.coerce.number().int().min(0),
   note: z.string().optional(),
+  executorId: z.string().optional(),
   freePrice: z.boolean().optional(),
   freeItems: z.array(freeItemSchema).optional(),
   items: z.array(photoItemSchema).optional(),
@@ -125,9 +128,10 @@ export function CreateOrderForm({ onClose }: Props) {
       communicationPlatform: 'TELEGRAM',
       deliveryMethod: 'PICKUP',
       deliveryCost: 0,
+      executorId: '',
       freePrice: false,
       freeItems: [{ name: '', quantity: 1, price: 0 }],
-      items: [{ formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }],
+      items: [{ isFreePrice: false, formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }],
       tshirtItems: [{
         freePrice: false, name: '',
         color: 'Белый', size: 'M', printLocation: 'FRONT',
@@ -139,7 +143,15 @@ export function CreateOrderForm({ onClose }: Props) {
   const productCategory = useWatch({ control, name: 'productCategory' });
   const communicationPlatform = useWatch({ control, name: 'communicationPlatform' });
   const freePrice = useWatch({ control, name: 'freePrice' });
+  const photoItemsWatch = useWatch({ control, name: 'items' });
   const tshirtItemsWatch = useWatch({ control, name: 'tshirtItems' });
+
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: usersApi.getAll,
+    staleTime: 60_000,
+  });
+  const executors = users.filter((u: AppUser) => u.role === 'EXECUTOR' && u.isActive !== false);
 
   // Чистим/восстанавливаем позиции, чтобы Zod не падал на скрытых полях:
   // при свободной цене позиций нет вовсе; иначе — одна позиция активной категории.
@@ -167,7 +179,7 @@ export function CreateOrderForm({ onClose }: Props) {
     } else {
       setValue('tshirtItems', []);
       if ((getValues('items')?.length ?? 0) === 0) {
-        setValue('items', [{ formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }]);
+        setValue('items', [{ isFreePrice: false, formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }]);
       }
     }
   }, [freePrice, productCategory, setValue, getValues]);
@@ -197,6 +209,7 @@ export function CreateOrderForm({ onClose }: Props) {
         deliveryMethod: data.deliveryMethod,
         deliveryCost: data.deliveryCost,
         note: data.note,
+        executorId: data.executorId || undefined,
         productCategory: data.productCategory,
         freePrice: true,
         items: freeItems.map((i) => ({
@@ -217,6 +230,7 @@ export function CreateOrderForm({ onClose }: Props) {
       deliveryMethod: data.deliveryMethod,
       deliveryCost: data.deliveryCost,
       note: data.note,
+      executorId: data.executorId || undefined,
     };
 
     if (data.productCategory === 'TSHIRT') {
@@ -272,6 +286,7 @@ export function CreateOrderForm({ onClose }: Props) {
       note: data.note,
       productCategory: data.productCategory ?? 'PHOTO',
       status: 'LEAD',
+      executorId: data.executorId || undefined,
       items: undefined,
       tshirtItems: undefined,
     };
@@ -340,6 +355,21 @@ export function CreateOrderForm({ onClose }: Props) {
           <input type="number" min={0} className={inputCls} {...register('deliveryCost')} />
           {errors.deliveryCost && <p className={errorCls}>{errors.deliveryCost.message}</p>}
         </div>
+      </div>
+
+      <div>
+        <label className={labelCls}>Исполнитель</label>
+        <select className={selectCls} {...register('executorId')}>
+          <option value="">— назначить позже —</option>
+          {executors.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.username}
+              {u.rateBasisPoints === null
+                ? ' — ставка не назначена'
+                : ` — ${(u.rateBasisPoints / 100).toFixed(2)}%`}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>
@@ -416,7 +446,7 @@ export function CreateOrderForm({ onClose }: Props) {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-900">Позиции — фотографии</h3>
             <button type="button"
-              onClick={() => photoFields.append({ formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 })}
+              onClick={() => photoFields.append({ isFreePrice: false, formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 })}
               className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
               <Plus size={14} /> Добавить
             </button>
@@ -425,37 +455,50 @@ export function CreateOrderForm({ onClose }: Props) {
             <p className={errorCls}>{errors.items.message}</p>
           )}
           <div className="space-y-3">
-            {photoFields.fields.map((field, idx) => (
-              <div key={field.id} className="grid grid-cols-[1fr_1fr_80px_80px_36px] gap-2 items-end">
-                <div>
-                  {idx === 0 && <label className={labelCls}>Формат</label>}
-                  <input className={inputCls} placeholder="10×15, Polaroid…" {...register(`items.${idx}.formatPaper`)} />
-                </div>
-                <div>
-                  {idx === 0 && <label className={labelCls}>Тип бумаги</label>}
-                  <select className={selectCls} {...register(`items.${idx}.typePaper`)}>
-                    <option value="GLOSS">Глянец</option>
-                    <option value="MATTE">Матт</option>
-                  </select>
-                </div>
-                <div>
-                  {idx === 0 && <label className={labelCls}>Кол-во</label>}
-                  <input type="number" min={1} className={inputCls} {...register(`items.${idx}.quantity`)} />
-                </div>
-                <div>
-                  {idx === 0 && <label className={labelCls}>Цена ₽</label>}
-                  <input type="number" min={1} className={inputCls} {...register(`items.${idx}.price`)} />
-                </div>
-                <div>
-                  {idx === 0 && <div className="mb-1 h-5" />}
+            {photoFields.fields.map((field, idx) => {
+              const itemFree = photoItemsWatch?.[idx]?.isFreePrice ?? false;
+              return (
+              <div key={field.id} className="border border-gray-100 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" {...register(`items.${idx}.isFreePrice`)} className="w-4 h-4 accent-amber-600" />
+                    <span className="text-sm text-gray-700">Свободная цена — название и итоговая цена позиции</span>
+                  </label>
                   <button type="button" onClick={() => photoFields.remove(idx)}
                     disabled={photoFields.fields.length === 1}
-                    className="p-2 text-gray-400 hover:text-red-500 disabled:opacity-30">
+                    className="p-1.5 text-gray-400 hover:text-red-500 disabled:opacity-30">
                     <Trash2 size={15} />
                   </button>
                 </div>
+                <div className={`grid gap-2 items-end ${itemFree ? 'grid-cols-[1fr_80px_110px]' : 'grid-cols-[1fr_1fr_80px_80px]'}`}>
+                  <div>
+                    <label className={labelCls}>{itemFree ? 'Название' : 'Формат'}</label>
+                    <input className={inputCls} placeholder={itemFree ? 'Фотоальбом, рамка, доп. услуга…' : '10×15, Polaroid…'} {...register(`items.${idx}.formatPaper`)} />
+                  </div>
+                  {!itemFree && (
+                    <div>
+                      <label className={labelCls}>Тип бумаги</label>
+                      <select className={selectCls} {...register(`items.${idx}.typePaper`)}>
+                        <option value="GLOSS">Глянец</option>
+                        <option value="MATTE">Матт</option>
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className={labelCls}>Кол-во</label>
+                    <input type="number" min={1} className={inputCls} {...register(`items.${idx}.quantity`)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>{itemFree ? 'Цена ₽ (итог)' : 'Цена ₽'}</label>
+                    <input type="number" min={0} className={inputCls} {...register(`items.${idx}.price`)} />
+                  </div>
+                </div>
+                {itemFree && (
+                  <p className="text-xs text-gray-400">Количество сохраняется для понимания состава, но сумма позиции равна цене и не умножается.</p>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

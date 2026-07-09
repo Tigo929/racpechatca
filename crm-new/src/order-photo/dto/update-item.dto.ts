@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsEnum,
   IsInt,
   IsOptional,
@@ -33,4 +34,8 @@ export default class DtoUpdateItemOrder {
   @Min(0)
   @IsOptional()
   price?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  isFreePrice?: boolean;
 }

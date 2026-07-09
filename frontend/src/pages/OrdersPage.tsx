@@ -355,7 +355,10 @@ export function OrdersPage() {
                 </thead>
                 <tbody>
                   {orders.map((order, idx) => {
-                    const dl = getDeadlineInfo(order.deadline, order.createdAt);
+                    const tracksDeadline = order.productCategory !== 'TSHIRT';
+                    const dl = tracksDeadline
+                      ? getDeadlineInfo(order.deadline, order.createdAt)
+                      : { rowClass: '', badgeClass: '', label: '' };
                     // Статусы, при которых заказ уже закрыт/выполнен —
                     // срочность и дедлайн-предупреждения больше не нужны.
                     const isClosed = (
@@ -366,12 +369,12 @@ export function OrdersPage() {
                       order.status === 'CANCELLED'
                     );
                     const isPaid = order.status === 'PAID';
-                    const showUrgent = order.isUrgent && !isClosed;
+                    const showUrgent = tracksDeadline && order.isUrgent && !isClosed;
                     const rowBg = isPaid
                       ? 'opacity-50'
                       : showUrgent
                         ? 'bg-red-50 hover:bg-red-100'
-                        : (!isClosed && dl.rowClass) || (idx % 2 === 0 ? 'hover:bg-indigo-50/40' : 'bg-slate-50/60 hover:bg-indigo-50/40');
+                        : (tracksDeadline && !isClosed && dl.rowClass) || (idx % 2 === 0 ? 'hover:bg-indigo-50/40' : 'bg-slate-50/60 hover:bg-indigo-50/40');
                     return (
                     <tr
                       key={order.id}
@@ -404,7 +407,7 @@ export function OrdersPage() {
                         {new Date(order.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                       </td>
                       <td className="px-5 py-3.5">
-                        {!isClosed && dl.label ? (
+                        {tracksDeadline && !isClosed && dl.label ? (
                           <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-medium ${dl.badgeClass}`}>
                             <Clock size={10} aria-hidden="true" /> {dl.label}
                           </span>

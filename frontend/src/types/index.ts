@@ -203,6 +203,7 @@ export interface CreateOrderDto {
   note?: string;
   productCategory?: EnumProductCategory;
   status?: EnumStatus;
+  executorId?: string | null;
   /** Свободная (договорная) цена: кол-во не умножается на цену. */
   freePrice?: boolean;
   /** Ручной итог заказа (если задан) — вместо расчёта из позиций. */
@@ -230,6 +231,7 @@ export interface UpdateItemDto {
   typePaper?: EnumTypePaper;
   quantity?: number;
   price?: number;
+  isFreePrice?: boolean;
 }
 
 export type EnumRole = 'ADMIN' | 'EXECUTOR';

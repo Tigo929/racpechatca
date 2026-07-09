@@ -53,7 +53,8 @@ export class OrderItemService {
         select: { isFreePrice: true },
       });
       // Свободная цена, если так помечен заказ ИЛИ сама позиция.
-      const freePrice = (order?.isFreePrice ?? false) || item.isFreePrice;
+      const itemFreePrice = dto.isFreePrice ?? item.isFreePrice;
+      const freePrice = (order?.isFreePrice ?? false) || itemFreePrice;
       const quantity = dto.quantity ?? item.quantity;
       const price = dto.price ?? item.price;
 
@@ -64,6 +65,7 @@ export class OrderItemService {
           typePaper: dto.typePaper ?? item.typePaper,
           quantity,
           price,
+          isFreePrice: itemFreePrice,
           pricePosition: calcItemPricePosition(price, quantity, 0, freePrice),
         },
       });

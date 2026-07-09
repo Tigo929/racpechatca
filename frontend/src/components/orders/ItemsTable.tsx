@@ -13,7 +13,11 @@ const inputCls = 'w-full rounded border border-gray-200 px-2 py-1 text-sm focus-
 const selectCls = inputCls;
 
 interface EditState {
-  formatPaper: string; typePaper: string; quantity: string; price: string;
+  formatPaper: string;
+  typePaper: string;
+  quantity: string;
+  price: string;
+  isFreePrice: boolean;
 }
 
 export function ItemsTable({ order }: Props) {
@@ -26,7 +30,13 @@ export function ItemsTable({ order }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editState, setEditState] = useState<EditState | null>(null);
   const [adding, setAdding] = useState(false);
-  const [newItem, setNewItem] = useState<EditState>({ formatPaper: '', typePaper: 'GLOSS', quantity: '1', price: '10' });
+  const [newItem, setNewItem] = useState<EditState>({
+    formatPaper: '',
+    typePaper: 'GLOSS',
+    quantity: '1',
+    price: '10',
+    isFreePrice: false,
+  });
   // Пометить добавляемую позицию свободной ценой (для обычных заказов).
   const [newItemFree, setNewItemFree] = useState(false);
   // Эффективная свободная цена для строки добавления: заказ свободный ИЛИ позиция помечена.
@@ -57,7 +67,7 @@ export function ItemsTable({ order }: Props) {
       invalidate(u);
       setAdding(false);
       setNewItemFree(false);
-      setNewItem({ formatPaper: '', typePaper: 'GLOSS', quantity: '1', price: '10' });
+      setNewItem({ formatPaper: '', typePaper: 'GLOSS', quantity: '1', price: '10', isFreePrice: false });
       toast.success('Позиция добавлена');
     },
     onError: () => toast.error('Ошибка добавления'),
@@ -65,7 +75,13 @@ export function ItemsTable({ order }: Props) {
 
   const startEdit = (item: ItemPhoto) => {
     setEditingId(item.id);
-    setEditState({ formatPaper: item.formatPaper, typePaper: item.typePaper, quantity: String(item.quantity), price: String(item.price) });
+    setEditState({
+      formatPaper: item.formatPaper,
+      typePaper: item.typePaper,
+      quantity: String(item.quantity),
+      price: String(item.price),
+      isFreePrice: item.isFreePrice ?? false,
+    });
   };
 
   const saveEdit = (id: string) => {
@@ -75,6 +91,7 @@ export function ItemsTable({ order }: Props) {
       typePaper: editState.typePaper,
       quantity: Number(editState.quantity) || 1,
       price: Number(editState.price),
+      isFreePrice: freePrice || editState.isFreePrice,
     } });
   };
 
@@ -137,12 +154,23 @@ export function ItemsTable({ order }: Props) {
                 {isAdmin && editingId === item.id && editState ? (
                   <>
                     <td className="px-4 py-2">
-                      <input className={inputCls} placeholder={freePrice ? 'Название товара' : '10×15, Polaroid…'} value={editState.formatPaper}
+                      <input className={inputCls} placeholder={freePrice || editState.isFreePrice ? 'Название товара' : '10×15, Polaroid…'} value={editState.formatPaper}
                         onChange={e => setEditState({ ...editState, formatPaper: e.target.value })} />
+                      {!freePrice && (
+                        <label className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editState.isFreePrice}
+                            onChange={e => setEditState({ ...editState, isFreePrice: e.target.checked })}
+                            className="w-3.5 h-3.5 accent-amber-600"
+                          />
+                          Свободная цена
+                        </label>
+                      )}
                     </td>
                     {!freePrice && (
                       <td className="px-4 py-2">
-                        {item.isFreePrice ? (
+                        {editState.isFreePrice ? (
                           <span className="text-xs text-gray-400">произвольная</span>
                         ) : (
                           <select className={selectCls} value={editState.typePaper}
@@ -160,7 +188,7 @@ export function ItemsTable({ order }: Props) {
                     {isAdmin && !freePrice && (
                       <td className="px-4 py-2">
                         <input type="number" min={0} className={inputCls + ' text-right'} value={editState.price}
-                          onChange={e => setEditState({ ...editState, price: e.target.value })} placeholder={item.isFreePrice ? 'Цена ₽ (итог)' : 'Цена ₽'} />
+                          onChange={e => setEditState({ ...editState, price: e.target.value })} placeholder={editState.isFreePrice ? 'Цена ₽ (итог)' : 'Цена ₽'} />
                       </td>
                     )}
                     {isAdmin && freePrice && (

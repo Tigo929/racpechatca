@@ -32,10 +32,14 @@ function generateConfirmationText(order: OrderPhoto): string {
   const deadlineStr = order.deadline
     ? new Date(order.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
     : businessConfig.defaultLeadTime;
+  const deadlineLines =
+    order.productCategory === 'TSHIRT'
+      ? []
+      : ['', `⏳ Срок изготовления: до ${deadlineStr}`, ''];
 
   const lines: string[] = [];
   items.forEach(i => {
-    if (order.isFreePrice) {
+    if (order.isFreePrice || i.isFreePrice) {
       lines.push(`• ${i.formatPaper} × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
     } else {
       const type = i.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
@@ -69,9 +73,7 @@ function generateConfirmationText(order: OrderPhoto): string {
     `💰 Сумма по позициям: ${itemsTotal.toLocaleString('ru-RU')} ₽`,
     ...(delivery > 0 ? [`🚚 Доставка (${DELIVERY_LABELS[order.deliveryMethod as keyof typeof DELIVERY_LABELS] ?? order.deliveryMethod}): ${delivery.toLocaleString('ru-RU')} ₽`] : []),
     `📦 Итого к оплате: ${total.toLocaleString('ru-RU')} ₽`,
-    '',
-    `⏳ Срок изготовления: до ${deadlineStr}`,
-    '',
+    ...deadlineLines,
     separator,
     '💳 Для подтверждения заказа:',
     `👉 Предоплата 50% — ${prepay.toLocaleString('ru-RU')} ₽ (сейчас)`,
@@ -98,7 +100,7 @@ function generateReadyText(order: OrderPhoto): string {
 
   const lines: string[] = [];
   items.forEach(i => {
-    if (order.isFreePrice) {
+    if (order.isFreePrice || i.isFreePrice) {
       lines.push(`• ${i.formatPaper} × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
     } else {
       const type = i.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
@@ -311,6 +313,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             {/* Дедлайн и срочность — только для незакрытых заказов */}
             {(() => {
               const isClosed = ['PAID','SENT','DONE','COMPLETED','CANCELLED'].includes(order.status);
+              if (order.productCategory === 'TSHIRT') return null;
               if (isClosed) return null;
               const dl = getDeadlineInfo(order.deadline, order.createdAt);
               return (
@@ -332,7 +335,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
         </div>
         <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
           {/* Кнопка Срочно — только для незакрытых заказов */}
-          {!['PAID','SENT','DONE','COMPLETED','CANCELLED'].includes(order.status) && (
+          {order.productCategory !== 'TSHIRT' && !['PAID','SENT','DONE','COMPLETED','CANCELLED'].includes(order.status) && (
             <button
               onClick={toggleUrgent}
               disabled={updateMutation.isPending}

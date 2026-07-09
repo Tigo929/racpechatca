@@ -17,6 +17,7 @@ import { DtoCreateLead } from './dto/create-lead.dto';
 import { DtoAssignExecutor } from './dto/assign-executor.dto';
 import {
   EnumCommunication,
+  EnumProductCategory,
   EnumRole,
   EnumStatus,
 } from 'src/generated/prisma/enums';
@@ -101,8 +102,8 @@ export class OrderPhotoService {
     private readonly telegram: TelegramService,
   ) {}
 
-  async createOrder(dto: DtoCreateOrder) {
-    return this.prisma.$transaction(async (tx) => {
+  async createOrder(dto: DtoCreateOrder, adminId?: string) {
+    const result = await this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(1001)`;
 
       const now = new Date();
@@ -117,6 +118,28 @@ export class OrderPhotoService {
       const lengthOrder = String(lastSeq + 1).padStart(3, '0');
 
       const freePrice = dto.freePrice ?? false;
+      const productCategory = dto.productCategory ?? EnumProductCategory.PHOTO;
+
+      let executor: {
+        id: string;
+        role: EnumRole;
+        isActive: boolean;
+      } | null = null;
+      if (dto.executorId) {
+        executor = await tx.user.findUnique({
+          where: { id: dto.executorId },
+          select: { id: true, role: true, isActive: true },
+        });
+        if (!executor) throw new NotFoundException('Исполнитель не найден');
+        if (executor.role !== EnumRole.EXECUTOR) {
+          throw new BadRequestException(
+            'Назначить можно только пользователя с ролью исполнителя',
+          );
+        }
+        if (!executor.isActive) {
+          throw new BadRequestException('Исполнитель деактивирован');
+        }
+      }
 
       // Позиции считаем независимо от категории: заказ может содержать и обычные
       // позиции, и свободные (произвольные «название — цена»). Свободная цена
@@ -162,12 +185,15 @@ export class OrderPhotoService {
           ? dto.customTotal
           : positionsTotal + dto.deliveryCost;
 
-      return tx.orderPhoto.create({
+      const created = await tx.orderPhoto.create({
         data: {
           numberOrder: fullDate(lengthOrder),
           totalOrder,
           isFreePrice: freePrice,
-          deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+          deadline:
+            productCategory === EnumProductCategory.TSHIRT
+              ? null
+              : new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
 
           ...(dto.status ? { status: dto.status } : {}),
           sourceOrder: dto.sourceOrder,
@@ -179,15 +205,49 @@ export class OrderPhotoService {
           deliveryMethod: dto.deliveryMethod,
           deliveryCost: dto.deliveryCost,
           note: dto.note,
-          productCategory: dto.productCategory ?? 'PHOTO',
+          productCategory,
+          executorId: dto.executorId ?? undefined,
           items: photoCreate.length ? { create: photoCreate } : undefined,
           tshirtItems: tshirtCreate.length
             ? { create: tshirtCreate }
             : undefined,
         },
-        include: { items: true, tshirtItems: true },
+        include: {
+          items: true,
+          tshirtItems: true,
+          executor: {
+            select: {
+              id: true,
+              username: true,
+              telegramUsername: true,
+            },
+          },
+        },
       });
+
+      if (dto.executorId && adminId) {
+        await tx.orderAssignment.create({
+          data: {
+            orderId: created.id,
+            executorId: dto.executorId,
+            assignedBy: adminId,
+            note: 'Назначен при создании заказа',
+          },
+        });
+      }
+
+      return created;
     });
+
+    if (result.executor?.telegramUsername) {
+      const text = this.buildAssignmentMessage(
+        result,
+        result.executor.telegramUsername,
+      );
+      this.telegram.sendToGroup(text).catch(() => {});
+    }
+
+    return result;
   }
 
   async createLead(dto: DtoCreateLead) {
@@ -355,8 +415,11 @@ export class OrderPhotoService {
       }
 
       const isControlClosed = CONTROL_CLOSED_STATUSES.includes(order.status);
-      const isUrgent = order.isUrgent && !isControlClosed;
+      const tracksDeadline =
+        order.productCategory !== EnumProductCategory.TSHIRT;
+      const isUrgent = tracksDeadline && order.isUrgent && !isControlClosed;
       const isOverdue =
+        tracksDeadline &&
         !isControlClosed &&
         this.daysLeft(order.deadline, order.createdAt) !== null &&
         this.daysLeft(order.deadline, order.createdAt)! <= 0;
@@ -598,7 +661,12 @@ export class OrderPhotoService {
       productCategory: string;
       isFreePrice: boolean | null;
       note: string | null;
-      items: { formatPaper: string; typePaper: string; quantity: number }[];
+      items: {
+        formatPaper: string;
+        typePaper: string;
+        quantity: number;
+        isFreePrice?: boolean | null;
+      }[];
       tshirtItems: { color: string; size: string; quantity: number }[];
     },
     username: string,
@@ -607,7 +675,7 @@ export class OrderPhotoService {
 
     const lines: string[] = [];
     for (const i of order.items) {
-      if (order.isFreePrice) {
+      if (order.isFreePrice || i.isFreePrice) {
         lines.push(`• ${escapeHtml(i.formatPaper)} × ${i.quantity} шт`);
       } else {
         const type = i.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
@@ -628,6 +696,8 @@ export class OrderPhotoService {
       : 'не указан';
     const category =
       order.productCategory === 'TSHIRT' ? 'Футболки' : 'Фотопечать';
+    const deadlineLine =
+      order.productCategory === 'TSHIRT' ? [] : [`⏳ Срок: ${deadlineStr}`];
 
     const noteBlock = order.note
       ? [
@@ -643,7 +713,7 @@ export class OrderPhotoService {
       '',
       `📋 Заказ: <b>${escapeHtml(order.numberOrder)}</b>`,
       `🏷 Категория: ${category}`,
-      `⏳ Срок: ${deadlineStr}`,
+      ...deadlineLine,
       '',
       '📦 Состав заказа:',
       ...lines,

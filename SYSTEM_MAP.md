@@ -232,6 +232,11 @@ For free-price photo positions:
 pricePosition = price
 ```
 
+Free-price positions can be mixed with normal positions. They store a human
+name in `ItemPhoto.formatPaper`, keep `quantity` for composition clarity, and
+do not multiply quantity by price. This is used for arbitrary photo add-ons and
+for arbitrary/free-price positions inside T-shirt orders.
+
 Order total:
 
 ```text
@@ -242,6 +247,20 @@ If `customTotal` is supplied during order creation, it becomes the initial
 order total. Later item or delivery mutations recalculate from saved positions.
 
 Financial editing is blocked after salary is paid or partially paid.
+
+### Assignment Rules
+
+Admins can assign an active executor while creating a new order or later from
+the order detail modal. Creating an order with `executorId` validates that the
+user is an active `EXECUTOR`, stores `OrderPhoto.executorId`, records an
+`OrderAssignment`, and sends the same Telegram assignment notification used by
+manual assignment.
+
+### Deadline Rules
+
+Photo orders receive a production deadline and can be marked urgent. T-shirt
+orders do not show or use the production deadline control in CRM or generated
+customer confirmation text.
 
 ### Salary Rules
 
@@ -580,10 +599,11 @@ TELEGRAM_GROUP_CHAT_ID
 
 Never commit `.env` files or secrets.
 
-Current pickup room used in generated customer messages:
+Current pickup addresses used in generated customer messages:
 
 ```text
-cabinet 116
+PHOTO  -> Измайловский проезд, 6, корп. 1, подъезд 3
+TSHIRT -> ул. Верхняя Первомайская, 47, корп. 11, подъезд 2, 1 этаж, кабинет 116
 ```
 
 ### Backups
@@ -684,6 +704,10 @@ backup -> git pull -> build -> migrate -> docker compose up -d -> health check
   initial order statuses.
 - Synced production and prebuilt Compose files for health checks and Telegram
   runtime environment.
+- Added per-position free-price editing for photo/free-form rows.
+- Added executor assignment during order creation.
+- Split generated pickup addresses by product category and removed T-shirt
+  deadline display/control.
 
 ## Update Rule
 

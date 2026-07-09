@@ -7,6 +7,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   Min,
   ValidateIf,
@@ -75,6 +76,10 @@ export default class DtoCreateOrder {
   @IsString()
   @IsOptional()
   note?: string;
+
+  @IsOptional()
+  @IsUUID()
+  executorId?: string | null;
 
   @IsOptional()
   @IsArray()

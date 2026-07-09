@@ -50,8 +50,8 @@ export class OrderPhotoController {
 
   @Post()
   @Roles(EnumRole.ADMIN)
-  createOrder(@Body() dto: DtoCreateOrder) {
-    return this.orderPhotoService.createOrder(dto);
+  createOrder(@Body() dto: DtoCreateOrder, @CurrentUser() me: RequestUser) {
+    return this.orderPhotoService.createOrder(dto, me.id);
   }
 
   @Patch(':idOrder')
