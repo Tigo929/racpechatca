@@ -1,6 +1,6 @@
 # System Map
 
-Last updated: 2026-07-09
+Last updated: 2026-07-11
 
 This document is the living map of the `racpechatca` CRM. Every meaningful
 change to architecture, business rules, API contracts, deployment, or data
@@ -258,9 +258,9 @@ manual assignment.
 
 ### Deadline Rules
 
-Photo orders receive a production deadline and can be marked urgent. T-shirt
-orders do not show or use the production deadline control in CRM or generated
-customer confirmation text.
+Photo orders receive a production deadline and can be marked urgent in CRM.
+T-shirt orders do not show or use the production deadline control. Generated
+customer confirmation text does not include production deadlines.
 
 ### Salary Rules
 
@@ -708,6 +708,12 @@ backup -> git pull -> build -> migrate -> docker compose up -d -> health check
 - Added executor assignment during order creation.
 - Split generated pickup addresses by product category and removed T-shirt
   deadline display/control.
+
+### 2026-07-11
+
+- Removed production deadline text from copied order confirmations.
+- Hardened copied item text so free-price/photo free-form positions never show
+  paper type labels such as `Глянец` or `Матт`.
 
 ## Update Rule
 

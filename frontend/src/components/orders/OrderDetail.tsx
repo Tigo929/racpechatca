@@ -22,6 +22,21 @@ function pvzReminder(deliveryMethod: string): string[] {
   return [];
 }
 
+type PhotoOrderItem = OrderPhoto['items'][number];
+
+function isFreeFormPhotoItem(order: OrderPhoto, item: PhotoOrderItem): boolean {
+  if (order.isFreePrice || item.isFreePrice) return true;
+  return (item.pricePosition ?? 0) !== (item.price ?? 0) * (item.quantity ?? 0);
+}
+
+function formatPhotoItemLine(order: OrderPhoto, item: PhotoOrderItem): string {
+  if (isFreeFormPhotoItem(order, item)) {
+    return `• ${item.formatPaper} × ${item.quantity} шт — ${item.pricePosition.toLocaleString('ru-RU')} ₽`;
+  }
+  const type = item.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
+  return `• ${item.formatPaper} (${type}) × ${item.quantity} шт — ${item.pricePosition.toLocaleString('ru-RU')} ₽`;
+}
+
 function generateConfirmationText(order: OrderPhoto): string {
   const items = order.items ?? [];
   const tshirtItems = order.tshirtItems ?? [];
@@ -29,22 +44,10 @@ function generateConfirmationText(order: OrderPhoto): string {
   const total = order.totalOrder ?? 0;
   const prepay = Math.ceil(total * 0.5);
   const rest = total - prepay;
-  const deadlineStr = order.deadline
-    ? new Date(order.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
-    : businessConfig.defaultLeadTime;
-  const deadlineLines =
-    order.productCategory === 'TSHIRT'
-      ? []
-      : ['', `⏳ Срок изготовления: до ${deadlineStr}`, ''];
 
   const lines: string[] = [];
   items.forEach(i => {
-    if (order.isFreePrice || i.isFreePrice) {
-      lines.push(`• ${i.formatPaper} × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
-    } else {
-      const type = i.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
-      lines.push(`• ${i.formatPaper} (${type}) × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
-    }
+    lines.push(formatPhotoItemLine(order, i));
   });
   tshirtItems.forEach(i => {
     lines.push(`• Футболка ${i.color}, р-р ${i.size} × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
@@ -73,7 +76,6 @@ function generateConfirmationText(order: OrderPhoto): string {
     `💰 Сумма по позициям: ${itemsTotal.toLocaleString('ru-RU')} ₽`,
     ...(delivery > 0 ? [`🚚 Доставка (${DELIVERY_LABELS[order.deliveryMethod as keyof typeof DELIVERY_LABELS] ?? order.deliveryMethod}): ${delivery.toLocaleString('ru-RU')} ₽`] : []),
     `📦 Итого к оплате: ${total.toLocaleString('ru-RU')} ₽`,
-    ...deadlineLines,
     separator,
     '💳 Для подтверждения заказа:',
     `👉 Предоплата 50% — ${prepay.toLocaleString('ru-RU')} ₽ (сейчас)`,
@@ -100,12 +102,7 @@ function generateReadyText(order: OrderPhoto): string {
 
   const lines: string[] = [];
   items.forEach(i => {
-    if (order.isFreePrice || i.isFreePrice) {
-      lines.push(`• ${i.formatPaper} × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
-    } else {
-      const type = i.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
-      lines.push(`• ${i.formatPaper} (${type}) × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
-    }
+    lines.push(formatPhotoItemLine(order, i));
   });
   tshirtItems.forEach(i => {
     lines.push(`• Футболка ${i.color}, р-р ${i.size} × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
