@@ -169,7 +169,8 @@ export interface OrdersStats {
   sentUnpaidAmount: number | null;
   paidCount: number;
   reviewPendingCount: number | null;
-  reviewReminderDueCount: number | null;
+  /** Напомнили в TG, но отзыв так и не отмечен — по этим стоит пройтись. */
+  reviewRemindedCount: number | null;
   overdueCount: number;
   urgentCount: number;
   alertCount: number;

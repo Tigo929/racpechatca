@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from 'src/generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DtoCreatePayment } from './dto/create-payment.dto';
 import { DtoCreatePaymentByAccruals } from './dto/create-payment-by-accruals.dto';
@@ -240,6 +241,15 @@ export class SalaryService {
     paidById: string,
   ) {
     return this.prisma.$transaction(async (tx) => {
+      // Блокируем выбранные начисления до проверки статуса — иначе два
+      // параллельных запроса (двойной клик) оплатят одни и те же начисления
+      // дважды. Тот же приём, что в createPayment.
+      await tx.$queryRaw`
+        SELECT "id" FROM "SalaryAccrual"
+        WHERE "id" IN (${Prisma.join(dto.accrualIds)})
+        ORDER BY "createdAt" ASC, "id" ASC
+        FOR UPDATE
+      `;
       const accruals = await tx.salaryAccrual.findMany({
         where: {
           id: { in: dto.accrualIds },

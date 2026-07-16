@@ -776,6 +776,7 @@ type PaymentByAccrualsHarness = {
   statusHistory: {
     create: jest.Mock<Promise<{ id: string }>, [{ data: unknown }]>;
   };
+  $queryRaw: jest.Mock<Promise<unknown>, unknown[]>;
   $transaction<T>(cb: (tx: PaymentByAccrualsHarness) => Promise<T>): Promise<T>;
 };
 
@@ -845,6 +846,11 @@ function makePaymentByAccrualsHarness(
         return Promise.resolve({ id: 'hist-1' });
       }),
     },
+
+    // Блокировка FOR UPDATE перед чтением начислений
+    $queryRaw: jest.fn(() =>
+      Promise.resolve(accruals.map((a) => ({ id: a.id }))),
+    ),
 
     $transaction<T>(cb: (tx: typeof harness) => Promise<T>): Promise<T> {
       return cb(harness);

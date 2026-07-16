@@ -27,7 +27,6 @@ import { calculateSalarySnapshot } from 'src/salary/salary-calculation';
 import { StockService } from 'src/stock/stock.service';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { CoolabcService } from 'src/integrations/coolabc.service';
-import { isReviewReminderEligible } from './review-reminder-rules';
 
 function buildCommunicationUrl(
   platform: EnumCommunication,
@@ -79,7 +78,12 @@ const CONTROL_CLOSED_STATUSES: EnumStatus[] = [
   EnumStatus.CANCELLED,
 ];
 
-const FINISHED_STATUSES: EnumStatus[] = [
+// «Активные» на дашборде — заказы в работе прямо сейчас. LEAD и SENT не
+// считаем: у обращений и неоплаченных отправок есть свои карточки, иначе
+// цифра «Активных» не сходится со списком и вводит в заблуждение.
+const NOT_ACTIVE_STATUSES: EnumStatus[] = [
+  EnumStatus.LEAD,
+  EnumStatus.SENT,
   EnumStatus.PAID,
   EnumStatus.COMPLETED,
   EnumStatus.CANCELLED,
@@ -384,7 +388,6 @@ export class OrderPhotoService {
         select: {
           status: true,
           productCategory: true,
-          deliveryMethod: true,
           isUrgent: true,
           deadline: true,
           createdAt: true,
@@ -413,13 +416,13 @@ export class OrderPhotoService {
     let readyCount = 0;
     let sentUnpaidAmount = 0;
     let reviewPendingCount = 0;
-    let reviewReminderDueCount = 0;
+    let reviewRemindedCount = 0;
 
     for (const order of orders) {
       byStatus[order.status] += 1;
       byProduct[order.productCategory] += 1;
 
-      if (!FINISHED_STATUSES.includes(order.status)) {
+      if (!NOT_ACTIVE_STATUSES.includes(order.status)) {
         activeCount += 1;
       }
 
@@ -436,21 +439,24 @@ export class OrderPhotoService {
         !order.clientReviewLeft
       ) {
         reviewPendingCount += 1;
+        // Уже напомнили в TG, отзыв ещё не отмечен — по этим стоит пройтись.
+        if (order.reviewReminderNotifiedAt) reviewRemindedCount += 1;
       }
 
-      if (isReviewReminderEligible(order)) {
-        reviewReminderDueCount += 1;
-      }
-
-      const isControlClosed = CONTROL_CLOSED_STATUSES.includes(order.status);
+      // Алерты («требуют внимания») считаем только по заказам, которые видны
+      // в рабочем списке: LEAD/SENT/PAID и закрытые не пугают счётчиком,
+      // указывающим на невидимые строки.
+      const isControlClosed =
+        CONTROL_CLOSED_STATUSES.includes(order.status) ||
+        order.status === EnumStatus.LEAD;
       const tracksDeadline =
         order.productCategory !== EnumProductCategory.TSHIRT;
       const isUrgent = tracksDeadline && order.isUrgent && !isControlClosed;
+      // «Просрочен» — как в таблице: дедлайн прошёл (< 0). Заказ со сроком
+      // «сегодня» показывается отдельно и просроченным не считается.
+      const days = this.daysLeft(order.deadline, order.createdAt);
       const isOverdue =
-        tracksDeadline &&
-        !isControlClosed &&
-        this.daysLeft(order.deadline, order.createdAt) !== null &&
-        this.daysLeft(order.deadline, order.createdAt)! <= 0;
+        tracksDeadline && !isControlClosed && days !== null && days < 0;
 
       if (isUrgent) urgentCount += 1;
       if (isOverdue) overdueCount += 1;
@@ -474,7 +480,7 @@ export class OrderPhotoService {
       sentUnpaidAmount: isAdmin ? sentUnpaidAmount : null,
       paidCount: byStatus.PAID,
       reviewPendingCount: isAdmin ? reviewPendingCount : null,
-      reviewReminderDueCount: isAdmin ? reviewReminderDueCount : null,
+      reviewRemindedCount: isAdmin ? reviewRemindedCount : null,
       overdueCount,
       urgentCount,
       alertCount,
@@ -493,14 +499,15 @@ export class OrderPhotoService {
     const searchTerm = query.search?.replace(/^@/, '').trim() || undefined;
 
     return {
-      // When searching by contact/number, don't restrict by status: the order
-      // might already be SENT/PAID/LEAD. Without search, the list hides closed
-      // statuses by default; stats can opt out and count the whole context.
+      // When searching by contact/number or filtering by review mark, don't
+      // restrict by status: the order might already be SENT/PAID/LEAD (the
+      // review card counts exactly those). Without search/review filter the
+      // list hides closed statuses by default; stats can opt out entirely.
       ...(options.applyListStatusDefaults
         ? {
             status: query.status
               ? query.status
-              : searchTerm
+              : searchTerm || query.reviewLeft !== undefined
                 ? undefined
                 : { notIn: DEFAULT_LIST_HIDDEN_STATUSES },
           }
