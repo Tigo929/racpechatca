@@ -56,6 +56,16 @@ model OrderPhoto {
   // Когда CRM автоматически напомнила рабочей группе попросить отзыв у клиента.
   reviewReminderNotifiedAt DateTime?
 
+  // Интеграция с партнёром CoolABC (внешняя печать футболок).
+  // externalRequestId — ключ идемпотентности: генерируется один раз и
+  // переиспользуется при повторной отправке, чтобы партнёр не создал дубль.
+  externalRequestId String?                @unique
+  partnerSyncStatus EnumPartnerSyncStatus?
+  partnerSyncError  String?
+  partnerSyncAt     DateTime?
+  // Номер заказа в CRM партнёра (GLN-xxxxx-наш_номер).
+  partnerOrderNo    String?
+
   executorId   String?
   executor     User?     @relation("OrderExecutor", fields: [executorId], references: [id])
   completedAt  DateTime?
@@ -107,6 +117,13 @@ model StockMovement {
 enum EnumProductCategory {
   PHOTO
   TSHIRT
+}
+
+/// Статус отправки заказа партнёру CoolABC.
+enum EnumPartnerSyncStatus {
+  PENDING
+  SENT
+  FAILED
 }
 
 enum EnumExpenseCategory {

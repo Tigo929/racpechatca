@@ -58,6 +58,9 @@ export type EnumAccrualStatus =
   | 'SETTLED'
   | 'REVERSED';
 
+/** Статус отправки заказа партнёру CoolABC (внешняя печать футболок). */
+export type EnumPartnerSyncStatus = 'PENDING' | 'SENT' | 'FAILED';
+
 export interface ItemTshirt {
   id: string;
   createdAt: string;
@@ -127,6 +130,12 @@ export interface OrderPhoto {
   executor?: OrderExecutor | null;
   completedAt?: string | null;
   clientPaidAt?: string | null;
+  /** Отправка партнёру CoolABC (только TSHIRT-заказы). */
+  partnerSyncStatus?: EnumPartnerSyncStatus | null;
+  partnerSyncError?: string | null;
+  partnerSyncAt?: string | null;
+  /** Номер заказа в CRM партнёра (GLN-xxxxx-наш_номер). */
+  partnerOrderNo?: string | null;
   items: ItemPhoto[];
   tshirtItems: ItemTshirt[];
   accruals?: OrderAccrualBrief[];
@@ -208,6 +217,8 @@ export interface CreateOrderDto {
   freePrice?: boolean;
   /** Ручной итог заказа (если задан) — вместо расчёта из позиций. */
   customTotal?: number;
+  /** Отправить заказ партнёру CoolABC (только для категории TSHIRT). */
+  sendToPartner?: boolean;
   items?: CreateItemDto[];
   tshirtItems?: CreateTshirtItemDto[];
 }

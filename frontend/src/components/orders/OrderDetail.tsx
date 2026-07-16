@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Pencil, Trash2, Flame, Clock, Copy, UserCheck, X } from 'lucide-react';
+import { Pencil, Trash2, Flame, Clock, Copy, UserCheck, X, Send } from 'lucide-react';
 import { usersApi } from '../../api/users';
 import { businessConfig } from '../../config/business';
 import { COMMUNICATION_LABELS, DELIVERY_LABELS } from '../../constants';
@@ -261,6 +261,20 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
     updateMutation.mutate({ isUrgent: !order.isUrgent });
   };
 
+  const sendToPartnerMutation = useMutation({
+    mutationFn: () => ordersApi.sendToPartner(orderId),
+    onSuccess: (updated) => {
+      qc.setQueryData(['order', orderId], updated);
+      qc.invalidateQueries({ queryKey: ['orders'] });
+      if (updated.partnerSyncStatus === 'SENT') {
+        toast.success('Заказ отправлен партнёру CoolABC');
+      } else {
+        toast.error(updated.partnerSyncError ?? 'Не удалось отправить партнёру');
+      }
+    },
+    onError: (error: unknown) => toast.error(getErrorMessage(error, 'Ошибка отправки партнёру')),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: () => ordersApi.delete(orderId),
     onSuccess: () => {
@@ -419,6 +433,53 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           />
         )}
       </div>
+
+      {/* Отправка партнёру CoolABC — только TSHIRT-заказы, только админ */}
+      {isAdmin && order.productCategory === 'TSHIRT' && (
+        <div className={`rounded-xl border p-4 flex items-center justify-between gap-3 flex-wrap ${
+          order.partnerSyncStatus === 'SENT'
+            ? 'bg-emerald-50 border-emerald-200'
+            : order.partnerSyncStatus === 'FAILED'
+              ? 'bg-red-50 border-red-200'
+              : 'bg-gray-50 border-gray-200'
+        }`}>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-gray-500 mb-0.5">Партнёр CoolABC (печать)</p>
+            {order.partnerSyncStatus === 'SENT' ? (
+              <p className="text-sm font-semibold text-emerald-700">
+                Отправлен партнёру
+                {order.partnerOrderNo && <> — заказ <span className="font-mono">{order.partnerOrderNo}</span></>}
+                {order.partnerSyncAt && (
+                  <span className="font-normal text-emerald-600"> ({new Date(order.partnerSyncAt).toLocaleString('ru-RU')})</span>
+                )}
+              </p>
+            ) : order.partnerSyncStatus === 'FAILED' ? (
+              <>
+                <p className="text-sm font-semibold text-red-700">Ошибка отправки</p>
+                {order.partnerSyncError && (
+                  <p className="text-xs text-red-600 mt-0.5 break-words">{order.partnerSyncError}</p>
+                )}
+              </>
+            ) : order.partnerSyncStatus === 'PENDING' ? (
+              <p className="text-sm font-semibold text-gray-600">Отправляется…</p>
+            ) : (
+              <p className="text-sm text-gray-600">Не отправлялся партнёру</p>
+            )}
+          </div>
+          {order.partnerSyncStatus !== 'SENT' && (
+            <button
+              onClick={() => sendToPartnerMutation.mutate()}
+              disabled={sendToPartnerMutation.isPending || order.partnerSyncStatus === 'PENDING'}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+            >
+              <Send size={13} aria-hidden="true" />
+              {sendToPartnerMutation.isPending
+                ? 'Отправка…'
+                : order.partnerSyncStatus === 'FAILED' ? 'Отправить повторно' : 'Отправить партнёру'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Details */}
       {isAdmin && editing ? (

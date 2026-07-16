@@ -53,6 +53,7 @@ const baseSchema = z.object({
   note: z.string().optional(),
   executorId: z.string().optional(),
   freePrice: z.boolean().optional(),
+  sendToPartner: z.boolean().optional(),
   freeItems: z.array(freeItemSchema).optional(),
   items: z.array(photoItemSchema).optional(),
   tshirtItems: z.array(tshirtItemSchema).optional(),
@@ -130,6 +131,7 @@ export function CreateOrderForm({ onClose }: Props) {
       deliveryCost: 0,
       executorId: '',
       freePrice: false,
+      sendToPartner: true,
       freeItems: [{ name: '', quantity: 1, price: 0 }],
       items: [{ isFreePrice: false, formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }],
       tshirtItems: [{
@@ -193,6 +195,9 @@ export function CreateOrderForm({ onClose }: Props) {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['orders'] });
       toast.success(vars.status === 'LEAD' ? 'Обращение записано' : 'Заявка создана');
+      if (vars.sendToPartner) {
+        toast('Заявка отправляется партнёру CoolABC — статус в карточке заказа', { icon: '📤' });
+      }
       onClose();
     },
     onError: () => toast.error('Ошибка при создании заявки'),
@@ -251,6 +256,7 @@ export function CreateOrderForm({ onClose }: Props) {
       mutation.mutate({
         ...base,
         productCategory: 'TSHIRT',
+        sendToPartner: data.sendToPartner ?? false,
         tshirtItems: tshirtItems.length ? tshirtItems : undefined,
         items: items.length ? items : undefined,
       });
@@ -376,6 +382,14 @@ export function CreateOrderForm({ onClose }: Props) {
         <label className={labelCls}>Примечание</label>
         <textarea rows={2} className={inputCls + ' resize-none'} {...register('note')} />
       </div>
+
+      {/* Отправка заказа партнёру CoolABC — внешняя печать футболок. */}
+      {productCategory === 'TSHIRT' && (
+        <label className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 cursor-pointer hover:border-amber-300 transition-colors">
+          <input type="checkbox" {...register('sendToPartner')} className="w-4 h-4 accent-amber-600" />
+          <span className="text-sm font-medium text-gray-700">Отправить заявку партнёру CoolABC (печать футболок)</span>
+        </label>
+      )}
 
       {/* Свободная (договорная) цена заказа — только для фото; у футболок
           свободная цена назначается по-позиционно (чекбокс на позиции). */}

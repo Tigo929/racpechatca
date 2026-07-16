@@ -77,6 +77,11 @@ export default class DtoCreateOrder {
   @IsOptional()
   note?: string;
 
+  /** Отправить заказ партнёру CoolABC (только для категории TSHIRT). */
+  @IsOptional()
+  @IsBoolean()
+  sendToPartner?: boolean;
+
   @IsOptional()
   @IsUUID()
   executorId?: string | null;

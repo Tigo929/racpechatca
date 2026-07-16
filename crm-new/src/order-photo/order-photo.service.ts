@@ -26,6 +26,7 @@ import { OrderFinancialIntegrityService } from './order-financial-integrity.serv
 import { calculateSalarySnapshot } from 'src/salary/salary-calculation';
 import { StockService } from 'src/stock/stock.service';
 import { TelegramService } from 'src/telegram/telegram.service';
+import { CoolabcService } from 'src/integrations/coolabc.service';
 import { isReviewReminderEligible } from './review-reminder-rules';
 
 function buildCommunicationUrl(
@@ -100,6 +101,7 @@ export class OrderPhotoService {
     private readonly financialIntegrity: OrderFinancialIntegrityService,
     private readonly stock: StockService,
     private readonly telegram: TelegramService,
+    private readonly coolabc: CoolabcService,
   ) {}
 
   async createOrder(dto: DtoCreateOrder, adminId?: string) {
@@ -247,7 +249,29 @@ export class OrderPhotoService {
       this.telegram.sendToGroup(text).catch(() => {});
     }
 
+    // Отправка партнёру CoolABC — асинхронно, чтобы не блокировать создание
+    // заказа; результат (SENT/FAILED) сохраняется в partnerSync-полях заказа.
+    if (
+      dto.sendToPartner &&
+      result.productCategory === EnumProductCategory.TSHIRT &&
+      result.status !== EnumStatus.LEAD
+    ) {
+      this.coolabc.sendOrder(result.id).catch((err: unknown) => {
+        this.logger.error(
+          `CoolABC: не удалось отправить заказ ${result.numberOrder}`,
+          err,
+        );
+      });
+    }
+
     return result;
+  }
+
+  /** Повторная (или первичная ручная) отправка заказа партнёру CoolABC. */
+  async sendOrderToPartner(idOrder: string) {
+    await this.getOrderById(idOrder, '', EnumRole.ADMIN);
+    await this.coolabc.sendOrder(idOrder);
+    return this.getOrderById(idOrder, '', EnumRole.ADMIN);
   }
 
   async createLead(dto: DtoCreateLead) {
