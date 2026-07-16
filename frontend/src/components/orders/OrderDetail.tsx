@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Pencil, Trash2, Flame, Clock, Copy, UserCheck, X, Send } from 'lucide-react';
 import { usersApi } from '../../api/users';
-import { businessConfig } from '../../config/business';
+import { businessConfig, resolvePickupAddress } from '../../config/business';
 import { COMMUNICATION_LABELS, DELIVERY_LABELS } from '../../constants';
 
 function pvzReminder(deliveryMethod: string): string[] {
@@ -57,9 +57,7 @@ function generateConfirmationText(order: OrderPhoto): string {
   const separator = '─────────────────';
 
   const isPickup = order.deliveryMethod === 'PICKUP';
-  const pickupAddr = order.productCategory === 'TSHIRT'
-    ? businessConfig.tshirtPickupAddress
-    : businessConfig.pickupAddress;
+  const pickupAddr = resolvePickupAddress(order);
 
   const restLabel = isPickup
     ? `👉 Остаток — ${rest.toLocaleString('ru-RU')} ₽ при самовывозе`
@@ -111,9 +109,7 @@ function generateReadyText(order: OrderPhoto): string {
   const itemsTotal = [...items, ...tshirtItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0);
   const separator = '─────────────────';
   const isPickup = order.deliveryMethod === 'PICKUP';
-  const pickupAddr = order.productCategory === 'TSHIRT'
-    ? businessConfig.tshirtPickupAddress
-    : businessConfig.pickupAddress;
+  const pickupAddr = resolvePickupAddress(order);
 
   return [
     '🎉 Ваш заказ готов!',
@@ -506,7 +502,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           showPartnerFields={order.productCategory === 'TSHIRT'}
         />
       ) : (
-        <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
           <InfoRow label="Платформа общения" value={COMMUNICATION_LABELS[order.communicationPlatform]} />
           <InfoRow label="Способ доставки" value={DELIVERY_LABELS[order.deliveryMethod]} />
           {(order.clientName || order.clientPhone) && (
@@ -519,8 +515,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           {isAdmin && (
             <>
               <InfoRow label="Доставка" value={`${(order.deliveryCost ?? 0).toLocaleString()} ₽`} />
-              {order.note && <InfoRow label="Примечание" value={order.note} className="col-span-2" />}
-              <div className="col-span-2 pt-2 border-t border-gray-100 flex justify-end">
+              {order.note && <InfoRow label="Примечание" value={order.note} className="sm:col-span-2" />}
+              <div className="sm:col-span-2 pt-2 border-t border-gray-100 flex justify-end">
                 <div className="text-right">
                   <p className="text-xs text-gray-500">Сумма заказа</p>
                   <p className="text-2xl font-bold text-gray-900">{(order.totalOrder ?? 0).toLocaleString()} ₽</p>
@@ -529,7 +525,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             </>
           )}
           {!isAdmin && order.note && (
-            <InfoRow label="Примечание" value={order.note} className="col-span-2" />
+            <InfoRow label="Примечание" value={order.note} className="sm:col-span-2" />
           )}
         </div>
       )}

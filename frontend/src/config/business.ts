@@ -18,3 +18,28 @@ export const businessConfig = {
   /** Срок изготовления по умолчанию, если дедлайн не задан */
   defaultLeadTime: '3 рабочих дня',
 } as const;
+
+/**
+ * Персональные адреса самовывоза исполнителей: если заказ ведёт этот
+ * исполнитель, клиент забирает заказ по его адресу, а не по основному.
+ * Ключ — username в нижнем регистре.
+ */
+const executorPickupAddresses: Record<string, string> = {
+  максим: 'Измайловский проезд, 7к2, подъезд 1',
+  maxim: 'Измайловский проезд, 7к2, подъезд 1',
+  maksim: 'Измайловский проезд, 7к2, подъезд 1',
+};
+
+/** Адрес самовывоза для заказа: адрес исполнителя (если задан) или общий. */
+export function resolvePickupAddress(order: {
+  productCategory?: string;
+  executor?: { username: string } | null;
+}): string {
+  const executorName = order.executor?.username?.trim().toLowerCase();
+  if (executorName && executorPickupAddresses[executorName]) {
+    return executorPickupAddresses[executorName];
+  }
+  return order.productCategory === 'TSHIRT'
+    ? businessConfig.tshirtPickupAddress
+    : businessConfig.pickupAddress;
+}
