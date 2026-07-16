@@ -299,6 +299,9 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       deliveryMethod: order.deliveryMethod,
       deliveryCost: order.deliveryCost,
       note: order.note,
+      clientName: order.clientName ?? undefined,
+      clientPhone: order.clientPhone ?? undefined,
+      tshirtModel: order.tshirtModel ?? undefined,
     });
     setEditing(true);
   };
@@ -446,13 +449,24 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           <div className="min-w-0">
             <p className="text-xs font-medium text-gray-500 mb-0.5">Партнёр CoolABC (печать)</p>
             {order.partnerSyncStatus === 'SENT' ? (
-              <p className="text-sm font-semibold text-emerald-700">
-                Отправлен партнёру
-                {order.partnerOrderNo && <> — заказ <span className="font-mono">{order.partnerOrderNo}</span></>}
-                {order.partnerSyncAt && (
-                  <span className="font-normal text-emerald-600"> ({new Date(order.partnerSyncAt).toLocaleString('ru-RU')})</span>
+              <>
+                <p className="text-sm font-semibold text-emerald-700">
+                  Отправлен партнёру
+                  {order.partnerOrderNo && <> — заказ <span className="font-mono">{order.partnerOrderNo}</span></>}
+                  {order.partnerSyncAt && (
+                    <span className="font-normal text-emerald-600"> ({new Date(order.partnerSyncAt).toLocaleString('ru-RU')})</span>
+                  )}
+                </p>
+                {order.partnerTrackingUrl && (
+                  <a
+                    href={order.partnerTrackingUrl.split(', ')[0]}
+                    target="_blank" rel="noreferrer"
+                    className="text-xs text-emerald-700 underline hover:text-emerald-900"
+                  >
+                    Отслеживать заявку у партнёра
+                  </a>
                 )}
-              </p>
+              </>
             ) : order.partnerSyncStatus === 'FAILED' ? (
               <>
                 <p className="text-sm font-semibold text-red-700">Ошибка отправки</p>
@@ -489,11 +503,19 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           onSave={() => updateMutation.mutate(form)}
           onCancel={() => setEditing(false)}
           isPending={updateMutation.isPending}
+          showPartnerFields={order.productCategory === 'TSHIRT'}
         />
       ) : (
         <div className="grid grid-cols-2 gap-x-8 gap-y-3">
           <InfoRow label="Платформа общения" value={COMMUNICATION_LABELS[order.communicationPlatform]} />
           <InfoRow label="Способ доставки" value={DELIVERY_LABELS[order.deliveryMethod]} />
+          {(order.clientName || order.clientPhone) && (
+            <InfoRow
+              label="Клиент"
+              value={[order.clientName, order.clientPhone].filter(Boolean).join(' · ')}
+            />
+          )}
+          {order.tshirtModel && <InfoRow label="Модель футболки" value={order.tshirtModel} />}
           {isAdmin && (
             <>
               <InfoRow label="Доставка" value={`${(order.deliveryCost ?? 0).toLocaleString()} ₽`} />

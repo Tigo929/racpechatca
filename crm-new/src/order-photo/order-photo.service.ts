@@ -207,6 +207,9 @@ export class OrderPhotoService {
           deliveryMethod: dto.deliveryMethod,
           deliveryCost: dto.deliveryCost,
           note: dto.note,
+          clientName: dto.clientName,
+          clientPhone: dto.clientPhone,
+          tshirtModel: dto.tshirtModel,
           productCategory,
           executorId: dto.executorId ?? undefined,
           items: photoCreate.length ? { create: photoCreate } : undefined,
@@ -951,6 +954,9 @@ export class OrderPhotoService {
           (dto.deliveryCost ?? order.deliveryCost),
         note: dto.note ?? order.note,
         isUrgent: dto.isUrgent !== undefined ? dto.isUrgent : order.isUrgent,
+        clientName: dto.clientName ?? order.clientName,
+        clientPhone: dto.clientPhone ?? order.clientPhone,
+        tshirtModel: dto.tshirtModel ?? order.tshirtModel,
       },
     });
     // Доставка влияет на сумму → подгоняем невыплаченное начисление.

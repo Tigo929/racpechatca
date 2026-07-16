@@ -7,12 +7,14 @@ interface Props {
   onSave: () => void;
   onCancel: () => void;
   isPending: boolean;
+  /** Показать поля клиента/модели (нужны для отправки партнёру CoolABC). */
+  showPartnerFields?: boolean;
 }
 
 const inputCls = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent';
 const labelCls = 'text-xs text-gray-500 mb-1';
 
-export function OrderEditForm({ form, onChange, onSave, onCancel, isPending }: Props) {
+export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, showPartnerFields }: Props) {
   const set = (patch: Partial<UpdateOrderDto>) => onChange({ ...form, ...patch });
 
   return (
@@ -66,6 +68,26 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending }: P
         <textarea rows={2} className={inputCls + ' resize-none'} value={form.note ?? ''}
           onChange={e => set({ note: e.target.value })} />
       </div>
+
+      {showPartnerFields && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className={labelCls}>Имя клиента (для партнёра)</p>
+            <input className={inputCls} placeholder="Иван Петров" value={form.clientName ?? ''}
+              onChange={e => set({ clientName: e.target.value })} />
+          </div>
+          <div>
+            <p className={labelCls}>Телефон клиента (для партнёра)</p>
+            <input className={inputCls} placeholder="+79991234567" value={form.clientPhone ?? ''}
+              onChange={e => set({ clientPhone: e.target.value })} />
+          </div>
+          <div className="col-span-2">
+            <p className={labelCls}>Модель футболки (для партнёра)</p>
+            <input className={inputCls} placeholder="Футболка оверсайз 240 г/м²" value={form.tshirtModel ?? ''}
+              onChange={e => set({ tshirtModel: e.target.value })} />
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-2">
         <button onClick={onCancel}

@@ -32,6 +32,8 @@ const tshirtItemSchema = z.object({
   quantity: z.coerce.number().int().positive(),
   price: z.coerce.number().int().min(0),
   clientItem: z.boolean().optional(),
+  // Ссылка на макет — обязательна (HTTPS) при отправке партнёру.
+  designUrl: z.string().optional(),
 });
 
 // Свободная позиция: произвольное название + цена. Имя не валидируем строго здесь
@@ -54,6 +56,9 @@ const baseSchema = z.object({
   executorId: z.string().optional(),
   freePrice: z.boolean().optional(),
   sendToPartner: z.boolean().optional(),
+  clientName: z.string().optional(),
+  clientPhone: z.string().optional(),
+  tshirtModel: z.string().optional(),
   freeItems: z.array(freeItemSchema).optional(),
   items: z.array(photoItemSchema).optional(),
   tshirtItems: z.array(tshirtItemSchema).optional(),
@@ -105,7 +110,23 @@ const fullSchema = baseSchema.superRefine((data, ctx) => {
         if (it.freePrice && !it.name?.trim()) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Укажите название', path: ['tshirtItems', i, 'name'] });
         }
+        // Партнёру обязателен HTTPS-макет для каждой позиции-футболки.
+        if (data.sendToPartner && !it.freePrice && !(it.designUrl ?? '').trim().startsWith('https://')) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Для отправки партнёру нужна HTTPS-ссылка на макет', path: ['tshirtItems', i, 'designUrl'] });
+        }
       });
+    }
+    // Обязательные поля контракта партнёра.
+    if (data.sendToPartner) {
+      if ((data.clientName ?? '').trim().length < 2) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Укажите имя клиента (минимум 2 символа)', path: ['clientName'] });
+      }
+      if ((data.clientPhone ?? '').trim().length < 5) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Укажите телефон клиента', path: ['clientPhone'] });
+      }
+      if ((data.tshirtModel ?? '').trim().length < 2) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Укажите модель футболки', path: ['tshirtModel'] });
+      }
     }
   }
 });
@@ -132,12 +153,15 @@ export function CreateOrderForm({ onClose }: Props) {
       executorId: '',
       freePrice: false,
       sendToPartner: true,
+      clientName: '',
+      clientPhone: '',
+      tshirtModel: '',
       freeItems: [{ name: '', quantity: 1, price: 0 }],
       items: [{ isFreePrice: false, formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }],
       tshirtItems: [{
         freePrice: false, name: '',
         color: 'Белый', size: 'M', printLocation: 'FRONT',
-        quantity: 1, price: 500, clientItem: false,
+        quantity: 1, price: 500, clientItem: false, designUrl: '',
       }],
     },
   });
@@ -145,6 +169,7 @@ export function CreateOrderForm({ onClose }: Props) {
   const productCategory = useWatch({ control, name: 'productCategory' });
   const communicationPlatform = useWatch({ control, name: 'communicationPlatform' });
   const freePrice = useWatch({ control, name: 'freePrice' });
+  const sendToPartner = useWatch({ control, name: 'sendToPartner' });
   const photoItemsWatch = useWatch({ control, name: 'items' });
   const tshirtItemsWatch = useWatch({ control, name: 'tshirtItems' });
 
@@ -175,7 +200,7 @@ export function CreateOrderForm({ onClose }: Props) {
         setValue('tshirtItems', [{
           freePrice: false, name: '',
           color: 'Белый', size: 'M', printLocation: 'FRONT',
-          quantity: 1, price: 500, clientItem: false,
+          quantity: 1, price: 500, clientItem: false, designUrl: '',
         }]);
       }
     } else {
@@ -245,6 +270,7 @@ export function CreateOrderForm({ onClose }: Props) {
       const tshirtItems = rows.filter((r) => !r.freePrice).map((r) => ({
         color: r.color, size: r.size, printLocation: r.printLocation,
         quantity: r.quantity, price: r.price, clientItem: r.clientItem,
+        designUrl: r.designUrl?.trim() || undefined,
       }));
       const items = rows.filter((r) => r.freePrice).map((r) => ({
         formatPaper: (r.name ?? '').trim(),
@@ -257,6 +283,9 @@ export function CreateOrderForm({ onClose }: Props) {
         ...base,
         productCategory: 'TSHIRT',
         sendToPartner: data.sendToPartner ?? false,
+        clientName: data.clientName?.trim() || undefined,
+        clientPhone: data.clientPhone?.trim() || undefined,
+        tshirtModel: data.tshirtModel?.trim() || undefined,
         tshirtItems: tshirtItems.length ? tshirtItems : undefined,
         items: items.length ? items : undefined,
       });
@@ -385,10 +414,34 @@ export function CreateOrderForm({ onClose }: Props) {
 
       {/* Отправка заказа партнёру CoolABC — внешняя печать футболок. */}
       {productCategory === 'TSHIRT' && (
-        <label className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 cursor-pointer hover:border-amber-300 transition-colors">
-          <input type="checkbox" {...register('sendToPartner')} className="w-4 h-4 accent-amber-600" />
-          <span className="text-sm font-medium text-gray-700">Отправить заявку партнёру CoolABC (печать футболок)</span>
-        </label>
+        <div className="rounded-xl border border-gray-200 overflow-hidden">
+          <label className="flex items-center gap-2.5 p-3 cursor-pointer hover:bg-amber-50/50 transition-colors">
+            <input type="checkbox" {...register('sendToPartner')} className="w-4 h-4 accent-amber-600" />
+            <span className="text-sm font-medium text-gray-700">Отправить заявку партнёру CoolABC (печать футболок)</span>
+          </label>
+          {sendToPartner && (
+            <div className="border-t border-gray-100 bg-gray-50/60 p-3 space-y-3">
+              <p className="text-xs text-gray-500">Обязательные данные для партнёра. Ссылка на макет указывается в каждой позиции ниже.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Имя клиента</label>
+                  <input className={inputCls} placeholder="Иван Петров" {...register('clientName')} />
+                  {errors.clientName && <p className={errorCls}>{errors.clientName.message}</p>}
+                </div>
+                <div>
+                  <label className={labelCls}>Телефон клиента</label>
+                  <input className={inputCls} placeholder="+79991234567" {...register('clientPhone')} />
+                  {errors.clientPhone && <p className={errorCls}>{errors.clientPhone.message}</p>}
+                </div>
+                <div className="col-span-2">
+                  <label className={labelCls}>Модель футболки</label>
+                  <input className={inputCls} placeholder="Футболка оверсайз 240 г/м²" {...register('tshirtModel')} />
+                  {errors.tshirtModel && <p className={errorCls}>{errors.tshirtModel.message}</p>}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Свободная (договорная) цена заказа — только для фото; у футболок
@@ -526,7 +579,7 @@ export function CreateOrderForm({ onClose }: Props) {
               onClick={() => tshirtFields.append({
                 freePrice: false, name: '',
                 color: 'Белый', size: 'M', printLocation: 'FRONT',
-                quantity: 1, price: 500, clientItem: false,
+                quantity: 1, price: 500, clientItem: false, designUrl: '',
               })}
               className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
               <Plus size={14} /> Добавить
@@ -604,6 +657,17 @@ export function CreateOrderForm({ onClose }: Props) {
                           <input type="number" min={0} className={inputCls} {...register(`tshirtItems.${idx}.price`)} />
                         </div>
                       </div>
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>
+                        Ссылка на макет{sendToPartner ? ' (обязательно для партнёра)' : ''}
+                      </label>
+                      <input className={inputCls} placeholder="https://…"
+                        {...register(`tshirtItems.${idx}.designUrl`)} />
+                      {errors.tshirtItems?.[idx]?.designUrl && (
+                        <p className={errorCls}>{errors.tshirtItems[idx]?.designUrl?.message}</p>
+                      )}
                     </div>
 
                     <label className="flex items-center gap-2.5 p-2.5 rounded-lg border border-gray-200 cursor-pointer hover:border-amber-300 transition-colors">

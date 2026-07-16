@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  MaxLength,
   Min,
   ValidateIf,
 } from 'class-validator';
@@ -53,4 +54,19 @@ export class DtoUpdateOrder {
   @IsBoolean()
   @IsOptional()
   isUrgent?: boolean;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  clientName?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(64)
+  clientPhone?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  tshirtModel?: string;
 }

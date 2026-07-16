@@ -27,11 +27,12 @@ type EditState = {
   printLocation: EnumPrintLocation;
   quantity: string; price: string;
   clientItem: boolean;
+  designUrl: string;
 };
 
 const EMPTY: EditState = {
   color: 'Белый', size: 'M', printLocation: 'FRONT',
-  quantity: '1', price: '500', clientItem: false,
+  quantity: '1', price: '500', clientItem: false, designUrl: '',
 };
 
 type FreeState = { name: string; quantity: string; price: string };
@@ -70,6 +71,10 @@ function TshirtRows({ state, onChange }: { state: EditState; onChange: (s: EditS
       </Row>
       <Row label="Цена ₽">
         <input type="number" min={0} className={inputCls} value={state.price} onChange={(e) => onChange({ ...state, price: e.target.value })} />
+      </Row>
+      <Row label="Ссылка на макет">
+        <input className={inputCls} placeholder="https://… (нужна для отправки партнёру)"
+          value={state.designUrl} onChange={(e) => onChange({ ...state, designUrl: e.target.value })} />
       </Row>
       <Row label="Изделие клиента">
         <label className="flex items-center gap-2 cursor-pointer">
@@ -201,6 +206,7 @@ export function TshirtItemsTable({ order }: Props) {
       color: item.color, size: item.size, printLocation: item.printLocation,
       quantity: String(item.quantity), price: String(item.price),
       clientItem: item.clientItem ?? false,
+      designUrl: item.designUrl ?? '',
     });
   };
 
@@ -208,6 +214,7 @@ export function TshirtItemsTable({ order }: Props) {
     color: s.color, size: s.size, printLocation: s.printLocation,
     quantity: Number(s.quantity), price: Number(s.price),
     clientItem: s.clientItem,
+    designUrl: s.designUrl.trim() || undefined,
   });
 
   const totalPositions =
@@ -287,6 +294,15 @@ export function TshirtItemsTable({ order }: Props) {
                 <tbody>
                   <Row label="Место печати">{PRINT_LOCATION_LABELS[item.printLocation]}</Row>
                   <Row label="Количество">{item.quantity} шт.</Row>
+                  {item.designUrl && (
+                    <Row label="Макет">
+                      <a href={item.designUrl} target="_blank" rel="noopener noreferrer"
+                        className="text-indigo-600 hover:text-indigo-800 underline break-all inline-flex items-center gap-1">
+                        {item.designUrl.length > 60 ? item.designUrl.slice(0, 60) + '…' : item.designUrl}
+                        <ExternalLink size={11} className="shrink-0" aria-hidden="true" />
+                      </a>
+                    </Row>
+                  )}
                   {isAdmin && <Row label="Цена за шт.">{item.price.toLocaleString()} ₽</Row>}
                   {isAdmin && <Row label="Итого"><span className="font-semibold">{item.pricePosition.toLocaleString()} ₽</span></Row>}
                 </tbody>

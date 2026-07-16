@@ -56,6 +56,12 @@ model OrderPhoto {
   // Когда CRM автоматически напомнила рабочей группе попросить отзыв у клиента.
   reviewReminderNotifiedAt DateTime?
 
+  // Контакт клиента и модель футболки — обязательны по контракту CoolABC
+  // (customer.name, customer.phone, tshirt_model), но полезны и сами по себе.
+  clientName  String?
+  clientPhone String?
+  tshirtModel String?
+
   // Интеграция с партнёром CoolABC (внешняя печать футболок).
   // externalRequestId — ключ идемпотентности: генерируется один раз и
   // переиспользуется при повторной отправке, чтобы партнёр не создал дубль.
@@ -65,6 +71,8 @@ model OrderPhoto {
   partnerSyncAt     DateTime?
   // Номер заказа в CRM партнёра (GLN-xxxxx-наш_номер).
   partnerOrderNo    String?
+  // Публичная трекинг-ссылка партнёра (public_order_url из ответа).
+  partnerTrackingUrl String?
 
   executorId   String?
   executor     User?     @relation("OrderExecutor", fields: [executorId], references: [id])

@@ -9,6 +9,7 @@ import {
   IsString,
   IsUUID,
   Matches,
+  MaxLength,
   Min,
   ValidateIf,
   ValidateNested,
@@ -81,6 +82,24 @@ export default class DtoCreateOrder {
   @IsOptional()
   @IsBoolean()
   sendToPartner?: boolean;
+
+  /** Имя клиента — обязательно для отправки партнёру (customer.name). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  clientName?: string;
+
+  /** Телефон клиента — обязателен для отправки партнёру (customer.phone). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  clientPhone?: string;
+
+  /** Модель футболки — обязательна для отправки партнёру (tshirt_model). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  tshirtModel?: string;
 
   @IsOptional()
   @IsUUID()
