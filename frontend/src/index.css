@@ -39,3 +39,13 @@ body {
 
 /* Таблица — плавный hover */
 tbody tr { transition: background 0.1s ease; }
+
+/* ── Мобильные правки ───────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* iOS Safari зумит страницу при фокусе на поле со шрифтом < 16px.
+     На мобильном держим у полей 16px — экран перестаёт «прыгать». */
+  input, select, textarea { font-size: 16px !important; }
+}
+
+/* Тап-подсветка не нужна — свои hover/active состояния */
+button, a { -webkit-tap-highlight-color: transparent; }

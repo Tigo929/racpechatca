@@ -50,7 +50,9 @@ export function Modal({ open, onClose, title, children, size = 'md' }: Props) {
   const widths = { md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    // На мобильном модалка занимает весь экран (проще попадать пальцем,
+    // клавиатура не ломает вёрстку), с sm и выше — привычное окно по центру.
+    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-4">
       <div
         className="absolute inset-0 bg-black/50"
         onClick={onClose}
@@ -61,20 +63,20 @@ export function Modal({ open, onClose, title, children, size = 'md' }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`relative bg-white rounded-2xl shadow-xl w-full ${widths[size]} max-h-[90vh] flex flex-col overscroll-contain`}
+        className={`relative bg-white rounded-none sm:rounded-2xl shadow-xl w-full ${widths[size]} max-h-[100dvh] sm:max-h-[90vh] flex flex-col overscroll-contain`}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-100">
           <h2 id={titleId} className="text-lg font-semibold text-gray-900">{title}</h2>
           <button
             ref={closeRef}
             onClick={onClose}
             aria-label="Закрыть"
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+            className="p-2 -mr-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
           >
-            <X size={18} aria-hidden="true" />
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1 px-6 py-4">
+        <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           {children}
         </div>
       </div>

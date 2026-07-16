@@ -115,6 +115,7 @@ export default function StockPage() {
               <Package size={16} className="text-gray-400" />
               <p className="text-sm text-gray-500">Укажите наличие по размеру и цвету. При отправке заказа остаток уменьшается автоматически.</p>
             </div>
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
@@ -148,6 +149,7 @@ export default function StockPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
         <p className="text-xs text-gray-400 mt-3 text-center">

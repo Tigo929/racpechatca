@@ -150,7 +150,8 @@ export function OrdersPage() {
                   onClick={() => setCreateOpen(true)}
                   className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-950"
                 >
-                  <Plus size={15} aria-hidden="true" /> Новая заявка
+                  <Plus size={15} aria-hidden="true" />
+                  <span className="hidden sm:inline">Новая заявка</span>
                 </button>
               </>
             )}
@@ -334,7 +335,81 @@ export function OrdersPage() {
               <p className="text-xs text-gray-400">Попробуйте изменить фильтры или создайте новую заявку</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Мобильный вид — карточки вместо широкой таблицы */}
+            <div className="md:hidden divide-y divide-gray-100">
+              {orders.map(order => {
+                const tracksDeadline = order.productCategory !== 'TSHIRT';
+                const dl = tracksDeadline
+                  ? getDeadlineInfo(order.deadline, order.createdAt)
+                  : { rowClass: '', badgeClass: '', label: '' };
+                const isClosed = (
+                  order.status === 'PAID' ||
+                  order.status === 'SENT' ||
+                  order.status === 'DONE' ||
+                  order.status === 'COMPLETED' ||
+                  order.status === 'CANCELLED'
+                );
+                const isPaid = order.status === 'PAID';
+                const showUrgent = tracksDeadline && order.isUrgent && !isClosed;
+                return (
+                  <button
+                    key={order.id}
+                    onClick={() => setSelectedId(order.id)}
+                    className={`w-full text-left px-4 py-3.5 active:bg-indigo-50 transition-colors ${
+                      isPaid ? 'opacity-50' : showUrgent ? 'bg-red-50 border-l-[3px] border-l-red-500' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="flex items-center gap-1.5 font-mono text-sm font-bold text-indigo-700 tabular-nums">
+                        {showUrgent && <Flame size={13} className="text-red-500 flex-shrink-0" aria-hidden="true" />}
+                        {order.numberOrder}
+                      </span>
+                      <StatusBadge status={order.status} productCategory={order.productCategory} size="sm" />
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500">
+                      {order.productCategory === 'TSHIRT' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold bg-violet-100 text-violet-700">
+                          <Shirt size={10} aria-hidden="true" /> Футболка
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold bg-amber-100 text-amber-700">
+                          <Camera size={10} aria-hidden="true" /> Фото
+                        </span>
+                      )}
+                      <DeliveryBadge method={order.deliveryMethod} />
+                      <span className="tabular-nums">
+                        {new Date(order.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 mt-1.5">
+                      <div className="flex items-center gap-2 text-xs">
+                        {tracksDeadline && !isClosed && dl.label ? (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-medium ${dl.badgeClass}`}>
+                            <Clock size={9} aria-hidden="true" /> {dl.label}
+                          </span>
+                        ) : null}
+                        <span className="text-gray-400 tabular-nums">
+                          {(order.items?.length ?? 0) + (order.tshirtItems?.length ?? 0)} поз.
+                        </span>
+                        {isAdmin && order.clientReviewLeft && (
+                          <span className="inline-flex items-center gap-0.5 text-emerald-600 font-medium">
+                            <Star size={10} aria-hidden="true" className="fill-emerald-600" /> отзыв
+                          </span>
+                        )}
+                      </div>
+                      {isAdmin && (
+                        <span className="text-sm font-bold text-gray-900 tabular-nums">
+                          {(order.totalOrder ?? 0).toLocaleString()} ₽
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {/* Десктопный вид — таблица */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
@@ -455,6 +530,7 @@ export function OrdersPage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
 
