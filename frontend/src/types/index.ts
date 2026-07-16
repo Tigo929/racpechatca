@@ -393,8 +393,9 @@ export interface PnlMetrics {
   deliverySupplies: number;
   equipment: number;
   marketing: number;
+  partnerShare: number;
   other: number;
-  operatingExpenses: number; // сумма 4 операционных
+  operatingExpenses: number; // сумма всех операционных
   totalExpenses: number;     // cogs + operatingExpenses (все расходные ордера)
   // Зарплата и итог
   salaryPaid: number;
@@ -452,6 +453,7 @@ export type EnumExpenseCategory =
   | 'DELIVERY_SUPPLIES'
   | 'EQUIPMENT'
   | 'MARKETING'
+  | 'PARTNER_SHARE'
   | 'OTHER';
 
 export const EXPENSE_CATEGORY_LABELS: Record<EnumExpenseCategory, string> = {
@@ -460,6 +462,7 @@ export const EXPENSE_CATEGORY_LABELS: Record<EnumExpenseCategory, string> = {
   DELIVERY_SUPPLIES: 'Упаковка / Доставка',
   EQUIPMENT:         'Оборудование',
   MARKETING:         'Реклама',
+  PARTNER_SHARE:     'Доля Гриши',
   OTHER:             'Прочее',
 };
 

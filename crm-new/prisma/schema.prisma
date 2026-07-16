@@ -140,6 +140,7 @@ enum EnumExpenseCategory {
   DELIVERY_SUPPLIES
   EQUIPMENT
   MARKETING
+  PARTNER_SHARE
   OTHER
 }
 
