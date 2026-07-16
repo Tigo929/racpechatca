@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   EnumCommunication,
+  EnumDeliveryMethod,
   EnumProductCategory,
 } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -13,6 +14,7 @@ import { TelegramService } from 'src/telegram/telegram.service';
 import {
   REVIEW_REMINDER_CATEGORIES,
   REVIEW_REMINDER_DELAY_MS,
+  REVIEW_REMINDER_PICKUP_DELAY_MS,
   REVIEW_REMINDER_STATUSES,
 } from './review-reminder-rules';
 
@@ -112,14 +114,25 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
     if (this.running) return;
     this.running = true;
     try {
+      // Самовывоз — напоминание на следующий день; доставка — через 3,5 дня.
       const cutoff = new Date(Date.now() - REVIEW_REMINDER_DELAY_MS);
+      const pickupCutoff = new Date(Date.now() - REVIEW_REMINDER_PICKUP_DELAY_MS);
       const orders = await this.prisma.orderPhoto.findMany({
         where: {
           productCategory: { in: REVIEW_REMINDER_CATEGORIES },
           status: { in: REVIEW_REMINDER_STATUSES },
           clientReviewLeft: false,
           reviewReminderNotifiedAt: null,
-          sentAt: { lte: cutoff },
+          OR: [
+            {
+              deliveryMethod: EnumDeliveryMethod.PICKUP,
+              sentAt: { lte: pickupCutoff },
+            },
+            {
+              deliveryMethod: { not: EnumDeliveryMethod.PICKUP },
+              sentAt: { lte: cutoff },
+            },
+          ],
         },
         orderBy: { sentAt: 'asc' },
         take: REVIEW_REMINDER_LIMIT,

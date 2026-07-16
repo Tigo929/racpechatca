@@ -384,6 +384,7 @@ export class OrderPhotoService {
         select: {
           status: true,
           productCategory: true,
+          deliveryMethod: true,
           isUrgent: true,
           deadline: true,
           createdAt: true,
@@ -904,7 +905,11 @@ export class OrderPhotoService {
         where: { id },
         data: {
           status: dto.status,
-          ...(newStatus === EnumStatus.SENT && !lockedOrder.sentAt
+          // sentAt ставим и при прямом переводе в PAID (минуя SENT — типично
+          // для самовывоза): иначе заказ выпадает из напоминаний об отзыве.
+          ...((newStatus === EnumStatus.SENT ||
+            newStatus === EnumStatus.PAID) &&
+          !lockedOrder.sentAt
             ? { sentAt: new Date() }
             : {}),
           ...(newStatus === EnumStatus.COMPLETED
