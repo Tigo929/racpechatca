@@ -356,9 +356,11 @@ export default function SalaryPage() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      {/* На мобильном список исполнителей сверху, детали под ним;
+          с md — привычные две колонки. */}
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         {/* Left panel */}
-        <aside className="w-72 shrink-0 bg-white border-r border-gray-200 overflow-y-auto p-3">
+        <aside className="w-full md:w-72 shrink-0 bg-white border-b md:border-b-0 md:border-r border-gray-200 overflow-y-auto p-3 max-h-56 md:max-h-none">
           {executors.length === 0 ? (
             <p className="text-gray-400 text-sm p-4">Исполнителей нет</p>
           ) : (
@@ -419,7 +421,7 @@ export default function SalaryPage() {
         </aside>
 
         {/* Right panel */}
-        <main className="flex-1 overflow-hidden p-6">
+        <main className="flex-1 overflow-y-auto md:overflow-hidden p-4 md:p-6">
           {selected ? (
             <ExecutorDetail
               key={selected.id}

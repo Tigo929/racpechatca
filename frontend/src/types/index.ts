@@ -415,23 +415,6 @@ export interface MonthlyReport {
   totals: PnlMetrics;
 }
 
-export interface FunnelMonthData {
-  month: number;
-  label: string;
-  leads: number;
-  converted: number;
-}
-
-export interface FunnelReport {
-  year: number;
-  totalLeads: number;
-  totalConverted: number;
-  paidFromLeads: number;
-  conversionRate: number;
-  closeRate: number;
-  byMonth: FunnelMonthData[];
-}
-
 export interface WeekData extends PnlMetrics {
   weekNum: number;
   displayStart: string;

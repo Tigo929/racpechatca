@@ -31,15 +31,6 @@ export class ReportsController {
     return this.reportsService.getAvailableYears();
   }
 
-  @Get('funnel')
-  getFunnel(@Query('year') year?: string) {
-    const y = year ? parseInt(year, 10) : new Date().getFullYear();
-    if (isNaN(y) || y < 2000 || y > 2100) {
-      throw new BadRequestException('Некорректный год');
-    }
-    return this.reportsService.getFunnelReport(y);
-  }
-
   @Get('weekly')
   getWeekly(@Query('year') year?: string, @Query('month') month?: string) {
     const now = new Date();

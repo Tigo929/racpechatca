@@ -30,6 +30,9 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: 7d
       PORT: 3000
+      # Бизнес живёт по Москве: без TZ отчёты режут месяцы/недели по UTC,
+      # и заказ, отправленный 1-го числа ночью, попадал в прошлый месяц.
+      TZ: Europe/Moscow
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_GROUP_CHAT_ID: ${TELEGRAM_GROUP_CHAT_ID}
       COOLABC_API_TOKEN: ${COOLABC_API_TOKEN:-}
