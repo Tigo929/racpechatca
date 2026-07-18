@@ -116,7 +116,9 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
     try {
       // Самовывоз — напоминание на следующий день; доставка — через 3,5 дня.
       const cutoff = new Date(Date.now() - REVIEW_REMINDER_DELAY_MS);
-      const pickupCutoff = new Date(Date.now() - REVIEW_REMINDER_PICKUP_DELAY_MS);
+      const pickupCutoff = new Date(
+        Date.now() - REVIEW_REMINDER_PICKUP_DELAY_MS,
+      );
       const orders = await this.prisma.orderPhoto.findMany({
         where: {
           productCategory: { in: REVIEW_REMINDER_CATEGORIES },

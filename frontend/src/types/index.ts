@@ -281,6 +281,8 @@ export interface AppUser {
   rateBasisPoints: number | null;
   telegramUsername: string | null;
   createdAt: string;
+  /** Сколько заказов сейчас в работе у исполнителя (текущая загрузка). */
+  activeOrdersCount?: number;
 }
 
 export interface OrdersQuery {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Plus, Trash2, X, Check, ArrowLeft, Pencil, ToggleLeft, ToggleRight, Send } from 'lucide-react';
+import { Plus, Trash2, X, Check, ArrowLeft, Pencil, ToggleLeft, ToggleRight, Send, Layers } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { usersApi } from '../api/users';
 import { useAuth } from '../context/useAuth';
@@ -22,6 +22,14 @@ const ROLE_COLORS: Record<EnumRole, string> = {
 
 function bpToPercent(bp: number): string {
   return (bp / 100).toFixed(2);
+}
+
+/** Цвет бейджа загрузки: чем больше активных заказов, тем «горячее». */
+function loadBadgeColor(count: number): string {
+  if (count === 0) return 'bg-gray-100 text-gray-400 border-gray-200';
+  if (count <= 3) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (count <= 6) return 'bg-amber-50 text-amber-700 border-amber-200';
+  return 'bg-red-50 text-red-700 border-red-200';
 }
 
 function percentToBp(pct: string): number {
@@ -204,7 +212,16 @@ export function UsersPage() {
 
       <div className="max-w-2xl mx-auto py-6 px-4">
         <div className="flex items-center justify-between mb-4">
-          <p className="text-sm text-gray-500">{users.length} пользователей</p>
+          <p className="text-sm text-gray-500">
+            {users.length} пользователей
+            {(() => {
+              const executors = (users as AppUser[]).filter((u) => u.role === 'EXECUTOR');
+              const totalInWork = executors.reduce((s, u) => s + (u.activeOrdersCount ?? 0), 0);
+              return totalInWork > 0 ? (
+                <> · <span className="font-medium text-gray-700">{totalInWork} заказов в работе</span></>
+              ) : null;
+            })()}
+          </p>
           <button
             onClick={() => setAdding(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition-colors"
@@ -298,6 +315,13 @@ export function UsersPage() {
                 <div className="flex items-center gap-2 shrink-0">
                   {u.role === 'EXECUTOR' && (
                     <>
+                      <span
+                        className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium ${loadBadgeColor(u.activeOrdersCount ?? 0)}`}
+                        title="Заказов сейчас в работе"
+                      >
+                        <Layers size={10} />
+                        {u.activeOrdersCount ?? 0} в работе
+                      </span>
                       <button
                         onClick={() => setEditingRateId(editingRateId === u.id ? null : u.id)}
                         className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors font-mono"

@@ -6,8 +6,22 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { EnumStatus } from 'src/generated/prisma/enums';
 import { DtoCreateUser } from './dto/create-user.dto';
 import { DtoUpdateUser } from './dto/update-user.dto';
+
+/**
+ * «Закрытые» статусы — заказ больше не в работе у исполнителя.
+ * Загрузка исполнителя = число его заказов НЕ в этих статусах (и не LEAD:
+ * лид ещё не заказ). Так работодатель видит текущую занятость по каждому.
+ */
+const CLOSED_OR_NOT_STARTED: EnumStatus[] = [
+  EnumStatus.LEAD,
+  EnumStatus.SENT,
+  EnumStatus.PAID,
+  EnumStatus.COMPLETED,
+  EnumStatus.CANCELLED,
+];
 
 @Injectable()
 export class UsersService {
@@ -30,7 +44,25 @@ export class UsersService {
     const users = await this.prisma.user.findMany({
       orderBy: { createdAt: 'asc' },
     });
-    return users.map(({ password: _, ...u }) => u);
+
+    // Одним запросом считаем активные (в работе) заказы по каждому исполнителю,
+    // чтобы показать текущую загрузку без N+1 обращений к БД.
+    const activeCounts = await this.prisma.orderPhoto.groupBy({
+      by: ['executorId'],
+      where: {
+        executorId: { not: null },
+        status: { notIn: CLOSED_OR_NOT_STARTED },
+      },
+      _count: { _all: true },
+    });
+    const countByExecutor = new Map(
+      activeCounts.map((row) => [row.executorId, row._count._all]),
+    );
+
+    return users.map(({ password: _, ...u }) => ({
+      ...u,
+      activeOrdersCount: countByExecutor.get(u.id) ?? 0,
+    }));
   }
 
   async updateUser(id: string, dto: DtoUpdateUser, adminId: string) {
