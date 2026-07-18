@@ -37,6 +37,8 @@ export interface PartnerOrderForPayload {
     printType: EnumPrintType;
     quantity: number;
     price: number;
+    // Изделие клиента (клиент принёс своё) — со склада партнёра НЕ списывается.
+    clientItem: boolean;
   }[];
 }
 
@@ -58,6 +60,28 @@ export function buildPartnerOrderPayload(
   const isPickup = order.deliveryMethod === EnumDeliveryMethod.PICKUP;
   const base = baseUrl.replace(/\/+$/, '');
 
+  // Складская сводка для партнёра: сколько заготовок и каких (цвет+размер) нужно
+  // списать. Агрегируем по цвету+размеру; изделия клиента выделяем флагом
+  // client_item — их со склада партнёра списывать не нужно.
+  const totalQuantity = order.tshirtItems.reduce((s, i) => s + i.quantity, 0);
+  const stockMap = new Map<
+    string,
+    { color: string; size: string; client_item: boolean; quantity: number }
+  >();
+  for (const i of order.tshirtItems) {
+    const key = `${i.color}|${i.size}|${String(i.clientItem)}`;
+    const bucket = stockMap.get(key);
+    if (bucket) bucket.quantity += i.quantity;
+    else
+      stockMap.set(key, {
+        color: i.color,
+        size: i.size,
+        client_item: i.clientItem,
+        quantity: i.quantity,
+      });
+  }
+  const stockBreakdown = [...stockMap.values()];
+
   return {
     order_number: order.numberOrder,
     note: order.note ?? null,
@@ -72,7 +96,13 @@ export function buildPartnerOrderPayload(
       quantity: i.quantity,
       price_per_piece: i.price,
       line_total: i.price * i.quantity,
+      client_item: i.clientItem,
     })),
+    // Складская сводка для списания заготовок на стороне партнёра.
+    stock: {
+      total_quantity: totalQuantity,
+      breakdown: stockBreakdown,
+    },
     payment: {
       // Полный чек заказа — для пункта самовывоза.
       order_total: total,

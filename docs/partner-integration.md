@@ -58,9 +58,17 @@ X-Partner-Token: {PARTNER_WEBHOOK_TOKEN}
         "print_type_label": "DTF",
         "quantity": 3,
         "price_per_piece": 800,
-        "line_total": 2400
+        "line_total": 2400,
+        "client_item": false
       }
     ],
+    "stock": {
+      "total_quantity": 5,
+      "breakdown": [
+        { "color": "Белый", "size": "M", "quantity": 3, "client_item": false },
+        { "color": "Чёрный", "size": "L", "quantity": 2, "client_item": false }
+      ]
+    },
     "payment": {
       "order_total": 5000,
       "prepaid": 2500,
@@ -132,6 +140,21 @@ GET {PUBLIC_BASE_URL}/partner/orders/{id}/sticker
 | `quantity` | int | Количество штук по позиции |
 | `price_per_piece` | int | Цена за штуку, ₽ |
 | `line_total` | int | `quantity × price_per_piece`, ₽ |
+| `client_item` | bool | `true` — изделие клиента (его футболка); заготовку со склада НЕ списывать |
+
+### stock (складская сводка для списания заготовок)
+
+Готовая к учёту сводка — сколько и каких заготовок нужно для заказа, чтобы
+партнёр списал их у себя на складе и вёл остатки.
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `total_quantity` | int | Общее количество футболок по заявке (все позиции) |
+| `breakdown[]` | array | Разбивка по SKU: `color`, `size`, `quantity`, `client_item` |
+
+`breakdown` агрегирован по паре **цвет + размер** (позиции с одинаковым
+цветом и размером суммируются). Со склада партнёра списываются только строки
+с `client_item = false`; при `client_item = true` заготовку приносит клиент.
 
 `print_location`: `FRONT` (грудь), `BACK` (спина), `FRONT_BACK` (двусторонняя),
 `SLEEVE_LEFT` (левый рукав), `SLEEVE_RIGHT` (правый рукав), `FULL` (полная
