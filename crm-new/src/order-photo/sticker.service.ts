@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,8 +14,20 @@ import {
   EnumDeliveryMethod,
   EnumPrintLocation,
   EnumProductCategory,
+  EnumRole,
   EnumTshirtSize,
 } from 'src/generated/prisma/enums';
+
+/**
+ * Соцсети на клиентском стикере. Меняются здесь — попадут на все новые стикеры.
+ * Ссылки короткие намеренно: чем меньше символов, тем крупнее модули QR, а на
+ * термопринтере это решает, прочитается код или нет.
+ */
+const SOCIAL_LINKS: { url: string; label: string }[] = [
+  { url: 'https://t.me/photo_avito', label: 'Связь' },
+  { url: 'https://t.me/raspichatka', label: 'Наш канал' },
+  { url: 'https://instagram.com/raspe4atka', label: 'Instagram' },
+];
 
 // Роботовский woff лежит в node_modules (roboto-fontface — прод-зависимость).
 // Резолвим через package.json пакета, чтобы путь работал и в dev, и в Docker.
@@ -192,4 +205,169 @@ export class StickerService {
 
     return { buffer, filename: `sticker-${order.numberOrder}.pdf` };
   }
+
+  /**
+   * Клиентский стикер на пакет: номер, благодарность, состав, остаток оплаты
+   * (самовывоз) либо пустое поле под номер доставки, и три QR — связь, канал,
+   * Instagram. Печатают исполнители на термопринтере, поэтому всё строго
+   * чёрно-белое, без полутонов и тонких серых линий.
+   */
+  async generateClientSticker(
+    orderId: string,
+    userId: string,
+    userRole: string,
+  ): Promise<{ buffer: Buffer; filename: string }> {
+    const order = await this.prisma.orderPhoto.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+    if (!order) throw new NotFoundException('Заказ не найден');
+    // Исполнитель печатает стикер только по своему заказу.
+    if (userRole === EnumRole.EXECUTOR && order.executorId !== userId) {
+      throw new ForbiddenException('Нет доступа к чужому заказу');
+    }
+
+    const isPickup = order.deliveryMethod === EnumDeliveryMethod.PICKUP;
+    const total = order.totalOrder ?? 0;
+    const rest = total - Math.ceil(total * 0.5); // остаток после предоплаты 50%
+
+    // Уровень коррекции L — намеренно самый низкий. На этикетке 58 мм три кода
+    // помещаются только мелкими, и крупные модули важнее избыточности: голова
+    // термопринтера (203 dpi) просто не пропечатает модуль тоньше ~0.4 мм.
+    // eclevel нет в типах bwip-js (там только общие опции), отсюда каст.
+    const qrOptions = SOCIAL_LINKS.map(
+      (s) =>
+        ({
+          bcid: 'qrcode',
+          text: s.url,
+          scale: 5,
+          eclevel: 'L',
+        }) as Parameters<typeof barcodeToBuffer>[0],
+    );
+    const qrCodes = await Promise.all(qrOptions.map((o) => barcodeToBuffer(o)));
+
+    const fonts = this.loadFonts();
+    const M = 4;
+    const contentW = PAGE_W - M * 2;
+
+    const buffer = await new Promise<Buffer>((resolve, reject) => {
+      // Нижний отступ 0: координаты на этикетке задаём вручную, а любой
+      // автоматический перенос строки превратил бы стикер в несколько страниц.
+      const doc = new PDFDocument({
+        size: [PAGE_W, PAGE_H],
+        margins: { top: M, bottom: 0, left: M, right: M },
+      });
+      const chunks: Buffer[] = [];
+      doc.on('data', (c: Buffer) => chunks.push(c));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      doc.registerFont('regular', fonts.regular);
+      doc.registerFont('medium', fonts.medium);
+
+      doc.font('medium').fontSize(8.5).text(`№ ${order.numberOrder}`, M, 3, {
+        width: contentW,
+        align: 'center',
+        lineBreak: false,
+      });
+      doc.font('regular').fontSize(6).text('Спасибо за обращение!', M, 13, {
+        width: contentW,
+        align: 'center',
+        lineBreak: false,
+      });
+
+      doc
+        .moveTo(M, 22)
+        .lineTo(PAGE_W - M, 22)
+        .lineWidth(0.6)
+        .stroke();
+
+      // Состав: две позиции, остальное сворачиваем — место под QR важнее.
+      const lines = buildPhotoItemLines(order);
+      const shown = lines.slice(0, 2);
+      let y = 25;
+      doc.font('regular').fontSize(6);
+      for (const line of shown) {
+        doc.text(line, M, y, {
+          width: contentW,
+          lineBreak: false,
+          ellipsis: true,
+        });
+        y += 6.5;
+      }
+      if (lines.length > shown.length) {
+        doc.text(`+ ещё ${lines.length - shown.length} поз.`, M, y, {
+          width: contentW,
+          lineBreak: false,
+        });
+      }
+
+      // Самовывоз — сумма к доплате. Доставка — пустая линия, номер вписывают
+      // от руки, пока не подключён API службы доставки.
+      if (isPickup) {
+        doc
+          .font('medium')
+          .fontSize(8)
+          .text(`К оплате: ${formatRub(rest)}`, M, 44, {
+            width: contentW,
+            lineBreak: false,
+          });
+      } else {
+        doc
+          .font('regular')
+          .fontSize(6.5)
+          .text('Доставка №', M, 45, { lineBreak: false });
+        doc
+          .moveTo(M + 40, 52)
+          .lineTo(PAGE_W - M, 52)
+          .lineWidth(0.6)
+          .stroke();
+      }
+
+      const qrSize = 44;
+      const qrY = 58;
+      qrCodes.forEach((png, i) => {
+        const centerX = M + (contentW * (2 * i + 1)) / 6;
+        const x = centerX - qrSize / 2;
+        doc.image(png, x, qrY, { width: qrSize, height: qrSize });
+        doc
+          .font('regular')
+          .fontSize(5.5)
+          .text(SOCIAL_LINKS[i].label, x, qrY + qrSize + 0.5, {
+            width: qrSize,
+            align: 'center',
+            lineBreak: false,
+          });
+      });
+
+      doc.end();
+    });
+
+    return { buffer, filename: `client-${order.numberOrder}.pdf` };
+  }
+}
+
+const TYPE_PAPER_LABELS: Record<string, string> = {
+  GLOSS: 'Глянец',
+  MATTE: 'Матт',
+};
+
+/** Строки состава для фото-заказа: «10×15 Глянец × 20 шт». */
+function buildPhotoItemLines(order: {
+  isFreePrice: boolean | null;
+  items: {
+    formatPaper: string;
+    typePaper: string;
+    quantity: number;
+    isFreePrice: boolean | null;
+  }[];
+}): string[] {
+  return order.items.map((i) => {
+    // У свободных позиций тип бумаги не печатаем — там произвольное название.
+    const isFree = order.isFreePrice || i.isFreePrice;
+    const type = isFree
+      ? ''
+      : ` ${TYPE_PAPER_LABELS[i.typePaper] ?? i.typePaper}`;
+    return `${i.formatPaper}${type} × ${i.quantity} шт`;
+  });
 }

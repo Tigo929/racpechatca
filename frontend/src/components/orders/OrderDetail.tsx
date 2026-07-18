@@ -292,6 +292,21 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
     }
   };
 
+  const [clientStickerLoading, setClientStickerLoading] = useState(false);
+  const handlePrintClientSticker = async () => {
+    try {
+      setClientStickerLoading(true);
+      const blob = await ordersApi.getClientStickerPdf(orderId);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Не удалось сформировать стикер'));
+    } finally {
+      setClientStickerLoading(false);
+    }
+  };
+
   const [stickerLoading, setStickerLoading] = useState(false);
   const handlePrintSticker = async () => {
     try {
@@ -392,6 +407,19 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             >
               <Flame size={13} aria-hidden="true" />
               {order.isUrgent ? 'Снять срочность' : 'Срочно'}
+            </button>
+          )}
+          {/* Клиентский стикер на пакет — печатают и админ, и исполнитель,
+              как только заказ готов. */}
+          {order.productCategory === 'PHOTO' &&
+            ['READY', 'DONE', 'SENT', 'PAID', 'COMPLETED'].includes(order.status) && (
+            <button
+              onClick={handlePrintClientSticker}
+              disabled={clientStickerLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 disabled:opacity-60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            >
+              <Printer size={13} aria-hidden="true" />
+              {clientStickerLoading ? 'Готовим…' : 'Печать PDF'}
             </button>
           )}
           {isAdmin && (

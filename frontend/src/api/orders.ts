@@ -75,6 +75,15 @@ export const ordersApi = {
     return data;
   },
 
+  /** Клиентский PDF-стикер на пакет (58×40 мм). Доступен и исполнителю. */
+  getClientStickerPdf: async (orderId: string): Promise<Blob> => {
+    const { data } = await api.get<Blob>(
+      `/order-photo/${orderId}/client-sticker`,
+      { responseType: 'blob' },
+    );
+    return data;
+  },
+
   /** Прикрепить ТЗ-фото (согласованный макет) к заказу. */
   uploadTechSpecPhoto: async (orderId: string, file: File): Promise<OrderPhoto> => {
     const form = new FormData();

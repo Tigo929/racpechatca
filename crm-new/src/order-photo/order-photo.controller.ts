@@ -97,6 +97,22 @@ export class OrderPhotoController {
     res.end(buffer);
   }
 
+  // ── Обе роли: клиентский PDF-стикер на пакет (58×40 мм) ─────────────────────
+  // Печатают и админ, и исполнитель — исполнителю доступен только свой заказ.
+
+  @Get(':idOrder/client-sticker')
+  async getClientSticker(
+    @Param('idOrder') idOrder: string,
+    @CurrentUser() me: RequestUser,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { buffer, filename } =
+      await this.stickerService.generateClientSticker(idOrder, me.id, me.role);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    res.end(buffer);
+  }
+
   // ── Admin-only: отметка отзыва клиента ──────────────────────────────────────
 
   @Patch(':idOrder/review')
