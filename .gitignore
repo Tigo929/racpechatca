@@ -36,3 +36,7 @@ deploy-*.tar.gz
 .agents/
 .claude/
 skills-lock.json
+
+# Тестовые PDF-стикеры, которые генерируются при отладке
+crm-new/client-*.pdf
+crm-new/sticker-*.pdf
