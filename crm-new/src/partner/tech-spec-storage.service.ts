@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
+import sharp from 'sharp';
 
 // Разрешённые типы ТЗ-макета: фото или PDF. mime → расширение файла.
 const ALLOWED: Record<string, string> = {
@@ -23,6 +24,12 @@ const EXT_CONTENT_TYPE: Record<string, string> = {
 };
 
 export const TECH_SPEC_MAX_BYTES = 15 * 1024 * 1024; // 15 МБ
+
+// Макет — производственный референс, поэтому качество держим высоким, а
+// уменьшаем только совсем крупные снимки: детали принта должны остаться
+// читаемыми для печати.
+const MAX_DIMENSION = 3000;
+const WEBP_QUALITY = 90;
 
 /**
  * Хранение ТЗ-фото (согласованного макета) на диске сервера.
@@ -55,8 +62,38 @@ export class TechSpecStorageService {
     await fs.mkdir(this.baseDir, { recursive: true });
     // Убираем возможный старый файл заказа с другим расширением.
     await this.remove(orderId);
-    const filename = `techspec-${orderId}.${ext}`;
-    await fs.writeFile(path.join(this.baseDir, filename), file.buffer);
+
+    // PDF оставляем как есть: это векторный документ, конвертация только
+    // испортит качество макета.
+    if (ext === 'pdf') {
+      const filename = `techspec-${orderId}.pdf`;
+      await fs.writeFile(path.join(this.baseDir, filename), file.buffer);
+      return filename;
+    }
+
+    // Фото приводим к WebP — тот же вид при заметно меньшем размере, открывается
+    // в любом браузере. rotate() без аргументов доворачивает снимок по EXIF,
+    // иначе фотография с телефона уезжает набок.
+    let converted: Buffer;
+    try {
+      converted = await sharp(file.buffer)
+        .rotate()
+        .resize({
+          width: MAX_DIMENSION,
+          height: MAX_DIMENSION,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .webp({ quality: WEBP_QUALITY })
+        .toBuffer();
+    } catch {
+      throw new BadRequestException(
+        'Не удалось обработать изображение — возможно, файл повреждён',
+      );
+    }
+
+    const filename = `techspec-${orderId}.webp`;
+    await fs.writeFile(path.join(this.baseDir, filename), converted);
     return filename;
   }
 
