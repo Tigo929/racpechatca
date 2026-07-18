@@ -29,7 +29,9 @@ const SOCIAL_LINKS: {
   icon: 'telegram' | 'instagram';
 }[] = [
   { url: 'https://t.me/photo_avito', label: 'Связь', icon: 'telegram' },
-  { url: 'https://t.me/raspichatka', label: 'Наш канал', icon: 'telegram' },
+  // Внимание: у канала в Telegram ник с двумя «a» на конце, у Instagram —
+  // с одной. Их легко перепутать при правке.
+  { url: 'https://t.me/raspe4atkaa', label: 'Наш канал', icon: 'telegram' },
   {
     url: 'https://instagram.com/raspe4atka',
     label: 'Instagram',
@@ -44,7 +46,7 @@ const SOCIAL_LINKS: {
  */
 const PROMO_MAIN =
   'Репост в сторис — 20 фото Polaroid бесплатно к следующему заказу + бесплатная доставка';
-const PROMO_TAGS = 'Instagram: @raspe4atka · Telegram: @raspichatka';
+const PROMO_TAGS = 'Instagram: @raspe4atka · Telegram: @raspe4atkaa';
 const PROMO_NOTE = 'Успейте в течение 7 дней · условия у менеджера';
 
 // Роботовский woff лежит в node_modules (roboto-fontface — прод-зависимость).
