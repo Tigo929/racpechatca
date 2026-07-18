@@ -7,9 +7,11 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { EnumRole } from 'src/generated/prisma/enums';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -19,6 +21,7 @@ import { StripPricesInterceptor } from 'src/interceptors/strip-prices.intercepto
 import { OrderPhotoService } from './order-photo.service';
 import { OrderItemService } from './order-item.service';
 import { TshirtItemService } from './tshirt-item.service';
+import { StickerService } from './sticker.service';
 import DtoCreateOrder from './dto/create-order.dto';
 import DtoAllOrdersforQuery from './dto/all-oreders-for-query.dto';
 import UpdateStatus from './dto/update-status.dto';
@@ -44,6 +47,7 @@ export class OrderPhotoController {
     private readonly orderPhotoService: OrderPhotoService,
     private readonly orderItemService: OrderItemService,
     private readonly tshirtItemService: TshirtItemService,
+    private readonly stickerService: StickerService,
   ) {}
 
   // ── Admin-only: create / update / delete order ─────────────────────────────
@@ -76,6 +80,21 @@ export class OrderPhotoController {
     @CurrentUser() me: RequestUser,
   ) {
     return this.orderPhotoService.assignExecutor(idOrder, dto, me.id);
+  }
+
+  // ── Admin-only: PDF-стикер заказа-футболки (58×40 мм) ───────────────────────
+
+  @Get(':idOrder/sticker')
+  @Roles(EnumRole.ADMIN)
+  async getSticker(
+    @Param('idOrder') idOrder: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { buffer, filename } =
+      await this.stickerService.generateTshirtSticker(idOrder);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    res.end(buffer);
   }
 
   // ── Admin-only: отправка заказа партнёру CoolABC ────────────────────────────

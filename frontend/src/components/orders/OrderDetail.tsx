@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Pencil, Trash2, Flame, Clock, Copy, UserCheck, X, Send } from 'lucide-react';
+import { Pencil, Trash2, Flame, Clock, Copy, UserCheck, X, Send, Printer } from 'lucide-react';
 import { usersApi } from '../../api/users';
 import { businessConfig, resolvePickupAddress } from '../../config/business';
 import { COMMUNICATION_LABELS, DELIVERY_LABELS } from '../../constants';
@@ -271,6 +271,22 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
     onError: (error: unknown) => toast.error(getErrorMessage(error, 'Ошибка отправки партнёру')),
   });
 
+  const [stickerLoading, setStickerLoading] = useState(false);
+  const handlePrintSticker = async () => {
+    try {
+      setStickerLoading(true);
+      const blob = await ordersApi.getStickerPdf(orderId);
+      // Открываем PDF в новой вкладке — оттуда удобно отправить на печать.
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Не удалось сформировать стикер'));
+    } finally {
+      setStickerLoading(false);
+    }
+  };
+
   const deleteMutation = useMutation({
     mutationFn: () => ordersApi.delete(orderId),
     onSuccess: () => {
@@ -402,6 +418,16 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   </button>
                 );
               })()}
+              {order.productCategory === 'TSHIRT' && (
+                <button
+                  onClick={handlePrintSticker}
+                  disabled={stickerLoading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 disabled:opacity-60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                >
+                  <Printer size={13} aria-hidden="true" />
+                  {stickerLoading ? 'Готовим…' : 'Стикер (PDF)'}
+                </button>
+              )}
               {!editing && (
                 <button onClick={startEdit}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400">

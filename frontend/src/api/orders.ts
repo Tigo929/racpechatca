@@ -67,6 +67,14 @@ export const ordersApi = {
     return data;
   },
 
+  /** PDF-стикер заказа-футболки (58×40 мм). Возвращает blob для печати. */
+  getStickerPdf: async (orderId: string): Promise<Blob> => {
+    const { data } = await api.get<Blob>(`/order-photo/${orderId}/sticker`, {
+      responseType: 'blob',
+    });
+    return data;
+  },
+
   sendToPartner: async (orderId: string): Promise<OrderPhoto> => {
     const { data } = await api.post<OrderPhoto>(`/order-photo/${orderId}/send-to-partner`);
     return data;
