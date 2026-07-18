@@ -130,18 +130,14 @@ export interface OrderPhoto {
   executor?: OrderExecutor | null;
   completedAt?: string | null;
   clientPaidAt?: string | null;
-  /** Контакт клиента и модель футболки (обязательны для отправки партнёру). */
-  clientName?: string | null;
-  clientPhone?: string | null;
+  /** Модель футболки — производственные данные для исполнителя-партнёра. */
   tshirtModel?: string | null;
-  /** Отправка партнёру CoolABC (только TSHIRT-заказы). */
+  /** Прикреплено ли ТЗ-фото (согласованный макет). */
+  techSpecPhotoPath?: string | null;
+  /** Отправка заказа исполнителю-партнёру (только TSHIRT). */
   partnerSyncStatus?: EnumPartnerSyncStatus | null;
   partnerSyncError?: string | null;
   partnerSyncAt?: string | null;
-  /** Номер заказа в CRM партнёра (GLN-xxxxx-наш_номер). */
-  partnerOrderNo?: string | null;
-  /** Публичная трекинг-ссылка партнёра. */
-  partnerTrackingUrl?: string | null;
   items: ItemPhoto[];
   tshirtItems: ItemTshirt[];
   accruals?: OrderAccrualBrief[];
@@ -224,11 +220,7 @@ export interface CreateOrderDto {
   freePrice?: boolean;
   /** Ручной итог заказа (если задан) — вместо расчёта из позиций. */
   customTotal?: number;
-  /** Отправить заказ партнёру CoolABC (только для категории TSHIRT). */
-  sendToPartner?: boolean;
-  /** Контакт клиента и модель футболки — обязательны при sendToPartner. */
-  clientName?: string;
-  clientPhone?: string;
+  /** Модель футболки — производственные данные для исполнителя-партнёра. */
   tshirtModel?: string;
   items?: CreateItemDto[];
   tshirtItems?: CreateTshirtItemDto[];
@@ -242,8 +234,6 @@ export interface UpdateOrderDto {
   deliveryCost?: number;
   note?: string;
   isUrgent?: boolean;
-  clientName?: string;
-  clientPhone?: string;
   tshirtModel?: string;
 }
 

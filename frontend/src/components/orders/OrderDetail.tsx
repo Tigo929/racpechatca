@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Pencil, Trash2, Flame, Clock, Copy, UserCheck, X, Send, Printer } from 'lucide-react';
+import { Pencil, Trash2, Flame, Clock, Copy, UserCheck, X, Send, Printer, Paperclip } from 'lucide-react';
 import { usersApi } from '../../api/users';
 import { businessConfig, resolvePickupAddress } from '../../config/business';
 import { COMMUNICATION_LABELS, DELIVERY_LABELS } from '../../constants';
@@ -263,13 +263,34 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       qc.setQueryData(['order', orderId], updated);
       qc.invalidateQueries({ queryKey: ['orders'] });
       if (updated.partnerSyncStatus === 'SENT') {
-        toast.success('Заказ отправлен партнёру CoolABC');
+        toast.success('Заказ отправлен исполнителю-партнёру');
       } else {
-        toast.error(updated.partnerSyncError ?? 'Не удалось отправить партнёру');
+        toast.error(updated.partnerSyncError ?? 'Не удалось отправить исполнителю');
       }
     },
-    onError: (error: unknown) => toast.error(getErrorMessage(error, 'Ошибка отправки партнёру')),
+    onError: (error: unknown) => toast.error(getErrorMessage(error, 'Ошибка отправки исполнителю')),
   });
+
+  const uploadPhotoMutation = useMutation({
+    mutationFn: (file: File) => ordersApi.uploadTechSpecPhoto(orderId, file),
+    onSuccess: (updated) => {
+      qc.setQueryData(['order', orderId], updated);
+      qc.invalidateQueries({ queryKey: ['orders'] });
+      toast.success('ТЗ-фото прикреплено');
+    },
+    onError: (error: unknown) => toast.error(getErrorMessage(error, 'Не удалось загрузить ТЗ-фото')),
+  });
+
+  const handleViewPhoto = async () => {
+    try {
+      const blob = await ordersApi.getTechSpecPhoto(orderId);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Не удалось открыть ТЗ-фото'));
+    }
+  };
 
   const [stickerLoading, setStickerLoading] = useState(false);
   const handlePrintSticker = async () => {
@@ -311,8 +332,6 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       deliveryMethod: order.deliveryMethod,
       deliveryCost: order.deliveryCost,
       note: order.note,
-      clientName: order.clientName ?? undefined,
-      clientPhone: order.clientPhone ?? undefined,
       tshirtModel: order.tshirtModel ?? undefined,
     });
     setEditing(true);
@@ -459,61 +478,81 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
         )}
       </div>
 
-      {/* Отправка партнёру CoolABC — только TSHIRT-заказы, только админ */}
+      {/* Отправка исполнителю-партнёру — только TSHIRT-заказы, только админ */}
       {isAdmin && order.productCategory === 'TSHIRT' && (
-        <div className={`rounded-xl border p-4 flex items-center justify-between gap-3 flex-wrap ${
+        <div className={`rounded-xl border p-4 space-y-3 ${
           order.partnerSyncStatus === 'SENT'
             ? 'bg-emerald-50 border-emerald-200'
             : order.partnerSyncStatus === 'FAILED'
               ? 'bg-red-50 border-red-200'
               : 'bg-gray-50 border-gray-200'
         }`}>
-          <div className="min-w-0">
-            <p className="text-xs font-medium text-gray-500 mb-0.5">Партнёр CoolABC (печать)</p>
-            {order.partnerSyncStatus === 'SENT' ? (
-              <>
+          <p className="text-xs font-medium text-gray-500">Исполнитель-партнёр (печать футболок)</p>
+
+          {/* ТЗ-фото (согласованный макет) */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 cursor-pointer transition-colors">
+              <Paperclip size={13} aria-hidden="true" />
+              {order.techSpecPhotoPath ? 'Заменить ТЗ-фото' : 'Прикрепить ТЗ-фото'}
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                disabled={uploadPhotoMutation.isPending}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadPhotoMutation.mutate(file);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+            {order.techSpecPhotoPath && (
+              <button onClick={handleViewPhoto} className="text-xs text-indigo-700 underline hover:text-indigo-900">
+                Открыть ТЗ-фото
+              </button>
+            )}
+            {uploadPhotoMutation.isPending && <span className="text-xs text-gray-500">Загрузка…</span>}
+          </div>
+
+          {/* Статус отправки + кнопка */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="min-w-0">
+              {order.partnerSyncStatus === 'SENT' ? (
                 <p className="text-sm font-semibold text-emerald-700">
-                  Отправлен партнёру
-                  {order.partnerOrderNo && <> — заказ <span className="font-mono">{order.partnerOrderNo}</span></>}
+                  Отправлен исполнителю
                   {order.partnerSyncAt && (
                     <span className="font-normal text-emerald-600"> ({new Date(order.partnerSyncAt).toLocaleString('ru-RU')})</span>
                   )}
                 </p>
-                {order.partnerTrackingUrl && (
-                  <a
-                    href={order.partnerTrackingUrl.split(', ')[0]}
-                    target="_blank" rel="noreferrer"
-                    className="text-xs text-emerald-700 underline hover:text-emerald-900"
-                  >
-                    Отслеживать заявку у партнёра
-                  </a>
-                )}
-              </>
-            ) : order.partnerSyncStatus === 'FAILED' ? (
-              <>
-                <p className="text-sm font-semibold text-red-700">Ошибка отправки</p>
-                {order.partnerSyncError && (
-                  <p className="text-xs text-red-600 mt-0.5 break-words">{order.partnerSyncError}</p>
-                )}
-              </>
-            ) : order.partnerSyncStatus === 'PENDING' ? (
-              <p className="text-sm font-semibold text-gray-600">Отправляется…</p>
-            ) : (
-              <p className="text-sm text-gray-600">Не отправлялся партнёру</p>
-            )}
-          </div>
-          {order.partnerSyncStatus !== 'SENT' && (
+              ) : order.partnerSyncStatus === 'FAILED' ? (
+                <>
+                  <p className="text-sm font-semibold text-red-700">Ошибка отправки</p>
+                  {order.partnerSyncError && (
+                    <p className="text-xs text-red-600 mt-0.5 break-words">{order.partnerSyncError}</p>
+                  )}
+                </>
+              ) : order.partnerSyncStatus === 'PENDING' ? (
+                <p className="text-sm font-semibold text-gray-600">Отправляется…</p>
+              ) : (
+                <p className="text-sm text-gray-600">Не отправлялся исполнителю</p>
+              )}
+              {!order.techSpecPhotoPath && (
+                <p className="text-xs text-gray-400 mt-0.5">Сначала прикрепите ТЗ-фото — оно уйдёт вместе с заказом и стикером.</p>
+              )}
+            </div>
             <button
               onClick={() => sendToPartnerMutation.mutate()}
-              disabled={sendToPartnerMutation.isPending || order.partnerSyncStatus === 'PENDING'}
+              disabled={sendToPartnerMutation.isPending || order.partnerSyncStatus === 'PENDING' || !order.techSpecPhotoPath}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
             >
               <Send size={13} aria-hidden="true" />
               {sendToPartnerMutation.isPending
                 ? 'Отправка…'
-                : order.partnerSyncStatus === 'FAILED' ? 'Отправить повторно' : 'Отправить партнёру'}
+                : order.partnerSyncStatus === 'SENT' || order.partnerSyncStatus === 'FAILED'
+                  ? 'Отправить повторно'
+                  : 'Отправить исполнителю'}
             </button>
-          )}
+          </div>
         </div>
       )}
 
@@ -531,12 +570,6 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
           <InfoRow label="Платформа общения" value={COMMUNICATION_LABELS[order.communicationPlatform]} />
           <InfoRow label="Способ доставки" value={DELIVERY_LABELS[order.deliveryMethod]} />
-          {(order.clientName || order.clientPhone) && (
-            <InfoRow
-              label="Клиент"
-              value={[order.clientName, order.clientPhone].filter(Boolean).join(' · ')}
-            />
-          )}
           {order.tshirtModel && <InfoRow label="Модель футболки" value={order.tshirtModel} />}
           {isAdmin && (
             <>

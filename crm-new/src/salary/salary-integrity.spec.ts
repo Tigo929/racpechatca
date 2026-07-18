@@ -9,7 +9,6 @@ import { OrderFinancialIntegrityService } from 'src/order-photo/order-financial-
 import { OrderPhotoService } from 'src/order-photo/order-photo.service';
 import { StockService } from 'src/stock/stock.service';
 import { TelegramService } from 'src/telegram/telegram.service';
-import { CoolabcService } from 'src/integrations/coolabc.service';
 import { SalaryService } from './salary.service';
 import { calculateSalarySnapshot } from './salary-calculation';
 
@@ -119,15 +118,11 @@ function createOrderService(stub: PrismaStub) {
   const telegram = {
     sendToGroup: jest.fn<Promise<boolean>, [string]>().mockResolvedValue(true),
   };
-  const coolabc = {
-    sendOrder: jest.fn<Promise<unknown>, [string]>().mockResolvedValue({}),
-  };
   return new OrderPhotoService(
     stub as unknown as PrismaService,
     financialIntegrity as unknown as OrderFinancialIntegrityService,
     stock as unknown as StockService,
     telegram as unknown as TelegramService,
-    coolabc as unknown as CoolabcService,
   );
 }
 

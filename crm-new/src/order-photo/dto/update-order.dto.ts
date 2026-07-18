@@ -58,15 +58,5 @@ export class DtoUpdateOrder {
   @IsString()
   @IsOptional()
   @MaxLength(255)
-  clientName?: string;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(64)
-  clientPhone?: string;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(255)
   tshirtModel?: string;
 }

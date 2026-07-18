@@ -78,24 +78,7 @@ export default class DtoCreateOrder {
   @IsOptional()
   note?: string;
 
-  /** Отправить заказ партнёру CoolABC (только для категории TSHIRT). */
-  @IsOptional()
-  @IsBoolean()
-  sendToPartner?: boolean;
-
-  /** Имя клиента — обязательно для отправки партнёру (customer.name). */
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  clientName?: string;
-
-  /** Телефон клиента — обязателен для отправки партнёру (customer.phone). */
-  @IsOptional()
-  @IsString()
-  @MaxLength(64)
-  clientPhone?: string;
-
-  /** Модель футболки — обязательна для отправки партнёру (tshirt_model). */
+  /** Модель футболки — производственные данные, передаются исполнителю-партнёру. */
   @IsOptional()
   @IsString()
   @MaxLength(255)

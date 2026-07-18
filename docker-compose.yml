@@ -32,8 +32,15 @@ services:
       TZ: Europe/Moscow
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_GROUP_CHAT_ID: ${TELEGRAM_GROUP_CHAT_ID}
-      COOLABC_API_TOKEN: ${COOLABC_API_TOKEN:-}
-      COOLABC_API_URL: ${COOLABC_API_URL:-}
+      # Интеграция с исполнителем-партнёром (см. docs/partner-integration.md)
+      PARTNER_WEBHOOK_URL: ${PARTNER_WEBHOOK_URL:-}
+      PARTNER_WEBHOOK_TOKEN: ${PARTNER_WEBHOOK_TOKEN:-}
+      PARTNER_API_TOKEN: ${PARTNER_API_TOKEN:-}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      # ТЗ-фото переживают пересборку контейнера.
+      - uploads:/app/uploads
     # Хостинг (РФ) режет TCP 443 до большинства IP Telegram и резолвит
     # api.telegram.org только в IPv6 (недоступен). Пинуем домен на рабочий
     # IPv4 Bot API — иначе fetch к Telegram отваливается по таймауту.
@@ -70,6 +77,7 @@ services:
 
 volumes:
   pgdata:
+  uploads:
 
 networks:
   internal:

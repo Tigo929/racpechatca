@@ -75,6 +75,27 @@ export const ordersApi = {
     return data;
   },
 
+  /** Прикрепить ТЗ-фото (согласованный макет) к заказу. */
+  uploadTechSpecPhoto: async (orderId: string, file: File): Promise<OrderPhoto> => {
+    const form = new FormData();
+    form.append('file', file);
+    const { data } = await api.post<OrderPhoto>(
+      `/order-photo/${orderId}/techspec-photo`,
+      form,
+    );
+    return data;
+  },
+
+  /** Просмотр прикреплённого ТЗ-фото (blob для открытия во вкладке). */
+  getTechSpecPhoto: async (orderId: string): Promise<Blob> => {
+    const { data } = await api.get<Blob>(
+      `/order-photo/${orderId}/techspec-photo`,
+      { responseType: 'blob' },
+    );
+    return data;
+  },
+
+  /** Отправить заказ исполнителю-партнёру (требуется прикреплённое ТЗ-фото). */
   sendToPartner: async (orderId: string): Promise<OrderPhoto> => {
     const { data } = await api.post<OrderPhoto>(`/order-photo/${orderId}/send-to-partner`);
     return data;

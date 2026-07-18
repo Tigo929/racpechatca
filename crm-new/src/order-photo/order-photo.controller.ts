@@ -97,14 +97,6 @@ export class OrderPhotoController {
     res.end(buffer);
   }
 
-  // ── Admin-only: отправка заказа партнёру CoolABC ────────────────────────────
-
-  @Post(':idOrder/send-to-partner')
-  @Roles(EnumRole.ADMIN)
-  sendOrderToPartner(@Param('idOrder') idOrder: string) {
-    return this.orderPhotoService.sendOrderToPartner(idOrder);
-  }
-
   // ── Admin-only: отметка отзыва клиента ──────────────────────────────────────
 
   @Patch(':idOrder/review')

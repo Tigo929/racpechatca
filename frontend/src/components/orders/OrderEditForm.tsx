@@ -70,22 +70,10 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, sho
       </div>
 
       {showPartnerFields && (
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className={labelCls}>Имя клиента (для партнёра)</p>
-            <input className={inputCls} placeholder="Иван Петров" value={form.clientName ?? ''}
-              onChange={e => set({ clientName: e.target.value })} />
-          </div>
-          <div>
-            <p className={labelCls}>Телефон клиента (для партнёра)</p>
-            <input className={inputCls} placeholder="+79991234567" value={form.clientPhone ?? ''}
-              onChange={e => set({ clientPhone: e.target.value })} />
-          </div>
-          <div className="col-span-2">
-            <p className={labelCls}>Модель футболки (для партнёра)</p>
-            <input className={inputCls} placeholder="Футболка оверсайз 240 г/м²" value={form.tshirtModel ?? ''}
-              onChange={e => set({ tshirtModel: e.target.value })} />
-          </div>
+        <div>
+          <p className={labelCls}>Модель футболки (для исполнителя-партнёра)</p>
+          <input className={inputCls} placeholder="Футболка оверсайз 240 г/м²" value={form.tshirtModel ?? ''}
+            onChange={e => set({ tshirtModel: e.target.value })} />
         </div>
       )}
 
