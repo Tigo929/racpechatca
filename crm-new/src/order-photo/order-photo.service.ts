@@ -124,6 +124,13 @@ export class OrderPhotoService {
       const freePrice = dto.freePrice ?? false;
       const productCategory = dto.productCategory ?? EnumProductCategory.PHOTO;
 
+      // Футболки печатает партнёр, а не наш исполнитель — назначать некого.
+      if (dto.executorId && productCategory === EnumProductCategory.TSHIRT) {
+        throw new BadRequestException(
+          'Для заказов с футболками исполнитель не назначается — работу выполняет партнёр',
+        );
+      }
+
       let executor: {
         id: string;
         role: EnumRole;
@@ -563,6 +570,14 @@ export class OrderPhotoService {
     if (!order) throw new NotFoundException('Заказ не найден');
 
     const isUnassign = !dto.executorId;
+
+    // Футболки уходят партнёру — своего исполнителя на них не назначаем.
+    // Снятие оставляем разрешённым: это аварийный выход для старых заказов.
+    if (!isUnassign && order.productCategory === EnumProductCategory.TSHIRT) {
+      throw new BadRequestException(
+        'Для заказов с футболками исполнитель не назначается — работу выполняет партнёр',
+      );
+    }
 
     let executor: {
       id: string;

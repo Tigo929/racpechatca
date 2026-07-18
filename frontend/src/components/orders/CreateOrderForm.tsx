@@ -257,6 +257,9 @@ export function CreateOrderForm({ onClose }: Props) {
       mutation.mutate({
         ...base,
         productCategory: 'TSHIRT',
+        // Футболки печатает партнёр: исполнителя не передаём, даже если он
+        // остался в форме после переключения категории.
+        executorId: undefined,
         tshirtModel: data.tshirtModel?.trim() || undefined,
         tshirtItems: tshirtItems.length ? tshirtItems : undefined,
         items: items.length ? items : undefined,
@@ -293,7 +296,9 @@ export function CreateOrderForm({ onClose }: Props) {
       note: data.note,
       productCategory: data.productCategory ?? 'PHOTO',
       status: 'LEAD',
-      executorId: data.executorId || undefined,
+      // У футболок исполнителя нет — печатает партнёр.
+      executorId:
+        data.productCategory === 'TSHIRT' ? undefined : data.executorId || undefined,
       items: undefined,
       tshirtItems: undefined,
     };
@@ -364,20 +369,23 @@ export function CreateOrderForm({ onClose }: Props) {
         </div>
       </div>
 
-      <div>
-        <label className={labelCls}>Исполнитель</label>
-        <select className={selectCls} {...register('executorId')}>
-          <option value="">— назначить позже —</option>
-          {executors.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.username}
-              {u.rateBasisPoints === null
-                ? ' — ставка не назначена'
-                : ` — ${(u.rateBasisPoints / 100).toFixed(2)}%`}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Футболки печатает партнёр — своего исполнителя на них не назначаем. */}
+      {productCategory !== 'TSHIRT' && (
+        <div>
+          <label className={labelCls}>Исполнитель</label>
+          <select className={selectCls} {...register('executorId')}>
+            <option value="">— назначить позже —</option>
+            {executors.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.username}
+                {u.rateBasisPoints === null
+                  ? ' — ставка не назначена'
+                  : ` — ${(u.rateBasisPoints / 100).toFixed(2)}%`}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label className={labelCls}>Примечание</label>

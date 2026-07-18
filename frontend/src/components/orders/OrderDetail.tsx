@@ -467,7 +467,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       <div className="bg-gray-50 rounded-xl p-4 space-y-3">
         <p className="text-xs font-medium text-gray-500">Прогресс статуса</p>
         <StatusStepper order={order} />
-        {isAdmin && (
+        {/* Футболки печатает партнёр — своего исполнителя на них не назначаем. */}
+        {isAdmin && order.productCategory !== 'TSHIRT' && (
           <AssignPanel
             order={order}
             onAssigned={(updated) => {
