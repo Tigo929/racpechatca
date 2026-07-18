@@ -37,9 +37,15 @@ const SOCIAL_LINKS: {
   },
 ];
 
-/** Акция на клиентском стикере. Текст меняется здесь. */
-const PROMO_MAIN = 'Репост в сторис — подарок на следующий заказ';
-const PROMO_NOTE = 'Условия уточняйте у менеджера';
+/**
+ * Акция на клиентском стикере. Порядок строк выбран под конверсию: сначала
+ * выгода, затем кого отметить, затем срок. Тексты меняются здесь — блок
+ * считает свою высоту сам, поэтому длину можно править свободно.
+ */
+const PROMO_MAIN =
+  'Репост в сторис — 20 фото Polaroid бесплатно к следующему заказу + бесплатная доставка';
+const PROMO_TAGS = 'Instagram: @raspe4atka · Telegram: @raspichatka';
+const PROMO_NOTE = 'Успейте в течение 7 дней · условия у менеджера';
 
 // Роботовский woff лежит в node_modules (roboto-fontface — прод-зависимость).
 // Резолвим через package.json пакета, чтобы путь работал и в dev, и в Docker.
@@ -285,6 +291,33 @@ export class StickerService {
       doc.registerFont('medium', fonts.medium);
 
       const centered = { width: contentW, align: 'center' as const };
+
+      // Геометрия нижнего блока соцсетей — считаем заранее, она фиксированная.
+      const captionH = 14;
+      const iconH = 20;
+      const gap = 10;
+      const qrSize = (contentW - gap * 2) / 3;
+      const qrY = CLIENT_PAGE_H - M - captionH - qrSize;
+      const iconY = qrY - iconH - 4;
+
+      // Высоту рамки с акцией измеряем ДО отрисовки состава: от неё зависит,
+      // сколько строк позиций поместится. Иначе длинный заказ выдавливает
+      // акцию наверх, в текст.
+      const promoPad = 9;
+      const promoTextW = contentW - promoPad * 2;
+      const measure = (
+        text: string,
+        font: 'regular' | 'medium',
+        size: number,
+      ): number => {
+        doc.font(font).fontSize(size);
+        return doc.heightOfString(text, { width: promoTextW, align: 'center' });
+      };
+      const mainH = measure(PROMO_MAIN, 'medium', 11);
+      const tagsH = measure(PROMO_TAGS, 'medium', 9.5);
+      const noteH = measure(PROMO_NOTE, 'regular', 8.5);
+      const promoH = promoPad * 2 + mainH + 5 + tagsH + 3 + noteH;
+
       let y = M + 4;
 
       doc
@@ -294,23 +327,30 @@ export class StickerService {
           ...centered,
           lineBreak: false,
         });
-      y += 30;
+      y += 28;
       doc
         .font('regular')
-        .fontSize(12)
+        .fontSize(11)
         .text('Спасибо за обращение!', M, y, { ...centered, lineBreak: false });
-      y += 24;
+      y += 20;
 
       doc
         .moveTo(M, y)
         .lineTo(CLIENT_PAGE_W - M, y)
         .lineWidth(1)
         .stroke();
-      y += 12;
+      y += 10;
 
-      // Состав заказа целиком — на 100×150 больше не нужно ничего сворачивать.
+      // Сколько строк состава реально влезет: остаток высоты за вычетом
+      // разделителя, строки оплаты, рамки акции и зазора до QR.
+      const RESERVED_BELOW_ITEMS = 20 + 30 + promoH + 12;
+      const MAX_ITEM_LINES = Math.max(
+        1,
+        Math.min(8, Math.floor((iconY - y - RESERVED_BELOW_ITEMS) / 14)),
+      );
       const lines = buildPhotoItemLines(order);
-      const shown = lines.slice(0, 8);
+      const overflow = lines.length > MAX_ITEM_LINES;
+      const shown = overflow ? lines.slice(0, MAX_ITEM_LINES - 1) : lines;
       doc.font('regular').fontSize(11);
       for (const line of shown) {
         doc.text(line, M, y, {
@@ -318,14 +358,14 @@ export class StickerService {
           lineBreak: false,
           ellipsis: true,
         });
-        y += 15;
+        y += 14;
       }
-      if (lines.length > shown.length) {
+      if (overflow) {
         doc.text(`+ ещё ${lines.length - shown.length} поз.`, M, y, {
           width: contentW,
           lineBreak: false,
         });
-        y += 15;
+        y += 14;
       }
 
       y += 6;
@@ -360,47 +400,35 @@ export class StickerService {
         y += 30;
       }
 
-      // Акция в рамке — на неё должен падать взгляд. Высоту блока считаем по
-      // фактическому тексту: если формулировку поменяют на длинную, рамка
-      // подрастёт сама и строки не наедут друг на друга.
-      const promoPad = 9;
-      const promoTextW = contentW - promoPad * 2;
-      doc.font('medium').fontSize(12);
-      const promoMainH = doc.heightOfString(PROMO_MAIN, {
-        width: promoTextW,
-        align: 'center',
-      });
-      doc.font('regular').fontSize(9);
-      const promoNoteH = doc.heightOfString(PROMO_NOTE, {
-        width: promoTextW,
-        align: 'center',
-      });
-      const promoH = promoPad * 2 + promoMainH + 5 + promoNoteH;
+      // Акция в рамке — на неё должен падать взгляд. Высота посчитана выше по
+      // фактическому тексту, поэтому формулировки можно менять свободно.
+      const promoY = y;
+      doc.lineWidth(1.2).rect(M, promoY, contentW, promoH).stroke();
 
-      doc.lineWidth(1.2).rect(M, y, contentW, promoH).stroke();
+      let py = promoY + promoPad;
       doc
         .font('medium')
-        .fontSize(12)
-        .text(PROMO_MAIN, M + promoPad, y + promoPad, {
+        .fontSize(11)
+        .text(PROMO_MAIN, M + promoPad, py, {
           width: promoTextW,
           align: 'center',
         });
+      py += mainH + 5;
+      doc
+        .font('medium')
+        .fontSize(9.5)
+        .text(PROMO_TAGS, M + promoPad, py, {
+          width: promoTextW,
+          align: 'center',
+        });
+      py += tagsH + 3;
       doc
         .font('regular')
-        .fontSize(9)
-        .text(PROMO_NOTE, M + promoPad, y + promoPad + promoMainH + 5, {
+        .fontSize(8.5)
+        .text(PROMO_NOTE, M + promoPad, py, {
           width: promoTextW,
           align: 'center',
         });
-
-      // Блок соцсетей прижимаем к низу этикетки — так вёрстка выглядит
-      // законченной независимо от того, сколько позиций в заказе.
-      const captionH = 14;
-      const iconH = 20;
-      const gap = 10;
-      const qrSize = (contentW - gap * 2) / 3;
-      const qrY = CLIENT_PAGE_H - M - captionH - qrSize;
-      const iconY = qrY - iconH - 4;
 
       qrCodes.forEach((png, i) => {
         const x = M + i * (qrSize + gap);
