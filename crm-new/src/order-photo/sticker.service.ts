@@ -29,6 +29,10 @@ const SOCIAL_LINKS: { url: string; label: string }[] = [
   { url: 'https://instagram.com/raspe4atka', label: 'Instagram' },
 ];
 
+/** Акция на клиентском стикере. Текст меняется здесь. */
+const PROMO_MAIN = 'Репост в сторис — подарок на следующий заказ';
+const PROMO_NOTE = 'Условия уточняйте у менеджера';
+
 // Роботовский woff лежит в node_modules (roboto-fontface — прод-зависимость).
 // Резолвим через package.json пакета, чтобы путь работал и в dev, и в Docker.
 const req = createRequire(__filename);
@@ -265,27 +269,40 @@ export class StickerService {
       doc.registerFont('regular', fonts.regular);
       doc.registerFont('medium', fonts.medium);
 
-      doc.font('medium').fontSize(8.5).text(`№ ${order.numberOrder}`, M, 3, {
+      doc.font('medium').fontSize(8.5).text(`№ ${order.numberOrder}`, M, 2, {
         width: contentW,
         align: 'center',
         lineBreak: false,
       });
-      doc.font('regular').fontSize(6).text('Спасибо за обращение!', M, 13, {
+      doc.font('regular').fontSize(6).text('Спасибо за обращение!', M, 11, {
+        width: contentW,
+        align: 'center',
+        lineBreak: false,
+      });
+
+      // Акция. Высоту под неё забрали из отступов, а не из QR-кодов:
+      // коды и так на пределе читаемости, ужимать их было нельзя.
+      doc.fontSize(5.5).text(PROMO_MAIN, M, 17.5, {
+        width: contentW,
+        align: 'center',
+        lineBreak: false,
+      });
+      doc.fontSize(5).text(PROMO_NOTE, M, 23, {
         width: contentW,
         align: 'center',
         lineBreak: false,
       });
 
       doc
-        .moveTo(M, 22)
-        .lineTo(PAGE_W - M, 22)
+        .moveTo(M, 30)
+        .lineTo(PAGE_W - M, 30)
         .lineWidth(0.6)
         .stroke();
 
       // Состав: две позиции, остальное сворачиваем — место под QR важнее.
       const lines = buildPhotoItemLines(order);
       const shown = lines.slice(0, 2);
-      let y = 25;
+      let y = 32;
       doc.font('regular').fontSize(6);
       for (const line of shown) {
         doc.text(line, M, y, {
@@ -308,7 +325,7 @@ export class StickerService {
         doc
           .font('medium')
           .fontSize(8)
-          .text(`К оплате: ${formatRub(rest)}`, M, 44, {
+          .text(`К оплате: ${formatRub(rest)}`, M, 46, {
             width: contentW,
             lineBreak: false,
           });
@@ -316,10 +333,10 @@ export class StickerService {
         doc
           .font('regular')
           .fontSize(6.5)
-          .text('Доставка №', M, 45, { lineBreak: false });
+          .text('Доставка №', M, 47, { lineBreak: false });
         doc
-          .moveTo(M + 40, 52)
-          .lineTo(PAGE_W - M, 52)
+          .moveTo(M + 40, 54)
+          .lineTo(PAGE_W - M, 54)
           .lineWidth(0.6)
           .stroke();
       }
