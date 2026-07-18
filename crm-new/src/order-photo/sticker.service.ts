@@ -23,10 +23,18 @@ import {
  * Ссылки короткие намеренно: чем меньше символов, тем крупнее модули QR, а на
  * термопринтере это решает, прочитается код или нет.
  */
-const SOCIAL_LINKS: { url: string; label: string }[] = [
-  { url: 'https://t.me/photo_avito', label: 'Связь' },
-  { url: 'https://t.me/raspichatka', label: 'Наш канал' },
-  { url: 'https://instagram.com/raspe4atka', label: 'Instagram' },
+const SOCIAL_LINKS: {
+  url: string;
+  label: string;
+  icon: 'telegram' | 'instagram';
+}[] = [
+  { url: 'https://t.me/photo_avito', label: 'Связь', icon: 'telegram' },
+  { url: 'https://t.me/raspichatka', label: 'Наш канал', icon: 'telegram' },
+  {
+    url: 'https://instagram.com/raspe4atka',
+    label: 'Instagram',
+    icon: 'instagram',
+  },
 ];
 
 /** Акция на клиентском стикере. Текст меняется здесь. */
@@ -42,11 +50,18 @@ const FONT_DIR = path.join(
   'roboto',
 );
 
-// Термоэтикетка 58×40 мм. PDFKit работает в пунктах: 1 мм = 72/25.4 pt.
+// Термоэтикетка 58×40 мм для производственного стикера футболок.
+// PDFKit работает в пунктах: 1 мм = 72/25.4 pt.
 const MM = 72 / 25.4;
 const PAGE_W = 58 * MM; // ≈ 164.4 pt
 const PAGE_H = 40 * MM; // ≈ 113.4 pt
 const MARGIN = 5;
+
+// Клиентский стикер печатается на 100×150 мм (XP-420B тянет до 108 мм).
+// Такой ширины хватает, чтобы три QR встали в ряд по ~27 мм — при 203 dpi это
+// ~4.4 точки на модуль, то есть коды уверенно считываются.
+const CLIENT_PAGE_W = 100 * MM; // ≈ 283.5 pt
+const CLIENT_PAGE_H = 150 * MM; // ≈ 425.2 pt
 
 const SIZE_LABELS: Record<EnumTshirtSize, string> = {
   XS: 'XS',
@@ -251,14 +266,14 @@ export class StickerService {
     const qrCodes = await Promise.all(qrOptions.map((o) => barcodeToBuffer(o)));
 
     const fonts = this.loadFonts();
-    const M = 4;
-    const contentW = PAGE_W - M * 2;
+    const M = 14;
+    const contentW = CLIENT_PAGE_W - M * 2;
 
     const buffer = await new Promise<Buffer>((resolve, reject) => {
       // Нижний отступ 0: координаты на этикетке задаём вручную, а любой
       // автоматический перенос строки превратил бы стикер в несколько страниц.
       const doc = new PDFDocument({
-        size: [PAGE_W, PAGE_H],
+        size: [CLIENT_PAGE_W, CLIENT_PAGE_H],
         margins: { top: M, bottom: 0, left: M, right: M },
       });
       const chunks: Buffer[] = [];
@@ -269,88 +284,139 @@ export class StickerService {
       doc.registerFont('regular', fonts.regular);
       doc.registerFont('medium', fonts.medium);
 
-      doc.font('medium').fontSize(8.5).text(`№ ${order.numberOrder}`, M, 2, {
-        width: contentW,
-        align: 'center',
-        lineBreak: false,
-      });
-      doc.font('regular').fontSize(6).text('Спасибо за обращение!', M, 11, {
-        width: contentW,
-        align: 'center',
-        lineBreak: false,
-      });
-
-      // Акция. Высоту под неё забрали из отступов, а не из QR-кодов:
-      // коды и так на пределе читаемости, ужимать их было нельзя.
-      doc.fontSize(5.5).text(PROMO_MAIN, M, 17.5, {
-        width: contentW,
-        align: 'center',
-        lineBreak: false,
-      });
-      doc.fontSize(5).text(PROMO_NOTE, M, 23, {
-        width: contentW,
-        align: 'center',
-        lineBreak: false,
-      });
+      const centered = { width: contentW, align: 'center' as const };
+      let y = M + 4;
 
       doc
-        .moveTo(M, 30)
-        .lineTo(PAGE_W - M, 30)
-        .lineWidth(0.6)
-        .stroke();
+        .font('medium')
+        .fontSize(22)
+        .text(`№ ${order.numberOrder}`, M, y, {
+          ...centered,
+          lineBreak: false,
+        });
+      y += 30;
+      doc
+        .font('regular')
+        .fontSize(12)
+        .text('Спасибо за обращение!', M, y, { ...centered, lineBreak: false });
+      y += 24;
 
-      // Состав: две позиции, остальное сворачиваем — место под QR важнее.
+      doc
+        .moveTo(M, y)
+        .lineTo(CLIENT_PAGE_W - M, y)
+        .lineWidth(1)
+        .stroke();
+      y += 12;
+
+      // Состав заказа целиком — на 100×150 больше не нужно ничего сворачивать.
       const lines = buildPhotoItemLines(order);
-      const shown = lines.slice(0, 2);
-      let y = 32;
-      doc.font('regular').fontSize(6);
+      const shown = lines.slice(0, 8);
+      doc.font('regular').fontSize(11);
       for (const line of shown) {
         doc.text(line, M, y, {
           width: contentW,
           lineBreak: false,
           ellipsis: true,
         });
-        y += 6.5;
+        y += 15;
       }
       if (lines.length > shown.length) {
         doc.text(`+ ещё ${lines.length - shown.length} поз.`, M, y, {
           width: contentW,
           lineBreak: false,
         });
+        y += 15;
       }
 
-      // Самовывоз — сумма к доплате. Доставка — пустая линия, номер вписывают
-      // от руки, пока не подключён API службы доставки.
+      y += 6;
+      doc
+        .moveTo(M, y)
+        .lineTo(CLIENT_PAGE_W - M, y)
+        .lineWidth(1)
+        .stroke();
+      y += 14;
+
+      // Самовывоз — сумма к доплате. Доставка — линия под номер, который
+      // вписывают от руки, пока не подключён API службы доставки.
       if (isPickup) {
         doc
           .font('medium')
-          .fontSize(8)
-          .text(`К оплате: ${formatRub(rest)}`, M, 46, {
+          .fontSize(16)
+          .text(`К оплате: ${formatRub(rest)}`, M, y, {
             width: contentW,
             lineBreak: false,
           });
+        y += 26;
       } else {
         doc
           .font('regular')
-          .fontSize(6.5)
-          .text('Доставка №', M, 47, { lineBreak: false });
+          .fontSize(12)
+          .text('Доставка №', M, y, { lineBreak: false });
         doc
-          .moveTo(M + 40, 54)
-          .lineTo(PAGE_W - M, 54)
-          .lineWidth(0.6)
+          .moveTo(M + 72, y + 15)
+          .lineTo(CLIENT_PAGE_W - M, y + 15)
+          .lineWidth(1)
           .stroke();
+        y += 30;
       }
 
-      const qrSize = 44;
-      const qrY = 58;
+      // Акция в рамке — на неё должен падать взгляд. Высоту блока считаем по
+      // фактическому тексту: если формулировку поменяют на длинную, рамка
+      // подрастёт сама и строки не наедут друг на друга.
+      const promoPad = 9;
+      const promoTextW = contentW - promoPad * 2;
+      doc.font('medium').fontSize(12);
+      const promoMainH = doc.heightOfString(PROMO_MAIN, {
+        width: promoTextW,
+        align: 'center',
+      });
+      doc.font('regular').fontSize(9);
+      const promoNoteH = doc.heightOfString(PROMO_NOTE, {
+        width: promoTextW,
+        align: 'center',
+      });
+      const promoH = promoPad * 2 + promoMainH + 5 + promoNoteH;
+
+      doc.lineWidth(1.2).rect(M, y, contentW, promoH).stroke();
+      doc
+        .font('medium')
+        .fontSize(12)
+        .text(PROMO_MAIN, M + promoPad, y + promoPad, {
+          width: promoTextW,
+          align: 'center',
+        });
+      doc
+        .font('regular')
+        .fontSize(9)
+        .text(PROMO_NOTE, M + promoPad, y + promoPad + promoMainH + 5, {
+          width: promoTextW,
+          align: 'center',
+        });
+
+      // Блок соцсетей прижимаем к низу этикетки — так вёрстка выглядит
+      // законченной независимо от того, сколько позиций в заказе.
+      const captionH = 14;
+      const iconH = 20;
+      const gap = 10;
+      const qrSize = (contentW - gap * 2) / 3;
+      const qrY = CLIENT_PAGE_H - M - captionH - qrSize;
+      const iconY = qrY - iconH - 4;
+
       qrCodes.forEach((png, i) => {
-        const centerX = M + (contentW * (2 * i + 1)) / 6;
-        const x = centerX - qrSize / 2;
+        const x = M + i * (qrSize + gap);
+        const cx = x + qrSize / 2;
+        // Иконки рисуем векторно: на термопечати чистые линии выходят
+        // резче любой растровой картинки.
+        if (SOCIAL_LINKS[i].icon === 'instagram') {
+          drawInstagramIcon(doc, cx - iconH / 2, iconY, iconH);
+        } else {
+          drawTelegramIcon(doc, cx - iconH / 2, iconY, iconH);
+        }
         doc.image(png, x, qrY, { width: qrSize, height: qrSize });
         doc
           .font('regular')
-          .fontSize(5.5)
-          .text(SOCIAL_LINKS[i].label, x, qrY + qrSize + 0.5, {
+          .fontSize(9)
+          .text(SOCIAL_LINKS[i].label, x, qrY + qrSize + 3, {
             width: qrSize,
             align: 'center',
             lineBreak: false,
@@ -362,6 +428,46 @@ export class StickerService {
 
     return { buffer, filename: `client-${order.numberOrder}.pdf` };
   }
+}
+
+/**
+ * Иконки соцсетей рисуем векторно, а не картинкой: термоголова печатает
+ * только чистый чёрный, и ровные линии выходят резче любого растра.
+ */
+function drawTelegramIcon(
+  doc: PDFKit.PDFDocument,
+  x: number,
+  y: number,
+  s: number,
+): void {
+  doc.save();
+  doc.lineWidth(s * 0.07);
+  doc.circle(x + s / 2, y + s / 2, s / 2 - s * 0.035).stroke();
+  // Бумажный самолётик
+  doc
+    .moveTo(x + s * 0.2, y + s * 0.5)
+    .lineTo(x + s * 0.81, y + s * 0.27)
+    .lineTo(x + s * 0.66, y + s * 0.76)
+    .lineTo(x + s * 0.5, y + s * 0.6)
+    .lineTo(x + s * 0.37, y + s * 0.72)
+    .lineTo(x + s * 0.37, y + s * 0.56)
+    .fill();
+  doc.restore();
+}
+
+function drawInstagramIcon(
+  doc: PDFKit.PDFDocument,
+  x: number,
+  y: number,
+  s: number,
+): void {
+  const lw = s * 0.08;
+  doc.save();
+  doc.lineWidth(lw);
+  doc.roundedRect(x + lw, y + lw, s - lw * 2, s - lw * 2, s * 0.26).stroke();
+  doc.circle(x + s / 2, y + s / 2, s * 0.19).stroke();
+  doc.circle(x + s * 0.73, y + s * 0.27, s * 0.05).fill();
+  doc.restore();
 }
 
 const TYPE_PAPER_LABELS: Record<string, string> = {
