@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Plus, Search, ChevronLeft, ChevronRight, Printer, RefreshCw, LogOut, Users, Flame, Clock, Camera, Shirt, Wallet, Boxes, LayoutList, Sparkles, CheckCircle2, TrendingUp, Star } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, Printer, RefreshCw, LogOut, Users, Flame, Clock, Camera, Shirt, Wallet, Boxes, LayoutList, Sparkles, CheckCircle2, TrendingUp, Star, AlarmClock } from 'lucide-react';
 import { getDeadlineInfo } from '../utils/deadline';
+import { getStalledDays } from '../utils/stalled';
 import { Link } from 'react-router-dom';
 import { ordersApi } from '../api/orders';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -352,6 +353,7 @@ export function OrdersPage() {
                 );
                 const isPaid = order.status === 'PAID';
                 const showUrgent = tracksDeadline && order.isUrgent && !isClosed;
+                const stalledDays = getStalledDays(order);
                 return (
                   <button
                     key={order.id}
@@ -389,6 +391,11 @@ export function OrdersPage() {
                             <Clock size={9} aria-hidden="true" /> {dl.label}
                           </span>
                         ) : null}
+                        {stalledDays !== null && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-medium bg-red-50 text-red-700 border border-red-200">
+                            <AlarmClock size={9} aria-hidden="true" /> завис {stalledDays} дн.
+                          </span>
+                        )}
                         <span className="text-gray-400 tabular-nums">
                           {(order.items?.length ?? 0) + (order.tshirtItems?.length ?? 0)} поз.
                         </span>
@@ -445,6 +452,7 @@ export function OrdersPage() {
                     );
                     const isPaid = order.status === 'PAID';
                     const showUrgent = tracksDeadline && order.isUrgent && !isClosed;
+                    const stalledDays = getStalledDays(order);
                     const rowBg = isPaid
                       ? 'opacity-50'
                       : showUrgent
@@ -482,13 +490,23 @@ export function OrdersPage() {
                         {new Date(order.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                       </td>
                       <td className="px-5 py-3.5">
-                        {tracksDeadline && !isClosed && dl.label ? (
-                          <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-medium ${dl.badgeClass}`}>
-                            <Clock size={10} aria-hidden="true" /> {dl.label}
-                          </span>
-                        ) : (
-                          <span className="text-gray-300 text-xs">—</span>
-                        )}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {tracksDeadline && !isClosed && dl.label ? (
+                            <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-medium ${dl.badgeClass}`}>
+                              <Clock size={10} aria-hidden="true" /> {dl.label}
+                            </span>
+                          ) : stalledDays === null ? (
+                            <span className="text-gray-300 text-xs">—</span>
+                          ) : null}
+                          {stalledDays !== null && (
+                            <span
+                              className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-medium bg-red-50 text-red-700 border border-red-200"
+                              title="Статус не менялся — заказ стоит без движения"
+                            >
+                              <AlarmClock size={10} aria-hidden="true" /> завис {stalledDays} дн.
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-3.5"><StatusBadge status={order.status} productCategory={order.productCategory} size="sm" /></td>
                       <td className="px-5 py-3.5"><DeliveryBadge method={order.deliveryMethod} /></td>

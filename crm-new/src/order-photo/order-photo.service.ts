@@ -201,6 +201,8 @@ export class OrderPhotoService {
           numberOrder: fullDate(lengthOrder),
           totalOrder,
           isFreePrice: freePrice,
+          // Отсчёт «зависания» стартует с момента создания заказа.
+          statusChangedAt: new Date(),
           deadline:
             productCategory === EnumProductCategory.TSHIRT
               ? null
@@ -901,6 +903,8 @@ export class OrderPhotoService {
         where: { id },
         data: {
           status: dto.status,
+          // Отсчёт «зависания» начинается заново с каждой сменой статуса.
+          statusChangedAt: new Date(),
           // sentAt ставим и при прямом переводе в PAID (минуя SENT — типично
           // для самовывоза): иначе заказ выпадает из напоминаний об отзыве.
           ...((newStatus === EnumStatus.SENT ||

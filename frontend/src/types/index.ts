@@ -126,6 +126,8 @@ export interface OrderPhoto {
   clientReviewLeft?: boolean;
   /** Когда CRM напомнила рабочей группе попросить отзыв. */
   reviewReminderNotifiedAt?: string | null;
+  /** Когда статус менялся в последний раз — по нему видно зависшие заказы. */
+  statusChangedAt?: string | null;
   executorId?: string | null;
   executor?: OrderExecutor | null;
   completedAt?: string | null;
@@ -271,8 +273,12 @@ export interface AppUser {
   rateBasisPoints: number | null;
   telegramUsername: string | null;
   createdAt: string;
-  /** Сколько заказов сейчас в работе у исполнителя (текущая загрузка). */
+  /** Заказов в работе — считаются до статуса «Готов» (текущая загрузка). */
   activeOrdersCount?: number;
+  /** Готовых заказов, ожидающих выдачи или отправки. Загрузку не создают. */
+  readyOrdersCount?: number;
+  /** Заказов в работе, статус которых не менялся дольше порога. */
+  stalledOrdersCount?: number;
 }
 
 export interface OrdersQuery {

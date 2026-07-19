@@ -55,6 +55,9 @@ model OrderPhoto {
   clientReviewLeft      Boolean             @default(false)
   // Когда CRM автоматически напомнила рабочей группе попросить отзыв у клиента.
   reviewReminderNotifiedAt DateTime?
+  // Когда статус менялся в последний раз. По нему видно «зависшие» заказы:
+  // updatedAt для этого не годится — он дёргается от любой правки заказа.
+  statusChangedAt DateTime?
 
   // Модель футболки — производственные данные, уходят исполнителю-партнёру.
   tshirtModel String?

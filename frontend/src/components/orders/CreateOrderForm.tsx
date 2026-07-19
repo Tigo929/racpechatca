@@ -156,7 +156,10 @@ export function CreateOrderForm({ onClose }: Props) {
     queryFn: usersApi.getAll,
     staleTime: 60_000,
   });
-  const executors = users.filter((u: AppUser) => u.role === 'EXECUTOR' && u.isActive !== false);
+  // Свободные сверху — чтобы заказ уходил тому, кто не завален.
+  const executors = users
+    .filter((u: AppUser) => u.role === 'EXECUTOR' && u.isActive !== false)
+    .sort((a, b) => (a.activeOrdersCount ?? 0) - (b.activeOrdersCount ?? 0));
 
   // Чистим/восстанавливаем позиции, чтобы Zod не падал на скрытых полях:
   // при свободной цене позиций нет вовсе; иначе — одна позиция активной категории.
@@ -377,10 +380,8 @@ export function CreateOrderForm({ onClose }: Props) {
             <option value="">— назначить позже —</option>
             {executors.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.username}
-                {u.rateBasisPoints === null
-                  ? ' — ставка не назначена'
-                  : ` — ${(u.rateBasisPoints / 100).toFixed(2)}%`}
+                {u.username} — {(u.activeOrdersCount ?? 0) === 0 ? 'свободен' : `${u.activeOrdersCount} в работе`}
+                {u.rateBasisPoints === null ? ' · ставка не назначена' : ` · ${(u.rateBasisPoints / 100).toFixed(2)}%`}
               </option>
             ))}
           </select>

@@ -25,6 +25,19 @@ const IN_WORK_STATUSES: EnumStatus[] = [
   EnumStatus.PRINTED,
 ];
 
+/**
+ * Работа исполнителем сдана, но заказ ещё не ушёл клиенту. Загрузку не создаёт,
+ * зато показывает «хвост»: сколько готовых заказов ждут выдачи или отправки.
+ */
+const READY_STATUSES: EnumStatus[] = [
+  EnumStatus.READY,
+  EnumStatus.DONE,
+  EnumStatus.READY_FOR_REVIEW,
+];
+
+/** Сколько дней заказ может стоять в одном статусе, прежде чем считается зависшим. */
+export const STALLED_AFTER_DAYS = 3;
+
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
@@ -47,23 +60,47 @@ export class UsersService {
       orderBy: { createdAt: 'asc' },
     });
 
-    // Одним запросом считаем активные (в работе) заказы по каждому исполнителю,
-    // чтобы показать текущую загрузку без N+1 обращений к БД.
-    const activeCounts = await this.prisma.orderPhoto.groupBy({
-      by: ['executorId'],
-      where: {
-        executorId: { not: null },
-        status: { in: IN_WORK_STATUSES },
-      },
-      _count: { _all: true },
-    });
-    const countByExecutor = new Map(
-      activeCounts.map((row) => [row.executorId, row._count._all]),
+    // Три группировки вместо обхода заказов в цикле — без N+1 обращений к БД.
+    const stalledSince = new Date(
+      Date.now() - STALLED_AFTER_DAYS * 24 * 60 * 60 * 1000,
     );
+
+    const [activeCounts, readyCounts, stalledCounts] = await Promise.all([
+      this.prisma.orderPhoto.groupBy({
+        by: ['executorId'],
+        where: { executorId: { not: null }, status: { in: IN_WORK_STATUSES } },
+        _count: { _all: true },
+      }),
+      this.prisma.orderPhoto.groupBy({
+        by: ['executorId'],
+        where: { executorId: { not: null }, status: { in: READY_STATUSES } },
+        _count: { _all: true },
+      }),
+      // Зависшие — только среди тех, что в работе: готовый заказ «висит» уже
+      // не на исполнителе, и штрафовать его за это неправильно.
+      this.prisma.orderPhoto.groupBy({
+        by: ['executorId'],
+        where: {
+          executorId: { not: null },
+          status: { in: IN_WORK_STATUSES },
+          statusChangedAt: { lt: stalledSince },
+        },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const toMap = (
+      rows: { executorId: string | null; _count: { _all: number } }[],
+    ) => new Map(rows.map((row) => [row.executorId, row._count._all]));
+    const active = toMap(activeCounts);
+    const ready = toMap(readyCounts);
+    const stalled = toMap(stalledCounts);
 
     return users.map(({ password: _, ...u }) => ({
       ...u,
-      activeOrdersCount: countByExecutor.get(u.id) ?? 0,
+      activeOrdersCount: active.get(u.id) ?? 0,
+      readyOrdersCount: ready.get(u.id) ?? 0,
+      stalledOrdersCount: stalled.get(u.id) ?? 0,
     }));
   }
 

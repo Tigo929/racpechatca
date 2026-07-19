@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Pencil, Trash2, Flame, Clock, Copy, UserCheck, X, Send, Printer, Paperclip } from 'lucide-react';
+import { Pencil, Trash2, Flame, Clock, Copy, UserCheck, X, Send, Printer, Paperclip, AlarmClock } from 'lucide-react';
 import { usersApi } from '../../api/users';
 import { businessConfig, resolvePickupAddress } from '../../config/business';
 import { COMMUNICATION_LABELS, DELIVERY_LABELS } from '../../constants';
@@ -140,6 +140,7 @@ function generateReadyText(order: OrderPhoto): string {
   ].join('\n');
 }
 import { getDeadlineInfo } from '../../utils/deadline';
+import { getStalledDays } from '../../utils/stalled';
 import { ordersApi } from '../../api/orders';
 import { StatusStepper } from './StatusStepper';
 import { ItemsTable } from './ItemsTable';
@@ -169,7 +170,10 @@ function AssignPanel({ order, onAssigned }: AssignPanelProps) {
     staleTime: 60_000,
   });
 
-  const executors = users.filter((u: AppUser) => u.role === 'EXECUTOR' && u.isActive !== false);
+  // Свободные сверху: назначая заказ, сразу видно, кому есть куда его дать.
+  const executors = users
+    .filter((u: AppUser) => u.role === 'EXECUTOR' && u.isActive !== false)
+    .sort((a, b) => (a.activeOrdersCount ?? 0) - (b.activeOrdersCount ?? 0));
 
   const mutation = useMutation({
     mutationFn: () => ordersApi.assignExecutor(order.id, executorId || null),
@@ -203,9 +207,8 @@ function AssignPanel({ order, onAssigned }: AssignPanelProps) {
         <option value="">— без исполнителя —</option>
         {executors.map((u) => (
           <option key={u.id} value={u.id}>
-            {u.username} ({u.rateBasisPoints === null
-              ? 'ставка не назначена'
-              : `${(u.rateBasisPoints / 100).toFixed(2)}%`})
+            {u.username} — {(u.activeOrdersCount ?? 0) === 0 ? 'свободен' : `${u.activeOrdersCount} в работе`}
+            {u.rateBasisPoints === null ? ' · ставка не назначена' : ` · ${(u.rateBasisPoints / 100).toFixed(2)}%`}
           </option>
         ))}
       </select>
@@ -388,6 +391,17 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                       <Flame size={11} aria-hidden="true" /> Срочно
                     </span>
                   )}
+                  {(() => {
+                    const stalled = getStalledDays(order);
+                    return stalled === null ? null : (
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-700 text-xs font-semibold border border-red-200"
+                        title="Статус не менялся — заказ стоит без движения"
+                      >
+                        <AlarmClock size={11} aria-hidden="true" /> Завис {stalled} дн.
+                      </span>
+                    );
+                  })()}
                 </>
               );
             })()}

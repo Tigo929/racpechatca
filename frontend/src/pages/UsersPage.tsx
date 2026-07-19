@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Plus, Trash2, X, Check, ArrowLeft, Pencil, ToggleLeft, ToggleRight, Send, Layers } from 'lucide-react';
+import { Plus, Trash2, X, Check, ArrowLeft, Pencil, ToggleLeft, ToggleRight, Send, Layers, PackageCheck, AlarmClock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { usersApi } from '../api/users';
 import { useAuth } from '../context/useAuth';
@@ -320,8 +320,26 @@ export function UsersPage() {
                         title="Заказов сейчас в работе — считаются до статуса «Готов»"
                       >
                         <Layers size={10} />
-                        {u.activeOrdersCount ?? 0} в работе
+                        {(u.activeOrdersCount ?? 0) === 0 ? 'свободен' : `${u.activeOrdersCount} в работе`}
                       </span>
+                      {(u.readyOrdersCount ?? 0) > 0 && (
+                        <span
+                          className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium bg-sky-50 text-sky-700 border-sky-200"
+                          title="Готовые заказы — работа сдана, ждут выдачи или отправки"
+                        >
+                          <PackageCheck size={10} />
+                          {u.readyOrdersCount} готово
+                        </span>
+                      )}
+                      {(u.stalledOrdersCount ?? 0) > 0 && (
+                        <span
+                          className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium bg-red-50 text-red-700 border-red-200"
+                          title="Заказы в работе, статус которых не менялся более 3 дней"
+                        >
+                          <AlarmClock size={10} />
+                          {u.stalledOrdersCount} зависло
+                        </span>
+                      )}
                       <button
                         onClick={() => setEditingRateId(editingRateId === u.id ? null : u.id)}
                         className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors font-mono"
