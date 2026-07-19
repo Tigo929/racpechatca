@@ -11,16 +11,18 @@ import { DtoCreateUser } from './dto/create-user.dto';
 import { DtoUpdateUser } from './dto/update-user.dto';
 
 /**
- * «Закрытые» статусы — заказ больше не в работе у исполнителя.
- * Загрузка исполнителя = число его заказов НЕ в этих статусах (и не LEAD:
- * лид ещё не заказ). Так работодатель видит текущую занятость по каждому.
+ * Статусы, в которых заказ реально висит на исполнителе.
+ *
+ * Считаем загрузку ТОЛЬКО до «Готов»: как только работа сдана, исполнитель
+ * свободен, даже если заказ ещё не отправлен и не оплачен — дальше это забота
+ * администратора, а не производства. Список положительный (что считаем), а не
+ * отрицательный: новый статус в enum не начнёт молча раздувать счётчик.
  */
-const CLOSED_OR_NOT_STARTED: EnumStatus[] = [
-  EnumStatus.LEAD,
-  EnumStatus.SENT,
-  EnumStatus.PAID,
-  EnumStatus.COMPLETED,
-  EnumStatus.CANCELLED,
+const IN_WORK_STATUSES: EnumStatus[] = [
+  EnumStatus.NEW,
+  EnumStatus.FOLDER_STRUCTURE_CREATED,
+  EnumStatus.IN_PROGRESS,
+  EnumStatus.PRINTED,
 ];
 
 @Injectable()
@@ -51,7 +53,7 @@ export class UsersService {
       by: ['executorId'],
       where: {
         executorId: { not: null },
-        status: { notIn: CLOSED_OR_NOT_STARTED },
+        status: { in: IN_WORK_STATUSES },
       },
       _count: { _all: true },
     });

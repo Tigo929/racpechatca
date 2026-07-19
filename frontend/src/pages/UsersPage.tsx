@@ -317,7 +317,7 @@ export function UsersPage() {
                     <>
                       <span
                         className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium ${loadBadgeColor(u.activeOrdersCount ?? 0)}`}
-                        title="Заказов сейчас в работе"
+                        title="Заказов сейчас в работе — считаются до статуса «Готов»"
                       >
                         <Layers size={10} />
                         {u.activeOrdersCount ?? 0} в работе
