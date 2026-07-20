@@ -500,11 +500,15 @@ export class OrderPhotoService {
       ...(query.reviewLeft !== undefined
         ? { clientReviewLeft: query.reviewLeft === 'true' }
         : {}),
-      // Исполнитель видит только свои заказы. Исключение — футболки: их ведёт
-      // партнёр, исполнителя у них нет, и раздел открыт всем на просмотр.
-      ...(currentUserRole === EnumRole.EXECUTOR &&
-      query.productCategory !== EnumProductCategory.TSHIRT
-        ? { executorId: currentUserId }
+      // Исполнитель видит только свои заказы и только фотопечать: футболки
+      // ведёт партнёр, исполнителям там делать нечего. productCategory
+      // задаётся здесь жёстко и перекрывает параметр запроса — иначе
+      // ?productCategory=TSHIRT открыл бы чужой продукт.
+      ...(currentUserRole === EnumRole.EXECUTOR
+        ? {
+            executorId: currentUserId,
+            productCategory: EnumProductCategory.PHOTO,
+          }
         : {}),
       ...(searchTerm
         ? {
@@ -555,12 +559,13 @@ export class OrderPhotoService {
       },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
-    if (
-      currentUserRole === EnumRole.EXECUTOR &&
-      order.productCategory !== EnumProductCategory.TSHIRT &&
-      order.executorId !== currentUserId
-    ) {
-      throw new ForbiddenException('Нет доступа к чужому заказу.');
+    if (currentUserRole === EnumRole.EXECUTOR) {
+      if (order.productCategory === EnumProductCategory.TSHIRT) {
+        throw new ForbiddenException('Заказы на футболки ведёт администратор.');
+      }
+      if (order.executorId !== currentUserId) {
+        throw new ForbiddenException('Нет доступа к чужому заказу.');
+      }
     }
     return order;
   }

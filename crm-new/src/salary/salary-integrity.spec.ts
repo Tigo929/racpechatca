@@ -269,6 +269,38 @@ describe('salary accrual integrity', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('forbids an executor from opening a tshirt order even when assigned', async () => {
+    const stub = createPrismaStub();
+    // executorId совпадает с запрашивающим — доступ всё равно закрыт:
+    // футболки ведёт партнёр через администратора.
+    stub.orderPhoto.findUnique.mockResolvedValue(makeOrder('TSHIRT'));
+    const service = createOrderService(stub);
+
+    await expect(
+      service.getOrderById('order-1', 'executor-1', EnumRole.EXECUTOR),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('pins executor lists to photo even when tshirt is requested', async () => {
+    const stub = createPrismaStub();
+    stub.orderPhoto.findMany.mockResolvedValue([]);
+    stub.orderPhoto.count.mockResolvedValue(0);
+    const service = createOrderService(stub);
+
+    await service.getAllOrders(
+      { productCategory: 'TSHIRT' },
+      'executor-1',
+      EnumRole.EXECUTOR,
+    );
+    const call = stub.orderPhoto.findMany.mock.calls.at(-1)?.[0] as {
+      where: Record<string, unknown>;
+    };
+
+    // Параметр запроса перекрыт: ?productCategory=TSHIRT не открывает футболки.
+    expect(call.where.productCategory).toBe('PHOTO');
+    expect(call.where.executorId).toBe('executor-1');
+  });
+
   it('filters executor lists but leaves admin lists unrestricted', async () => {
     const stub = createPrismaStub();
     stub.orderPhoto.findMany.mockResolvedValue([]);

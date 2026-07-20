@@ -36,9 +36,11 @@ export function AppHeader({ onRefresh, onCreate, leadCount = 0 }: Props) {
     staleTime: 30_000,
   });
 
+  // Футболки ведёт партнёр через администратора — исполнителям этот раздел
+  // не показываем. Сервер тоже их туда не пускает, вкладка лишь не дразнит.
   const sections = [
     { to: '/crm/photo', label: 'Фотопечать', icon: Camera, show: true },
-    { to: '/crm/tshirt', label: 'Футболки', icon: Shirt, show: true },
+    { to: '/crm/tshirt', label: 'Футболки', icon: Shirt, show: isAdmin },
     { to: '/crm/leads', label: 'Обращения', icon: Bell, show: isAdmin, badge: leadCount },
   ].filter((s) => s.show);
 

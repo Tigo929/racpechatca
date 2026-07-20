@@ -59,7 +59,7 @@ function AppRoutes() {
             страницу пересоздаться при переходе, чтобы фильтры не перетекали
             из одного раздела в другой. */}
         <Route path="/crm/photo" element={<CrmGate><PrivateRoute><OrdersPage key="photo" section="PHOTO" /></PrivateRoute></CrmGate>} />
-        <Route path="/crm/tshirt" element={<CrmGate><PrivateRoute><OrdersPage key="tshirt" section="TSHIRT" /></PrivateRoute></CrmGate>} />
+        <Route path="/crm/tshirt" element={<CrmGate><AdminRoute><OrdersPage key="tshirt" section="TSHIRT" /></AdminRoute></CrmGate>} />
         <Route path="/crm/leads" element={<CrmGate><AdminRoute><OrdersPage key="leads" section="LEADS" /></AdminRoute></CrmGate>} />
         <Route path="/crm" element={<Navigate to="/crm/photo" replace />} />
         <Route path="/crm/users" element={<CrmGate><AdminRoute><UsersPage /></AdminRoute></CrmGate>} />
