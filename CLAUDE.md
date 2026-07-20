@@ -2,6 +2,26 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Граф знаний (graphify)
+
+В проекте ведётся граф знаний кодовой базы (`graphify-out/graph.json`) — карта
+связей между модулями, сервисами, DTO и схемой БД. Используется для навигации
+и анализа влияния изменений.
+
+**ВАЖНО — после каждой заметной фичи или рефакторинга обновляй граф и коммить его:**
+
+```bash
+graphify update .        # пересборка по коду, ТОЛЬКО локально (без LLM, наружу ничего не уходит)
+git add graphify-out/graph.json graphify-out/GRAPH_REPORT.md graphify-out/manifest.json
+```
+
+- Только локальный разбор кода (tree-sitter). Внешний ИИ-разбор доков/картинок
+  НЕ включаем — это осознанное решение по приватности (в репозитории бизнес-логика CRM).
+- Не запускай `graphify extract` (он зовёт внешний LLM). Наш путь — `graphify update .`.
+- Полезные команды: `graphify explain "<Symbol>"`, `graphify god-nodes`,
+  `graphify query "<вопрос>"`, `graphify affected "<Symbol>"`.
+- `cache/`, `graph.html` и дневные бэкапы не коммитятся (см. `graphify-out/.gitignore`).
+
 ## Commands
 
 ```bash
