@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { ordersApi } from '../../api/orders';
 import { usersApi } from '../../api/users';
+import { partnerSettingsApi } from '../../api/partnerSettings';
 import {
   TSHIRT_COLORS,
   TSHIRT_SIZE_LABELS,
@@ -32,9 +33,9 @@ const tshirtItemSchema = z.object({
   quantity: z.coerce.number().int().positive(),
   price: z.coerce.number().int().min(0),
   clientItem: z.boolean().optional(),
-  // Необязательная ссылка на макет-референс. Финальный ТЗ-макет прикрепляется
-  // фотографией к заказу и уходит исполнителю-партнёру отдельно.
-  designUrl: z.string().optional(),
+  // Себестоимость печати позиции — по умолчанию из настроек, можно поправить.
+  thermalCost: z.coerce.number().int().min(0).optional(),
+  blankCost: z.coerce.number().int().min(0).optional(),
 });
 
 // Свободная позиция: произвольное название + цена. Имя не валидируем строго здесь
@@ -56,7 +57,6 @@ const baseSchema = z.object({
   note: z.string().optional(),
   executorId: z.string().optional(),
   freePrice: z.boolean().optional(),
-  tshirtModel: z.string().optional(),
   freeItems: z.array(freeItemSchema).optional(),
   items: z.array(photoItemSchema).optional(),
   tshirtItems: z.array(tshirtItemSchema).optional(),
@@ -134,13 +134,12 @@ export function CreateOrderForm({ onClose }: Props) {
       deliveryCost: 0,
       executorId: '',
       freePrice: false,
-      tshirtModel: '',
       freeItems: [{ name: '', quantity: 1, price: 0 }],
       items: [{ isFreePrice: false, formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }],
       tshirtItems: [{
         freePrice: false, name: '',
         color: 'Белый', size: 'M', printLocation: 'FRONT',
-        quantity: 1, price: 500, clientItem: false, designUrl: '',
+        quantity: 1, price: 500, clientItem: false,
       }],
     },
   });
@@ -154,6 +153,12 @@ export function CreateOrderForm({ onClose }: Props) {
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
     queryFn: usersApi.getAll,
+    staleTime: 60_000,
+  });
+  // Себестоимость по умолчанию — показываем как плейсхолдер в позициях.
+  const { data: settings } = useQuery({
+    queryKey: ['partner-settings'],
+    queryFn: partnerSettingsApi.get,
     staleTime: 60_000,
   });
   // Свободные сверху — чтобы заказ уходил тому, кто не завален.
@@ -181,7 +186,7 @@ export function CreateOrderForm({ onClose }: Props) {
         setValue('tshirtItems', [{
           freePrice: false, name: '',
           color: 'Белый', size: 'M', printLocation: 'FRONT',
-          quantity: 1, price: 500, clientItem: false, designUrl: '',
+          quantity: 1, price: 500, clientItem: false,
         }]);
       }
     } else {
@@ -248,7 +253,9 @@ export function CreateOrderForm({ onClose }: Props) {
       const tshirtItems = rows.filter((r) => !r.freePrice).map((r) => ({
         color: r.color, size: r.size, printLocation: r.printLocation,
         quantity: r.quantity, price: r.price, clientItem: r.clientItem,
-        designUrl: r.designUrl?.trim() || undefined,
+        // Пусто → сервер подставит себестоимость из настроек.
+        thermalCost: r.thermalCost,
+        blankCost: r.blankCost,
       }));
       const items = rows.filter((r) => r.freePrice).map((r) => ({
         formatPaper: (r.name ?? '').trim(),
@@ -263,7 +270,6 @@ export function CreateOrderForm({ onClose }: Props) {
         // Футболки печатает партнёр: исполнителя не передаём, даже если он
         // остался в форме после переключения категории.
         executorId: undefined,
-        tshirtModel: data.tshirtModel?.trim() || undefined,
         tshirtItems: tshirtItems.length ? tshirtItems : undefined,
         items: items.length ? items : undefined,
       });
@@ -392,15 +398,6 @@ export function CreateOrderForm({ onClose }: Props) {
         <label className={labelCls}>Примечание</label>
         <textarea rows={2} className={inputCls + ' resize-none'} {...register('note')} />
       </div>
-
-      {/* Модель футболки — производственные данные для исполнителя-партнёра.
-          Отправка партнёру делается из карточки заказа после прикрепления ТЗ-фото. */}
-      {productCategory === 'TSHIRT' && (
-        <div>
-          <label className={labelCls}>Модель футболки (для исполнителя)</label>
-          <input className={inputCls} placeholder="Футболка оверсайз 240 г/м²" {...register('tshirtModel')} />
-        </div>
-      )}
 
       {/* Свободная (договорная) цена заказа — только для фото; у футболок
           свободная цена назначается по-позиционно (чекбокс на позиции). */}
@@ -537,7 +534,7 @@ export function CreateOrderForm({ onClose }: Props) {
               onClick={() => tshirtFields.append({
                 freePrice: false, name: '',
                 color: 'Белый', size: 'M', printLocation: 'FRONT',
-                quantity: 1, price: 500, clientItem: false, designUrl: '',
+                quantity: 1, price: 500, clientItem: false,
               })}
               className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
               <Plus size={14} /> Добавить
@@ -617,18 +614,26 @@ export function CreateOrderForm({ onClose }: Props) {
                       </div>
                     </div>
 
-                    <div>
-                      <label className={labelCls}>Ссылка на макет-референс (необязательно)</label>
-                      <input className={inputCls} placeholder="https://…"
-                        {...register(`tshirtItems.${idx}.designUrl`)} />
-                      {errors.tshirtItems?.[idx]?.designUrl && (
-                        <p className={errorCls}>{errors.tshirtItems[idx]?.designUrl?.message}</p>
-                      )}
+                    {/* Себестоимость печати — по умолчанию из настроек; пусто = взять умолчание.
+                        Влияет на расчёт с партнёром, но не на чек клиента. */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className={labelCls}>Термоперенос ₽</label>
+                        <input type="number" min={0} className={inputCls}
+                          placeholder={String(settings?.thermalTransferCost ?? 70)}
+                          {...register(`tshirtItems.${idx}.thermalCost`)} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Футболка ₽</label>
+                        <input type="number" min={0} className={inputCls}
+                          placeholder={String(settings?.blankTshirtCost ?? 260)}
+                          {...register(`tshirtItems.${idx}.blankCost`)} />
+                      </div>
                     </div>
 
                     <label className="flex items-center gap-2.5 p-2.5 rounded-lg border border-gray-200 cursor-pointer hover:border-amber-300 transition-colors">
                       <input type="checkbox" {...register(`tshirtItems.${idx}.clientItem`)} className="w-4 h-4 accent-amber-600" />
-                      <span className="text-sm text-gray-700">Изделие клиента — склад не списывается</span>
+                      <span className="text-sm text-gray-700">Изделие клиента — склад и заготовка не считаются</span>
                     </label>
                   </>
                 )}

@@ -142,6 +142,8 @@ function generateReadyText(order: OrderPhoto): string {
 import { getDeadlineInfo } from '../../utils/deadline';
 import { getStalledDays } from '../../utils/stalled';
 import { ordersApi } from '../../api/orders';
+import { partnerSettingsApi } from '../../api/partnerSettings';
+import { computeSettlement } from '../../utils/settlement';
 import { StatusStepper } from './StatusStepper';
 import { ItemsTable } from './ItemsTable';
 import { StatusBadge } from '../ui/StatusBadge';
@@ -242,6 +244,14 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
   const { data: order, isLoading, refetch } = useQuery({
     queryKey: ['order', orderId],
     queryFn: () => ordersApi.getById(orderId),
+  });
+
+  // Ставка партнёра для разбивки в карточке (только для футболок у админа).
+  const { data: partnerSettings } = useQuery({
+    queryKey: ['partner-settings'],
+    queryFn: partnerSettingsApi.get,
+    enabled: isAdmin && order?.productCategory === 'TSHIRT',
+    staleTime: 60_000,
   });
 
   const updateMutation = useMutation({
@@ -350,7 +360,6 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       deliveryMethod: order.deliveryMethod,
       deliveryCost: order.deliveryCost,
       note: order.note,
-      tshirtModel: order.tshirtModel ?? undefined,
     });
     setEditing(true);
   };
@@ -532,6 +541,29 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
         }`}>
           <p className="text-xs font-medium text-gray-500">Исполнитель-партнёр (печать футболок)</p>
 
+          {/* Разбивка расчёта с партнёром — сколько он зарабатывает и моя прибыль */}
+          {partnerSettings && (order.tshirtItems?.length ?? 0) > 0 && (() => {
+            const s = computeSettlement(order.tshirtItems ?? [], partnerSettings.partnerRateBasisPoints);
+            const money = (v: number) => `${v.toLocaleString('ru-RU')} ₽`;
+            const Row = ({ l, v, strong }: { l: string; v: string; strong?: boolean }) => (
+              <div className={`flex justify-between ${strong ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
+                <span>{l}</span><span className="tabular-nums">{v}</span>
+              </div>
+            );
+            return (
+              <div className="rounded-lg bg-white border border-gray-200 p-3 text-sm space-y-1">
+                <Row l="Материалы (термо + футболка)" v={money(s.materials)} />
+                <Row l="Делимая маржа" v={money(s.margin)} />
+                <Row l={`Заработок партнёра (${partnerSettings.partnerRateBasisPoints / 100}%)`} v={money(s.partnerProfit)} />
+                <Row l={`Плачу ${partnerSettings.partnerName}`} v={money(s.reward)} strong />
+                <Row l="Моя прибыль" v={money(s.ownerProfit)} strong />
+                <p className="text-[11px] text-gray-400 pt-1">
+                  Расход «Вознаграждение партнёру» на {money(s.reward)} создаётся при статусе «Оплачен».
+                </p>
+              </div>
+            );
+          })()}
+
           {/* ТЗ-фото (согласованный макет) */}
           <div className="flex items-center gap-3 flex-wrap">
             <label className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 cursor-pointer transition-colors">
@@ -607,13 +639,11 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           onSave={() => updateMutation.mutate(form)}
           onCancel={() => setEditing(false)}
           isPending={updateMutation.isPending}
-          showPartnerFields={order.productCategory === 'TSHIRT'}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
           <InfoRow label="Платформа общения" value={COMMUNICATION_LABELS[order.communicationPlatform]} />
           <InfoRow label="Способ доставки" value={DELIVERY_LABELS[order.deliveryMethod]} />
-          {order.tshirtModel && <InfoRow label="Модель футболки" value={order.tshirtModel} />}
           {isAdmin && (
             <>
               <InfoRow label="Доставка" value={`${(order.deliveryCost ?? 0).toLocaleString()} ₽`} />

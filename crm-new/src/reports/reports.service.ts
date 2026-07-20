@@ -43,6 +43,7 @@ interface PnlRaw {
   equipment: number; // операц. — оборудование
   marketing: number; // операц. — реклама
   partnerShare: number; // операц. — доля Гриши (партнёр)
+  partnerReward: number; // операц. — вознаграждение партнёру за футболки
   other: number; // операц. — прочее
   salaryPaid: number; // зарплата выплаченная
 }
@@ -72,6 +73,7 @@ function emptyBucket(): PnlRaw {
     equipment: 0,
     marketing: 0,
     partnerShare: 0,
+    partnerReward: 0,
     other: 0,
     salaryPaid: 0,
   };
@@ -111,6 +113,9 @@ function addExpense(b: PnlRaw, e: ExpenseRow): void {
     case 'PARTNER_SHARE':
       b.partnerShare += e.amount;
       break;
+    case 'PARTNER_REWARD':
+      b.partnerReward += e.amount;
+      break;
     default:
       b.other += e.amount;
       break;
@@ -132,7 +137,12 @@ function finalize(b: PnlRaw) {
   const cogs = b.materialsPhoto + b.materialsTshirt;
   const grossProfit = netRevenue - cogs;
   const operatingExpenses =
-    b.deliverySupplies + b.equipment + b.marketing + b.partnerShare + b.other;
+    b.deliverySupplies +
+    b.equipment +
+    b.marketing +
+    b.partnerShare +
+    b.partnerReward +
+    b.other;
   const totalExpenses = cogs + operatingExpenses; // все расходные ордера (без зарплаты)
   const netProfit = grossProfit - operatingExpenses - b.salaryPaid;
   const margin =

@@ -1,5 +1,5 @@
 import {
-  BarChart3, Bell, Boxes, Camera, CheckSquare, Shirt, Users, Wallet,
+  BarChart3, Bell, Boxes, Camera, CheckSquare, Settings, Shirt, Users, Wallet,
   type LucideIcon,
 } from 'lucide-react';
 import type { EnumRole as Role } from '../../types/index';
@@ -53,6 +53,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/crm/salary', label: 'Зарплата', icon: Wallet, roles: ADMIN },
       { to: '/crm/reports', label: 'Отчёты', icon: BarChart3, roles: ADMIN },
       { to: '/crm/users', label: 'Сотрудники', icon: Users, roles: ADMIN },
+      { to: '/crm/settings', label: 'Настройки', icon: Settings, roles: ADMIN },
     ],
   },
   {

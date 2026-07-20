@@ -1,8 +1,11 @@
 import {
+  BadRequestException,
+  Body,
   Controller,
   Get,
   NotFoundException,
   Param,
+  Patch,
   Res,
   UseGuards,
 } from '@nestjs/common';
@@ -14,6 +17,13 @@ import { StickerService } from 'src/order-photo/sticker.service';
 import { PartnerTokenGuard } from './partner-token.guard';
 import { TechSpecStorageService } from './tech-spec-storage.service';
 import { buildPartnerOrderPayload } from './partner-payload';
+import { PartnerSettingsService } from './partner-settings.service';
+import { DtoPartnerStatus } from './dto/partner-status.dto';
+import {
+  PARTNER_SETTABLE_STATUSES,
+  fromPartnerStatus,
+  toPartnerStatus,
+} from './partner-status';
 
 /**
  * Публичный API для исполнителя-партнёра. Аутентификация — X-Partner-Token.
@@ -28,6 +38,7 @@ export class PartnerApiController {
     private readonly prisma: PrismaService,
     private readonly sticker: StickerService,
     private readonly storage: TechSpecStorageService,
+    private readonly settings: PartnerSettingsService,
     config: ConfigService,
   ) {
     this.publicBaseUrl = config.get<string>('PUBLIC_BASE_URL') || '';
@@ -43,7 +54,54 @@ export class PartnerApiController {
     if (!order || order.productCategory !== EnumProductCategory.TSHIRT) {
       throw new NotFoundException('Заказ не найден');
     }
-    return buildPartnerOrderPayload(order, this.publicBaseUrl);
+    const { partnerRateBasisPoints } = await this.settings.get();
+    return buildPartnerOrderPayload(
+      order,
+      this.publicBaseUrl,
+      partnerRateBasisPoints,
+    );
+  }
+
+  /**
+   * Партнёр двигает статус заказа: in_progress | ready. «Оплачен»/«новый»/
+   * «отправлен» партнёру недоступны — это действия владельца. Мы только
+   * записываем статус; обратно партнёру ничего не толкаем (без эха).
+   */
+  @Patch(':idOrder/status')
+  async updateStatus(
+    @Param('idOrder') idOrder: string,
+    @Body() dto: DtoPartnerStatus,
+  ) {
+    const status = fromPartnerStatus(dto.status);
+    if (!status || !PARTNER_SETTABLE_STATUSES.includes(status)) {
+      throw new BadRequestException(
+        'Партнёр может ставить только in_progress или ready',
+      );
+    }
+    const order = await this.prisma.orderPhoto.findUnique({
+      where: { id: idOrder },
+      select: { id: true, status: true, productCategory: true },
+    });
+    if (!order || order.productCategory !== EnumProductCategory.TSHIRT) {
+      throw new NotFoundException('Заказ не найден');
+    }
+    if (order.status !== status) {
+      await this.prisma.$transaction([
+        this.prisma.statusHistory.create({
+          data: {
+            orderId: idOrder,
+            fromStatus: order.status,
+            toStatus: status,
+            changedBy: 'partner',
+          },
+        }),
+        this.prisma.orderPhoto.update({
+          where: { id: idOrder },
+          data: { status, statusChangedAt: new Date() },
+        }),
+      ]);
+    }
+    return { order_number: idOrder, status: toPartnerStatus(status) };
   }
 
   /** ТЗ-фото (согласованный макет). */

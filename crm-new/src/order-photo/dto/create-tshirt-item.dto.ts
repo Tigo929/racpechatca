@@ -35,6 +35,19 @@ export class DtoCreateTshirtItem {
   @Min(0)
   designCost?: number;
 
+  /** Себестоимость печати позиции. Если не задано — берём из настроек. */
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(0)
+  thermalCost?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(0)
+  blankCost?: number;
+
   @IsOptional()
   @IsString()
   designUrl?: string;

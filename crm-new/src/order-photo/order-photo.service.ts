@@ -26,6 +26,7 @@ import { OrderFinancialIntegrityService } from './order-financial-integrity.serv
 import { calculateSalarySnapshot } from 'src/salary/salary-calculation';
 import { StockService } from 'src/stock/stock.service';
 import { TelegramService } from 'src/telegram/telegram.service';
+import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 
 function buildCommunicationUrl(
   platform: EnumCommunication,
@@ -104,6 +105,7 @@ export class OrderPhotoService {
     private readonly financialIntegrity: OrderFinancialIntegrityService,
     private readonly stock: StockService,
     private readonly telegram: TelegramService,
+    private readonly partnerSettings: PartnerSettingsService,
   ) {}
 
   async createOrder(dto: DtoCreateOrder, adminId?: string) {
@@ -171,6 +173,13 @@ export class OrderPhotoService {
           ),
         };
       });
+      // Себестоимость печати по умолчанию — из настроек партнёра; в позиции
+      // можно переопределить. Снимок хранится на позиции, чтобы расчёт не
+      // «поехал» при последующем изменении настроек.
+      const partnerDefaults =
+        productCategory === EnumProductCategory.TSHIRT
+          ? await this.partnerSettings.get(tx)
+          : null;
       const tshirtCreate = (dto.tshirtItems ?? []).map((e) => {
         const dc = e.designCost ?? 0;
         return {
@@ -181,6 +190,9 @@ export class OrderPhotoService {
           price: e.price,
           pricePosition: e.price * e.quantity + dc,
           designCost: dc,
+          thermalCost:
+            e.thermalCost ?? partnerDefaults?.thermalTransferCost ?? 70,
+          blankCost: e.blankCost ?? partnerDefaults?.blankTshirtCost ?? 260,
           designUrl: e.designUrl,
           designNote: e.designNote,
           clientItem: e.clientItem ?? false,
@@ -906,6 +918,18 @@ export class OrderPhotoService {
             });
           }
         }
+      }
+
+      // Футболки: вознаграждение партнёра — авто-расход на «Оплачен».
+      // Считается по позициям заказа и снимается при уходе из «Оплачен».
+      if (lockedOrder.productCategory === EnumProductCategory.TSHIRT) {
+        await this.partnerSettings.syncRewardExpense(tx, {
+          orderId: id,
+          orderNumber: lockedOrder.numberOrder,
+          items: lockedOrder.tshirtItems,
+          isPaid: newStatus === EnumStatus.PAID,
+          actingUserId: userId,
+        });
       }
 
       const updated = await tx.orderPhoto.update({

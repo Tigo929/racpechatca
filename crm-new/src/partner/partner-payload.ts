@@ -3,6 +3,8 @@ import {
   EnumPrintLocation,
   EnumPrintType,
 } from 'src/generated/prisma/enums';
+import { settleOrder } from './partner-settlement';
+import { toPartnerStatus } from './partner-status';
 
 // Человекочитаемые метки — дублируем к кодам, чтобы производство не ошиблось.
 const PRINT_LOCATION_LABELS: Record<EnumPrintLocation, string> = {
@@ -26,7 +28,7 @@ export interface PartnerOrderForPayload {
   id: string;
   numberOrder: string;
   note: string | null;
-  tshirtModel: string | null;
+  status: string;
   totalOrder: number | null;
   deliveryMethod: string;
   techSpecPhotoPath: string | null;
@@ -37,6 +39,10 @@ export interface PartnerOrderForPayload {
     printType: EnumPrintType;
     quantity: number;
     price: number;
+    pricePosition: number;
+    designCost: number;
+    thermalCost: number;
+    blankCost: number;
     // Изделие клиента (клиент принёс своё) — со склада партнёра НЕ списывается.
     clientItem: boolean;
   }[];
@@ -53,6 +59,7 @@ export interface PartnerOrderForPayload {
 export function buildPartnerOrderPayload(
   order: PartnerOrderForPayload,
   baseUrl: string,
+  partnerRateBasisPoints: number,
 ) {
   const total = order.totalOrder ?? 0;
   const prepaid = Math.ceil(total * 0.5); // предоплата 50% (округление вверх)
@@ -82,10 +89,24 @@ export function buildPartnerOrderPayload(
   }
   const stockBreakdown = [...stockMap.values()];
 
+  // Расчёт с партнёром: сколько он зарабатывает с этого заказа. Считаем тем же
+  // модулем, что и внутренний учёт, — цифры у обеих сторон совпадают.
+  const settlement = settleOrder(
+    order.tshirtItems.map((i) => ({
+      pricePosition: i.pricePosition,
+      designCost: i.designCost,
+      quantity: i.quantity,
+      thermalCost: i.thermalCost,
+      blankCost: i.blankCost,
+      clientItem: i.clientItem,
+    })),
+    partnerRateBasisPoints,
+  );
+
   return {
     order_number: order.numberOrder,
+    status: toPartnerStatus(order.status),
     note: order.note ?? null,
-    tshirt_model: order.tshirtModel ?? null,
     items: order.tshirtItems.map((i) => ({
       color: i.color,
       size: i.size,
@@ -110,6 +131,15 @@ export function buildPartnerOrderPayload(
       balance_due: balanceDue,
       // Остаток берётся при получении только на самовывозе.
       balance_on_pickup: isPickup,
+    },
+    // Заработок партнёра с этого заказа — чтобы его CRM считала доход с нас.
+    // partner_earning — чистый заработок (доля от маржи); reward — сколько мы
+    // ему платим всего (заработок + возврат себестоимости материалов).
+    settlement: {
+      partner_earning: settlement.partnerProfit,
+      reward: settlement.reward,
+      materials: settlement.materials,
+      rate_percent: partnerRateBasisPoints / 100,
     },
     delivery: {
       method: order.deliveryMethod,

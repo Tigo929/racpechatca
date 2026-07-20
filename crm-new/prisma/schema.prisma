@@ -86,6 +86,7 @@ model OrderPhoto {
   assignments    OrderAssignment[]
   stockMovements StockMovement[]
   tasks          Task[]
+  expenses       ExpenseOrder[]
 
   @@index([status])
   @@index([executorId])
@@ -141,6 +142,9 @@ enum EnumExpenseCategory {
   EQUIPMENT
   MARKETING
   PARTNER_SHARE
+  // Вознаграждение партнёру-исполнителю за печать футболок. Создаётся
+  // автоматически, когда заказ переходит в «Оплачен».
+  PARTNER_REWARD
   OTHER
 }
 
@@ -220,6 +224,12 @@ model ItemTshirt {
   price         Int
   pricePosition Int
   designCost    Int               @default(0)
+  // Себестоимость печати этой позиции — снимок на момент оформления, чтобы
+  // расчёт с партнёром не «поехал», если позже поменять значения по умолчанию.
+  // Термоперенос берётся всегда; стоимость футболки — только если она наша
+  // (для давальческой clientItem=true заготовку покупает клиент).
+  thermalCost   Int               @default(70)
+  blankCost     Int               @default(260)
   designUrl     String?
   designNote    String?
   clientItem    Boolean           @default(false)
@@ -370,6 +380,27 @@ model ExpenseOrder {
 
   createdById String
   createdBy   User   @relation(fields: [createdById], references: [id])
+
+  // Расход, привязанный к заказу (например, авто-вознаграждение партнёра).
+  // SetNull: удаление заказа не должно стирать историю расходов.
+  orderId String?
+  order   OrderPhoto? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([orderId, category])
+}
+
+/// Настройки расчёта с партнёром-исполнителем (печать футболок).
+/// Одна строка на систему; правится администратором. Значения по умолчанию
+/// подставляются в новую позицию, но в самой позиции их можно переопределить.
+model PartnerSettings {
+  id        String   @id @default("default")
+  updatedAt DateTime @updatedAt
+
+  thermalTransferCost    Int    @default(70)
+  blankTshirtCost        Int    @default(260)
+  // Доля партнёра от маржи в сотых процента: 3000 = 30%.
+  partnerRateBasisPoints Int    @default(3000)
+  partnerName            String @default("Партнёр")
 }
 
 /// Задача из планировщика. Ставит администратор, выполняет исполнитель.

@@ -9,9 +9,10 @@ import { OrderFinancialIntegrityService } from './order-financial-integrity.serv
 import { StockModule } from 'src/stock/stock.module';
 import { TelegramModule } from 'src/telegram/telegram.module';
 import { ReviewReminderService } from './review-reminder.service';
+import { PartnerSettingsModule } from 'src/partner/partner-settings.module';
 
 @Module({
-  imports: [StockModule, TelegramModule, StickerModule],
+  imports: [StockModule, TelegramModule, StickerModule, PartnerSettingsModule],
   controllers: [LeadController, OrderPhotoController],
   providers: [
     OrderPhotoService,

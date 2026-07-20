@@ -12,6 +12,7 @@ import {
   EnumProductCategory,
 } from 'src/generated/prisma/enums';
 import { buildPartnerOrderPayload } from './partner-payload';
+import { PartnerSettingsService } from './partner-settings.service';
 
 /**
  * Исходящая отправка заказа исполнителю-партнёру (мы инициируем push).
@@ -31,6 +32,7 @@ export class PartnerOutboundService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly settings: PartnerSettingsService,
     config: ConfigService,
   ) {
     this.webhookUrl = config.get<string>('PARTNER_WEBHOOK_URL') || '';
@@ -75,10 +77,15 @@ export class PartnerOutboundService {
       );
     }
 
+    const { partnerRateBasisPoints } = await this.settings.get();
     const payload = {
       event: 'tshirt_order.ready',
       external_request_id: externalRequestId,
-      order: buildPartnerOrderPayload(order, this.publicBaseUrl),
+      order: buildPartnerOrderPayload(
+        order,
+        this.publicBaseUrl,
+        partnerRateBasisPoints,
+      ),
     };
 
     try {

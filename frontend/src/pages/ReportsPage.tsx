@@ -114,6 +114,7 @@ function ExpenseStructure({ m, periodLabel }: { m: PnlMetrics; periodLabel: stri
     { label: 'Оборудование', value: m.equipment, color: 'bg-emerald-400' },
     { label: 'Реклама', value: m.marketing, color: 'bg-pink-400' },
     { label: 'Доля Гриши', value: m.partnerShare, color: 'bg-indigo-400' },
+    { label: 'Вознаграждение партнёру', value: m.partnerReward, color: 'bg-teal-400' },
     { label: 'Прочее', value: m.other, color: 'bg-gray-400' },
     { label: 'Зарплата', value: m.salaryPaid, color: 'bg-rose-500' },
   ].filter((i) => i.value > 0).sort((a, b) => b.value - a.value);

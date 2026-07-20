@@ -5,9 +5,10 @@ import { PartnerOutboundService } from './partner-outbound.service';
 import { PartnerTokenGuard } from './partner-token.guard';
 import { PartnerApiController } from './partner-api.controller';
 import { PartnerAdminController } from './partner-admin.controller';
+import { PartnerSettingsModule } from './partner-settings.module';
 
 @Module({
-  imports: [StickerModule],
+  imports: [StickerModule, PartnerSettingsModule],
   controllers: [PartnerApiController, PartnerAdminController],
   providers: [
     TechSpecStorageService,

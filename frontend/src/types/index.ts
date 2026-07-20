@@ -73,6 +73,8 @@ export interface ItemTshirt {
   price: number;
   pricePosition: number;
   designCost: number;
+  thermalCost: number;
+  blankCost: number;
   designUrl?: string | null;
   designNote?: string | null;
   clientItem: boolean;
@@ -393,6 +395,7 @@ export interface PnlMetrics {
   equipment: number;
   marketing: number;
   partnerShare: number;
+  partnerReward: number;
   other: number;
   operatingExpenses: number; // сумма всех операционных
   totalExpenses: number;     // cogs + operatingExpenses (все расходные ордера)
@@ -436,6 +439,7 @@ export type EnumExpenseCategory =
   | 'EQUIPMENT'
   | 'MARKETING'
   | 'PARTNER_SHARE'
+  | 'PARTNER_REWARD'
   | 'OTHER';
 
 export const EXPENSE_CATEGORY_LABELS: Record<EnumExpenseCategory, string> = {
@@ -445,6 +449,7 @@ export const EXPENSE_CATEGORY_LABELS: Record<EnumExpenseCategory, string> = {
   EQUIPMENT:         'Оборудование',
   MARKETING:         'Реклама',
   PARTNER_SHARE:     'Доля Гриши',
+  PARTNER_REWARD:    'Вознаграждение партнёру',
   OTHER:             'Прочее',
 };
 
@@ -507,4 +512,23 @@ export interface CreateTaskDto {
 export interface TaskCountResponse {
   open: number;
   overdue: number;
+}
+
+/* ---------- Расчёт с партнёром (футболки) ---------- */
+
+export interface PartnerSettings {
+  thermalTransferCost: number;
+  blankTshirtCost: number;
+  partnerRateBasisPoints: number;
+  partnerName: string;
+}
+
+export interface OrderSettlement {
+  materials: number;
+  margin: number;
+  reward: number;
+  partnerProfit: number;
+  ownerProfit: number;
+  tshirtRevenue: number;
+  rateBasisPoints: number;
 }

@@ -9,6 +9,7 @@ import { OrderFinancialIntegrityService } from 'src/order-photo/order-financial-
 import { OrderPhotoService } from 'src/order-photo/order-photo.service';
 import { StockService } from 'src/stock/stock.service';
 import { TelegramService } from 'src/telegram/telegram.service';
+import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 import { SalaryService } from './salary.service';
 import { calculateSalarySnapshot } from './salary-calculation';
 
@@ -118,11 +119,17 @@ function createOrderService(stub: PrismaStub) {
   const telegram = {
     sendToGroup: jest.fn<Promise<boolean>, [string]>().mockResolvedValue(true),
   };
+  const partnerSettings = {
+    syncRewardExpense: jest
+      .fn<Promise<void>, unknown[]>()
+      .mockResolvedValue(),
+  };
   return new OrderPhotoService(
     stub as unknown as PrismaService,
     financialIntegrity as unknown as OrderFinancialIntegrityService,
     stock as unknown as StockService,
     telegram as unknown as TelegramService,
+    partnerSettings as unknown as PartnerSettingsService,
   );
 }
 

@@ -10,12 +10,14 @@ import { DtoCreateTshirtItem } from './dto/create-tshirt-item.dto';
 import { DtoUpdateTshirtItem } from './dto/update-tshirt-item.dto';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
 import { calcItemPricePosition } from './order-pricing';
+import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 
 @Injectable()
 export class TshirtItemService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly financialIntegrity: OrderFinancialIntegrityService,
+    private readonly partnerSettings: PartnerSettingsService,
   ) {}
 
   async addTshirtItem(orderId: string, dto: DtoCreateTshirtItem) {
@@ -25,6 +27,7 @@ export class TshirtItemService {
       await this.financialIntegrity.assertOrderFinanciallyEditable(orderId, tx);
 
       const designCost = dto.designCost ?? 0;
+      const settings = await this.partnerSettings.get(tx);
       await tx.itemTshirt.create({
         data: {
           orderId,
@@ -39,6 +42,8 @@ export class TshirtItemService {
             designCost,
           ),
           designCost,
+          thermalCost: dto.thermalCost ?? settings.thermalTransferCost,
+          blankCost: dto.blankCost ?? settings.blankTshirtCost,
           designUrl: dto.designUrl,
           designNote: dto.designNote,
           clientItem: dto.clientItem ?? false,
