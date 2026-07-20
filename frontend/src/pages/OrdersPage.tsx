@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Plus, Search, ChevronLeft, ChevronRight, Printer, RefreshCw, LogOut, Users, Flame, Clock, Camera, Shirt, Wallet, Boxes, LayoutList, Sparkles, CheckCircle2, TrendingUp, Star, AlarmClock } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Printer, Flame, Clock, Camera, Shirt, Wallet, LayoutList, Sparkles, CheckCircle2, TrendingUp, Star, AlarmClock } from 'lucide-react';
 import { getDeadlineInfo } from '../utils/deadline';
 import { getStalledDays } from '../utils/stalled';
-import { Link } from 'react-router-dom';
 import { ordersApi } from '../api/orders';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Modal } from '../components/ui/Modal';
@@ -12,22 +11,40 @@ import { CreateOrderForm } from '../components/orders/CreateOrderForm';
 import { OrderDetail } from '../components/orders/OrderDetail';
 import { FilterChip } from '../components/ui/FilterChip';
 import { DeliveryBadge } from '../components/ui/DeliveryBadge';
-import { STATUS_FLOW, STATUS_LABELS } from '../constants';
+import { STATUS_FLOW, TSHIRT_STATUS_FLOW, STATUS_LABELS, TSHIRT_STATUS_LABELS } from '../constants';
+import { AppHeader } from '../components/layout/AppHeader';
 import { useAuth } from '../context/useAuth';
 import type { EnumStatus, EnumProductCategory, OrdersQuery } from '../types/index';
 import { formatCurrency } from '../utils/format';
 
 const PAGE_SIZE = 10;
 
-export function OrdersPage() {
-  const { user, logout } = useAuth();
-  const isAdmin = user?.role === 'ADMIN';
+/** Раздел: продукт со своим процессом либо общая воронка обращений. */
+export type OrdersSection = 'PHOTO' | 'TSHIRT' | 'LEADS';
 
-  // Исполнители видят только фото-заказы — фильтр на уровне запроса к бэкенду
+const SECTION_TITLE: Record<OrdersSection, string> = {
+  PHOTO: 'Фотопечать',
+  TSHIRT: 'Футболки',
+  LEADS: 'Обращения',
+};
+
+interface Props {
+  section: OrdersSection;
+}
+
+export function OrdersPage({ section }: Props) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+  const isLeads = section === 'LEADS';
+
+  // Продукт задаётся разделом, а не фильтром: в списке всегда один процесс.
+  // У обращений продукт не фиксируем — это общая входящая воронка.
   const [query, setQuery] = useState<OrdersQuery>({
     page: 1,
     limit: PAGE_SIZE,
-    productCategory: isAdmin ? undefined : 'PHOTO',
+    ...(isLeads
+      ? { status: 'LEAD' as EnumStatus }
+      : { productCategory: section }),
   });
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -71,6 +88,16 @@ export function OrdersPage() {
     placeholderData: (prev) => prev,
   });
 
+  // Счётчик на разделе «Обращения» считает всю входящую воронку, а не текущий
+  // раздел: иначе на «Фотопечати» он показывал бы только фото-обращения и
+  // футболочные можно было бы не заметить.
+  const { data: leadStats } = useQuery({
+    queryKey: ['orders', 'stats', 'leads-badge'],
+    queryFn: () => ordersApi.getStats({}),
+    enabled: isAdmin,
+    staleTime: 30_000,
+  });
+
   const orders = data?.data ?? [];
   const meta = data?.meta;
 
@@ -82,6 +109,13 @@ export function OrdersPage() {
 
   const setReviewFilter = (reviewLeft: boolean | undefined) =>
     setQuery(q => ({ ...q, reviewLeft, page: 1 }));
+
+  // У футболок свой путь заказа — показываем только его статусы. Раньше здесь
+  // всегда были фото-статусы, поэтому «Выполнен» и «На стадии дизайна» у
+  // футболок нельзя было выбрать вообще.
+  const statusFlow = (section === 'TSHIRT' ? TSHIRT_STATUS_FLOW : STATUS_FLOW)
+    .filter(s => s !== 'LEAD');
+  const statusLabels = section === 'TSHIRT' ? TSHIRT_STATUS_LABELS : STATUS_LABELS;
 
   const reviewMutation = useMutation({
     mutationFn: ({ id, reviewLeft }: { id: string; reviewLeft: boolean }) =>
@@ -95,80 +129,25 @@ export function OrdersPage() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--brand-bg)' }}>
-      {/* ── Шапка ─────────────────────────────── */}
-      <header className="sticky top-0 z-20" style={{ background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 100%)', boxShadow: '0 1px 0 rgba(255,255,255,0.06), 0 4px 24px rgba(30,27,75,0.4)' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-
-          {/* Логотип */}
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg" style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)', boxShadow: '0 2px 8px rgba(217,119,6,0.5)' }}>
-              <Printer size={17} className="text-white" aria-hidden="true" />
-            </div>
-            <div>
-              <h1 className="text-sm font-bold text-white leading-none tracking-tight">
-                Распечатка <span style={{ color: '#FCD34D' }}>PRO</span>
-              </h1>
-              <p className="text-xs mt-0.5" style={{ color: '#A5B4FC' }}>
-                {user?.username} · {isAdmin ? 'Администратор' : 'Исполнитель'}
-              </p>
-            </div>
-          </div>
-
-          {/* Навигация */}
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => refetch()}
-              aria-label="Обновить список заявок"
-              className="p-2 text-indigo-300 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              <RefreshCw size={15} aria-hidden="true" />
-            </button>
-
-            {isAdmin && (
-              <>
-                <Link
-                  to="/crm/salary"
-                  aria-label="Зарплата"
-                  className="p-2 text-indigo-300 hover:text-amber-400 rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                >
-                  <Wallet size={15} aria-hidden="true" />
-                </Link>
-                <Link
-                  to="/crm/stock"
-                  aria-label="Склад футболок"
-                  className="p-2 text-indigo-300 hover:text-amber-400 rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                >
-                  <Boxes size={15} aria-hidden="true" />
-                </Link>
-                <Link
-                  to="/crm/users"
-                  aria-label="Пользователи"
-                  className="p-2 text-indigo-300 hover:text-amber-400 rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                >
-                  <Users size={15} aria-hidden="true" />
-                </Link>
-                <button
-                  onClick={() => setCreateOpen(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-950"
-                >
-                  <Plus size={15} aria-hidden="true" />
-                  <span className="hidden sm:inline">Новая заявка</span>
-                </button>
-              </>
-            )}
-
-            <button
-              onClick={logout}
-              aria-label="Выйти из системы"
-              className="p-2 text-indigo-300 hover:text-red-400 rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              <LogOut size={15} aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppHeader
+        onRefresh={() => void refetch()}
+        onCreate={isAdmin ? () => setCreateOpen(true) : undefined}
+        leadCount={leadStats?.leadCount ?? 0}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-4">
+
+        {/* Где я нахожусь — раньше об этом говорил только мелкий серый чип */}
+        <div className="flex items-baseline gap-3 flex-wrap">
+          <h2 className="text-xl font-bold text-gray-900">{SECTION_TITLE[section]}</h2>
+          <p className="text-sm text-gray-500">
+            {isLeads
+              ? 'Входящие обращения по обоим направлениям'
+              : section === 'TSHIRT'
+                ? 'Печать у партнёра-исполнителя'
+                : 'Печать своими силами'}
+          </p>
+        </div>
 
         {/* Статистика */}
         {stats && (() => {
@@ -269,10 +248,10 @@ export function OrdersPage() {
 
         {/* Фильтры */}
         <div className="bg-white rounded-2xl border border-gray-100/80 px-4 py-3 space-y-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          {/* Фильтр по типу товара — только для администратора */}
-          {isAdmin && (
+          {/* В обращениях продукт — фильтр: воронка общая для обоих направлений */}
+          {isLeads && (
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">Тип</span>
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">Продукт</span>
               <div className="flex gap-1.5 flex-wrap">
                 <FilterChip active={!query.productCategory} onClick={() => setProductCategory(undefined)}>
                   Все
@@ -286,23 +265,20 @@ export function OrdersPage() {
               </div>
             </div>
           )}
-          {/* Фильтр по статусу */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">Статус</span>
-            <div className="flex gap-1.5 flex-wrap">
-              <FilterChip active={!query.status} onClick={() => setStatus(undefined)}>Все</FilterChip>
-              {isAdmin && (
-                <FilterChip active={query.status === 'LEAD'} onClick={() => setStatus('LEAD')}>
-                  🔔 Обратился
-                </FilterChip>
-              )}
-              {STATUS_FLOW.filter(s => s !== 'LEAD').map(s => (
-                <FilterChip key={s} active={query.status === s} onClick={() => setStatus(s)}>
-                  {STATUS_LABELS[s]}
-                </FilterChip>
-              ))}
+          {/* Статусы только своего продукта: у футболок свой путь заказа */}
+          {!isLeads && (
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">Статус</span>
+              <div className="flex gap-1.5 flex-wrap">
+                <FilterChip active={!query.status} onClick={() => setStatus(undefined)}>Все</FilterChip>
+                {statusFlow.map(s => (
+                  <FilterChip key={s} active={query.status === s} onClick={() => setStatus(s)}>
+                    {statusLabels[s]}
+                  </FilterChip>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
           {/* Фильтр по отзыву — только для администратора */}
           {isAdmin && (
             <div className="flex items-center gap-3 flex-wrap">

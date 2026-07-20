@@ -54,7 +54,13 @@ function AppRoutes() {
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/crm/login" element={<CrmGate>{user ? <Navigate to="/crm" replace /> : <LoginPage />}</CrmGate>} />
-        <Route path="/crm" element={<CrmGate><PrivateRoute><OrdersPage /></PrivateRoute></CrmGate>} />
+        {/* Каждый продукт — свой раздел со своим процессом. key заставляет
+            страницу пересоздаться при переходе, чтобы фильтры не перетекали
+            из одного раздела в другой. */}
+        <Route path="/crm/photo" element={<CrmGate><PrivateRoute><OrdersPage key="photo" section="PHOTO" /></PrivateRoute></CrmGate>} />
+        <Route path="/crm/tshirt" element={<CrmGate><PrivateRoute><OrdersPage key="tshirt" section="TSHIRT" /></PrivateRoute></CrmGate>} />
+        <Route path="/crm/leads" element={<CrmGate><AdminRoute><OrdersPage key="leads" section="LEADS" /></AdminRoute></CrmGate>} />
+        <Route path="/crm" element={<Navigate to="/crm/photo" replace />} />
         <Route path="/crm/users" element={<CrmGate><AdminRoute><UsersPage /></AdminRoute></CrmGate>} />
         <Route path="/crm/salary" element={<CrmGate><AdminRoute><SalaryPage /></AdminRoute></CrmGate>} />
         <Route path="/crm/stock" element={<CrmGate><AdminRoute><StockPage /></AdminRoute></CrmGate>} />

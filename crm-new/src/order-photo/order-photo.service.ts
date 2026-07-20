@@ -500,7 +500,10 @@ export class OrderPhotoService {
       ...(query.reviewLeft !== undefined
         ? { clientReviewLeft: query.reviewLeft === 'true' }
         : {}),
-      ...(currentUserRole === EnumRole.EXECUTOR
+      // Исполнитель видит только свои заказы. Исключение — футболки: их ведёт
+      // партнёр, исполнителя у них нет, и раздел открыт всем на просмотр.
+      ...(currentUserRole === EnumRole.EXECUTOR &&
+      query.productCategory !== EnumProductCategory.TSHIRT
         ? { executorId: currentUserId }
         : {}),
       ...(searchTerm
@@ -554,6 +557,7 @@ export class OrderPhotoService {
     if (!order) throw new NotFoundException('Заказ не найден');
     if (
       currentUserRole === EnumRole.EXECUTOR &&
+      order.productCategory !== EnumProductCategory.TSHIRT &&
       order.executorId !== currentUserId
     ) {
       throw new ForbiddenException('Нет доступа к чужому заказу.');
