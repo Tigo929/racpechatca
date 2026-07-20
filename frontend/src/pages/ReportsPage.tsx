@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AppShell } from '../components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Camera, Shirt } from 'lucide-react';
 import { reportsApi } from '../api/reports';
@@ -344,26 +345,19 @@ export function ReportsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
-          <a href="/crm" className="text-gray-400 hover:text-gray-600 transition-colors text-sm">← Заказы</a>
-          <h1 className="text-lg font-bold text-gray-900">Финансовый отчёт</h1>
-        </div>
-        <div className="flex items-center gap-4 text-sm">
-          <button
-            onClick={() => setShowAddExpense(true)}
-            className="bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-          >
-            + Расходный ордер
-          </button>
-          <a href="/crm/salary" className="text-blue-600 hover:underline">Зарплата</a>
-          <a href="/crm/users" className="text-gray-500 hover:text-gray-700">Пользователи</a>
-        </div>
-      </header>
-
-      <div className="flex-1 p-6 max-w-6xl mx-auto w-full space-y-6">
+    <AppShell
+      title="Финансовый отчёт"
+      actions={
+        <button
+          onClick={() => setShowAddExpense(true)}
+          className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        >
+          <span className="hidden sm:inline">+ Расходный ордер</span>
+          <span className="sm:hidden">+ Расход</span>
+        </button>
+      }
+    >
+      <div className="space-y-6">
         {/* Year selector */}
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-500">Год:</span>
@@ -467,6 +461,6 @@ export function ReportsPage() {
       {showAddExpense && (
         <AddExpenseModal onClose={() => setShowAddExpense(false)} onSuccess={refetchAll} />
       )}
-    </div>
+    </AppShell>
   );
 }

@@ -462,3 +462,49 @@ export interface CreateExpenseDto {
   amount: number;
   note?: string;
 }
+
+/* ---------- Задачи ---------- */
+
+export type EnumTaskStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
+
+export const TASK_STATUS_LABELS: Record<EnumTaskStatus, string> = {
+  OPEN: 'Новая',
+  IN_PROGRESS: 'В работе',
+  DONE: 'Выполнена',
+  CANCELLED: 'Отменена',
+};
+
+/** Порядок в интерфейсе: сначала то, что ещё в работе. */
+export const TASK_STATUS_FLOW: EnumTaskStatus[] = [
+  'OPEN', 'IN_PROGRESS', 'DONE', 'CANCELLED',
+];
+
+export interface Task {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  title: string;
+  description: string | null;
+  status: EnumTaskStatus;
+  deadline: string | null;
+  completedAt: string | null;
+  assigneeId: string;
+  assignee: { id: string; username: string; telegramUsername: string | null };
+  createdById: string;
+  createdBy: { id: string; username: string };
+  orderId: string | null;
+  order: { id: string; numberOrder: string } | null;
+}
+
+export interface CreateTaskDto {
+  title: string;
+  description?: string;
+  assigneeId: string;
+  deadline?: string;
+  orderId?: string;
+}
+
+export interface TaskCountResponse {
+  open: number;
+  overdue: number;
+}

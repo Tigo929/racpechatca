@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Wallet, Clock, CheckCircle2, Info } from 'lucide-react';
-import { AppHeader } from '../components/layout/AppHeader';
+import { AppShell } from '../components/layout/AppShell';
 import { salaryApi } from '../api/salary';
 
 const money = (v: number) => `${v.toLocaleString('ru-RU')} ₽`;
@@ -29,15 +29,13 @@ export default function MySalaryPage() {
   });
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--brand-bg)' }}>
-      <AppHeader onRefresh={() => void refetch()} />
-
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5 space-y-4">
-        <div className="flex items-baseline gap-3 flex-wrap">
-          <h2 className="text-xl font-bold text-gray-900">Моя зарплата</h2>
-          <p className="text-sm text-gray-500">Начисления и выплаты</p>
-        </div>
-
+    <AppShell
+      title="Моя зарплата"
+      subtitle="Начисления и выплаты"
+      width="narrow"
+      onRefresh={() => void refetch()}
+    >
+      <div className="space-y-4">
         {isLoading && (
           <div className="bg-white rounded-xl p-8 flex justify-center">
             <div
@@ -137,6 +135,6 @@ export default function MySalaryPage() {
           </>
         )}
       </div>
-    </div>
+    </AppShell>
   );
 }

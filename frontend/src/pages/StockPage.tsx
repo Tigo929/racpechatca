@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Package, Boxes } from 'lucide-react';
+import { Package } from 'lucide-react';
+import { AppShell } from '../components/layout/AppShell';
 import { stockApi } from '../api/stock';
 import type { EnumTshirtSize, TshirtStock } from '../types/index';
 import { getErrorMessage } from '../utils/get-error-message';
@@ -92,19 +92,12 @@ export default function StockPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-10" style={{ background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 100%)' }}>
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
-          <Link to="/crm" className="p-2 -ml-2 text-indigo-300 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors">
-            <ArrowLeft size={18} />
-          </Link>
-          <Boxes size={18} className="text-amber-400" />
-          <h1 className="text-base font-bold text-white">Склад футболок</h1>
-          <span className="ml-auto text-xs text-indigo-200">Всего на складе: <b className="text-white tabular-nums">{total}</b> шт</span>
-        </div>
-      </header>
-
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
+    <AppShell
+      title="Склад футболок"
+      subtitle={`Всего на складе: ${total} шт`}
+      width="narrow"
+    >
+      <div>
         {isLoading ? (
           <div className="flex justify-center py-20 text-gray-400">Загрузка…</div>
         ) : error ? (
@@ -155,7 +148,7 @@ export default function StockPage() {
         <p className="text-xs text-gray-400 mt-3 text-center">
           Красным выделены позиции с нулевым остатком — их нельзя будет отправить.
         </p>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

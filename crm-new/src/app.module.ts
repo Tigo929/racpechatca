@@ -9,6 +9,7 @@ import { ReportsModule } from './reports/reports.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { StockModule } from './stock/stock.module';
 import { PartnerModule } from './partner/partner.module';
+import { TasksModule } from './tasks/tasks.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthController } from './health.controller';
 
@@ -26,6 +27,7 @@ import { HealthController } from './health.controller';
     ExpensesModule,
     StockModule,
     PartnerModule,
+    TasksModule,
   ],
   controllers: [HealthController],
   providers: [],

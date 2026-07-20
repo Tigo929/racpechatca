@@ -25,6 +25,8 @@ model User {
   assignedOrders     OrderPhoto[]      @relation("OrderExecutor")
   rateHistory        UserRateHistory[]
   expenseOrders      ExpenseOrder[]
+  assignedTasks      Task[]            @relation("TaskAssignee")
+  authoredTasks      Task[]            @relation("TaskAuthor")
 }
 
 enum EnumRole {
@@ -83,6 +85,7 @@ model OrderPhoto {
   statusHistory  StatusHistory[]
   assignments    OrderAssignment[]
   stockMovements StockMovement[]
+  tasks          Task[]
 
   @@index([status])
   @@index([executorId])
@@ -367,4 +370,44 @@ model ExpenseOrder {
 
   createdById String
   createdBy   User   @relation(fields: [createdById], references: [id])
+}
+
+/// Задача из планировщика. Ставит администратор, выполняет исполнитель.
+/// Напоминания уходят в рабочий чат раз в день, пока задача не закрыта.
+model Task {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title       String
+  description String?
+  status      EnumTaskStatus @default(OPEN)
+
+  /// Срок необязателен: без него задача живёт в списке, но не пингует в чат.
+  deadline    DateTime?
+  completedAt DateTime?
+
+  assigneeId String
+  assignee   User   @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+
+  createdById String
+  createdBy   User   @relation("TaskAuthor", fields: [createdById], references: [id])
+
+  /// Необязательная привязка к заказу — «переделать макет к 202607-015».
+  orderId String?
+  order   OrderPhoto? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  /// Дата последнего дайджеста (YYYY-MM-DD по Москве). Защищает от повторной
+  /// отправки, если контейнер перезапустился в тот же день.
+  lastRemindedOn String?
+
+  @@index([assigneeId, status])
+  @@index([status, deadline])
+}
+
+enum EnumTaskStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELLED
 }

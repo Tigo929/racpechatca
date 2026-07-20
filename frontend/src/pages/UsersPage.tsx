@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Plus, Trash2, X, Check, ArrowLeft, Pencil, ToggleLeft, ToggleRight, Send, Layers, PackageCheck, AlarmClock } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Plus, Trash2, X, Check, Pencil, ToggleLeft, ToggleRight, Send, Layers, PackageCheck, AlarmClock } from 'lucide-react';
+import { AppShell } from '../components/layout/AppShell';
 import { usersApi } from '../api/users';
 import { useAuth } from '../context/useAuth';
 import type { AppUser, EnumRole } from '../types/index';
@@ -197,20 +197,8 @@ export function UsersPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-indigo-950 border-b border-indigo-900">
-        <div className="max-w-2xl mx-auto px-4 py-3.5 flex items-center gap-3">
-          <Link
-            to="/crm"
-            className="p-1.5 text-indigo-300 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors"
-          >
-            <ArrowLeft size={16} />
-          </Link>
-          <h1 className="text-sm font-bold text-white">Пользователи</h1>
-        </div>
-      </header>
-
-      <div className="max-w-2xl mx-auto py-6 px-4">
+    <AppShell title="Сотрудники" width="narrow">
+      <div>
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-gray-500">
             {users.length} пользователей
@@ -406,6 +394,6 @@ export function UsersPage() {
           ))}
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { AppShell } from '../components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { salaryApi } from '../api/salary';
 import type { ExecutorSalaryData, AccrualBrief, PaymentByAccrualsResult } from '../types/index';
@@ -342,25 +343,12 @@ export default function SalaryPage() {
   const inactive = executors.filter((e) => !e.isActive && e.totalDebt > 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
-          <a href="/crm" className="text-gray-400 hover:text-gray-600 transition-colors text-sm">
-            ← Заказы
-          </a>
-          <h1 className="text-lg font-bold text-gray-900">Зарплата исполнителей</h1>
-        </div>
-        <div className="flex items-center gap-4 text-sm">
-          <a href="/crm/reports" className="text-blue-600 hover:underline">Финансовый отчёт</a>
-          <a href="/crm/users" className="text-gray-500 hover:text-gray-700">Пользователи</a>
-        </div>
-      </header>
-
+    <AppShell title="Зарплата исполнителей" subtitle="Начисления и выплаты по всем">
       {/* На мобильном список исполнителей сверху, детали под ним;
           с md — привычные две колонки. */}
-      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+      <div className="flex flex-col md:flex-row bg-white rounded-xl border border-gray-200 overflow-hidden">
         {/* Left panel */}
-        <aside className="w-full md:w-72 shrink-0 bg-white border-b md:border-b-0 md:border-r border-gray-200 overflow-y-auto p-3 max-h-56 md:max-h-none">
+        <aside className="w-full md:w-72 shrink-0 border-b md:border-b-0 md:border-r border-gray-200 overflow-y-auto p-3 max-h-56 md:max-h-[70vh]">
           {executors.length === 0 ? (
             <p className="text-gray-400 text-sm p-4">Исполнителей нет</p>
           ) : (
@@ -421,7 +409,7 @@ export default function SalaryPage() {
         </aside>
 
         {/* Right panel */}
-        <main className="flex-1 overflow-y-auto md:overflow-hidden p-4 md:p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 md:max-h-[70vh]">
           {selected ? (
             <ExecutorDetail
               key={selected.id}
@@ -429,7 +417,7 @@ export default function SalaryPage() {
               onPaymentDone={() => void refetch()}
             />
           ) : (
-            <div className="h-full flex items-center justify-center text-gray-400">
+            <div className="py-16 flex items-center justify-center text-gray-400">
               <div className="text-center">
                 <div className="text-4xl mb-3">💼</div>
                 <p className="text-lg font-medium">Выберите исполнителя</p>
@@ -439,6 +427,6 @@ export default function SalaryPage() {
           )}
         </main>
       </div>
-    </div>
+    </AppShell>
   );
 }

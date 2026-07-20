@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Search, ChevronLeft, ChevronRight, Printer, Flame, Clock, Camera, Shirt, Wallet, LayoutList, Sparkles, CheckCircle2, TrendingUp, Star, AlarmClock } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Printer, Flame, Clock, Camera, Shirt, Wallet, LayoutList, Sparkles, CheckCircle2, TrendingUp, Star, AlarmClock, Plus } from 'lucide-react';
 import { getDeadlineInfo } from '../utils/deadline';
 import { getStalledDays } from '../utils/stalled';
 import { ordersApi } from '../api/orders';
@@ -12,7 +12,7 @@ import { OrderDetail } from '../components/orders/OrderDetail';
 import { FilterChip } from '../components/ui/FilterChip';
 import { DeliveryBadge } from '../components/ui/DeliveryBadge';
 import { STATUS_FLOW, TSHIRT_STATUS_FLOW, STATUS_LABELS, TSHIRT_STATUS_LABELS } from '../constants';
-import { AppHeader } from '../components/layout/AppHeader';
+import { AppShell } from '../components/layout/AppShell';
 import { useAuth } from '../context/useAuth';
 import type { EnumStatus, EnumProductCategory, OrdersQuery } from '../types/index';
 import { formatCurrency } from '../utils/format';
@@ -88,15 +88,8 @@ export function OrdersPage({ section }: Props) {
     placeholderData: (prev) => prev,
   });
 
-  // Счётчик на разделе «Обращения» считает всю входящую воронку, а не текущий
-  // раздел: иначе на «Фотопечати» он показывал бы только фото-обращения и
-  // футболочные можно было бы не заметить.
-  const { data: leadStats } = useQuery({
-    queryKey: ['orders', 'stats', 'leads-badge'],
-    queryFn: () => ordersApi.getStats({}),
-    enabled: isAdmin,
-    staleTime: 30_000,
-  });
+  // Счётчик обращений переехал в общее меню — он нужен из любого раздела,
+  // а не только отсюда.
 
   const orders = data?.data ?? [];
   const meta = data?.meta;
@@ -127,27 +120,28 @@ export function OrdersPage({ section }: Props) {
     onError: () => toast.error('Не удалось изменить отметку отзыва'),
   });
 
+  const sectionHint = isLeads
+    ? 'Входящие обращения по обоим направлениям'
+    : section === 'TSHIRT'
+      ? 'Печать у партнёра-исполнителя'
+      : 'Печать своими силами';
+
   return (
-    <div className="min-h-screen" style={{ background: 'var(--brand-bg)' }}>
-      <AppHeader
-        onRefresh={() => void refetch()}
-        onCreate={isAdmin ? () => setCreateOpen(true) : undefined}
-        leadCount={leadStats?.leadCount ?? 0}
-      />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-4">
-
-        {/* Где я нахожусь — раньше об этом говорил только мелкий серый чип */}
-        <div className="flex items-baseline gap-3 flex-wrap">
-          <h2 className="text-xl font-bold text-gray-900">{SECTION_TITLE[section]}</h2>
-          <p className="text-sm text-gray-500">
-            {isLeads
-              ? 'Входящие обращения по обоим направлениям'
-              : section === 'TSHIRT'
-                ? 'Печать у партнёра-исполнителя'
-                : 'Печать своими силами'}
-          </p>
-        </div>
+    <AppShell
+      title={SECTION_TITLE[section]}
+      subtitle={sectionHint}
+      onRefresh={() => void refetch()}
+      actions={isAdmin ? (
+        <button
+          onClick={() => setCreateOpen(true)}
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        >
+          <Plus size={15} aria-hidden="true" />
+          <span className="hidden sm:inline">Новая заявка</span>
+        </button>
+      ) : undefined}
+    >
+      <div className="space-y-4">
 
         {/* Статистика */}
         {stats && (() => {
@@ -559,6 +553,6 @@ export function OrdersPage({ section }: Props) {
           <OrderDetail orderId={selectedId} onDeleted={() => setSelectedId(null)} />
         )}
       </Modal>
-    </div>
+    </AppShell>
   );
 }
