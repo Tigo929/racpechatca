@@ -12,11 +12,24 @@ interface RequestUser {
   id: string;
 }
 
+/**
+ * Контроллер целиком закрыт под ADMIN (см. @Roles ниже). Личный баланс —
+ * единственное исключение: @Roles на методе перекрывает классовый (RolesGuard
+ * использует getAllAndOverride), и исполнитель видит только свои деньги —
+ * executorId берётся из токена, параметром его подменить нельзя.
+ */
+
 @Controller('salary')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(EnumRole.ADMIN)
 export class SalaryController {
   constructor(private salaryService: SalaryService) {}
+
+  @Get('me')
+  @Roles(EnumRole.EXECUTOR, EnumRole.ADMIN)
+  getMyBalance(@CurrentUser() me: RequestUser) {
+    return this.salaryService.getMyBalance(me.id);
+  }
 
   @Get('summary')
   getSummary() {

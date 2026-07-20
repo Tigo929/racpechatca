@@ -31,6 +31,9 @@ export function StatusStepper({ order }: Props) {
     onSuccess: (updated) => {
       qc.setQueryData(['order', order.id], updated);
       qc.invalidateQueries({ queryKey: ['orders'] });
+      // Переход в «Отправлен» создаёт начисление — счётчик в шапке должен
+      // обновиться сразу, а не через 30 секунд.
+      qc.invalidateQueries({ queryKey: ['salary', 'me'] });
       toast.success(`Статус: ${labels[updated.status] ?? updated.status}`);
     },
     onError: (error: unknown) =>

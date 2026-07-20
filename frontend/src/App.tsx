@@ -11,6 +11,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default:
 const OrdersPage = lazy(() => import('./pages/OrdersPage').then((m) => ({ default: m.OrdersPage })));
 const UsersPage = lazy(() => import('./pages/UsersPage').then((m) => ({ default: m.UsersPage })));
 const SalaryPage = lazy(() => import('./pages/SalaryPage'));
+const MySalaryPage = lazy(() => import('./pages/MySalaryPage'));
 const StockPage = lazy(() => import('./pages/StockPage'));
 const ReportsPage = lazy(() =>
   import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage })),
@@ -63,6 +64,9 @@ function AppRoutes() {
         <Route path="/crm" element={<Navigate to="/crm/photo" replace />} />
         <Route path="/crm/users" element={<CrmGate><AdminRoute><UsersPage /></AdminRoute></CrmGate>} />
         <Route path="/crm/salary" element={<CrmGate><AdminRoute><SalaryPage /></AdminRoute></CrmGate>} />
+        {/* Личный кабинет по деньгам — доступен любому вошедшему, сервер
+            отдаёт баланс только по id из токена */}
+        <Route path="/crm/my-salary" element={<CrmGate><PrivateRoute><MySalaryPage /></PrivateRoute></CrmGate>} />
         <Route path="/crm/stock" element={<CrmGate><AdminRoute><StockPage /></AdminRoute></CrmGate>} />
         <Route path="/crm/reports" element={<CrmGate><AdminRoute><ReportsPage /></AdminRoute></CrmGate>} />
 

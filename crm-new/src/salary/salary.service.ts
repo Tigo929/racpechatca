@@ -98,6 +98,43 @@ export class SalaryService {
     });
   }
 
+  /**
+   * Личный баланс исполнителя.
+   *
+   * Намеренно отдаёт только агрегаты и историю выплат — без сумм по отдельным
+   * заказам. Зарплата считается как (чек − доставка) × ставка, и свою ставку
+   * исполнитель знает: показав начисление за конкретный заказ, мы бы раскрыли
+   * его чек в обход StripPricesInterceptor.
+   */
+  async getMyBalance(executorId: string) {
+    const [accruals, payments] = await Promise.all([
+      this.prisma.salaryAccrual.findMany({
+        where: { executorId, status: { not: 'REVERSED' } },
+        select: { salaryAmount: true, paidAmount: true, status: true },
+      }),
+      this.prisma.salaryPayment.findMany({
+        where: { executorId },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, createdAt: true, amount: true, note: true },
+      }),
+    ]);
+
+    const pending = accruals.filter(
+      (a) =>
+        (a.status === 'PENDING' || a.status === 'PARTIALLY_PAID') &&
+        a.paidAmount < a.salaryAmount,
+    );
+
+    return {
+      // Сколько сейчас должны: заказы отгружены (SENT), зарплата ещё не выдана.
+      totalDebt: pending.reduce((s, a) => s + a.salaryAmount - a.paidAmount, 0),
+      pendingOrders: pending.length,
+      // Сколько выдано за всё время — сумма фактических выплат, а не начислений.
+      totalPaid: payments.reduce((s, p) => s + p.amount, 0),
+      payments,
+    };
+  }
+
   /** Список начислений по исполнителю (для детального просмотра). */
   async getAccruals(executorId: string) {
     const user = await this.prisma.user.findUnique({

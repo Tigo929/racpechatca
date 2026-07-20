@@ -1,9 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   Printer, RefreshCw, LogOut, Users, Camera, Shirt, Wallet, Boxes,
   BarChart3, Bell, Plus,
 } from 'lucide-react';
 import { useAuth } from '../../context/useAuth';
+import { salaryApi } from '../../api/salary';
 
 interface Props {
   /** Обновить текущий список — кнопка рядом с разделами. */
@@ -22,7 +24,17 @@ interface Props {
 export function AppHeader({ onRefresh, onCreate, leadCount = 0 }: Props) {
   const { user, logout } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
+  const isExecutor = user?.role === 'EXECUTOR';
   const { pathname } = useLocation();
+
+  // Заработок исполнителя всегда на виду. Админу чип не нужен — у него есть
+  // полный раздел «Зарплата» со сводкой по всем.
+  const { data: balance } = useQuery({
+    queryKey: ['salary', 'me'],
+    queryFn: salaryApi.getMyBalance,
+    enabled: isExecutor,
+    staleTime: 30_000,
+  });
 
   const sections = [
     { to: '/crm/photo', label: 'Фотопечать', icon: Camera, show: true },
@@ -64,6 +76,17 @@ export function AppHeader({ onRefresh, onCreate, leadCount = 0 }: Props) {
         </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
+          {isExecutor && balance && (
+            <Link
+              to="/crm/my-salary"
+              title="Моя зарплата"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              style={{ background: 'rgba(245,158,11,0.15)', color: '#FCD34D' }}
+            >
+              <Wallet size={15} aria-hidden="true" />
+              <span>{balance.totalDebt.toLocaleString('ru-RU')} ₽</span>
+            </Link>
+          )}
           {onRefresh && (
             <button
               onClick={onRefresh}

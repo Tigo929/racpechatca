@@ -7,7 +7,25 @@ import type {
 } from '../types/index';
 import { api } from './client';
 
+/** Личный баланс исполнителя: только агрегаты, без сумм по заказам. */
+export interface MySalaryBalance {
+  totalDebt: number;
+  pendingOrders: number;
+  totalPaid: number;
+  payments: {
+    id: string;
+    createdAt: string;
+    amount: number;
+    note: string | null;
+  }[];
+}
+
 export const salaryApi = {
+  getMyBalance: async (): Promise<MySalaryBalance> => {
+    const { data } = await api.get<MySalaryBalance>('/salary/me');
+    return data;
+  },
+
   getSummary: async (): Promise<ExecutorSalaryData[]> => {
     const { data } = await api.get<ExecutorSalaryData[]>('/salary/summary');
     return data;
