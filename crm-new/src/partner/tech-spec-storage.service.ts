@@ -23,7 +23,10 @@ const EXT_CONTENT_TYPE: Record<string, string> = {
   pdf: 'application/pdf',
 };
 
-export const TECH_SPEC_MAX_BYTES = 15 * 1024 * 1024; // 15 МБ
+// 30 МБ: снимки с телефона доходят до 20–25 МБ. Изображение всё равно
+// пережимается в WebP и на диск ложится в разы меньше — большим держим
+// только приёмный лимит исходника.
+export const TECH_SPEC_MAX_BYTES = 30 * 1024 * 1024; // 30 МБ
 
 // Макет — производственный референс, поэтому качество держим высоким, а
 // уменьшаем только совсем крупные снимки: детали принта должны остаться
@@ -57,7 +60,7 @@ export class TechSpecStorageService {
       );
     }
     if (file.size > TECH_SPEC_MAX_BYTES) {
-      throw new BadRequestException('Файл больше 15 МБ');
+      throw new BadRequestException('Файл больше 30 МБ');
     }
     await fs.mkdir(this.baseDir, { recursive: true });
     // Убираем возможный старый файл заказа с другим расширением.
