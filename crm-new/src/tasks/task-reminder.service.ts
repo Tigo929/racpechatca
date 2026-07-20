@@ -7,13 +7,12 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TelegramService } from 'src/telegram/telegram.service';
 import {
-  DIGEST_HOUR,
   DigestGroup,
   OPEN_TASK_STATUSES,
   buildDigestMessage,
   isTaskDueForReminder,
+  isWithinDigestWindow,
   moscowDateKey,
-  moscowHour,
 } from './task-reminder-rules';
 
 const SCAN_INTERVAL_MS = 60 * 60 * 1000;
@@ -62,7 +61,7 @@ export class TaskReminderService implements OnModuleInit, OnModuleDestroy {
     if (this.running) return;
     this.running = true;
     try {
-      if (moscowHour(now) < DIGEST_HOUR) return;
+      if (!isWithinDigestWindow(now)) return;
       const todayKey = moscowDateKey(now);
 
       const candidates = await this.prisma.task.findMany({

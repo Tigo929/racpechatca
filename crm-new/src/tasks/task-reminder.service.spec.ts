@@ -47,6 +47,8 @@ function setup(sendResult = true) {
 const AT_TEN = new Date('2026-07-20T07:00:00Z');
 // 08:00 по Москве — до времени рассылки.
 const BEFORE_TEN = new Date('2026-07-20T05:00:00Z');
+// 23:00 по Москве — окно уже закрыто.
+const LATE_NIGHT = new Date('2026-07-20T20:00:00Z');
 
 describe('ежедневный дайджест задач', () => {
   it('молчит до времени рассылки и не трогает базу', async () => {
@@ -55,6 +57,16 @@ describe('ежедневный дайджест задач', () => {
     await service.scanAndNotify(BEFORE_TEN);
 
     expect(stub.task.findMany).not.toHaveBeenCalled();
+    expect(telegram.sendToGroup).not.toHaveBeenCalled();
+  });
+
+  it('молчит ночью, даже если задача просрочена', async () => {
+    const { stub, telegram, service } = setup();
+    stub.task.findMany.mockResolvedValue([makeTask()]);
+
+    await service.scanAndNotify(LATE_NIGHT);
+
+    // Ежечасная проверка догоняет пропущенное, но будить чат в 23:00 нельзя.
     expect(telegram.sendToGroup).not.toHaveBeenCalled();
   });
 
