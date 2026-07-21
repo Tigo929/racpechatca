@@ -33,9 +33,6 @@ const tshirtItemSchema = z.object({
   quantity: z.coerce.number().int().positive(),
   price: z.coerce.number().int().min(0),
   clientItem: z.boolean().optional(),
-  // Часть цены, которая приходится на дизайн — целиком прибыль владельца,
-  // партнёр её не делит. Внутри цены (не сверху).
-  designCost: z.coerce.number().int().min(0).optional(),
   // Себестоимость печати позиции — по умолчанию из настроек, можно поправить.
   thermalCost: z.coerce.number().int().min(0).optional(),
   blankCost: z.coerce.number().int().min(0).optional(),
@@ -256,8 +253,8 @@ export function CreateOrderForm({ onClose }: Props) {
       const tshirtItems = rows.filter((r) => !r.freePrice).map((r) => ({
         color: r.color, size: r.size, printLocation: r.printLocation,
         quantity: r.quantity, price: r.price, clientItem: r.clientItem,
-        designCost: r.designCost || undefined,
-        // Пусто/0 → не шлём, сервер подставит себестоимость из настроек.
+        // Дизайн больше не часть позиции футболки — его заводят отдельной
+        // свободной позицией. Пусто/0 → сервер берёт себестоимость из настроек.
         thermalCost: r.thermalCost || undefined,
         blankCost: r.blankCost || undefined,
       }));
@@ -403,15 +400,8 @@ export function CreateOrderForm({ onClose }: Props) {
         <textarea rows={2} className={inputCls + ' resize-none'} {...register('note')} />
       </div>
 
-      {/* Свободная (договорная) цена заказа — только для фото; у футболок
-          свободная цена назначается по-позиционно (чекбокс на позиции). */}
-      {productCategory === 'PHOTO' && (
-        <label className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 cursor-pointer hover:border-amber-300 transition-colors">
-          <input type="checkbox" {...register('freePrice')} className="w-4 h-4 accent-amber-600" />
-          <span className="text-sm font-medium text-gray-700">Свободная цена — произвольные позиции «название — цена»</span>
-        </label>
-      )}
-
+      {/* Свободная цена у фото задаётся ПО-ПОЗИЦИОННО (чекбокс на позиции),
+          отдельного «свободного» режима на весь заказ больше нет. */}
       {freePrice ? (
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -616,15 +606,6 @@ export function CreateOrderForm({ onClose }: Props) {
                           <input type="number" min={0} className={inputCls} {...register(`tshirtItems.${idx}.price`)} />
                         </div>
                       </div>
-                    </div>
-
-                    <div>
-                      <label className={labelCls}>Из них дизайн ₽ — моя прибыль</label>
-                      <input type="number" min={0} className={inputCls} placeholder="0"
-                        {...register(`tshirtItems.${idx}.designCost`)} />
-                      <p className="text-[11px] text-gray-400 mt-1">
-                        Часть цены за дизайн/макет. Целиком твоя, партнёр её не делит.
-                      </p>
                     </div>
 
                     {/* Себестоимость печати — по умолчанию из настроек; пусто = взять умолчание.
