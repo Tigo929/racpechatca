@@ -447,13 +447,12 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           )}
           {isAdmin && (
             <>
-              {/* Копирование текста клиенту.
-                  Фото: кнопка при NEW (подтверждение) и READY (готов).
-                  Футболки: кнопка при NEW (подтверждение) и DONE (готов). */}
+              {/* Копирование текста клиенту: подтверждение при NEW, сообщение
+                  готовности с остатком к оплате при READY. Одинаково для фото
+                  и футболок — «готов» у обоих теперь READY. */}
               {(() => {
-                const isTshirt = order.productCategory === 'TSHIRT';
                 const isNew = order.status === 'NEW';
-                const isReady = isTshirt ? order.status === 'DONE' : order.status === 'READY';
+                const isReady = order.status === 'READY';
                 if (!isNew && !isReady) return null;
                 const text = isNew ? generateConfirmationText(order) : generateReadyText(order);
                 const label = isNew ? 'Скопировать подтверждение' : 'Скопировать сообщение готовности';

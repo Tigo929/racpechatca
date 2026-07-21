@@ -9,7 +9,7 @@ import { EnumStatus } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { mapPartnerStage, shouldAdvanceTo } from './partner-status';
 
-const POLL_INTERVAL_MS = 5 * 60 * 1000; // каждые 5 минут
+const POLL_INTERVAL_MS = 30 * 1000; // каждые 30 секунд — «почти мгновенно»
 const POLL_LIMIT = 100;
 const REQUEST_TIMEOUT_MS = 10_000;
 
@@ -51,7 +51,7 @@ export class PartnerStatusPollService implements OnModuleInit, OnModuleDestroy {
       this.poll().catch((err: unknown) => {
         this.logger.error('Initial partner status poll failed', err);
       });
-    }, 40_000);
+    }, 15_000);
   }
 
   onModuleDestroy() {
