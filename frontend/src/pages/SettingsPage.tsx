@@ -142,10 +142,10 @@ export default function SettingsPage() {
   );
 }
 
-/** Разбор на примере позиции 1000 ₽ с дизайном 150 ₽ — чтобы формула была наглядной. */
+/** Разбор на примере футболки 1500 ₽ без дизайна — чтобы формула была наглядной. */
 function Example({ thermal, blank, pct }: { thermal: number; blank: number; pct: number }) {
-  const price = 1000;
-  const design = 150;
+  const price = 1500;
+  const design = 0; // без дизайна — как в базовом примере (результат 681 при 30%)
   const materials = thermal + blank;
   const margin = Math.max(0, price - design - materials);
   const partnerProfit = Math.floor((margin * pct) / 100);
@@ -161,7 +161,7 @@ function Example({ thermal, blank, pct }: { thermal: number; blank: number; pct:
     <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 space-y-1.5 text-sm">
       <div className="flex items-center gap-2 mb-1">
         <Info size={15} className="text-indigo-500" aria-hidden="true" />
-        <span className="font-semibold text-indigo-900">Пример: позиция {money(price)}, дизайн {money(design)}</span>
+        <span className="font-semibold text-indigo-900">Пример: футболка {money(price)} (дизайн внутри цены — твоя прибыль)</span>
       </div>
       <Row l={`Материалы (термо ${thermal} + футболка ${blank})`} v={money(materials)} />
       <Row l="Делимая маржа (цена − дизайн − материалы)" v={money(margin)} />

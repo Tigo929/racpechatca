@@ -26,7 +26,8 @@ export class TshirtItemService {
       if (!order) throw new NotFoundException('Заказ не найден');
       await this.financialIntegrity.assertOrderFinanciallyEditable(orderId, tx);
 
-      const designCost = dto.designCost ?? 0;
+      // Дизайн — внутри цены (carve-out), поэтому не больше суммы позиции.
+      const designCost = Math.min(dto.designCost ?? 0, dto.price * dto.quantity);
       const settings = await this.partnerSettings.get(tx);
       await tx.itemTshirt.create({
         data: {
@@ -36,11 +37,7 @@ export class TshirtItemService {
           printLocation: dto.printLocation,
           quantity: dto.quantity,
           price: dto.price,
-          pricePosition: calcItemPricePosition(
-            dto.price,
-            dto.quantity,
-            designCost,
-          ),
+          pricePosition: calcItemPricePosition(dto.price, dto.quantity),
           designCost,
           thermalCost: dto.thermalCost ?? settings.thermalTransferCost,
           blankCost: dto.blankCost ?? settings.blankTshirtCost,
@@ -65,7 +62,11 @@ export class TshirtItemService {
 
       const quantity = dto.quantity ?? item.quantity;
       const price = dto.price ?? item.price;
-      const designCost = dto.designCost ?? item.designCost;
+      // Дизайн — внутри цены (carve-out), не больше суммы позиции.
+      const designCost = Math.min(
+        dto.designCost ?? item.designCost,
+        price * quantity,
+      );
 
       await tx.itemTshirt.update({
         where: { id: itemId },
@@ -74,7 +75,7 @@ export class TshirtItemService {
           quantity,
           price,
           designCost,
-          pricePosition: calcItemPricePosition(price, quantity, designCost),
+          pricePosition: calcItemPricePosition(price, quantity),
         },
       });
 

@@ -16,18 +16,23 @@ export interface PricedItem {
 }
 
 /**
- * Стоимость одной позиции.
- *  - обычная: цена × количество + стоимость дизайна;
+ * Стоимость одной позиции = цена × количество.
  *  - свободная цена (freePrice): сумма = введённой цене, количество НЕ умножается.
+ *
+ * Дизайн НЕ прибавляется к цене: он уже входит в неё (модель «carve-out»).
+ * «Футболка стоит 1500, из них дизайн 400» → клиент платит 1500, а 400 —
+ * доля владельца, которую партнёр не делит (см. partner-settlement.ts).
+ * designCost оставлен в сигнатуре для совместимости вызовов, но в сумму
+ * позиции не входит.
  */
 export function calcItemPricePosition(
   price: number,
   quantity: number,
-  designCost = 0,
+  _designCost = 0,
   freePrice = false,
 ): number {
   if (freePrice) return price;
-  return price * quantity + designCost;
+  return price * quantity;
 }
 
 /**

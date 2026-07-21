@@ -33,6 +33,9 @@ const tshirtItemSchema = z.object({
   quantity: z.coerce.number().int().positive(),
   price: z.coerce.number().int().min(0),
   clientItem: z.boolean().optional(),
+  // Часть цены, которая приходится на дизайн — целиком прибыль владельца,
+  // партнёр её не делит. Внутри цены (не сверху).
+  designCost: z.coerce.number().int().min(0).optional(),
   // Себестоимость печати позиции — по умолчанию из настроек, можно поправить.
   thermalCost: z.coerce.number().int().min(0).optional(),
   blankCost: z.coerce.number().int().min(0).optional(),
@@ -253,6 +256,7 @@ export function CreateOrderForm({ onClose }: Props) {
       const tshirtItems = rows.filter((r) => !r.freePrice).map((r) => ({
         color: r.color, size: r.size, printLocation: r.printLocation,
         quantity: r.quantity, price: r.price, clientItem: r.clientItem,
+        designCost: r.designCost || undefined,
         // Пусто → сервер подставит себестоимость из настроек.
         thermalCost: r.thermalCost,
         blankCost: r.blankCost,
@@ -608,10 +612,19 @@ export function CreateOrderForm({ onClose }: Props) {
                           <input type="number" min={1} className={inputCls} {...register(`tshirtItems.${idx}.quantity`)} />
                         </div>
                         <div>
-                          <label className={labelCls}>Цена ₽</label>
+                          <label className={labelCls}>Цена ₽ (за всё)</label>
                           <input type="number" min={0} className={inputCls} {...register(`tshirtItems.${idx}.price`)} />
                         </div>
                       </div>
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>Из них дизайн ₽ — моя прибыль</label>
+                      <input type="number" min={0} className={inputCls} placeholder="0"
+                        {...register(`tshirtItems.${idx}.designCost`)} />
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        Часть цены за дизайн/макет. Целиком твоя, партнёр её не делит.
+                      </p>
                     </div>
 
                     {/* Себестоимость печати — по умолчанию из настроек; пусто = взять умолчание.

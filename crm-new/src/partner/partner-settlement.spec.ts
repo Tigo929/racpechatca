@@ -47,6 +47,66 @@ describe('расчёт по позиции (пример из согласова
   });
 });
 
+describe('пример владельца: футболка 1500 без дизайна → 681', () => {
+  // Точный сценарий из согласования:
+  // (1500 − 260 − 70) × 0.3 + 260 + 70 = 351 + 330 = 681.
+  const shirt: SettlementPosition = {
+    pricePosition: 1500,
+    designCost: 0,
+    quantity: 1,
+    thermalCost: 70,
+    blankCost: 260,
+    clientItem: false,
+  };
+  const r = settlePosition(shirt, 3000);
+
+  it('вознаграждение партнёра = 681', () => {
+    expect(r.reward).toBe(681);
+  });
+
+  it('чистый заработок партнёра = 351', () => {
+    expect(r.partnerProfit).toBe(351);
+  });
+
+  it('моя прибыль = 819 (без дизайна)', () => {
+    expect(r.ownerProfit).toBe(819);
+  });
+});
+
+describe('дизайн — чистый заработок владельца, партнёру не идёт', () => {
+  // Футболка 1500, из них 400 — дизайн (моя работа, внутри цены). Партнёр
+  // делит только печать: (1500 − 400 − 330) × 0.3 = 231; вознаграждение
+  // 231 + 330 = 561. Дизайн 400 целиком в моей прибыли.
+  const withDesign: SettlementPosition = {
+    pricePosition: 1500, // полная цена; из них дизайн 400
+    designCost: 400,
+    quantity: 1,
+    thermalCost: 70,
+    blankCost: 260,
+    clientItem: false,
+  };
+  const r = settlePosition(withDesign, 3000);
+
+  it('маржа партнёра считается без дизайна', () => {
+    // (1500 − 400) − 330 = 770
+    expect(r.margin).toBe(770);
+  });
+
+  it('заработок партнёра = 231 (30% от 770, дизайн исключён)', () => {
+    expect(r.partnerProfit).toBe(231);
+  });
+
+  it('вознаграждение партнёра = 561', () => {
+    expect(r.reward).toBe(561);
+  });
+
+  it('моя прибыль включает весь дизайн: 939 = 400 + 70% от 770', () => {
+    // 1500 − 561 = 939; из них дизайн 400 + 539 (70% маржи)
+    expect(r.ownerProfit).toBe(939);
+    expect(r.ownerProfit - 400).toBe(539);
+  });
+});
+
 describe('давальческая футболка (клиент со своей)', () => {
   const own: SettlementPosition = { ...base, clientItem: true };
 

@@ -181,14 +181,17 @@ export class OrderPhotoService {
           ? await this.partnerSettings.get(tx)
           : null;
       const tshirtCreate = (dto.tshirtItems ?? []).map((e) => {
-        const dc = e.designCost ?? 0;
+        // Дизайн — часть цены (carve-out), а не надбавка: ограничиваем его
+        // суммой позиции, чтобы «моя доля» не превысила цену футболки.
+        const lineTotal = e.price * e.quantity;
+        const dc = Math.min(e.designCost ?? 0, lineTotal);
         return {
           color: e.color,
           size: e.size,
           printLocation: e.printLocation,
           quantity: e.quantity,
           price: e.price,
-          pricePosition: e.price * e.quantity + dc,
+          pricePosition: lineTotal,
           designCost: dc,
           thermalCost:
             e.thermalCost ?? partnerDefaults?.thermalTransferCost ?? 70,

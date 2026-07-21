@@ -544,6 +544,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           {/* Разбивка расчёта с партнёром — сколько он зарабатывает и моя прибыль */}
           {partnerSettings && (order.tshirtItems?.length ?? 0) > 0 && (() => {
             const s = computeSettlement(order.tshirtItems ?? [], partnerSettings.partnerRateBasisPoints);
+            const design = (order.tshirtItems ?? []).reduce((sum, i) => sum + (i.designCost ?? 0), 0);
             const money = (v: number) => `${v.toLocaleString('ru-RU')} ₽`;
             const Row = ({ l, v, strong }: { l: string; v: string; strong?: boolean }) => (
               <div className={`flex justify-between ${strong ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
@@ -552,6 +553,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             );
             return (
               <div className="rounded-lg bg-white border border-gray-200 p-3 text-sm space-y-1">
+                <Row l="Сумма футболок" v={money(s.tshirtRevenue)} />
+                {design > 0 && <Row l="Из них дизайн (моя прибыль)" v={money(design)} />}
                 <Row l="Материалы (термо + футболка)" v={money(s.materials)} />
                 <Row l="Делимая маржа" v={money(s.margin)} />
                 <Row l={`Заработок партнёра (${partnerSettings.partnerRateBasisPoints / 100}%)`} v={money(s.partnerProfit)} />
