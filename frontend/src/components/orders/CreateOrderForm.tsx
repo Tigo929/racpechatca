@@ -624,11 +624,9 @@ export function CreateOrderForm({ onClose }: Props) {
                           {...register(`tshirtItems.${idx}.blankCost`)} />
                       </div>
                     </div>
-
-                    <label className="flex items-center gap-2.5 p-2.5 rounded-lg border border-gray-200 cursor-pointer hover:border-amber-300 transition-colors">
-                      <input type="checkbox" {...register(`tshirtItems.${idx}.clientItem`)} className="w-4 h-4 accent-amber-600" />
-                      <span className="text-sm text-gray-700">Изделие клиента — склад и заготовка не считаются</span>
-                    </label>
+                    {/* «Изделие клиента» (давальческая) скрыта: по умолчанию
+                        заготовку предоставляет партнёр, расчёт считается полностью
+                        и одинаково. Режим можно вернуть, когда понадобится. */}
                   </>
                 )}
               </div>
