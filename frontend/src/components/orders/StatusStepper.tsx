@@ -26,6 +26,11 @@ export function StatusStepper({ order }: Props) {
 
   const isTerminal = TERMINAL_STATUSES.includes(order.status);
 
+  // У фото зарплата начисляется при «Отправлен» — без исполнителя начислять
+  // некому, поэтому этот шаг блокируем (сервер тоже не пропустит). У футболок
+  // исполнителя нет — их не трогаем.
+  const needsExecutor = !isTshirt && !order.executorId;
+
   const mutation = useMutation({
     mutationFn: (status: EnumStatus) => ordersApi.updateStatus(order.id, { status }),
     onSuccess: (updated) => {
@@ -62,7 +67,8 @@ export function StatusStepper({ order }: Props) {
         // но PAID остаётся админским финансовым закрытием.
         const adminOnly = status === 'PAID' || status === 'CANCELLED';
         const canSetTarget = isAdmin || !adminOnly;
-        const clickable = !isCurrent && canSetTarget;
+        const blockedNoExecutor = status === 'SENT' && needsExecutor;
+        const clickable = !isCurrent && canSetTarget && !blockedNoExecutor;
         const isPastClickable = idx < currentIdx && clickable;
         const isFutureClickable = idx > currentIdx && clickable;
 
@@ -73,7 +79,13 @@ export function StatusStepper({ order }: Props) {
               onClick={() => mutation.mutate(status)}
               tabIndex={clickable ? 0 : -1}
               aria-current={isCurrent ? 'step' : undefined}
-              title={clickable ? `Установить статус: ${labels[status] ?? status}` : undefined}
+              title={
+                blockedNoExecutor
+                  ? 'Сначала назначьте исполнителя'
+                  : clickable
+                    ? `Установить статус: ${labels[status] ?? status}`
+                    : undefined
+              }
               className={`
                 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500
                 ${isCurrent ? 'bg-amber-600 text-white shadow-sm cursor-default' : ''}

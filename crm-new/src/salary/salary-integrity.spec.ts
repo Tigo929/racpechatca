@@ -276,6 +276,45 @@ describe('salary accrual integrity', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('blocks moving a photo order to SENT without an executor', async () => {
+    const stub = createPrismaStub();
+    // Фото-заказ без исполнителя: переводить в «Отправлен» нельзя —
+    // начислять зарплату некому, исполнитель просто забыт.
+    stub.orderPhoto.findUnique.mockResolvedValue({
+      ...makeOrder('PHOTO'),
+      executorId: null,
+      executor: null,
+    });
+    const service = createOrderService(stub);
+
+    await expect(
+      service.updateStatusOrder(
+        'order-1',
+        { status: EnumStatus.SENT },
+        'admin-1',
+        EnumRole.ADMIN,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('allows a tshirt order to reach SENT without an executor (partner-run)', async () => {
+    const { stub, service } = setupCompletion('TSHIRT');
+    stub.orderPhoto.findUnique.mockResolvedValue({
+      ...makeOrder('TSHIRT'),
+      executorId: null,
+      executor: null,
+    });
+
+    await expect(
+      service.updateStatusOrder(
+        'order-1',
+        { status: EnumStatus.SENT },
+        'admin-1',
+        EnumRole.ADMIN,
+      ),
+    ).resolves.toBeDefined();
+  });
+
   it('forbids an executor from opening a tshirt order even when assigned', async () => {
     const stub = createPrismaStub();
     // executorId совпадает с запрашивающим — доступ всё равно закрыт:

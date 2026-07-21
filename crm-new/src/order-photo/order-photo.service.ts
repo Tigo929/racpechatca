@@ -805,6 +805,19 @@ export class OrderPhotoService {
       }
     }
 
+    // Защита от «отправлен без исполнителя»: у фото при переходе в SENT
+    // начисляется зарплата, а начислять некому — значит исполнитель просто
+    // забыт. У футболок исполнителя нет (их ведёт партнёр), их не трогаем.
+    if (
+      newStatus === EnumStatus.SENT &&
+      order.productCategory !== EnumProductCategory.TSHIRT &&
+      !order.executorId
+    ) {
+      throw new BadRequestException(
+        'Нельзя перевести заказ в «Отправлен» без исполнителя — сначала назначьте исполнителя.',
+      );
+    }
+
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`
         SELECT "id"
