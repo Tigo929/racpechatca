@@ -54,3 +54,46 @@ export function toPartnerStatus(status: string): string {
 export function fromPartnerStatus(code: string): EnumStatus | null {
   return FROM_PARTNER[code.trim().toLowerCase()] ?? null;
 }
+
+/**
+ * Стадия производства в CRM партнёра → наш статус футболочного заказа.
+ * Партнёр отдаёт production_stage: planning/queued/in_work/qc/ready/done.
+ *   план              → ещё не начал, статус не двигаем (null)
+ *   очередь/работа/ОТК → «В работе»
+ *   готово/закрыто     → «Готов»
+ */
+const PARTNER_STAGE_MAP: Record<string, EnumStatus> = {
+  queued: EnumStatus.IN_PROGRESS,
+  in_work: EnumStatus.IN_PROGRESS,
+  qc: EnumStatus.IN_PROGRESS,
+  ready: EnumStatus.READY,
+  done: EnumStatus.READY,
+};
+
+export function mapPartnerStage(stage: string | null | undefined): EnumStatus | null {
+  if (!stage) return null;
+  return PARTNER_STAGE_MAP[stage.trim().toLowerCase()] ?? null;
+}
+
+/**
+ * Порядок в потоке — чтобы двигать заказ только вперёд и не перебивать
+ * «Оплачен» (финальный статус владельца). Чем больше, тем дальше по процессу.
+ */
+const FLOW_RANK: Partial<Record<EnumStatus, number>> = {
+  [EnumStatus.NEW]: 0,
+  [EnumStatus.SENT]: 1,
+  [EnumStatus.IN_PROGRESS]: 2,
+  [EnumStatus.READY]: 3,
+  [EnumStatus.PAID]: 4,
+};
+
+/** Двигаем статус к target только если это шаг ВПЕРЁД (и не из PAID). */
+export function shouldAdvanceTo(
+  current: EnumStatus,
+  target: EnumStatus,
+): boolean {
+  if (current === EnumStatus.PAID) return false;
+  const c = FLOW_RANK[current] ?? -1;
+  const t = FLOW_RANK[target] ?? -1;
+  return t > c;
+}
