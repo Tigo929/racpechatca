@@ -64,15 +64,15 @@ export class PartnerStatusPollService implements OnModuleInit, OnModuleDestroy {
     if (!this.statusUrlBase || !this.token) return; // вебхук не настроен
     this.running = true;
     try {
-      // Заказы «в руках у партнёра»: отправлены и ещё не закрыты оплатой.
+      // Заказы «в руках у партнёра»: доставлены (partnerSyncStatus=SENT) и ещё
+      // не закрыты. Рабочий статус может быть любым — владелец мог не двигать
+      // его руками (напр. остаться NEW), синхрон всё равно должен работать.
       const orders = await this.prisma.orderPhoto.findMany({
         where: {
           productCategory: 'TSHIRT',
           partnerSyncStatus: 'SENT',
           externalRequestId: { not: null },
-          status: {
-            in: [EnumStatus.SENT, EnumStatus.IN_PROGRESS, EnumStatus.READY],
-          },
+          status: { notIn: [EnumStatus.PAID, EnumStatus.CANCELLED] },
         },
         take: POLL_LIMIT,
         select: {
