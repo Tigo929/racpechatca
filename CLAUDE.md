@@ -12,9 +12,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 graphify update .        # пересборка по коду, ТОЛЬКО локально (без LLM, наружу ничего не уходит)
-git add graphify-out/graph.json graphify-out/GRAPH_REPORT.md graphify-out/manifest.json
+git add graphify-out/graph.json graphify-out/GRAPH_REPORT.md graphify-out/manifest.json graphify-out/.graphify_labels.json
 ```
 
+- **CLI не в PATH.** Установлен через `pip install --user graphifyy`, лежит в
+  `%APPDATA%\Python\Python314\Scripts\graphify.exe`. Из Git Bash его не видно —
+  зови по полному пути или из PowerShell:
+  `& "$env:APPDATA\Python\Python314\Scripts\graphify.exe" update .`
+  (если снова «uv trampoline failed» — переустанови: `python -m pip install --user --upgrade graphifyy`).
 - Только локальный разбор кода (tree-sitter). Внешний ИИ-разбор доков/картинок
   НЕ включаем — это осознанное решение по приватности (в репозитории бизнес-логика CRM).
 - Не запускай `graphify extract` (он зовёт внешний LLM). Наш путь — `graphify update .`.
