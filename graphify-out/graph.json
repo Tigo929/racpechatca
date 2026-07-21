@@ -132,8 +132,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_package",
-      "community": 55,
-      "community_name": "DtoSetStock",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "crm-new/package.json"
     },
     {
@@ -143,8 +143,8 @@
       "source_location": "L2",
       "_origin": "ast",
       "id": "crm_new_package_name",
-      "community": 55,
-      "community_name": "DtoSetStock",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "name"
     },
     {
@@ -154,8 +154,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "crm_new_package_version",
-      "community": 55,
-      "community_name": "DtoSetStock",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "version"
     },
     {
@@ -165,8 +165,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "crm_new_package_description",
-      "community": 55,
-      "community_name": "DtoSetStock",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "description"
     },
     {
@@ -176,8 +176,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "crm_new_package_author",
-      "community": 55,
-      "community_name": "DtoSetStock",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "author"
     },
     {
@@ -187,8 +187,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "crm_new_package_private",
-      "community": 55,
-      "community_name": "DtoSetStock",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "private"
     },
     {
@@ -198,8 +198,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "crm_new_package_license",
-      "community": 55,
-      "community_name": "DtoSetStock",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "license"
     },
     {
@@ -209,8 +209,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "crm_new_package_scripts",
-      "community": 7,
-      "community_name": "Roles",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "scripts"
     },
     {
@@ -220,8 +220,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "crm_new_package_scripts_build",
-      "community": 7,
-      "community_name": "Roles",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "build"
     },
     {
@@ -231,8 +231,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "crm_new_package_scripts_format",
-      "community": 7,
-      "community_name": "Roles",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "format"
     },
     {
@@ -242,8 +242,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "crm_new_package_scripts_start",
-      "community": 7,
-      "community_name": "Roles",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "start"
     },
     {
@@ -253,8 +253,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "crm_new_package_scripts_start_dev",
-      "community": 7,
-      "community_name": "Roles",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "start:dev"
     },
     {
@@ -264,8 +264,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "crm_new_package_scripts_start_debug",
-      "community": 7,
-      "community_name": "Roles",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "start:debug"
     },
     {
@@ -275,8 +275,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "crm_new_package_scripts_start_prod",
-      "community": 7,
-      "community_name": "Roles",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "start:prod"
     },
     {
@@ -286,8 +286,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "crm_new_package_scripts_lint",
-      "community": 7,
-      "community_name": "Roles",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "lint"
     },
     {
@@ -297,8 +297,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "crm_new_package_scripts_test",
-      "community": 7,
-      "community_name": "Roles",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "test"
     },
     {
@@ -308,8 +308,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "crm_new_package_scripts_test_watch",
-      "community": 7,
-      "community_name": "Roles",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "test:watch"
     },
     {
@@ -319,8 +319,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "crm_new_package_scripts_test_cov",
-      "community": 7,
-      "community_name": "Roles",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "test:cov"
     },
     {
@@ -330,8 +330,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "crm_new_package_scripts_test_debug",
-      "community": 7,
-      "community_name": "Roles",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "test:debug"
     },
     {
@@ -341,8 +341,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "crm_new_package_scripts_test_e2e",
-      "community": 7,
-      "community_name": "Roles",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "test:e2e"
     },
     {
@@ -352,8 +352,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "crm_new_package_scripts_db_push_dev",
-      "community": 7,
-      "community_name": "Roles",
+      "community": 5,
+      "community_name": "scripts",
       "norm_label": "db:push:dev"
     },
     {
@@ -891,8 +891,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "crm_new_package_devdependencies_eslint_eslintrc",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 25,
+      "community_name": "salary-integrity.spec.ts",
       "norm_label": "@eslint/eslintrc"
     },
     {
@@ -902,8 +902,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "eslint_eslintrc",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 25,
+      "community_name": "salary-integrity.spec.ts",
       "norm_label": "@eslint/eslintrc"
     },
     {
@@ -1001,8 +1001,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "crm_new_package_devdependencies_types_express",
-      "community": 77,
-      "community_name": "PaymentPrismaHarness",
+      "community": 65,
+      "community_name": "devDependencies",
       "norm_label": "@types/express"
     },
     {
@@ -1012,8 +1012,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "types_express",
-      "community": 77,
-      "community_name": "PaymentPrismaHarness",
+      "community": 65,
+      "community_name": "devDependencies",
       "norm_label": "@types/express"
     },
     {
@@ -1023,8 +1023,8 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "crm_new_package_devdependencies_types_jest",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 122,
+      "community_name": "@types/jest",
       "norm_label": "@types/jest"
     },
     {
@@ -1034,8 +1034,8 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "types_jest",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 122,
+      "community_name": "@types/jest",
       "norm_label": "@types/jest"
     },
     {
@@ -1045,8 +1045,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "crm_new_package_devdependencies_types_multer",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 123,
+      "community_name": "@types/multer",
       "norm_label": "@types/multer"
     },
     {
@@ -1056,8 +1056,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "types_multer",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 123,
+      "community_name": "@types/multer",
       "norm_label": "@types/multer"
     },
     {
@@ -1089,8 +1089,8 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "crm_new_package_devdependencies_types_passport_jwt",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 124,
+      "community_name": "@types/passport-jwt",
       "norm_label": "@types/passport-jwt"
     },
     {
@@ -1100,8 +1100,8 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "types_passport_jwt",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 124,
+      "community_name": "@types/passport-jwt",
       "norm_label": "@types/passport-jwt"
     },
     {
@@ -1111,8 +1111,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "crm_new_package_devdependencies_types_pdfkit",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 125,
+      "community_name": "@types/pdfkit",
       "norm_label": "@types/pdfkit"
     },
     {
@@ -1122,8 +1122,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "types_pdfkit",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 125,
+      "community_name": "@types/pdfkit",
       "norm_label": "@types/pdfkit"
     },
     {
@@ -1177,8 +1177,8 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "crm_new_package_devdependencies_eslint_config_prettier",
-      "community": 76,
-      "community_name": "PrismaModule",
+      "community": 65,
+      "community_name": "devDependencies",
       "norm_label": "eslint-config-prettier"
     },
     {
@@ -1188,8 +1188,8 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "eslint_config_prettier",
-      "community": 76,
-      "community_name": "PrismaModule",
+      "community": 65,
+      "community_name": "devDependencies",
       "norm_label": "eslint-config-prettier"
     },
     {
@@ -1199,8 +1199,8 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "crm_new_package_devdependencies_eslint_plugin_prettier",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 55,
+      "community_name": "DtoSetStock",
       "norm_label": "eslint-plugin-prettier"
     },
     {
@@ -1210,8 +1210,8 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "eslint_plugin_prettier",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 55,
+      "community_name": "DtoSetStock",
       "norm_label": "eslint-plugin-prettier"
     },
     {
@@ -1221,8 +1221,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "crm_new_package_devdependencies_globals",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 68,
+      "community_name": "JwtStrategy",
       "norm_label": "globals"
     },
     {
@@ -1232,8 +1232,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "crm_new_package_json_globals",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 68,
+      "community_name": "JwtStrategy",
       "norm_label": "globals"
     },
     {
@@ -1287,8 +1287,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "crm_new_package_devdependencies_prisma",
-      "community": 68,
-      "community_name": "JwtStrategy",
+      "community": 43,
+      "community_name": "PrismaService",
       "norm_label": "prisma"
     },
     {
@@ -1298,8 +1298,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "prisma",
-      "community": 68,
-      "community_name": "JwtStrategy",
+      "community": 43,
+      "community_name": "PrismaService",
       "norm_label": "prisma"
     },
     {
@@ -1309,8 +1309,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "crm_new_package_devdependencies_source_map_support",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 76,
+      "community_name": "PrismaModule",
       "norm_label": "source-map-support"
     },
     {
@@ -1320,8 +1320,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "source_map_support",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 76,
+      "community_name": "PrismaModule",
       "norm_label": "source-map-support"
     },
     {
@@ -1375,8 +1375,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "crm_new_package_devdependencies_ts_loader",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 77,
+      "community_name": "PaymentPrismaHarness",
       "norm_label": "ts-loader"
     },
     {
@@ -1386,8 +1386,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "ts_loader",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 77,
+      "community_name": "PaymentPrismaHarness",
       "norm_label": "ts-loader"
     },
     {
@@ -1441,8 +1441,8 @@
       "source_location": "L74",
       "_origin": "ast",
       "id": "crm_new_package_devdependencies_typescript",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 126,
+      "community_name": "typescript",
       "norm_label": "typescript"
     },
     {
@@ -1452,8 +1452,8 @@
       "source_location": "L74",
       "_origin": "ast",
       "id": "crm_new_package_json_typescript",
-      "community": 65,
-      "community_name": "devDependencies",
+      "community": 126,
+      "community_name": "typescript",
       "norm_label": "typescript"
     },
     {
@@ -2409,8 +2409,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_auth_auth_controller_ts_useguards",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "useguards"
     },
     {
@@ -2420,8 +2420,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_auth_auth_controller_ts_get",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "get"
     },
     {
@@ -2453,8 +2453,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "crm_new_src_auth_auth_controller_authcontroller_me",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": ".me()"
     },
     {
@@ -2552,8 +2552,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_auth_authenticated_request",
-      "community": 42,
-      "community_name": "auth.controller.ts",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "authenticated-request.ts"
     },
     {
@@ -2563,8 +2563,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "crm_new_src_auth_authenticated_request_authenticateduser",
-      "community": 42,
-      "community_name": "auth.controller.ts",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "authenticateduser"
     },
     {
@@ -2574,8 +2574,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "crm_new_src_auth_authenticated_request_authenticatedrequest",
-      "community": 42,
-      "community_name": "auth.controller.ts",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "authenticatedrequest"
     },
     {
@@ -2585,8 +2585,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_auth_decorators_current_user_decorator",
-      "community": 42,
-      "community_name": "auth.controller.ts",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "current-user.decorator.ts"
     },
     {
@@ -2596,8 +2596,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "crm_new_src_auth_decorators_current_user_decorator_currentuser",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "currentuser"
     },
     {
@@ -2607,8 +2607,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_auth_decorators_roles_decorator",
-      "community": 42,
-      "community_name": "auth.controller.ts",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "roles.decorator.ts"
     },
     {
@@ -2618,8 +2618,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "crm_new_src_auth_decorators_roles_decorator_roles",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "roles()"
     },
     {
@@ -2706,8 +2706,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_auth_guards_roles_guard",
-      "community": 42,
-      "community_name": "auth.controller.ts",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "roles.guard.ts"
     },
     {
@@ -2717,8 +2717,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "crm_new_src_auth_guards_roles_guard_rolesguard",
-      "community": 42,
-      "community_name": "auth.controller.ts",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "rolesguard"
     },
     {
@@ -2728,8 +2728,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_auth_guards_roles_guard_ts_injectable",
-      "community": 42,
-      "community_name": "auth.controller.ts",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "injectable"
     },
     {
@@ -2739,8 +2739,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "crm_new_src_auth_guards_roles_guard_rolesguard_constructor",
-      "community": 42,
-      "community_name": "auth.controller.ts",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".constructor()"
     },
     {
@@ -2750,8 +2750,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "crm_new_src_auth_guards_roles_guard_rolesguard_canactivate",
-      "community": 42,
-      "community_name": "auth.controller.ts",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".canactivate()"
     },
     {
@@ -3465,8 +3465,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_dto_assign_executor_dto",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": "assign-executor.dto.ts"
     },
     {
@@ -3476,8 +3476,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_dto_assign_executor_dto_dtoassignexecutor",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": "dtoassignexecutor"
     },
     {
@@ -3487,8 +3487,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_dto_assign_executor_dto_ts_isoptional",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": "isoptional"
     },
     {
@@ -3498,8 +3498,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_dto_assign_executor_dto_ts_isuuid",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": "isuuid"
     },
     {
@@ -3509,8 +3509,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_dto_assign_executor_dto_ts_isstring",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": "isstring"
     },
     {
@@ -3652,8 +3652,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_dto_create_lead_dto",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 35,
+      "community_name": "DtoCreateLead",
       "norm_label": "create-lead.dto.ts"
     },
     {
@@ -4301,8 +4301,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_dto_update_status_dto",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 61,
+      "community_name": "DtoCreateTshirtItem",
       "norm_label": "update-status.dto.ts"
     },
     {
@@ -4312,8 +4312,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_dto_update_status_dto_updatestatus",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 61,
+      "community_name": "DtoCreateTshirtItem",
       "norm_label": "updatestatus"
     },
     {
@@ -4323,8 +4323,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_dto_update_status_dto_ts_isenum",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 61,
+      "community_name": "DtoCreateTshirtItem",
       "norm_label": "isenum"
     },
     {
@@ -4433,8 +4433,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_lead_controller",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 35,
+      "community_name": "DtoCreateLead",
       "norm_label": "lead.controller.ts"
     },
     {
@@ -4543,8 +4543,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_financial_integrity_service",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 50,
+      "community_name": "DtoUpdateItemOrder",
       "norm_label": "order-financial-integrity.service.ts"
     },
     {
@@ -4554,8 +4554,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_financial_integrity_service_financialclient",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 50,
+      "community_name": "DtoUpdateItemOrder",
       "norm_label": "financialclient"
     },
     {
@@ -4565,8 +4565,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_financial_integrity_service_orderfinancialintegrityservice",
-      "community": 17,
-      "community_name": "OrderFinancialIntegrityService",
+      "community": 50,
+      "community_name": "DtoUpdateItemOrder",
       "norm_label": "orderfinancialintegrityservice"
     },
     {
@@ -4576,8 +4576,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_financial_integrity_service_ts_injectable",
-      "community": 17,
-      "community_name": "OrderFinancialIntegrityService",
+      "community": 50,
+      "community_name": "DtoUpdateItemOrder",
       "norm_label": "injectable"
     },
     {
@@ -4587,8 +4587,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_financial_integrity_service_orderfinancialintegrityservice_constructor",
-      "community": 17,
-      "community_name": "OrderFinancialIntegrityService",
+      "community": 50,
+      "community_name": "DtoUpdateItemOrder",
       "norm_label": ".constructor()"
     },
     {
@@ -4620,8 +4620,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_item_service",
-      "community": 17,
-      "community_name": "OrderFinancialIntegrityService",
+      "community": 50,
+      "community_name": "DtoUpdateItemOrder",
       "norm_label": "order-item.service.ts"
     },
     {
@@ -4653,8 +4653,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_item_service_orderitemservice_constructor",
-      "community": 17,
-      "community_name": "OrderFinancialIntegrityService",
+      "community": 50,
+      "community_name": "DtoUpdateItemOrder",
       "norm_label": ".constructor()"
     },
     {
@@ -4741,8 +4741,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "orderphotocontroller"
     },
     {
@@ -4752,8 +4752,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_ts_controller",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "controller"
     },
     {
@@ -4763,8 +4763,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_ts_useguards",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "useguards"
     },
     {
@@ -4774,8 +4774,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_ts_useinterceptors",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "useinterceptors"
     },
     {
@@ -4785,8 +4785,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_ts_post",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "post"
     },
     {
@@ -4796,8 +4796,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_ts_body",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "body"
     },
     {
@@ -4807,8 +4807,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_ts_patch",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "patch"
     },
     {
@@ -4818,8 +4818,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_ts_param",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "param"
     },
     {
@@ -4829,8 +4829,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_ts_delete",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "delete"
     },
     {
@@ -4840,8 +4840,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_ts_get",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "get"
     },
     {
@@ -4851,8 +4851,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_ts_res",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "res"
     },
     {
@@ -4862,8 +4862,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_ts_query",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": "query"
     },
     {
@@ -4884,8 +4884,8 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_createorder",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".createorder()"
     },
     {
@@ -4895,8 +4895,8 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_updateorder",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".updateorder()"
     },
     {
@@ -4906,8 +4906,8 @@
       "source_location": "L69",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_deleteorder",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".deleteorder()"
     },
     {
@@ -4917,8 +4917,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_assignexecutor",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".assignexecutor()"
     },
     {
@@ -4928,8 +4928,8 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_getsticker",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".getsticker()"
     },
     {
@@ -4939,8 +4939,8 @@
       "source_location": "L104",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_getclientsticker",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".getclientsticker()"
     },
     {
@@ -4950,8 +4950,8 @@
       "source_location": "L120",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_setreview",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".setreview()"
     },
     {
@@ -4961,8 +4961,8 @@
       "source_location": "L128",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_additemtoorder",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".additemtoorder()"
     },
     {
@@ -4972,8 +4972,8 @@
       "source_location": "L137",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_updateitemorder",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".updateitemorder()"
     },
     {
@@ -4983,8 +4983,8 @@
       "source_location": "L146",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_deleteitemorder",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".deleteitemorder()"
     },
     {
@@ -4994,8 +4994,8 @@
       "source_location": "L152",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_addtshirtitem",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".addtshirtitem()"
     },
     {
@@ -5005,8 +5005,8 @@
       "source_location": "L161",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_updatetshirtitem",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".updatetshirtitem()"
     },
     {
@@ -5016,8 +5016,8 @@
       "source_location": "L170",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_deletetshirtitem",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".deletetshirtitem()"
     },
     {
@@ -5027,8 +5027,8 @@
       "source_location": "L177",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_getallorders",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".getallorders()"
     },
     {
@@ -5038,8 +5038,8 @@
       "source_location": "L185",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_getorderstats",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".getorderstats()"
     },
     {
@@ -5049,8 +5049,8 @@
       "source_location": "L193",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_getitembyid",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".getitembyid()"
     },
     {
@@ -5060,8 +5060,8 @@
       "source_location": "L198",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_gettshirtitem",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".gettshirtitem()"
     },
     {
@@ -5071,8 +5071,8 @@
       "source_location": "L206",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_getorderbyid",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".getorderbyid()"
     },
     {
@@ -5082,8 +5082,8 @@
       "source_location": "L214",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_updatestatusorder",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".updatestatusorder()"
     },
     {
@@ -5093,8 +5093,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_module",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 50,
+      "community_name": "DtoUpdateItemOrder",
       "norm_label": "order-photo.module.ts"
     },
     {
@@ -5126,8 +5126,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": "order-photo.service.ts"
     },
     {
@@ -5137,8 +5137,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_buildcommunicationurl",
-      "community": 31,
-      "community_name": "OrderPhotoService",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": "buildcommunicationurl()"
     },
     {
@@ -5148,8 +5148,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_ru_months",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": "ru_months"
     },
     {
@@ -5159,8 +5159,8 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_formatrudate",
-      "community": 31,
-      "community_name": "OrderPhotoService",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": "formatrudate()"
     },
     {
@@ -5170,8 +5170,8 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_escapehtml",
-      "community": 31,
-      "community_name": "OrderPhotoService",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": "escapehtml()"
     },
     {
@@ -5181,8 +5181,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_default_list_hidden_statuses",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": "default_list_hidden_statuses"
     },
     {
@@ -5214,8 +5214,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_ready_statuses",
-      "community": 9,
-      "community_name": "order-photo.controller.ts",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": "ready_statuses"
     },
     {
@@ -5236,8 +5236,8 @@
       "source_location": "L100",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice",
-      "community": 31,
-      "community_name": "OrderPhotoService",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": "orderphotoservice"
     },
     {
@@ -5247,8 +5247,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_ts_injectable",
-      "community": 31,
-      "community_name": "OrderPhotoService",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": "injectable"
     },
     {
@@ -5258,8 +5258,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_constructor",
-      "community": 17,
-      "community_name": "OrderFinancialIntegrityService",
+      "community": 50,
+      "community_name": "DtoUpdateItemOrder",
       "norm_label": ".constructor()"
     },
     {
@@ -5269,15 +5269,15 @@
       "source_location": "L111",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_createorder",
-      "community": 31,
-      "community_name": "OrderPhotoService",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": ".createorder()"
     },
     {
       "label": ".createLead()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L279",
+      "source_location": "L282",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_createlead",
       "community": 35,
@@ -5288,7 +5288,7 @@
       "label": ".getAllOrders()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L321",
+      "source_location": "L324",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_getallorders",
       "community": 46,
@@ -5299,7 +5299,7 @@
       "label": ".getOrderStats()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L360",
+      "source_location": "L363",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_getorderstats",
       "community": 46,
@@ -5310,7 +5310,7 @@
       "label": ".buildOrdersWhere()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L487",
+      "source_location": "L490",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_buildorderswhere",
       "community": 46,
@@ -5321,7 +5321,7 @@
       "label": ".daysLeft()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L539",
+      "source_location": "L542",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_daysleft",
       "community": 46,
@@ -5332,7 +5332,7 @@
       "label": ".getOrderById()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L551",
+      "source_location": "L554",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_getorderbyid",
       "community": 31,
@@ -5343,29 +5343,29 @@
       "label": ".assignExecutor()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L585",
+      "source_location": "L588",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_assignexecutor",
-      "community": 31,
-      "community_name": "OrderPhotoService",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": ".assignexecutor()"
     },
     {
       "label": ".buildAssignmentMessage()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L704",
+      "source_location": "L707",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_buildassignmentmessage",
-      "community": 31,
-      "community_name": "OrderPhotoService",
+      "community": 46,
+      "community_name": "DtoAllOrdersforQuery",
       "norm_label": ".buildassignmentmessage()"
     },
     {
       "label": ".updateStatusOrder()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L771",
+      "source_location": "L774",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updatestatusorder",
       "community": 31,
@@ -5376,18 +5376,18 @@
       "label": ".updateOrder()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L963",
+      "source_location": "L966",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updateorder",
-      "community": 31,
-      "community_name": "OrderPhotoService",
+      "community": 17,
+      "community_name": "OrderFinancialIntegrityService",
       "norm_label": ".updateorder()"
     },
     {
       "label": ".setReviewLeft()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L1010",
+      "source_location": "L1013",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_setreviewleft",
       "community": 31,
@@ -5398,7 +5398,7 @@
       "label": ".deleteOrder()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L1023",
+      "source_location": "L1026",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_deleteorder",
       "community": 31,
@@ -5431,7 +5431,7 @@
       "label": "calcItemPricePosition()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-pricing.ts",
-      "source_location": "L23",
+      "source_location": "L28",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_pricing_calcitempriceposition",
       "community": 17,
@@ -5442,7 +5442,7 @@
       "label": "calcOrderTotal()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-pricing.ts",
-      "source_location": "L37",
+      "source_location": "L42",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_pricing_calcordertotal",
       "community": 17,
@@ -5654,8 +5654,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_sticker_module",
-      "community": 24,
-      "community_name": "sticker.service.ts",
+      "community": 50,
+      "community_name": "DtoUpdateItemOrder",
       "norm_label": "sticker.module.ts"
     },
     {
@@ -5665,8 +5665,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_sticker_module_stickermodule",
-      "community": 24,
-      "community_name": "sticker.service.ts",
+      "community": 50,
+      "community_name": "DtoUpdateItemOrder",
       "norm_label": "stickermodule"
     },
     {
@@ -5676,8 +5676,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_sticker_module_ts_module",
-      "community": 24,
-      "community_name": "sticker.service.ts",
+      "community": 50,
+      "community_name": "DtoUpdateItemOrder",
       "norm_label": "module"
     },
     {
@@ -5926,7 +5926,7 @@
       "label": ".updateTshirtItem()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L57",
+      "source_location": "L54",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice_updatetshirtitem",
       "community": 17,
@@ -5937,7 +5937,7 @@
       "label": ".deleteTshirtItem()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L85",
+      "source_location": "L86",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice_deletetshirtitem",
       "community": 17,
@@ -5948,7 +5948,7 @@
       "label": ".getTshirtItem()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L99",
+      "source_location": "L100",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice_gettshirtitem",
       "community": 17,
@@ -5959,7 +5959,7 @@
       "label": ".recalcAndReturn()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L121",
+      "source_location": "L122",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice_recalcandreturn",
       "community": 17,
@@ -6644,8 +6644,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_partner_partner_settings_module",
-      "community": 30,
-      "community_name": "app.module.ts",
+      "community": 41,
+      "community_name": "partner.module.ts",
       "norm_label": "partner-settings.module.ts"
     },
     {
@@ -6655,8 +6655,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "crm_new_src_partner_partner_settings_module_partnersettingsmodule",
-      "community": 30,
-      "community_name": "app.module.ts",
+      "community": 41,
+      "community_name": "partner.module.ts",
       "norm_label": "partnersettingsmodule"
     },
     {
@@ -6666,8 +6666,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_partner_partner_settings_module_ts_module",
-      "community": 30,
-      "community_name": "app.module.ts",
+      "community": 41,
+      "community_name": "partner.module.ts",
       "norm_label": "module"
     },
     {
@@ -7062,8 +7062,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_partner_partner_module",
-      "community": 30,
-      "community_name": "app.module.ts",
+      "community": 41,
+      "community_name": "partner.module.ts",
       "norm_label": "partner.module.ts"
     },
     {
@@ -7205,8 +7205,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "crm_new_src_prisma_prisma_module_prismamodule",
-      "community": 30,
-      "community_name": "app.module.ts",
+      "community": 43,
+      "community_name": "PrismaService",
       "norm_label": "prismamodule"
     },
     {
@@ -7216,8 +7216,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "global",
-      "community": 30,
-      "community_name": "app.module.ts",
+      "community": 43,
+      "community_name": "PrismaService",
       "norm_label": "global"
     },
     {
@@ -7227,8 +7227,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_prisma_prisma_module_ts_module",
-      "community": 30,
-      "community_name": "app.module.ts",
+      "community": 43,
+      "community_name": "PrismaService",
       "norm_label": "module"
     },
     {
@@ -7865,8 +7865,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_calculation",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "salary-calculation.ts"
     },
     {
@@ -7876,8 +7876,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_calculation_salarysnapshot",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "salarysnapshot"
     },
     {
@@ -7887,8 +7887,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_calculation_calculatesalarysnapshot",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "calculatesalarysnapshot()"
     },
     {
@@ -7898,8 +7898,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "salary-integrity.spec.ts"
     },
     {
@@ -7909,8 +7909,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_asyncmock",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "asyncmock"
     },
     {
@@ -7920,8 +7920,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_prismastub",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "prismastub"
     },
     {
@@ -7931,8 +7931,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_createprismastub",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "createprismastub()"
     },
     {
@@ -7942,8 +7942,8 @@
       "source_location": "L81",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_makeorder",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "makeorder()"
     },
     {
@@ -7953,8 +7953,8 @@
       "source_location": "L108",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_createorderservice",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "createorderservice()"
     },
     {
@@ -7964,8 +7964,8 @@
       "source_location": "L136",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_setupcompletion",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "setupcompletion()"
     },
     {
@@ -7975,8 +7975,8 @@
       "source_location": "L374",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_harnessaccrual",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "harnessaccrual"
     },
     {
@@ -7986,8 +7986,8 @@
       "source_location": "L383",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_updateaccrualargs",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "updateaccrualargs"
     },
     {
@@ -7997,8 +7997,8 @@
       "source_location": "L391",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_createpaymentargs",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "createpaymentargs"
     },
     {
@@ -8008,8 +8008,8 @@
       "source_location": "L400",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_paymentprismaharness",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "paymentprismaharness"
     },
     {
@@ -8019,8 +8019,8 @@
       "source_location": "L405",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_paymentprismaharness_constructor",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": ".constructor()"
     },
     {
@@ -8030,8 +8030,8 @@
       "source_location": "L465",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_paymentprismaharness_transaction",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": ".$transaction()"
     },
     {
@@ -8041,8 +8041,8 @@
       "source_location": "L477",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_makeaccrual",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "makeaccrual()"
     },
     {
@@ -8052,8 +8052,8 @@
       "source_location": "L551",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_stockrow",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "stockrow"
     },
     {
@@ -8063,8 +8063,8 @@
       "source_location": "L557",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_movement",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "movement"
     },
     {
@@ -8085,8 +8085,8 @@
       "source_location": "L644",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_service",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "service()"
     },
     {
@@ -8096,8 +8096,8 @@
       "source_location": "L758",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_accrualbyidrow",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "accrualbyidrow"
     },
     {
@@ -8107,8 +8107,8 @@
       "source_location": "L779",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_paymentbyaccrualsharness",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "paymentbyaccrualsharness"
     },
     {
@@ -8118,8 +8118,8 @@
       "source_location": "L817",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_makepaymentbyaccrualsharness",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "makepaymentbyaccrualsharness()"
     },
     {
@@ -8129,8 +8129,8 @@
       "source_location": "L897",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_integrity_spec_svc",
-      "community": 25,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 48,
+      "community_name": "StockService",
       "norm_label": "svc()"
     },
     {
@@ -8250,8 +8250,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_controller_salarycontroller_getmybalance",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".getmybalance()"
     },
     {
@@ -8327,8 +8327,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_module_salarymodule",
-      "community": 40,
-      "community_name": "DtoCreatePaymentByAccruals",
+      "community": 30,
+      "community_name": "app.module.ts",
       "norm_label": "salarymodule"
     },
     {
@@ -8338,8 +8338,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_module_ts_module",
-      "community": 40,
-      "community_name": "DtoCreatePaymentByAccruals",
+      "community": 30,
+      "community_name": "app.module.ts",
       "norm_label": "module"
     },
     {
@@ -8448,8 +8448,8 @@
       "source_location": "L276",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_service_salaryservice_createpaymentbyaccruals",
-      "community": 68,
-      "community_name": "JwtStrategy",
+      "community": 43,
+      "community_name": "PrismaService",
       "norm_label": ".createpaymentbyaccruals()"
     },
     {
@@ -8756,8 +8756,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "crm_new_src_stock_stock_service_stockservice_consumefororder",
-      "community": 48,
-      "community_name": "StockService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".consumefororder()"
     },
     {
@@ -9548,8 +9548,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "crm_new_src_tasks_tasks_controller_taskscontroller_findone",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 31,
+      "community_name": "OrderPhotoService",
       "norm_label": ".findone()"
     },
     {
@@ -9603,8 +9603,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "crm_new_src_tasks_tasks_module_tasksmodule",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 30,
+      "community_name": "app.module.ts",
       "norm_label": "tasksmodule"
     },
     {
@@ -9614,8 +9614,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_tasks_tasks_module_ts_module",
-      "community": 1,
-      "community_name": "TasksService",
+      "community": 30,
+      "community_name": "app.module.ts",
       "norm_label": "module"
     },
     {
@@ -11385,8 +11385,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_app",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "app.tsx"
     },
     {
@@ -11396,8 +11396,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "frontend_src_app_loginpage",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "loginpage"
     },
     {
@@ -11407,8 +11407,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "frontend_src_app_orderspage",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "orderspage"
     },
     {
@@ -11418,8 +11418,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "frontend_src_app_userspage",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "userspage"
     },
     {
@@ -11429,8 +11429,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "frontend_src_app_salarypage",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "salarypage"
     },
     {
@@ -11440,8 +11440,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "frontend_src_app_mysalarypage",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "mysalarypage"
     },
     {
@@ -11451,8 +11451,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "frontend_src_app_stockpage",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "stockpage"
     },
     {
@@ -11462,8 +11462,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "frontend_src_app_taskspage",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "taskspage"
     },
     {
@@ -11473,8 +11473,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "frontend_src_app_settingspage",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "settingspage"
     },
     {
@@ -11484,8 +11484,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "frontend_src_app_reportspage",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "reportspage"
     },
     {
@@ -11495,8 +11495,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "frontend_src_app_queryclient",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "queryclient"
     },
     {
@@ -11506,8 +11506,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "frontend_src_app_privateroute",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 8,
+      "community_name": "TshirtItemsTable.tsx",
       "norm_label": "privateroute()"
     },
     {
@@ -11517,8 +11517,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "frontend_src_app_adminroute",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 8,
+      "community_name": "TshirtItemsTable.tsx",
       "norm_label": "adminroute()"
     },
     {
@@ -11528,8 +11528,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "frontend_src_app_crmgate",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 8,
+      "community_name": "TshirtItemsTable.tsx",
       "norm_label": "crmgate()"
     },
     {
@@ -11539,8 +11539,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "frontend_src_app_routefallback",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "routefallback()"
     },
     {
@@ -11550,8 +11550,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "frontend_src_app_approutes",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 8,
+      "community_name": "TshirtItemsTable.tsx",
       "norm_label": "approutes()"
     },
     {
@@ -11561,8 +11561,8 @@
       "source_location": "L85",
       "_origin": "ast",
       "id": "frontend_src_app_app",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "app()"
     },
     {
@@ -11572,8 +11572,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_api_auth",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 36,
+      "community_name": "App.tsx",
       "norm_label": "auth.ts"
     },
     {
@@ -11638,8 +11638,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_api_orders",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "orders.ts"
     },
     {
@@ -11660,8 +11660,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_api_partnersettings",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 26,
+      "community_name": "CreateOrderForm.tsx",
       "norm_label": "partnersettings.ts"
     },
     {
@@ -11792,8 +11792,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_api_users",
-      "community": 34,
-      "community_name": "UsersPage.tsx",
+      "community": 4,
+      "community_name": "index.ts",
       "norm_label": "users.ts"
     },
     {
@@ -11814,8 +11814,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_components_scrolltotop",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "scrolltotop.tsx"
     },
     {
@@ -11825,8 +11825,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "frontend_src_components_scrolltotop_scrolltotop",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "scrolltotop()"
     },
     {
@@ -12097,7 +12097,7 @@
       "label": "freeItemSchema",
       "file_type": "code",
       "source_file": "frontend/src/components/orders/CreateOrderForm.tsx",
-      "source_location": "L43",
+      "source_location": "L46",
       "_origin": "ast",
       "id": "frontend_src_components_orders_createorderform_freeitemschema",
       "community": 26,
@@ -12108,7 +12108,7 @@
       "label": "baseSchema",
       "file_type": "code",
       "source_file": "frontend/src/components/orders/CreateOrderForm.tsx",
-      "source_location": "L50",
+      "source_location": "L53",
       "_origin": "ast",
       "id": "frontend_src_components_orders_createorderform_baseschema",
       "community": 26,
@@ -12119,7 +12119,7 @@
       "label": "fullSchema",
       "file_type": "code",
       "source_file": "frontend/src/components/orders/CreateOrderForm.tsx",
-      "source_location": "L85",
+      "source_location": "L88",
       "_origin": "ast",
       "id": "frontend_src_components_orders_createorderform_fullschema",
       "community": 26,
@@ -12130,7 +12130,7 @@
       "label": "FormValues",
       "file_type": "code",
       "source_file": "frontend/src/components/orders/CreateOrderForm.tsx",
-      "source_location": "L116",
+      "source_location": "L119",
       "_origin": "ast",
       "id": "frontend_src_components_orders_createorderform_formvalues",
       "community": 26,
@@ -12141,7 +12141,7 @@
       "label": "Props",
       "file_type": "code",
       "source_file": "frontend/src/components/orders/CreateOrderForm.tsx",
-      "source_location": "L117",
+      "source_location": "L120",
       "_origin": "ast",
       "id": "frontend_src_components_orders_createorderform_props",
       "community": 26,
@@ -12152,7 +12152,7 @@
       "label": "CreateOrderForm()",
       "file_type": "code",
       "source_file": "frontend/src/components/orders/CreateOrderForm.tsx",
-      "source_location": "L125",
+      "source_location": "L128",
       "_origin": "ast",
       "id": "frontend_src_components_orders_createorderform_createorderform",
       "community": 26,
@@ -12210,8 +12210,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_components_orders_orderdetail",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "orderdetail.tsx"
     },
     {
@@ -12221,8 +12221,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "frontend_src_components_orders_orderdetail_pvzreminder",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "pvzreminder()"
     },
     {
@@ -12232,8 +12232,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "frontend_src_components_orders_orderdetail_photoorderitem",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "photoorderitem"
     },
     {
@@ -12243,8 +12243,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "frontend_src_components_orders_orderdetail_isfreeformphotoitem",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "isfreeformphotoitem()"
     },
     {
@@ -12254,8 +12254,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "frontend_src_components_orders_orderdetail_formatphotoitemline",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "formatphotoitemline()"
     },
     {
@@ -12265,8 +12265,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "frontend_src_components_orders_orderdetail_generateconfirmationtext",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "generateconfirmationtext()"
     },
     {
@@ -12276,8 +12276,8 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "frontend_src_components_orders_orderdetail_generatereadytext",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "generatereadytext()"
     },
     {
@@ -12309,8 +12309,8 @@
       "source_location": "L231",
       "_origin": "ast",
       "id": "frontend_src_components_orders_orderdetail_props",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "props"
     },
     {
@@ -12320,8 +12320,8 @@
       "source_location": "L236",
       "_origin": "ast",
       "id": "frontend_src_components_orders_orderdetail_orderdetail",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "orderdetail()"
     },
     {
@@ -12331,8 +12331,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_components_orders_ordereditform",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "ordereditform.tsx"
     },
     {
@@ -12342,8 +12342,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "frontend_src_components_orders_ordereditform_props",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "props"
     },
     {
@@ -12353,8 +12353,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "frontend_src_components_orders_ordereditform_ordereditform",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "ordereditform()"
     },
     {
@@ -12584,8 +12584,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_components_ui_inforow",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "inforow.tsx"
     },
     {
@@ -12595,8 +12595,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_components_ui_inforow_props",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "props"
     },
     {
@@ -12606,8 +12606,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "frontend_src_components_ui_inforow_inforow",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "inforow()"
     },
     {
@@ -12694,8 +12694,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_config_business",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "business.ts"
     },
     {
@@ -12705,8 +12705,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "frontend_src_config_business_businessconfig",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "businessconfig"
     },
     {
@@ -12716,8 +12716,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "frontend_src_config_business_executorpickupaddresses",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "executorpickupaddresses"
     },
     {
@@ -12727,8 +12727,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "frontend_src_config_business_resolvepickupaddress",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "resolvepickupaddress()"
     },
     {
@@ -12848,8 +12848,8 @@
       "source_location": "L98",
       "_origin": "ast",
       "id": "frontend_src_constants_tshirt_colors",
-      "community": 8,
-      "community_name": "TshirtItemsTable.tsx",
+      "community": 26,
+      "community_name": "CreateOrderForm.tsx",
       "norm_label": "tshirt_colors"
     },
     {
@@ -12881,8 +12881,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "frontend_src_context_authcontext_authprovider",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "authprovider()"
     },
     {
@@ -12925,8 +12925,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_context_useauth",
-      "community": 8,
-      "community_name": "TshirtItemsTable.tsx",
+      "community": 36,
+      "community_name": "App.tsx",
       "norm_label": "useauth.ts"
     },
     {
@@ -12991,8 +12991,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_main",
-      "community": 36,
-      "community_name": "App.tsx",
+      "community": 42,
+      "community_name": "auth.controller.ts",
       "norm_label": "main.tsx"
     },
     {
@@ -13343,8 +13343,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_pages_settingspage",
-      "community": 34,
-      "community_name": "UsersPage.tsx",
+      "community": 26,
+      "community_name": "CreateOrderForm.tsx",
       "norm_label": "settingspage.tsx"
     },
     {
@@ -13354,8 +13354,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "frontend_src_pages_settingspage_money",
-      "community": 34,
-      "community_name": "UsersPage.tsx",
+      "community": 26,
+      "community_name": "CreateOrderForm.tsx",
       "norm_label": "money()"
     },
     {
@@ -13365,8 +13365,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "frontend_src_pages_settingspage_formstate",
-      "community": 34,
-      "community_name": "UsersPage.tsx",
+      "community": 26,
+      "community_name": "CreateOrderForm.tsx",
       "norm_label": "formstate"
     },
     {
@@ -13376,8 +13376,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "frontend_src_pages_settingspage_toform",
-      "community": 34,
-      "community_name": "UsersPage.tsx",
+      "community": 26,
+      "community_name": "CreateOrderForm.tsx",
       "norm_label": "toform()"
     },
     {
@@ -13387,8 +13387,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "frontend_src_pages_settingspage_settingspage",
-      "community": 34,
-      "community_name": "UsersPage.tsx",
+      "community": 26,
+      "community_name": "CreateOrderForm.tsx",
       "norm_label": "settingspage()"
     },
     {
@@ -13398,8 +13398,8 @@
       "source_location": "L146",
       "_origin": "ast",
       "id": "frontend_src_pages_settingspage_example",
-      "community": 34,
-      "community_name": "UsersPage.tsx",
+      "community": 26,
+      "community_name": "CreateOrderForm.tsx",
       "norm_label": "example()"
     },
     {
@@ -13706,8 +13706,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_types_index",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "index.ts"
     },
     {
@@ -13783,8 +13783,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "frontend_src_types_index_enumsourceorder",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "enumsourceorder"
     },
     {
@@ -13827,8 +13827,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "frontend_src_types_index_enumaccrualstatus",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "enumaccrualstatus"
     },
     {
@@ -13838,8 +13838,8 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "frontend_src_types_index_enumpartnersyncstatus",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "enumpartnersyncstatus"
     },
     {
@@ -13849,8 +13849,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "frontend_src_types_index_itemtshirt",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "itemtshirt"
     },
     {
@@ -13871,8 +13871,8 @@
       "source_location": "L96",
       "_origin": "ast",
       "id": "frontend_src_types_index_orderexecutor",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "orderexecutor"
     },
     {
@@ -13882,8 +13882,8 @@
       "source_location": "L101",
       "_origin": "ast",
       "id": "frontend_src_types_index_orderaccrualbrief",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "orderaccrualbrief"
     },
     {
@@ -13904,8 +13904,8 @@
       "source_location": "L150",
       "_origin": "ast",
       "id": "frontend_src_types_index_ordersresponse",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "ordersresponse"
     },
     {
@@ -13915,8 +13915,8 @@
       "source_location": "L160",
       "_origin": "ast",
       "id": "frontend_src_types_index_ordersstats",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "ordersstats"
     },
     {
@@ -13926,8 +13926,8 @@
       "source_location": "L181",
       "_origin": "ast",
       "id": "frontend_src_types_index_createitemdto",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "createitemdto"
     },
     {
@@ -13937,8 +13937,8 @@
       "source_location": "L189",
       "_origin": "ast",
       "id": "frontend_src_types_index_createtshirtitemdto",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "createtshirtitemdto"
     },
     {
@@ -13948,8 +13948,8 @@
       "source_location": "L201",
       "_origin": "ast",
       "id": "frontend_src_types_index_updatetshirtitemdto",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "updatetshirtitemdto"
     },
     {
@@ -13970,8 +13970,8 @@
       "source_location": "L233",
       "_origin": "ast",
       "id": "frontend_src_types_index_updateorderdto",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "updateorderdto"
     },
     {
@@ -13981,8 +13981,8 @@
       "source_location": "L244",
       "_origin": "ast",
       "id": "frontend_src_types_index_updatestatusdto",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "updatestatusdto"
     },
     {
@@ -13992,8 +13992,8 @@
       "source_location": "L248",
       "_origin": "ast",
       "id": "frontend_src_types_index_updateitemdto",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "updateitemdto"
     },
     {
@@ -14025,8 +14025,8 @@
       "source_location": "L264",
       "_origin": "ast",
       "id": "frontend_src_types_index_loginresponse",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 36,
+      "community_name": "App.tsx",
       "norm_label": "loginresponse"
     },
     {
@@ -14047,8 +14047,8 @@
       "source_location": "L286",
       "_origin": "ast",
       "id": "frontend_src_types_index_ordersquery",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "ordersquery"
     },
     {
@@ -14069,8 +14069,8 @@
       "source_location": "L312",
       "_origin": "ast",
       "id": "frontend_src_types_index_closedaccrualbrief",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "closedaccrualbrief"
     },
     {
@@ -14135,8 +14135,8 @@
       "source_location": "L376",
       "_origin": "ast",
       "id": "frontend_src_types_index_pnlmetrics",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "pnlmetrics"
     },
     {
@@ -14146,8 +14146,8 @@
       "source_location": "L408",
       "_origin": "ast",
       "id": "frontend_src_types_index_monthdata",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "monthdata"
     },
     {
@@ -14168,8 +14168,8 @@
       "source_location": "L419",
       "_origin": "ast",
       "id": "frontend_src_types_index_weekdata",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "weekdata"
     },
     {
@@ -14256,8 +14256,8 @@
       "source_location": "L483",
       "_origin": "ast",
       "id": "frontend_src_types_index_task_status_flow",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "task_status_flow"
     },
     {
@@ -14300,8 +14300,8 @@
       "source_location": "L519",
       "_origin": "ast",
       "id": "frontend_src_types_index_partnersettings",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 26,
+      "community_name": "CreateOrderForm.tsx",
       "norm_label": "partnersettings"
     },
     {
@@ -14311,8 +14311,8 @@
       "source_location": "L526",
       "_origin": "ast",
       "id": "frontend_src_types_index_ordersettlement",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "ordersettlement"
     },
     {
@@ -14322,8 +14322,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_utils_deadline",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "deadline.ts"
     },
     {
@@ -14333,8 +14333,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "frontend_src_utils_deadline_getdeadlineinfo",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "getdeadlineinfo()"
     },
     {
@@ -14421,8 +14421,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_utils_settlement",
-      "community": 4,
-      "community_name": "index.ts",
+      "community": 7,
+      "community_name": "Roles",
       "norm_label": "settlement.ts"
     },
     {
@@ -14432,8 +14432,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "frontend_src_utils_settlement_computesettlement",
-      "community": 13,
-      "community_name": "OrdersPage.tsx",
+      "community": 9,
+      "community_name": "order-photo.controller.ts",
       "norm_label": "computesettlement()"
     },
     {
@@ -15801,10 +15801,21 @@
       "norm_label": "claude.md"
     },
     {
-      "label": "Commands",
+      "label": "\u0413\u0440\u0430\u0444 \u0437\u043d\u0430\u043d\u0438\u0439 (graphify)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
       "source_location": "L5",
+      "_origin": "ast",
+      "id": "claude_\u0433\u0440\u0430\u0444_\u0437\u043d\u0430\u043d\u0438\u0439_graphify",
+      "community": 58,
+      "community_name": "Architecture",
+      "norm_label": "\u0433\u0440\u0430\u0444 \u0437\u043d\u0430\u043d\u0438\u0438 (graphify)"
+    },
+    {
+      "label": "Commands",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L25",
       "_origin": "ast",
       "id": "claude_commands",
       "community": 58,
@@ -15815,7 +15826,7 @@
       "label": "Architecture",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L27",
+      "source_location": "L47",
       "_origin": "ast",
       "id": "claude_architecture",
       "community": 58,
@@ -15826,7 +15837,7 @@
       "label": "Module structure",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L31",
+      "source_location": "L51",
       "_origin": "ast",
       "id": "claude_module_structure",
       "community": 58,
@@ -15837,7 +15848,7 @@
       "label": "Data model",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L51",
+      "source_location": "L71",
       "_origin": "ast",
       "id": "claude_data_model",
       "community": 58,
@@ -15848,7 +15859,7 @@
       "label": "API routes (prefix: `/order-photo`)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L67",
+      "source_location": "L87",
       "_origin": "ast",
       "id": "claude_api_routes_prefix_order_photo",
       "community": 58,
@@ -15859,7 +15870,7 @@
       "label": "Key behaviors",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L82",
+      "source_location": "L102",
       "_origin": "ast",
       "id": "claude_key_behaviors",
       "community": 58,
@@ -15870,7 +15881,7 @@
       "label": "Environment",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L89",
+      "source_location": "L109",
       "_origin": "ast",
       "id": "claude_environment",
       "community": 58,
@@ -21346,7 +21357,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L487",
+      "source_location": "L490",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_buildorderswhere",
@@ -21358,7 +21369,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L321",
+      "source_location": "L324",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_getallorders",
@@ -21370,7 +21381,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L360",
+      "source_location": "L363",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_getorderstats",
@@ -21489,7 +21500,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L585",
+      "source_location": "L588",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_assignexecutor",
@@ -21871,7 +21882,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L279",
+      "source_location": "L282",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_createlead",
@@ -22790,7 +22801,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L963",
+      "source_location": "L966",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updateorder",
@@ -22885,7 +22896,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L771",
+      "source_location": "L774",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updatestatusorder",
@@ -23052,7 +23063,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L57",
+      "source_location": "L54",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice_updatetshirtitem",
@@ -23477,7 +23488,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L967",
+      "source_location": "L970",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updateorder",
@@ -23501,7 +23512,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L89",
+      "source_location": "L90",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice_deletetshirtitem",
@@ -23513,7 +23524,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L61",
+      "source_location": "L58",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice_updatetshirtitem",
@@ -23537,7 +23548,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L1000",
+      "source_location": "L1003",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updateorder",
@@ -23549,7 +23560,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L142",
+      "source_location": "L143",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice_recalcandreturn",
@@ -25320,7 +25331,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L226",
+      "source_location": "L229",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_createorder",
@@ -25332,7 +25343,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L981",
+      "source_location": "L984",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updateorder",
@@ -25344,7 +25355,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L742",
+      "source_location": "L745",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_buildassignmentmessage",
@@ -25356,7 +25367,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L726",
+      "source_location": "L729",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_buildassignmentmessage",
@@ -25369,7 +25380,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L445",
+      "source_location": "L448",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_getorderstats",
@@ -25381,7 +25392,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L420",
+      "source_location": "L423",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_getorderstats",
@@ -25393,7 +25404,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L433",
+      "source_location": "L436",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_getorderstats",
@@ -25403,7 +25414,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L585",
+      "source_location": "L588",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice",
@@ -25414,7 +25425,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L704",
+      "source_location": "L707",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice",
@@ -25425,7 +25436,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L487",
+      "source_location": "L490",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice",
@@ -25447,7 +25458,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L279",
+      "source_location": "L282",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice",
@@ -25469,7 +25480,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L539",
+      "source_location": "L542",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice",
@@ -25480,7 +25491,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L1023",
+      "source_location": "L1026",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice",
@@ -25491,7 +25502,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L321",
+      "source_location": "L324",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice",
@@ -25502,7 +25513,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L551",
+      "source_location": "L554",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice",
@@ -25513,7 +25524,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L360",
+      "source_location": "L363",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice",
@@ -25524,7 +25535,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L1010",
+      "source_location": "L1013",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice",
@@ -25535,7 +25546,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L963",
+      "source_location": "L966",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice",
@@ -25546,7 +25557,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L771",
+      "source_location": "L774",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice",
@@ -25570,7 +25581,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L269",
+      "source_location": "L272",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_createorder",
@@ -25619,7 +25630,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L273",
+      "source_location": "L276",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_createorder",
@@ -25631,7 +25642,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L280",
+      "source_location": "L283",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_createlead",
@@ -25642,7 +25653,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L329",
+      "source_location": "L332",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_getallorders",
@@ -25655,7 +25666,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L333",
+      "source_location": "L336",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_getallorders",
@@ -25666,7 +25677,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L365",
+      "source_location": "L368",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_getorderstats",
@@ -25678,7 +25689,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L452",
+      "source_location": "L455",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_getorderstats",
@@ -25691,7 +25702,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L380",
+      "source_location": "L383",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_getorderstats",
@@ -25703,7 +25714,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L398",
+      "source_location": "L401",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_getorderstats",
@@ -25714,7 +25725,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L1024",
+      "source_location": "L1027",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_deleteorder",
@@ -25726,7 +25737,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L1011",
+      "source_location": "L1014",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_setreviewleft",
@@ -25738,7 +25749,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L964",
+      "source_location": "L967",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updateorder",
@@ -25750,7 +25761,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L777",
+      "source_location": "L780",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updatestatusorder",
@@ -25762,7 +25773,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L688",
+      "source_location": "L691",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_assignexecutor",
@@ -25775,7 +25786,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L620",
+      "source_location": "L623",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_assignexecutor",
@@ -25787,7 +25798,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L692",
+      "source_location": "L695",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_assignexecutor",
@@ -25799,7 +25810,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L926",
+      "source_location": "L929",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updatestatusorder",
@@ -25811,7 +25822,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L803",
+      "source_location": "L806",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updatestatusorder",
@@ -25823,7 +25834,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L838",
+      "source_location": "L841",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updatestatusorder",
@@ -25835,7 +25846,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L857",
+      "source_location": "L860",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updatestatusorder",
@@ -25847,7 +25858,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L1026",
+      "source_location": "L1029",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_deleteorder",
@@ -25859,7 +25870,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L1028",
+      "source_location": "L1031",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_photo_service_orderphotoservice_deleteorder",
@@ -25869,7 +25880,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-pricing.ts",
-      "source_location": "L23",
+      "source_location": "L28",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_pricing",
@@ -25880,7 +25891,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-pricing.ts",
-      "source_location": "L37",
+      "source_location": "L42",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_pricing",
@@ -25915,7 +25926,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/order-pricing.ts",
-      "source_location": "L45",
+      "source_location": "L50",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_order_pricing_calcordertotal",
@@ -25940,7 +25951,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L39",
+      "source_location": "L40",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice_addtshirtitem",
@@ -25952,7 +25963,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L77",
+      "source_location": "L78",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice_updatetshirtitem",
@@ -26697,7 +26708,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L85",
+      "source_location": "L86",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice",
@@ -26708,7 +26719,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L99",
+      "source_location": "L100",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice",
@@ -26719,7 +26730,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L121",
+      "source_location": "L122",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice",
@@ -26730,7 +26741,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L57",
+      "source_location": "L54",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice",
@@ -26742,7 +26753,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L53",
+      "source_location": "L50",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice_addtshirtitem",
@@ -26755,7 +26766,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L30",
+      "source_location": "L31",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice_addtshirtitem",
@@ -26778,7 +26789,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L81",
+      "source_location": "L82",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice_updatetshirtitem",
@@ -26791,7 +26802,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L58",
+      "source_location": "L55",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice_updatetshirtitem",
@@ -26802,7 +26813,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L95",
+      "source_location": "L96",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice_deletetshirtitem",
@@ -26815,7 +26826,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/tshirt-item.service.ts",
-      "source_location": "L86",
+      "source_location": "L87",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_tshirt_item_service_tshirtitemservice_deletetshirtitem",
@@ -37922,7 +37933,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/orders/CreateOrderForm.tsx",
-      "source_location": "L50",
+      "source_location": "L53",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_createorderform",
@@ -37933,7 +37944,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/orders/CreateOrderForm.tsx",
-      "source_location": "L125",
+      "source_location": "L128",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_createorderform",
@@ -37944,7 +37955,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/orders/CreateOrderForm.tsx",
-      "source_location": "L116",
+      "source_location": "L119",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_createorderform",
@@ -37955,7 +37966,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/orders/CreateOrderForm.tsx",
-      "source_location": "L43",
+      "source_location": "L46",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_createorderform",
@@ -37966,7 +37977,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/orders/CreateOrderForm.tsx",
-      "source_location": "L85",
+      "source_location": "L88",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_createorderform",
@@ -37988,7 +37999,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/orders/CreateOrderForm.tsx",
-      "source_location": "L117",
+      "source_location": "L120",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_createorderform",
@@ -44353,7 +44364,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "CLAUDE.md",
-      "source_location": "L27",
+      "source_location": "L47",
       "weight": 1.0,
       "_origin": "ast",
       "source": "claude_claude_md",
@@ -44364,7 +44375,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "CLAUDE.md",
-      "source_location": "L5",
+      "source_location": "L25",
       "weight": 1.0,
       "_origin": "ast",
       "source": "claude_claude_md",
@@ -44375,7 +44386,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "CLAUDE.md",
-      "source_location": "L89",
+      "source_location": "L109",
       "weight": 1.0,
       "_origin": "ast",
       "source": "claude_claude_md",
@@ -44386,7 +44397,18 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "CLAUDE.md",
-      "source_location": "L67",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "claude_claude_md",
+      "target": "claude_\u0433\u0440\u0430\u0444_\u0437\u043d\u0430\u043d\u0438\u0439_graphify",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L87",
       "weight": 1.0,
       "_origin": "ast",
       "source": "claude_architecture",
@@ -44397,7 +44419,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "CLAUDE.md",
-      "source_location": "L51",
+      "source_location": "L71",
       "weight": 1.0,
       "_origin": "ast",
       "source": "claude_architecture",
@@ -44408,7 +44430,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "CLAUDE.md",
-      "source_location": "L82",
+      "source_location": "L102",
       "weight": 1.0,
       "_origin": "ast",
       "source": "claude_architecture",
@@ -44419,7 +44441,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "CLAUDE.md",
-      "source_location": "L31",
+      "source_location": "L51",
       "weight": 1.0,
       "_origin": "ast",
       "source": "claude_architecture",
@@ -45165,5 +45187,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "7118aa811d08d3c8741701f9bb2f60818a925ceb"
+  "built_at_commit": "6a128f80ec5d155f3c6ae0374c052ec51f7a6f85"
 }

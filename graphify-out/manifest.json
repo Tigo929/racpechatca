@@ -320,13 +320,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-photo.service.ts": {
-    "mtime": 1784585714.0317626,
-    "ast_hash": "4a2fb0d83430d3ae9a45f186cb07ed2a",
+    "mtime": 1784621984.9942565,
+    "ast_hash": "047983ddff960d6b1f50f6126d095f0d",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-pricing.ts": {
-    "mtime": 1781882962.5883675,
-    "ast_hash": "53f49f9843c86e68e528326964961abb",
+    "mtime": 1784621969.8398597,
+    "ast_hash": "b8b6ec6ef1830d4a1a7df096666a4c56",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/review-reminder-rules.ts": {
@@ -355,8 +355,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/tshirt-item.service.ts": {
-    "mtime": 1784585749.252762,
-    "ast_hash": "32a46adad8be45be6bbec9c28080348a",
+    "mtime": 1784622008.9620693,
+    "ast_hash": "3f3d22da55048083c4f1d1ebb82f4a85",
     "semantic_hash": ""
   },
   "crm-new/src/partner/dto/partner-status.dto.ts": {
@@ -405,8 +405,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/partner/partner-settlement.spec.ts": {
-    "mtime": 1784584015.7141488,
-    "ast_hash": "82bb18bddead59e928a0e14ee4cf6fad",
+    "mtime": 1784622021.0167313,
+    "ast_hash": "7ab5342daa1463838e03abd90f902726",
     "semantic_hash": ""
   },
   "crm-new/src/partner/partner-settlement.ts": {
@@ -700,8 +700,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/CreateOrderForm.tsx": {
-    "mtime": 1784585936.8638449,
-    "ast_hash": "d7a0dfad5a285098244d880f6233ef14",
+    "mtime": 1784622055.2978795,
+    "ast_hash": "a644bf4d33f76c09caa3d9e4814c49e5",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/ItemsTable.tsx": {
@@ -710,8 +710,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderDetail.tsx": {
-    "mtime": 1784586175.0690637,
-    "ast_hash": "8918612266c20fc1e0504a4e30621b1a",
+    "mtime": 1784622080.1197155,
+    "ast_hash": "9c56b43e8a9715b98d76337ccf14667d",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderEditForm.tsx": {
@@ -815,8 +815,8 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/SettingsPage.tsx": {
-    "mtime": 1784585826.6688395,
-    "ast_hash": "b0f3ba4b297cddb82348bbeca7857dc3",
+    "mtime": 1784622098.938541,
+    "ast_hash": "19dc8e20147709148e1efa8c9894f59b",
     "semantic_hash": ""
   },
   "frontend/src/pages/StockPage.tsx": {
@@ -910,8 +910,8 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1781364360.8989756,
-    "ast_hash": "f3ef81859715fe804da621eef4646622",
+    "mtime": 1784587586.777357,
+    "ast_hash": "654b30c94d5a06c64f0bea383f73e119",
     "semantic_hash": ""
   },
   "REPORT.md": {

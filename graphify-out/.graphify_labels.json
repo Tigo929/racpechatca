@@ -120,5 +120,10 @@
   "118": "20260708000000_add_in_progress_status/migration.sql",
   "119": "20260717000000_add_partner_share_expense/migration.sql",
   "120": "20260717100000_backfill_sent_at_paid/migration.sql",
-  "121": "20260721150000_tshirt_status_remap/migration.sql"
+  "121": "20260721150000_tshirt_status_remap/migration.sql",
+  "122": "@types/jest",
+  "123": "@types/multer",
+  "124": "@types/passport-jwt",
+  "125": "@types/pdfkit",
+  "126": "typescript"
 }
