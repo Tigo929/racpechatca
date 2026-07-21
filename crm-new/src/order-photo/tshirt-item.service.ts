@@ -39,8 +39,9 @@ export class TshirtItemService {
           price: dto.price,
           pricePosition: calcItemPricePosition(dto.price, dto.quantity),
           designCost,
-          thermalCost: dto.thermalCost ?? settings.thermalTransferCost,
-          blankCost: dto.blankCost ?? settings.blankTshirtCost,
+          // 0/пусто → умолчание из настроек (см. createOrder).
+          thermalCost: dto.thermalCost || settings.thermalTransferCost,
+          blankCost: dto.blankCost || settings.blankTshirtCost,
           designUrl: dto.designUrl,
           designNote: dto.designNote,
           clientItem: dto.clientItem ?? false,

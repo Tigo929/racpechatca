@@ -193,9 +193,11 @@ export class OrderPhotoService {
           price: e.price,
           pricePosition: lineTotal,
           designCost: dc,
+          // Пустое/0 → берём умолчание из настроек (|| , а не ??): 0 у термо
+          // или заготовки почти всегда «поле не заполнили», а не «бесплатно».
           thermalCost:
-            e.thermalCost ?? partnerDefaults?.thermalTransferCost ?? 70,
-          blankCost: e.blankCost ?? partnerDefaults?.blankTshirtCost ?? 260,
+            e.thermalCost || partnerDefaults?.thermalTransferCost || 70,
+          blankCost: e.blankCost || partnerDefaults?.blankTshirtCost || 260,
           designUrl: e.designUrl,
           designNote: e.designNote,
           clientItem: e.clientItem ?? false,

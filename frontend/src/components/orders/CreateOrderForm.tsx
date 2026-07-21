@@ -257,9 +257,9 @@ export function CreateOrderForm({ onClose }: Props) {
         color: r.color, size: r.size, printLocation: r.printLocation,
         quantity: r.quantity, price: r.price, clientItem: r.clientItem,
         designCost: r.designCost || undefined,
-        // Пусто → сервер подставит себестоимость из настроек.
-        thermalCost: r.thermalCost,
-        blankCost: r.blankCost,
+        // Пусто/0 → не шлём, сервер подставит себестоимость из настроек.
+        thermalCost: r.thermalCost || undefined,
+        blankCost: r.blankCost || undefined,
       }));
       const items = rows.filter((r) => r.freePrice).map((r) => ({
         formatPaper: (r.name ?? '').trim(),
