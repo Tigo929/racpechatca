@@ -20,6 +20,14 @@ export class DtoUpdateUser {
   @Type(() => Number)
   rateBasisPoints?: number;
 
+  /** Ставка премии за разработку дизайна (сотые процента). Для менеджера. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10000)
+  @Type(() => Number)
+  designRateBasisPoints?: number;
+
   @IsOptional()
   @IsString()
   telegramUsername?: string | null;

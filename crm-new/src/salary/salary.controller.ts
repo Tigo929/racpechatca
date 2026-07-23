@@ -26,7 +26,7 @@ export class SalaryController {
   constructor(private salaryService: SalaryService) {}
 
   @Get('me')
-  @Roles(EnumRole.EXECUTOR, EnumRole.ADMIN)
+  @Roles(EnumRole.EXECUTOR, EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
   getMyBalance(@CurrentUser() me: RequestUser) {
     return this.salaryService.getMyBalance(me.id);
   }

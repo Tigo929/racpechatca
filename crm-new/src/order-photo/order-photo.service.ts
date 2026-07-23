@@ -23,7 +23,10 @@ import {
 } from 'src/generated/prisma/enums';
 import type { Prisma } from 'src/generated/prisma/client';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
-import { calculateSalarySnapshot } from 'src/salary/salary-calculation';
+import {
+  calculateSalarySnapshot,
+  calculateManagerSalarySnapshot,
+} from 'src/salary/salary-calculation';
 import { StockService } from 'src/stock/stock.service';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
@@ -204,14 +207,20 @@ export class OrderPhotoService {
         };
       });
 
-      // Сумма заказа = все позиции (фото + футболки) + доставка. customTotal — ручной итог.
+      // «Разработка дизайна» — отдельная свободная сумма, входит в чек клиента
+      // и служит базой премии менеджера по оформлению (не привязана к позициям).
+      const designDevelopmentCost = Math.max(0, dto.designDevelopmentCost ?? 0);
+
+      // Сумма заказа = все позиции (фото + футболки) + доставка + дизайн.
+      // customTotal — ручной итог по позициям; дизайн добавляется поверх него,
+      // чтобы база премии менеджера (чек − доставка − дизайн) считалась чисто.
       const positionsTotal =
         photoCreate.reduce((s, i) => s + i.pricePosition, 0) +
         tshirtCreate.reduce((s, i) => s + i.pricePosition, 0);
       const totalOrder =
-        dto.customTotal != null
+        (dto.customTotal != null
           ? dto.customTotal
-          : positionsTotal + dto.deliveryCost;
+          : positionsTotal + dto.deliveryCost) + designDevelopmentCost;
 
       const created = await tx.orderPhoto.create({
         data: {
@@ -234,10 +243,14 @@ export class OrderPhotoService {
           ),
           deliveryMethod: dto.deliveryMethod,
           deliveryCost: dto.deliveryCost,
+          designDevelopmentCost,
           note: dto.note,
           tshirtModel: dto.tshirtModel,
           productCategory,
           executorId: dto.executorId ?? undefined,
+          // Кто оформил заказ — по нему начисляется зарплата менеджеру по
+          // оформлению (если создатель — ORDER_MANAGER; см. updateStatusOrder).
+          processedById: adminId ?? undefined,
           items: photoCreate.length ? { create: photoCreate } : undefined,
           tshirtItems: tshirtCreate.length
             ? { create: tshirtCreate }
@@ -463,7 +476,10 @@ export class OrderPhotoService {
       if (isUrgent || isOverdue) alertCount += 1;
     }
 
-    const isAdmin = currentUserRole === EnumRole.ADMIN;
+    // Менеджер по оформлению видит заказы и суммы как админ (кроме управления).
+    const isAdmin =
+      currentUserRole === EnumRole.ADMIN ||
+      currentUserRole === EnumRole.ORDER_MANAGER;
 
     return {
       contextTotal: orders.length,
@@ -623,10 +639,14 @@ export class OrderPhotoService {
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
-      // Если заказ в SENT — управляем начислением
+      // Если заказ в SENT — управляем начислением исполнителя (не менеджера).
       if (order.status === EnumStatus.SENT) {
         const oldAccrual = await tx.salaryAccrual.findFirst({
-          where: { orderId, status: { in: ['PENDING', 'PARTIALLY_PAID'] } },
+          where: {
+            orderId,
+            kind: 'EXECUTOR',
+            status: { in: ['PENDING', 'PARTIALLY_PAID'] },
+          },
         });
 
         if (oldAccrual) {
@@ -782,18 +802,22 @@ export class OrderPhotoService {
     const order = await this.getOrderById(id, userId, userRole);
 
     const isAdmin = userRole === 'ADMIN';
+    // Менеджер по оформлению не привязан к заказу как исполнитель, но ведёт
+    // любые заказы: проверку «свой заказ» к нему не применяем.
+    const isManager = userRole === EnumRole.ORDER_MANAGER;
 
     const newStatus = dto.status;
 
     // Исполнитель может двигать рабочий поток в любом направлении до оплаты.
     // PAID закрывает деньги и остаётся админским действием; CANCELLED тоже
     // оставляем админским, потому что это выводит заказ из рабочего процесса.
+    // Менеджер по оформлению деньги не закрывает — эти статусы ему тоже нельзя.
     const ADMIN_ONLY_STATUSES: EnumStatus[] = [
       EnumStatus.PAID,
       EnumStatus.CANCELLED,
     ];
     if (!isAdmin) {
-      if (order.executorId !== userId) {
+      if (!isManager && order.executorId !== userId) {
         throw new ForbiddenException(
           'Вы не назначены исполнителем этого заказа.',
         );
@@ -858,19 +882,24 @@ export class OrderPhotoService {
         lockedOrder.status === EnumStatus.SENT &&
         newStatus !== EnumStatus.SENT
       ) {
-        const activeAccrual = await tx.salaryAccrual.findFirst({
+        // Возврат из «Отправлен» снимает начисления и исполнителя, и менеджера.
+        const activeAccruals = await tx.salaryAccrual.findMany({
           where: {
             orderId: id,
             status: { in: ['PENDING', 'SETTLED', 'PARTIALLY_PAID', 'PAID'] },
           },
         });
-        if (activeAccrual) {
-          if (activeAccrual.paidAmount > 0 || activeAccrual.status === 'PAID') {
-            throw new ConflictException(
-              'Нельзя вернуть заказ из «Отправлен»: по нему уже была выплата зарплаты.',
-            );
-          }
-          await tx.salaryAccrual.delete({ where: { id: activeAccrual.id } });
+        if (
+          activeAccruals.some((a) => a.paidAmount > 0 || a.status === 'PAID')
+        ) {
+          throw new ConflictException(
+            'Нельзя вернуть заказ из «Отправлен»: по нему уже была выплата зарплаты.',
+          );
+        }
+        if (activeAccruals.length > 0) {
+          await tx.salaryAccrual.deleteMany({
+            where: { id: { in: activeAccruals.map((a) => a.id) } },
+          });
         }
         await this.stock.returnForOrder(id, tx);
       }
@@ -885,7 +914,7 @@ export class OrderPhotoService {
 
         if (executor && executor.rateBasisPoints !== null) {
           const existingAccrual = await tx.salaryAccrual.findFirst({
-            where: { orderId: id, status: { not: 'REVERSED' } },
+            where: { orderId: id, kind: 'EXECUTOR', status: { not: 'REVERSED' } },
           });
 
           if (!existingAccrual) {
@@ -899,6 +928,7 @@ export class OrderPhotoService {
               data: {
                 orderId: id,
                 executorId: lockedOrder.executorId,
+                kind: 'EXECUTOR',
                 ...snapshot,
               },
             });
@@ -906,35 +936,76 @@ export class OrderPhotoService {
         }
       }
 
+      // При переводе в SENT начисляем зарплату менеджеру по оформлению:
+      // базовая ставка (чек − доставка − дизайн) + премия за дизайн.
+      if (newStatus === EnumStatus.SENT && lockedOrder.processedById) {
+        const manager = await tx.user.findUnique({
+          where: { id: lockedOrder.processedById },
+        });
+
+        if (manager && manager.role === EnumRole.ORDER_MANAGER) {
+          const existingManagerAccrual = await tx.salaryAccrual.findFirst({
+            where: { orderId: id, kind: 'MANAGER', status: { not: 'REVERSED' } },
+          });
+
+          if (!existingManagerAccrual) {
+            const snapshot = calculateManagerSalarySnapshot(
+              lockedOrder.totalOrder,
+              lockedOrder.deliveryCost,
+              lockedOrder.designDevelopmentCost,
+              manager.rateBasisPoints,
+              manager.designRateBasisPoints,
+            );
+
+            // Нулевое начисление не создаём (ставки не заданы или суммы нулевые).
+            if (snapshot.salaryAmount > 0) {
+              await tx.salaryAccrual.create({
+                data: {
+                  orderId: id,
+                  executorId: manager.id,
+                  kind: 'MANAGER',
+                  salaryBase: snapshot.salaryBase,
+                  rateBasisPoints: snapshot.rateBasisPoints,
+                  salaryAmount: snapshot.salaryAmount,
+                  designBase: snapshot.designBase,
+                  designRateBasisPoints: snapshot.designRateBasisPoints,
+                  status: snapshot.status,
+                },
+              });
+            }
+          }
+        }
+      }
+
       // При переводе в PAID автоматически закрываем незакрытый долг по зарплате
+      // всем получателям заказа: и исполнителю, и менеджеру по оформлению.
       if (newStatus === EnumStatus.PAID && isAdmin) {
-        const accrual = await tx.salaryAccrual.findFirst({
+        const pendingAccruals = await tx.salaryAccrual.findMany({
           where: { orderId: id, status: { in: ['PENDING', 'PARTIALLY_PAID'] } },
         });
 
-        if (accrual) {
+        for (const accrual of pendingAccruals) {
           const remaining = accrual.salaryAmount - accrual.paidAmount;
-          if (remaining > 0) {
-            const payment = await tx.salaryPayment.create({
-              data: {
-                executorId: accrual.executorId,
-                paidById: userId,
-                amount: remaining,
-                note: `Автовыплата при переводе заказа ${lockedOrder.numberOrder} в «Оплачен»`,
-              },
-            });
-            await tx.salaryAccrual.update({
-              where: { id: accrual.id },
-              data: { paidAmount: accrual.salaryAmount, status: 'PAID' },
-            });
-            await tx.paymentAccrualLink.create({
-              data: {
-                paymentId: payment.id,
-                accrualId: accrual.id,
-                amount: remaining,
-              },
-            });
-          }
+          if (remaining <= 0) continue;
+          const payment = await tx.salaryPayment.create({
+            data: {
+              executorId: accrual.executorId,
+              paidById: userId,
+              amount: remaining,
+              note: `Автовыплата при переводе заказа ${lockedOrder.numberOrder} в «Оплачен»`,
+            },
+          });
+          await tx.salaryAccrual.update({
+            where: { id: accrual.id },
+            data: { paidAmount: accrual.salaryAmount, status: 'PAID' },
+          });
+          await tx.paymentAccrualLink.create({
+            data: {
+              paymentId: payment.id,
+              accrualId: accrual.id,
+              amount: remaining,
+            },
+          });
         }
       }
 
@@ -981,9 +1052,16 @@ export class OrderPhotoService {
   async updateOrder(idOrder: string, dto: DtoUpdateOrder) {
     const order = await this.getOrderById(idOrder, '', EnumRole.ADMIN);
     const deliveryChanged = dto.deliveryCost !== undefined;
-    if (deliveryChanged) {
+    const designChanged = dto.designDevelopmentCost !== undefined;
+    // И доставка, и стоимость дизайна влияют на сумму заказа и на начисления.
+    const financialChanged = deliveryChanged || designChanged;
+    if (financialChanged) {
       await this.financialIntegrity.assertOrderFinanciallyEditable(idOrder);
     }
+    const deliveryCost = dto.deliveryCost ?? order.deliveryCost;
+    const designDevelopmentCost = designChanged
+      ? Math.max(0, dto.designDevelopmentCost!)
+      : order.designDevelopmentCost;
     const updated = await this.prisma.orderPhoto.update({
       where: { id: idOrder },
       include: {
@@ -1002,19 +1080,21 @@ export class OrderPhotoService {
             )
           : order.urlCommunication,
         deliveryMethod: dto.deliveryMethod ?? order.deliveryMethod,
-        deliveryCost: dto.deliveryCost ?? order.deliveryCost,
-        // Сумма = все сохранённые pricePosition (фото + футболки) + доставка.
+        deliveryCost,
+        designDevelopmentCost,
+        // Сумма = все pricePosition (фото + футболки) + доставка + дизайн.
         totalOrder:
           order.items.reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
           order.tshirtItems.reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
-          (dto.deliveryCost ?? order.deliveryCost),
+          deliveryCost +
+          designDevelopmentCost,
         note: dto.note ?? order.note,
         isUrgent: dto.isUrgent !== undefined ? dto.isUrgent : order.isUrgent,
         tshirtModel: dto.tshirtModel ?? order.tshirtModel,
       },
     });
-    // Доставка влияет на сумму → подгоняем невыплаченное начисление.
-    if (deliveryChanged) {
+    // Доставка/дизайн влияют на сумму → подгоняем невыплаченные начисления.
+    if (financialChanged) {
       await this.financialIntegrity.recalcPendingAccrual(
         idOrder,
         updated.totalOrder,

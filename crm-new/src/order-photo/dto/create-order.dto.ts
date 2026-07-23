@@ -64,6 +64,16 @@ export default class DtoCreateOrder {
   @IsBoolean()
   freePrice?: boolean;
 
+  /**
+   * Стоимость «разработка дизайна» (свободная цена, без количества). Входит в
+   * итог заказа и служит базой премии менеджера по оформлению.
+   */
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(0)
+  designDevelopmentCost?: number;
+
   @IsOptional()
   @IsEnum(EnumProductCategory)
   productCategory?: EnumProductCategory;
