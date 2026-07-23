@@ -76,6 +76,9 @@ services:
 
 volumes:
   pgdata:
+  # ТЗ-фото (согласованные макеты) бэкенд пишет в /app/uploads. Том объявлен
+  # здесь — иначе docker compose не парсит проект (backend ссылается на uploads).
+  uploads:
 
 networks:
   internal:
