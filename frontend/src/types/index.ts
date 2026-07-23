@@ -116,6 +116,8 @@ export interface OrderPhoto {
   urlCommunication: string;
   deliveryMethod: EnumDeliveryMethod;
   deliveryCost: number;
+  /** Стоимость «разработка дизайна» — входит в totalOrder (чек клиента). */
+  designDevelopmentCost?: number;
   totalOrder: number;
   status: EnumStatus;
   note?: string;
@@ -222,6 +224,8 @@ export interface CreateOrderDto {
   executorId?: string | null;
   /** Свободная (договорная) цена: кол-во не умножается на цену. */
   freePrice?: boolean;
+  /** Стоимость «разработка дизайна» — входит в чек, база премии менеджера. */
+  designDevelopmentCost?: number;
   /** Ручной итог заказа (если задан) — вместо расчёта из позиций. */
   customTotal?: number;
   /** Модель футболки — производственные данные для исполнителя-партнёра. */
@@ -236,6 +240,8 @@ export interface UpdateOrderDto {
   urlCommunication?: string;
   deliveryMethod?: EnumDeliveryMethod;
   deliveryCost?: number;
+  /** Стоимость «разработка дизайна» — входит в чек, база премии менеджера. */
+  designDevelopmentCost?: number;
   note?: string;
   isUrgent?: boolean;
   tshirtModel?: string;
@@ -253,7 +259,7 @@ export interface UpdateItemDto {
   isFreePrice?: boolean;
 }
 
-export type EnumRole = 'ADMIN' | 'EXECUTOR';
+export type EnumRole = 'ADMIN' | 'EXECUTOR' | 'ORDER_MANAGER';
 
 export interface AuthUser {
   id: string;
@@ -273,6 +279,8 @@ export interface AppUser {
   role: EnumRole;
   isActive: boolean;
   rateBasisPoints: number | null;
+  /** Ставка премии за разработку дизайна (сотые процента). Для менеджера. */
+  designRateBasisPoints: number | null;
   telegramUsername: string | null;
   createdAt: string;
   /** Заказов в работе — считаются до статуса «Готов» (текущая загрузка). */
@@ -295,14 +303,21 @@ export interface OrdersQuery {
 
 // ── Salary types ──────────────────────────────────────────────────────────────
 
+export type EnumAccrualKind = 'EXECUTOR' | 'MANAGER';
+
 export interface AccrualBrief {
   id: string;
   orderNumber: string;
   completedAt: string | null;
   urlCommunication?: string | null;
   communicationPlatform?: EnumCommunication | null;
+  /** Тип начисления: исполнителю за производство или менеджеру за оформление. */
+  kind?: EnumAccrualKind;
   salaryBase: number;
   rateBasisPoints: number;
+  /** Только для менеджера: база и ставка премии за дизайн. */
+  designBase?: number;
+  designRateBasisPoints?: number;
   salaryAmount: number;
   paidAmount: number;
   debt: number;
@@ -332,9 +347,13 @@ export interface RecentPayment {
 export interface ExecutorSalaryData {
   id: string;
   username: string;
+  /** Роль получателя — исполнитель или менеджер по оформлению. */
+  role?: EnumRole;
   isActive: boolean;
   rateBasisPoints: number | null;
   ratePercent: string | null;
+  /** Ставка премии за дизайн (сотые процента) — только у менеджера. */
+  designRateBasisPoints?: number | null;
   totalDebt: number;
   totalPaid: number;
   pendingAccruals: AccrualBrief[];

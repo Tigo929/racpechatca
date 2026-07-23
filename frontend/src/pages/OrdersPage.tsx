@@ -34,7 +34,9 @@ interface Props {
 
 export function OrdersPage({ section }: Props) {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'ADMIN';
+  // Менеджер по оформлению ведёт заказы наравне с админом (без раздела
+  // «Управление»), поэтому на страницах заказов он видит всё то же.
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'ORDER_MANAGER';
   const isLeads = section === 'LEADS';
 
   // Продукт задаётся разделом, а не фильтром: в списке всегда один процесс.

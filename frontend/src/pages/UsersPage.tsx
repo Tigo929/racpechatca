@@ -14,10 +14,12 @@ const inputCls =
 const ROLE_LABELS: Record<EnumRole, string> = {
   ADMIN: 'Администратор',
   EXECUTOR: 'Исполнитель',
+  ORDER_MANAGER: 'Менеджер по оформлению',
 };
 const ROLE_COLORS: Record<EnumRole, string> = {
   ADMIN: 'bg-indigo-100 text-indigo-800',
   EXECUTOR: 'bg-gray-100 text-gray-600',
+  ORDER_MANAGER: 'bg-amber-100 text-amber-800',
 };
 
 function bpToPercent(bp: number): string {
@@ -73,6 +75,57 @@ function RateEditor({ user, onClose }: RateEditorProps) {
           onChange={(e) => setRate(e.target.value)}
           className="w-full rounded-lg border border-amber-300 px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 pr-7"
           placeholder="30.00"
+        />
+        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+      </div>
+      <button
+        onClick={() => mutation.mutate(bp)}
+        disabled={mutation.isPending || !valid}
+        className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+      >
+        <Check size={13} /> {mutation.isPending ? '…' : 'Сохранить'}
+      </button>
+      <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600">
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
+/** Редактор ставки премии за разработку дизайна (только менеджер по оформлению). */
+function DesignRateEditor({ user, onClose }: RateEditorProps) {
+  const qc = useQueryClient();
+  const [rate, setRate] = useState(
+    user.designRateBasisPoints == null ? '' : bpToPercent(user.designRateBasisPoints),
+  );
+
+  const mutation = useMutation({
+    mutationFn: (designRateBasisPoints: number) =>
+      usersApi.update(user.id, { designRateBasisPoints }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+      toast.success('Ставка премии за дизайн обновлена');
+      onClose();
+    },
+    onError: (error: unknown) => toast.error(getErrorMessage(error, 'Ошибка')),
+  });
+
+  const bp = percentToBp(rate);
+  const valid = !isNaN(bp) && bp >= 0 && bp <= 10000;
+
+  return (
+    <div className="flex items-center gap-2 mt-2">
+      <span className="text-xs text-gray-500 shrink-0">Премия за дизайн:</span>
+      <div className="relative flex-1">
+        <input
+          type="number"
+          min="0"
+          max="100"
+          step="0.01"
+          value={rate}
+          onChange={(e) => setRate(e.target.value)}
+          className="w-full rounded-lg border border-amber-300 px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 pr-7"
+          placeholder="40.00"
         />
         <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
       </div>
@@ -157,6 +210,7 @@ export function UsersPage() {
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [editingRateId, setEditingRateId] = useState<string | null>(null);
+  const [editingDesignRateId, setEditingDesignRateId] = useState<string | null>(null);
   const [editingTelegramId, setEditingTelegramId] = useState<string | null>(null);
   const [form, setForm] = useState({ username: '', password: '', role: 'EXECUTOR' as EnumRole });
 
@@ -257,6 +311,7 @@ export function UsersPage() {
                 onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as EnumRole }))}
               >
                 <option value="EXECUTOR">Исполнитель</option>
+                <option value="ORDER_MANAGER">Менеджер по оформлению</option>
                 <option value="ADMIN">Администратор</option>
               </select>
             </div>
@@ -353,6 +408,43 @@ export function UsersPage() {
                     </>
                   )}
 
+                  {u.role === 'ORDER_MANAGER' && (
+                    <>
+                      <button
+                        onClick={() => setEditingRateId(editingRateId === u.id ? null : u.id)}
+                        className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors font-mono"
+                        title="Базовая ставка за оформленный заказ"
+                      >
+                        {u.rateBasisPoints === null
+                          ? 'Ставка не назначена'
+                          : `${bpToPercent(u.rateBasisPoints)}%`}
+                        <Pencil size={10} />
+                      </button>
+                      <button
+                        onClick={() => setEditingDesignRateId(editingDesignRateId === u.id ? null : u.id)}
+                        className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200 hover:bg-fuchsia-100 transition-colors font-mono"
+                        title="Ставка премии за разработку дизайна"
+                      >
+                        {u.designRateBasisPoints == null
+                          ? 'Дизайн: —'
+                          : `Дизайн ${bpToPercent(u.designRateBasisPoints)}%`}
+                        <Pencil size={10} />
+                      </button>
+                      <button
+                        onClick={() => setEditingTelegramId(editingTelegramId === u.id ? null : u.id)}
+                        className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                          u.telegramUsername
+                            ? 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100'
+                            : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
+                        }`}
+                        title={u.telegramUsername ? `Telegram: @${u.telegramUsername}` : 'Привязать Telegram'}
+                      >
+                        <Send size={10} />
+                        {u.telegramUsername ? `@${u.telegramUsername}` : 'TG не привязан'}
+                      </button>
+                    </>
+                  )}
+
                   {u.id !== me?.id && (
                     <>
                       <button
@@ -384,6 +476,11 @@ export function UsersPage() {
               {/* Rate editor (inline) */}
               {editingRateId === u.id && (
                 <RateEditor user={u} onClose={() => setEditingRateId(null)} />
+              )}
+
+              {/* Design-rate editor (inline) — только менеджер по оформлению */}
+              {editingDesignRateId === u.id && (
+                <DesignRateEditor user={u} onClose={() => setEditingDesignRateId(null)} />
               )}
 
               {/* Telegram Chat ID editor (inline) */}

@@ -57,6 +57,10 @@ const baseSchema = z.object({
   note: z.string().optional(),
   executorId: z.string().optional(),
   freePrice: z.boolean().optional(),
+  // «Требуется разработать дизайн» (только футболки): свободная сумма, входит
+  // в чек клиента и служит базой премии менеджера по оформлению.
+  needsDesign: z.boolean().optional(),
+  designDevelopmentCost: z.coerce.number().int().min(0).optional(),
   freeItems: z.array(freeItemSchema).optional(),
   items: z.array(photoItemSchema).optional(),
   tshirtItems: z.array(tshirtItemSchema).optional(),
@@ -134,6 +138,8 @@ export function CreateOrderForm({ onClose }: Props) {
       deliveryCost: 0,
       executorId: '',
       freePrice: false,
+      needsDesign: false,
+      designDevelopmentCost: 0,
       freeItems: [{ name: '', quantity: 1, price: 0 }],
       items: [{ isFreePrice: false, formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }],
       tshirtItems: [{
@@ -147,6 +153,7 @@ export function CreateOrderForm({ onClose }: Props) {
   const productCategory = useWatch({ control, name: 'productCategory' });
   const communicationPlatform = useWatch({ control, name: 'communicationPlatform' });
   const freePrice = useWatch({ control, name: 'freePrice' });
+  const needsDesign = useWatch({ control, name: 'needsDesign' });
   const photoItemsWatch = useWatch({ control, name: 'items' });
   const tshirtItemsWatch = useWatch({ control, name: 'tshirtItems' });
 
@@ -273,6 +280,10 @@ export function CreateOrderForm({ onClose }: Props) {
         executorId: undefined,
         tshirtItems: tshirtItems.length ? tshirtItems : undefined,
         items: items.length ? items : undefined,
+        // «Разработка дизайна» — свободная сумма, входит в чек клиента.
+        designDevelopmentCost: data.needsDesign
+          ? data.designDevelopmentCost || 0
+          : undefined,
       });
       return;
     }
@@ -633,6 +644,28 @@ export function CreateOrderForm({ onClose }: Props) {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Требуется разработать дизайн — только футболки. Свободная сумма
+          входит в чек клиента и служит базой премии менеджера по оформлению. */}
+      {productCategory === 'TSHIRT' && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 space-y-2">
+          <label className="flex items-center gap-2.5 cursor-pointer">
+            <input type="checkbox" {...register('needsDesign')} className="w-4 h-4 accent-amber-600" />
+            <span className="text-sm font-medium text-gray-800">Требуется разработать дизайн</span>
+          </label>
+          {needsDesign && (
+            <div>
+              <label className={labelCls}>Стоимость разработки дизайна, ₽</label>
+              <input type="number" min={0} className={inputCls}
+                placeholder="1000"
+                {...register('designDevelopmentCost')} />
+              <p className="text-xs text-gray-500 mt-1">
+                Входит в чек клиента отдельной суммой. От неё считается премия менеджера по оформлению.
+              </p>
+            </div>
+          )}
         </div>
       )}
       </>
