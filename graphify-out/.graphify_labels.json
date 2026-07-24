@@ -126,5 +126,18 @@
   "124": "@types/passport-jwt",
   "125": "@types/pdfkit",
   "126": "typescript",
-  "127": "eslint-config-prettier"
+  "127": "eslint-config-prettier",
+  "128": "scenario.types.ts",
+  "129": "scenario.mapping.ts",
+  "130": "CurrentUser",
+  "131": "PrismaService",
+  "132": "scenario.registry.ts",
+  "133": "scenario.engine.ts",
+  "134": "DtoCreateItemOrder",
+  "135": "current-user.decorator.ts",
+  "136": "SettingsPage.tsx",
+  "137": "DtoQueryTasks",
+  "138": "salary-calculation.ts",
+  "139": ".createPaymentByAccruals",
+  "140": "@eslint/eslintrc"
 }
