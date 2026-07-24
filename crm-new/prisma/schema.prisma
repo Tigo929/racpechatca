@@ -480,3 +480,12 @@ enum EnumTaskStatus {
   DONE
   CANCELLED
 }
+
+/// Одна строка на всю систему для флагов планировщиков. Нужна, чтобы
+/// ежедневные рассылки (например, план дня) не повторялись при рестарте
+/// контейнера: храним дату последней отправки по Москве (YYYY-MM-DD).
+model AppState {
+  id                  String  @id @default("default")
+  updatedAt           DateTime @updatedAt
+  dailyPlanLastSentOn String?
+}

@@ -9,6 +9,7 @@ import { OrderFinancialIntegrityService } from './order-financial-integrity.serv
 import { StockModule } from 'src/stock/stock.module';
 import { TelegramModule } from 'src/telegram/telegram.module';
 import { ReviewReminderService } from './review-reminder.service';
+import { DailyPlanService } from './daily-plan.service';
 import { PartnerSettingsModule } from 'src/partner/partner-settings.module';
 
 @Module({
@@ -20,6 +21,7 @@ import { PartnerSettingsModule } from 'src/partner/partner-settings.module';
     TshirtItemService,
     OrderFinancialIntegrityService,
     ReviewReminderService,
+    DailyPlanService,
   ],
 })
 export class OrderPhotoModule {}

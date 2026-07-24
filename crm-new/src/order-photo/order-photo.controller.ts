@@ -22,6 +22,7 @@ import { OrderPhotoService } from './order-photo.service';
 import { OrderItemService } from './order-item.service';
 import { TshirtItemService } from './tshirt-item.service';
 import { StickerService } from './sticker.service';
+import { DailyPlanService } from './daily-plan.service';
 import DtoCreateOrder from './dto/create-order.dto';
 import DtoAllOrdersforQuery from './dto/all-oreders-for-query.dto';
 import UpdateStatus from './dto/update-status.dto';
@@ -48,7 +49,17 @@ export class OrderPhotoController {
     private readonly orderItemService: OrderItemService,
     private readonly tshirtItemService: TshirtItemService,
     private readonly stickerService: StickerService,
+    private readonly dailyPlanService: DailyPlanService,
   ) {}
+
+  // ── Admin: отправить «план дня» в рабочий чат прямо сейчас ──────────────────
+  // Плановая рассылка идёт автоматически в 10:00 по Москве; этот эндпоинт — для
+  // ручной отправки/проверки.
+  @Post('daily-plan/run')
+  @Roles(EnumRole.ADMIN)
+  runDailyPlan(@Query('dry') dry?: string) {
+    return this.dailyPlanService.runNow(new Date(), { dryRun: dry === 'true' });
+  }
 
   // ── Admin-only: create / update / delete order ─────────────────────────────
 
