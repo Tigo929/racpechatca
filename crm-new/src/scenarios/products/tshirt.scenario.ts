@@ -1,5 +1,5 @@
 import type { ProductScenario } from '../scenario.types';
-import { DELIVERY_STEPS, MONEY_STEPS, OPTIONAL } from './common-steps';
+import { DELIVERY_STEPS, NOTE_STEP, OPTIONAL } from './common-steps';
 
 /**
  * Печать на футболках.
@@ -127,6 +127,21 @@ export const TSHIRT_SCENARIO: ProductScenario = {
       visibleWhen: { op: 'equals', field: 'designNeeded', value: true },
     },
     ...DELIVERY_STEPS,
-    ...MONEY_STEPS,
+    {
+      key: 'pricePerItem',
+      label: 'Цена за одну футболку',
+      group: 'Деньги и договорённости',
+      hint: 'Именно цена штуки, а не сумма заказа: от неё считается расчёт с партнёром.',
+      field: { kind: 'money', min: 0, unit: '₽' },
+    },
+    {
+      key: 'designDevelopmentCost',
+      label: 'Разработка дизайна',
+      group: 'Деньги и договорённости',
+      hint: 'Отдельная строка в чеке. Партнёру не уходит — это заработок магазина.',
+      field: { kind: 'money', min: 0, unit: '₽' },
+      visibleWhen: { op: 'equals', field: 'designNeeded', value: true },
+    },
+    NOTE_STEP,
   ],
 };

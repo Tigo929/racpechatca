@@ -7,7 +7,13 @@ import {
   pickRelevantAnswers,
   visibleSteps,
 } from './scenario.engine';
-import { SCENARIOS, findScenario, validateAllScenarios } from './scenario.registry';
+import {
+  PRODUCTS,
+  SCENARIOS,
+  findProduct,
+  findScenario,
+  validateAllScenarios,
+} from './scenario.registry';
 import type { ProductScenario } from './scenario.types';
 
 /** Маленький сценарий: проверяем движок, а не формулировки живых продуктов. */
@@ -194,9 +200,131 @@ describe('реестр продуктов', () => {
     expect(findScenario('НЕТ')).toBeUndefined();
   });
 
-  it('у каждого продукта спрашиваем согласованную сумму', () => {
-    for (const s of SCENARIOS) {
-      expect(s.steps.map((x) => x.key)).toContain('agreedTotal');
+  it('у каждого продукта есть вопрос про деньги', () => {
+    // Формулировка у продуктов своя (сумма за пачку против цены за штуку), но
+    // оформить заказ, не спросив денег, нельзя ни в одном.
+    for (const { scenario } of PRODUCTS) {
+      const money = scenario.steps.filter((s) => s.field.kind === 'money');
+      expect(money.length).toBeGreaterThan(0);
     }
+  });
+
+  it('у каждого продукта есть преобразование в заказ', () => {
+    for (const p of PRODUCTS) {
+      expect(typeof p.toOrder).toBe('function');
+    }
+  });
+});
+
+describe('преобразование в заказ', () => {
+  const photoAnswers = {
+    photoFormat: '10×15',
+    paperType: 'MATTE',
+    quantity: 40,
+    filesReceived: true,
+    deliveryMethod: 'YANDEX_PVZ',
+    deliveryAddress: 'Москва, Тверская 1',
+    deliveryCost: 300,
+    photoPrice: 1200,
+    note: 'Позвонить перед отправкой',
+  };
+
+  it('фото: одна позиция с договорной ценой, количество сохранено', () => {
+    const m = findProduct('PHOTO')!.toOrder(photoAnswers);
+    expect(m.photoItems).toEqual([
+      {
+        formatPaper: '10×15 (мат)',
+        typePaper: 'MATTE',
+        quantity: 40,
+        price: 1200,
+        isFreePrice: true,
+      },
+    ]);
+    expect(m.deliveryCost).toBe(300);
+    expect(m.tshirtItems).toHaveLength(0);
+  });
+
+  it('фото: адрес пункта выдачи попадает в комментарий исполнителю', () => {
+    const m = findProduct('PHOTO')!.toOrder(photoAnswers);
+    expect(m.note).toContain('Москва, Тверская 1');
+    expect(m.note).toContain('Позвонить перед отправкой');
+  });
+
+  it('самовывоз обнуляет доставку, даже если сумма осталась от прошлого выбора', () => {
+    const m = findProduct('PHOTO')!.toOrder({
+      ...photoAnswers,
+      deliveryMethod: 'PICKUP',
+    });
+    expect(m.deliveryCost).toBe(0);
+  });
+
+  it('произвольный формат подставляется вместо «Другое»', () => {
+    const m = findProduct('PHOTO')!.toOrder({
+      ...photoAnswers,
+      photoFormat: 'other',
+      photoFormatOther: 'A4',
+    });
+    expect(m.photoItems[0].formatPaper).toBe('A4 (мат)');
+  });
+
+  it('футболки: цена именно за штуку — на ней держится расчёт с партнёром', () => {
+    const m = findProduct('TSHIRT')!.toOrder({
+      tshirtModel: 'Хлопок 160',
+      color: 'Чёрный',
+      size: 'L',
+      gender: 'MALE',
+      quantity: 3,
+      printLocation: 'FRONT',
+      designReady: true,
+      deliveryMethod: 'PICKUP',
+      pricePerItem: 1500,
+    });
+    expect(m.tshirtItems[0]).toMatchObject({ price: 1500, quantity: 3, printType: 'DTF' });
+    expect(m.designDevelopmentCost).toBe(0);
+  });
+
+  it('дизайн уходит отдельной строкой заказа, а не в цену позиции', () => {
+    const m = findProduct('TSHIRT')!.toOrder({
+      color: 'Белый',
+      size: 'M',
+      gender: 'UNISEX',
+      quantity: 1,
+      printLocation: 'BACK',
+      designNeeded: true,
+      designBrief: 'Логотип по центру',
+      designDevelopmentCost: 500,
+      deliveryMethod: 'PICKUP',
+      pricePerItem: 1500,
+    });
+    expect(m.designDevelopmentCost).toBe(500);
+    expect(m.tshirtItems[0].price).toBe(1500);
+    expect(m.tshirtItems[0].designNote).toBe('Логотип по центру');
+  });
+
+  it('снятый флажок дизайна обнуляет его стоимость', () => {
+    // Менеджер поставил цену, потом передумал и снял галочку — платить за
+    // невыполненную работу клиент не должен.
+    const m = findProduct('TSHIRT')!.toOrder({
+      color: 'Белый',
+      size: 'M',
+      gender: 'UNISEX',
+      quantity: 1,
+      printLocation: 'BACK',
+      designNeeded: false,
+      designDevelopmentCost: 500,
+      deliveryMethod: 'PICKUP',
+      pricePerItem: 1500,
+    });
+    expect(m.designDevelopmentCost).toBe(0);
+  });
+
+  it('мусор в ответах не превращается в NaN в деньгах', () => {
+    const m = findProduct('TSHIRT')!.toOrder({
+      quantity: null,
+      pricePerItem: 'не число',
+      deliveryMethod: 'PICKUP',
+    });
+    expect(m.tshirtItems[0].price).toBe(0);
+    expect(m.tshirtItems[0].quantity).toBe(1);
   });
 });

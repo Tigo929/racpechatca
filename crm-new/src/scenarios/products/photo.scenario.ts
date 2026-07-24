@@ -1,5 +1,5 @@
 import type { ProductScenario } from '../scenario.types';
-import { DELIVERY_STEPS, MONEY_STEPS, OPTIONAL } from './common-steps';
+import { DELIVERY_STEPS, NOTE_STEP, OPTIONAL } from './common-steps';
 
 /**
  * Печать фотографий.
@@ -84,6 +84,13 @@ export const PHOTO_SCENARIO: ProductScenario = {
       requiredWhen: OPTIONAL,
     },
     ...DELIVERY_STEPS,
-    ...MONEY_STEPS,
+    {
+      key: 'photoPrice',
+      label: 'Сумма за печать, без доставки',
+      group: 'Деньги и договорённости',
+      hint: 'Сумма, которую клиент подтвердил в переписке. Доставка считается отдельно и прибавляется к итогу.',
+      field: { kind: 'money', min: 0, unit: '₽' },
+    },
+    NOTE_STEP,
   ],
 };

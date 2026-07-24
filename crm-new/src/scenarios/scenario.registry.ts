@@ -1,18 +1,36 @@
-import type { ProductScenario } from './scenario.types';
+import type { Answers, ProductScenario } from './scenario.types';
+import type { ScenarioOrderMapping } from './scenario.mapping';
 import { PHOTO_SCENARIO } from './products/photo.scenario';
 import { TSHIRT_SCENARIO } from './products/tshirt.scenario';
+import { photoToOrder } from './products/photo.mapper';
+import { tshirtToOrder } from './products/tshirt.mapper';
+
+/** Продукт целиком: что спрашиваем у клиента и как это становится заказом. */
+export interface ProductDefinition {
+  scenario: ProductScenario;
+  toOrder: (answers: Answers) => ScenarioOrderMapping;
+}
 
 /**
  * Реестр продуктов.
  *
- * Добавить новый продукт = создать файл в products/ и дописать его сюда.
- * Ни контроллер, ни фронтенд трогать не нужно: список сценариев отдаётся по
- * API, и панель оформления строится по нему.
+ * Добавить новый продукт = два файла в products/ (описание и преобразование) и
+ * одна запись здесь. Ни контроллер, ни фронтенд трогать не нужно: описание
+ * отдаётся по API, и панель оформления строится по нему.
  */
-export const SCENARIOS: ProductScenario[] = [PHOTO_SCENARIO, TSHIRT_SCENARIO];
+export const PRODUCTS: ProductDefinition[] = [
+  { scenario: PHOTO_SCENARIO, toOrder: photoToOrder },
+  { scenario: TSHIRT_SCENARIO, toOrder: tshirtToOrder },
+];
+
+export const SCENARIOS: ProductScenario[] = PRODUCTS.map((p) => p.scenario);
+
+export function findProduct(key: string): ProductDefinition | undefined {
+  return PRODUCTS.find((p) => p.scenario.key === key);
+}
 
 export function findScenario(key: string): ProductScenario | undefined {
-  return SCENARIOS.find((s) => s.key === key);
+  return findProduct(key)?.scenario;
 }
 
 /**
