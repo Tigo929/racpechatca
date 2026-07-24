@@ -44,6 +44,10 @@ services:
       PARTNER_WEBHOOK_TOKEN: ${PARTNER_WEBHOOK_TOKEN:-}
       PARTNER_API_TOKEN: ${PARTNER_API_TOKEN:-}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      # Avito API. Пусто — клиент просто не настроен и молчит; на работу CRM
+      # это не влияет (проверяется в AvitoService при первом обращении).
+      AVITO_CLIENT_ID: ${AVITO_CLIENT_ID:-}
+      AVITO_CLIENT_SECRET: ${AVITO_CLIENT_SECRET:-}
       UPLOAD_DIR: /app/uploads
     volumes:
       - uploads:/app/uploads
