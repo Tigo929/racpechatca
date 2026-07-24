@@ -1,0 +1,86 @@
+import type { Condition, ScenarioStep } from '../scenario.types';
+
+/** Шаг по желанию: спрашиваем, если к слову пришлось, но не держим оформление. */
+export const OPTIONAL: Condition = { op: 'never' };
+
+/**
+ * Шаги, одинаковые для всех продуктов: доставка и деньги.
+ *
+ * Вынесены сюда, чтобы новый продукт не переписывал их заново — иначе через
+ * три продукта вопрос про адрес будет сформулирован тремя разными способами,
+ * а менять его придётся в трёх местах.
+ */
+
+/** Совпадает с EnumDeliveryMethod — значения уходят в заказ как есть. */
+export const DELIVERY_STEPS: ScenarioStep[] = [
+  {
+    key: 'deliveryMethod',
+    label: 'Способ получения',
+    group: 'Доставка',
+    ask: 'Как вам удобнее получить заказ — самовывоз или доставка до пункта выдачи?',
+    field: {
+      kind: 'select',
+      options: [
+        { value: 'PICKUP', label: 'Самовывоз' },
+        { value: 'YANDEX_PVZ', label: 'Яндекс ПВЗ' },
+        { value: 'OZON_PVZ', label: 'Ozon ПВЗ' },
+        { value: 'OZON_SELLER', label: 'Ozon (продавец)' },
+        { value: 'WB_SELLER', label: 'WB (продавец)' },
+      ],
+    },
+  },
+  {
+    key: 'deliveryAddress',
+    label: 'Адрес пункта выдачи',
+    group: 'Доставка',
+    ask: 'Подскажите, пожалуйста, адрес пункта выдачи, куда отправить заказ.',
+    hint: 'Нужен только при доставке. При самовывозе поле скрыто.',
+    field: { kind: 'text', placeholder: 'Город, улица, дом' },
+    visibleWhen: { op: 'notEquals', field: 'deliveryMethod', value: 'PICKUP' },
+  },
+  {
+    key: 'deliveryCost',
+    label: 'Стоимость доставки',
+    group: 'Доставка',
+    hint: 'Клиенту озвучиваем до оформления, иначе спор на выдаче.',
+    field: { kind: 'money', min: 0, unit: '₽' },
+    visibleWhen: { op: 'notEquals', field: 'deliveryMethod', value: 'PICKUP' },
+  },
+  {
+    key: 'deadline',
+    label: 'К какой дате нужен заказ',
+    group: 'Доставка',
+    ask: 'К какой дате вам нужен заказ? Постараемся успеть.',
+    hint: 'Не обязательно, но если клиент назвал дату — фиксируем сразу.',
+    field: { kind: 'date' },
+    requiredWhen: { op: 'equals', field: 'isUrgent', value: true },
+  },
+  {
+    key: 'isUrgent',
+    label: 'Срочный заказ',
+    group: 'Доставка',
+    hint: 'Отметка поднимает заказ в списке. Дату при этом спросить обязательно.',
+    field: { kind: 'boolean' },
+    requiredWhen: OPTIONAL,
+  },
+];
+
+export const MONEY_STEPS: ScenarioStep[] = [
+  {
+    key: 'agreedTotal',
+    label: 'Согласованная сумма',
+    group: 'Деньги и договорённости',
+    hint: 'Сумма, которую подтвердил клиент в переписке. Без неё заказ не оформляем.',
+    field: { kind: 'money', min: 0, unit: '₽' },
+  },
+  {
+    key: 'note',
+    label: 'Комментарий к заказу',
+    group: 'Деньги и договорённости',
+    hint: 'Всё, что важно исполнителю и не попало в поля выше.',
+    field: { kind: 'textarea', placeholder: 'Пожелания клиента, договорённости…' },
+    // Обязательный комментарий менеджер просто заполнит прочерком, чтобы форма
+    // его отпустила, — толку ноль, а список «осталось выяснить» замусорен.
+    requiredWhen: OPTIONAL,
+  },
+];
