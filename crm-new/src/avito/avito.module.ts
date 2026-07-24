@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AvitoService } from './avito.service';
 import { AvitoController } from './avito.controller';
+import { AvitoMessengerService } from './avito-messenger.service';
 
 /**
  * Интеграция с Avito. Пока это только клиент API (токен + чтение профиля и
@@ -9,7 +10,7 @@ import { AvitoController } from './avito.controller';
  */
 @Module({
   controllers: [AvitoController],
-  providers: [AvitoService],
-  exports: [AvitoService],
+  providers: [AvitoService, AvitoMessengerService],
+  exports: [AvitoService, AvitoMessengerService],
 })
 export class AvitoModule {}

@@ -1,5 +1,13 @@
 import {
-  BarChart3, Bell, Camera, CheckSquare, Settings, Shirt, Users, Wallet,
+  BarChart3,
+  Bell,
+  Camera,
+  CheckSquare,
+  MessageCircle,
+  Settings,
+  Shirt,
+  Users,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react';
 import type { EnumRole as Role } from '../../types/index';
@@ -42,10 +50,42 @@ export const NAV_GROUPS: NavGroup[] = [
     // Ежедневная работа — то, что открывают каждый день.
     title: 'Работа',
     items: [
-      { to: '/crm/photo', label: 'Фотопечать', icon: Camera, roles: ALL, primary: true },
-      { to: '/crm/tshirt', label: 'Футболки', icon: Shirt, roles: AD_MGR, primary: true },
-      { to: '/crm/leads', label: 'Обращения', icon: Bell, roles: AD_MGR, badge: 'leads', primary: true },
-      { to: '/crm/tasks', label: 'Задачи', icon: CheckSquare, roles: ALL, badge: 'tasks', primary: true },
+      {
+        to: '/crm/photo',
+        label: 'Фотопечать',
+        icon: Camera,
+        roles: ALL,
+        primary: true,
+      },
+      {
+        to: '/crm/tshirt',
+        label: 'Футболки',
+        icon: Shirt,
+        roles: AD_MGR,
+        primary: true,
+      },
+      {
+        to: '/crm/avito',
+        label: 'Avito',
+        icon: MessageCircle,
+        roles: AD_MGR,
+        primary: true,
+      },
+      {
+        to: '/crm/leads',
+        label: 'Обращения',
+        icon: Bell,
+        roles: AD_MGR,
+        badge: 'leads',
+      },
+      {
+        to: '/crm/tasks',
+        label: 'Задачи',
+        icon: CheckSquare,
+        roles: ALL,
+        badge: 'tasks',
+        primary: true,
+      },
     ],
   },
   {
@@ -62,7 +102,13 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Личное',
     items: [
-      { to: '/crm/my-salary', label: 'Моя зарплата', icon: Wallet, roles: SALARIED, primary: true },
+      {
+        to: '/crm/my-salary',
+        label: 'Моя зарплата',
+        icon: Wallet,
+        roles: SALARIED,
+        primary: true,
+      },
     ],
   },
 ];

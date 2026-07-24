@@ -9,19 +9,19 @@ datasource db {
 }
 
 model User {
-  id              String   @id @default(uuid())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  username        String   @unique
-  password        String
-  role            EnumRole @default(EXECUTOR)
-  isActive        Boolean  @default(true)
-  rateBasisPoints  Int?
+  id                    String   @id @default(uuid())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  username              String   @unique
+  password              String
+  role                  EnumRole @default(EXECUTOR)
+  isActive              Boolean  @default(true)
+  rateBasisPoints       Int?
   // Ставка премии за разработку дизайна (в сотых процента). Есть только у роли
   // ORDER_MANAGER: помимо базовой ставки, менеджер получает этот процент от
   // суммы «разработка дизайна» в заказе. 4000 = 40%.
   designRateBasisPoints Int?
-  telegramUsername String?
+  telegramUsername      String?
 
   salaryAccruals     SalaryAccrual[]
   salaryPayments     SalaryPayment[]   @relation("SalaryPaymentExecutor")
@@ -32,6 +32,7 @@ model User {
   expenseOrders      ExpenseOrder[]
   assignedTasks      Task[]            @relation("TaskAssignee")
   authoredTasks      Task[]            @relation("TaskAuthor")
+  avitoMessages      AvitoMessage[]
 }
 
 enum EnumRole {
@@ -48,27 +49,27 @@ model OrderPhoto {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  numberOrder           String              @unique
-  sourceOrder           EnumSourceOrder
-  communicationPlatform EnumCommunication
-  urlCommunication      String
-  deliveryMethod        EnumDeliveryMethod
-  deliveryCost          Int
-  totalOrder            Int
-  note                  String?
-  status                EnumStatus          @default(NEW)
-  productCategory       EnumProductCategory @default(PHOTO)
-  deadline              DateTime?
-  isUrgent              Boolean             @default(false)
+  numberOrder              String              @unique
+  sourceOrder              EnumSourceOrder
+  communicationPlatform    EnumCommunication
+  urlCommunication         String
+  deliveryMethod           EnumDeliveryMethod
+  deliveryCost             Int
+  totalOrder               Int
+  note                     String?
+  status                   EnumStatus          @default(NEW)
+  productCategory          EnumProductCategory @default(PHOTO)
+  deadline                 DateTime?
+  isUrgent                 Boolean             @default(false)
   // Свободная (договорная) цена: сумма позиции = её цене, количество НЕ умножается.
-  isFreePrice           Boolean             @default(false)
+  isFreePrice              Boolean             @default(false)
   // Оставил ли клиент отзыв (отмечается вручную в списке заказов).
-  clientReviewLeft      Boolean             @default(false)
+  clientReviewLeft         Boolean             @default(false)
   // Когда CRM автоматически напомнила рабочей группе попросить отзыв у клиента.
   reviewReminderNotifiedAt DateTime?
   // Когда статус менялся в последний раз. По нему видно «зависшие» заказы:
   // updatedAt для этого не годится — он дёргается от любой правки заказа.
-  statusChangedAt DateTime?
+  statusChangedAt          DateTime?
 
   // Стоимость «разработка дизайна» по заказу (свободная цена, без количества).
   // Входит в totalOrder (клиент платит за неё) и служит базой премии менеджера
@@ -88,7 +89,7 @@ model OrderPhoto {
   scenarioAnswers Json?
 
   // Модель футболки — производственные данные, уходят исполнителю-партнёру.
-  tshirtModel String?
+  tshirtModel       String?
   // Путь к загруженному ТЗ-фото (согласованный с клиентом макет) на диске сервера.
   techSpecPhotoPath String?
 
@@ -113,6 +114,7 @@ model OrderPhoto {
   stockMovements StockMovement[]
   tasks          Task[]
   expenses       ExpenseOrder[]
+  avitoChats     AvitoChat[]
 
   @@index([status])
   @@index([executorId])
@@ -121,6 +123,70 @@ model OrderPhoto {
   @@index([productCategory])
   @@index([status, productCategory])
   @@index([productCategory, status, reviewReminderNotifiedAt])
+}
+
+model AvitoChat {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  avitoChatId    String  @unique
+  avitoAccountId String
+  avitoItemId    String?
+  itemTitle      String?
+  itemUrl        String?
+  itemPrice      String?
+
+  clientAvitoId    String?
+  clientName       String?
+  clientProfileUrl String?
+  clientAvatarUrl  String?
+
+  chatCreatedAt   DateTime?
+  lastMessageAt   DateTime?
+  lastMessageText String?
+  lastMessageType String?
+  lastDirection   EnumAvitoMessageDirection?
+
+  orderId String?
+  order   OrderPhoto? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  messages AvitoMessage[]
+
+  @@index([lastMessageAt])
+  @@index([orderId])
+  @@index([avitoAccountId])
+}
+
+model AvitoMessage {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  avitoMessageId String @unique
+
+  chatId String
+  chat   AvitoChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  authorAvitoId String?
+  direction     EnumAvitoMessageDirection
+  type          String
+  text          String?
+  content       Json?
+  sentAt        DateTime
+  isRead        Boolean                   @default(false)
+  readAt        DateTime?
+
+  sentById String?
+  sentBy   User?   @relation(fields: [sentById], references: [id], onDelete: SetNull)
+
+  @@index([chatId, sentAt])
+  @@index([direction, isRead])
+}
+
+enum EnumAvitoMessageDirection {
+  IN
+  OUT
 }
 
 /// Остаток футболок на складе по размеру и цвету (6 размеров × 2 цвета).
@@ -226,7 +292,7 @@ model ItemPhoto {
   price         Int
   pricePosition Int
   // Позиция со свободной (договорной) ценой: pricePosition = price, кол-во не умножается.
-  isFreePrice   Boolean @default(false)
+  isFreePrice   Boolean       @default(false)
 }
 
 enum EnumTypePaper {
@@ -492,7 +558,7 @@ enum EnumTaskStatus {
 /// ежедневные рассылки (например, план дня) не повторялись при рестарте
 /// контейнера: храним дату последней отправки по Москве (YYYY-MM-DD).
 model AppState {
-  id                  String  @id @default("default")
+  id                  String   @id @default("default")
   updatedAt           DateTime @updatedAt
   dailyPlanLastSentOn String?
 }

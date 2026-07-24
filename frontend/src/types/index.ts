@@ -29,20 +29,12 @@ export type EnumSourceOrder = 'AVITO' | 'OZON' | 'WB' | 'LOCAL';
 export type EnumCommunication = 'AVITO' | 'TELEGRAM' | 'MAX' | 'OZON';
 
 export type EnumDeliveryMethod =
-  | 'YANDEX_PVZ'
-  | 'OZON_PVZ'
-  | 'PICKUP'
-  | 'OZON_SELLER'
-  | 'WB_SELLER';
+  'YANDEX_PVZ' | 'OZON_PVZ' | 'PICKUP' | 'OZON_SELLER' | 'WB_SELLER';
 
 export type EnumTypePaper = 'GLOSS' | 'MATTE';
 
 export type EnumAccrualStatus =
-  | 'PENDING'
-  | 'PARTIALLY_PAID'
-  | 'PAID'
-  | 'SETTLED'
-  | 'REVERSED';
+  'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'SETTLED' | 'REVERSED';
 
 /** Статус отправки заказа партнёру CoolABC (внешняя печать футболок). */
 export type EnumPartnerSyncStatus = 'PENDING' | 'SENT' | 'FAILED';
@@ -385,16 +377,16 @@ export interface PnlMetrics {
   tshirtCount: number;
   avgCheck: number;
   // Выручка
-  totalRevenue: number;   // оборот (брутто)
+  totalRevenue: number; // оборот (брутто)
   photoRevenue: number;
   tshirtRevenue: number;
-  deliveryCost: number;   // транзитная доставка
-  netRevenue: number;     // оборот − доставка
+  deliveryCost: number; // транзитная доставка
+  netRevenue: number; // оборот − доставка
   // Себестоимость (материалы)
   materialsPhoto: number;
   materialsTshirt: number;
-  cogs: number;           // materialsPhoto + materialsTshirt
-  grossProfit: number;    // netRevenue − cogs
+  cogs: number; // materialsPhoto + materialsTshirt
+  grossProfit: number; // netRevenue − cogs
   // Операционные расходы
   deliverySupplies: number;
   equipment: number;
@@ -403,11 +395,11 @@ export interface PnlMetrics {
   partnerReward: number;
   other: number;
   operatingExpenses: number; // сумма всех операционных
-  totalExpenses: number;     // cogs + operatingExpenses (все расходные ордера)
+  totalExpenses: number; // cogs + operatingExpenses (все расходные ордера)
   // Зарплата и итог
   salaryPaid: number;
-  netProfit: number;      // grossProfit − operatingExpenses − salaryPaid
-  margin: number;         // netProfit / totalRevenue, %
+  netProfit: number; // grossProfit − operatingExpenses − salaryPaid
+  margin: number; // netProfit / totalRevenue, %
 }
 
 export interface MonthData extends PnlMetrics {
@@ -448,14 +440,14 @@ export type EnumExpenseCategory =
   | 'OTHER';
 
 export const EXPENSE_CATEGORY_LABELS: Record<EnumExpenseCategory, string> = {
-  MATERIALS_PHOTO:   'Материалы — Фото',
-  MATERIALS_TSHIRT:  'Материалы — Футболки',
+  MATERIALS_PHOTO: 'Материалы — Фото',
+  MATERIALS_TSHIRT: 'Материалы — Футболки',
   DELIVERY_SUPPLIES: 'Упаковка / Доставка',
-  EQUIPMENT:         'Оборудование',
-  MARKETING:         'Реклама',
-  PARTNER_SHARE:     'Доля Гриши',
-  PARTNER_REWARD:    'Вознаграждение партнёру',
-  OTHER:             'Прочее',
+  EQUIPMENT: 'Оборудование',
+  MARKETING: 'Реклама',
+  PARTNER_SHARE: 'Доля Гриши',
+  PARTNER_REWARD: 'Вознаграждение партнёру',
+  OTHER: 'Прочее',
 };
 
 export interface ExpenseOrder {
@@ -486,7 +478,10 @@ export const TASK_STATUS_LABELS: Record<EnumTaskStatus, string> = {
 
 /** Порядок в интерфейсе: сначала то, что ещё в работе. */
 export const TASK_STATUS_FLOW: EnumTaskStatus[] = [
-  'OPEN', 'IN_PROGRESS', 'DONE', 'CANCELLED',
+  'OPEN',
+  'IN_PROGRESS',
+  'DONE',
+  'CANCELLED',
 ];
 
 export interface Task {
@@ -517,6 +512,64 @@ export interface CreateTaskDto {
 export interface TaskCountResponse {
   open: number;
   overdue: number;
+}
+
+/* ---------- Avito Messenger ---------- */
+
+export type EnumAvitoMessageDirection = 'IN' | 'OUT';
+
+export interface AvitoLinkedOrder {
+  id: string;
+  numberOrder: string;
+  status: EnumStatus;
+}
+
+export interface AvitoChat {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  avitoChatId: string;
+  avitoAccountId: string;
+  avitoItemId: string | null;
+  itemTitle: string | null;
+  itemUrl: string | null;
+  itemPrice: string | null;
+  clientAvitoId: string | null;
+  clientName: string | null;
+  clientProfileUrl: string | null;
+  clientAvatarUrl: string | null;
+  chatCreatedAt: string | null;
+  lastMessageAt: string | null;
+  lastMessageText: string | null;
+  lastMessageType: string | null;
+  lastDirection: EnumAvitoMessageDirection | null;
+  orderId: string | null;
+  order?: AvitoLinkedOrder | null;
+  unreadCount: number;
+}
+
+export interface AvitoMessage {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  avitoMessageId: string;
+  chatId: string;
+  authorAvitoId: string | null;
+  direction: EnumAvitoMessageDirection;
+  type: string;
+  text: string | null;
+  content: unknown;
+  sentAt: string;
+  isRead: boolean;
+  readAt: string | null;
+  sentById: string | null;
+  sentBy?: { id: string; username: string } | null;
+}
+
+export interface AvitoMessengerSyncResult {
+  skipped?: boolean;
+  chatsSynced?: number;
+  messagesSynced?: number;
 }
 
 /* ---------- Расчёт с партнёром (футболки) ---------- */

@@ -24,7 +24,11 @@ export interface AvitoAccount {
 
 export interface AvitoRating {
   isEnabled: boolean;
-  rating: { score: number; reviewsCount: number; reviewsWithScoreCount: number };
+  rating: {
+    score: number;
+    reviewsCount: number;
+    reviewsWithScoreCount: number;
+  };
 }
 
 export interface AvitoReview {
@@ -35,6 +39,46 @@ export interface AvitoReview {
   canAnswer: boolean;
   sender?: { name?: string };
   item?: { id: number; title: string };
+}
+
+export interface AvitoChatUser {
+  id: number;
+  name?: string;
+  public_user_profile?: {
+    url?: string;
+    avatar?: {
+      default?: string;
+      images?: Record<string, string>;
+    };
+  };
+}
+
+export interface AvitoMessage {
+  id: string;
+  author_id?: number;
+  content?: { text?: string; [key: string]: unknown };
+  created: number;
+  direction: 'in' | 'out';
+  is_read?: boolean;
+  read?: number | null;
+  type: string;
+}
+
+export interface AvitoChat {
+  id: string;
+  created?: number;
+  updated?: number;
+  users?: AvitoChatUser[];
+  context?: {
+    type?: string;
+    value?: {
+      id?: number;
+      title?: string;
+      url?: string;
+      price_string?: string;
+    };
+  };
+  last_message?: AvitoMessage;
 }
 
 export class AvitoNotConfiguredError extends Error {
@@ -97,10 +141,15 @@ export class AvitoService {
     if (!res.ok) {
       const body = await res.text();
       // Тело намеренно не логируем целиком в проде — там может быть эхо ключа.
-      throw new Error(`Avito token failed [${res.status}]: ${body.slice(0, 200)}`);
+      throw new Error(
+        `Avito token failed [${res.status}]: ${body.slice(0, 200)}`,
+      );
     }
 
-    const data = (await res.json()) as { access_token: string; expires_in: number };
+    const data = (await res.json()) as {
+      access_token: string;
+      expires_in: number;
+    };
     this.token = {
       value: data.access_token,
       expiresAt: Date.now() + data.expires_in * 1000,
@@ -113,7 +162,11 @@ export class AvitoService {
    * Запрос к Avito API с авторизацией. На 403 (токен протух раньше срока)
    * один раз пробуем заново с новым токеном — это штатная ситуация, а не сбой.
    */
-  async request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
+  async request<T>(
+    path: string,
+    init: RequestInit = {},
+    retry = true,
+  ): Promise<T> {
     const token = await this.getToken();
     const res = await fetch(`${AVITO_API}${path}`, {
       ...init,
@@ -153,9 +206,77 @@ export class AvitoService {
   }
 
   /** Отзывы магазина, свежие первыми. */
-  async getReviews(limit = 20, offset = 0): Promise<{ total: number; reviews: AvitoReview[] }> {
+  async getReviews(
+    limit = 20,
+    offset = 0,
+  ): Promise<{ total: number; reviews: AvitoReview[] }> {
     return this.request<{ total: number; reviews: AvitoReview[] }>(
       `/ratings/v1/reviews?offset=${offset}&limit=${limit}`,
+    );
+  }
+
+  async getChats(
+    options: {
+      limit?: number;
+      offset?: number;
+      unreadOnly?: boolean;
+      chatTypes?: string[];
+    } = {},
+  ): Promise<{ chats: AvitoChat[] }> {
+    const userId = await this.getUserId();
+    const params = new URLSearchParams();
+    if (options.limit) params.set('limit', String(options.limit));
+    if (options.offset) params.set('offset', String(options.offset));
+    if (options.unreadOnly !== undefined) {
+      params.set('unread_only', String(options.unreadOnly));
+    }
+    if (options.chatTypes?.length) {
+      params.set('chat_types', options.chatTypes.join(','));
+    }
+    const qs = params.toString();
+    return this.request<{ chats: AvitoChat[] }>(
+      `/messenger/v2/accounts/${userId}/chats${qs ? `?${qs}` : ''}`,
+    );
+  }
+
+  async getChat(chatId: string): Promise<AvitoChat> {
+    const userId = await this.getUserId();
+    return this.request<AvitoChat>(
+      `/messenger/v2/accounts/${userId}/chats/${encodeURIComponent(chatId)}`,
+    );
+  }
+
+  async getMessages(
+    chatId: string,
+    options: { limit?: number; offset?: number } = {},
+  ): Promise<AvitoMessage[]> {
+    const userId = await this.getUserId();
+    const params = new URLSearchParams();
+    if (options.limit) params.set('limit', String(options.limit));
+    if (options.offset) params.set('offset', String(options.offset));
+    const qs = params.toString();
+    return this.request<AvitoMessage[]>(
+      `/messenger/v3/accounts/${userId}/chats/${encodeURIComponent(chatId)}/messages/${qs ? `?${qs}` : ''}`,
+    );
+  }
+
+  async sendMessage(chatId: string, text: string): Promise<AvitoMessage> {
+    const userId = await this.getUserId();
+    return this.request<AvitoMessage>(
+      `/messenger/v1/accounts/${userId}/chats/${encodeURIComponent(chatId)}/messages`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'text', message: { text } }),
+      },
+    );
+  }
+
+  async markChatRead(chatId: string): Promise<{ ok: boolean }> {
+    const userId = await this.getUserId();
+    return this.request<{ ok: boolean }>(
+      `/messenger/v1/accounts/${userId}/chats/${encodeURIComponent(chatId)}/read`,
+      { method: 'POST' },
     );
   }
 }

@@ -13,6 +13,7 @@ const UsersPage = lazy(() => import('./pages/UsersPage').then((m) => ({ default:
 const SalaryPage = lazy(() => import('./pages/SalaryPage'));
 const MySalaryPage = lazy(() => import('./pages/MySalaryPage'));
 const TasksPage = lazy(() => import('./pages/TasksPage'));
+const AvitoPage = lazy(() => import('./pages/AvitoPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const ReportsPage = lazy(() =>
   import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage })),
@@ -71,6 +72,7 @@ function AppRoutes() {
         <Route path="/crm/photo" element={<CrmGate><PrivateRoute><OrdersPage key="photo" section="PHOTO" /></PrivateRoute></CrmGate>} />
         <Route path="/crm/tshirt" element={<CrmGate><OrderStaffRoute><OrdersPage key="tshirt" section="TSHIRT" /></OrderStaffRoute></CrmGate>} />
         <Route path="/crm/leads" element={<CrmGate><OrderStaffRoute><OrdersPage key="leads" section="LEADS" /></OrderStaffRoute></CrmGate>} />
+        <Route path="/crm/avito" element={<CrmGate><OrderStaffRoute><AvitoPage /></OrderStaffRoute></CrmGate>} />
         {/* Задачи видят все: администратор ставит, исполнитель ведёт свои */}
         <Route path="/crm/tasks" element={<CrmGate><PrivateRoute><TasksPage /></PrivateRoute></CrmGate>} />
         <Route path="/crm" element={<Navigate to="/crm/photo" replace />} />
