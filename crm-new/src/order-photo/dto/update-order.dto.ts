@@ -47,6 +47,13 @@ export class DtoUpdateOrder {
   @Min(0)
   deliveryCost?: number;
 
+  /** Стоимость «разработка дизайна» — входит в итог и в базу премии менеджера. */
+  @IsInt()
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  designDevelopmentCost?: number;
+
   @IsString()
   @IsOptional()
   note?: string;

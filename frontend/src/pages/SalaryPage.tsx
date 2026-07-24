@@ -26,7 +26,19 @@ function ExecutorListItem({
       }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="font-semibold">{ex.username}</span>
+        <span className="font-semibold flex items-center gap-1.5 min-w-0">
+          <span className="truncate">{ex.username}</span>
+          {ex.role === 'ORDER_MANAGER' && (
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 font-medium ${
+                active ? 'bg-amber-400 text-amber-950' : 'bg-amber-100 text-amber-700'
+              }`}
+              title="Менеджер по оформлению"
+            >
+              менеджер
+            </span>
+          )}
+        </span>
         <span
           className={`text-xs px-1.5 py-0.5 rounded-full shrink-0 ${
             active ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
@@ -97,7 +109,17 @@ function AccrualRow({
       <td className="py-2.5 px-3 text-right text-gray-400 text-xs">
         {(accrual.rateBasisPoints / 100).toFixed(0)}%
       </td>
-      <td className="py-2.5 px-3 text-right font-semibold tabular-nums">{fmt(accrual.salaryAmount)}</td>
+      <td className="py-2.5 px-3 text-right font-semibold tabular-nums">
+        {fmt(accrual.salaryAmount)}
+        {accrual.kind === 'MANAGER' && (accrual.designBase ?? 0) > 0 && (
+          <div
+            className="text-[10px] font-normal text-fuchsia-500"
+            title={`Включает премию за дизайн: ${fmt(accrual.designBase ?? 0)} × ${((accrual.designRateBasisPoints ?? 0) / 100).toFixed(0)}%`}
+          >
+            вкл. дизайн
+          </div>
+        )}
+      </td>
       <td className="py-2.5 px-3 pr-4 text-right">
         {isPaid ? (
           <span className="text-green-600 text-xs font-medium bg-green-50 px-2 py-0.5 rounded-full">
@@ -343,7 +365,7 @@ export default function SalaryPage() {
   const inactive = executors.filter((e) => !e.isActive && e.totalDebt > 0);
 
   return (
-    <AppShell title="Зарплата исполнителей" subtitle="Начисления и выплаты по всем">
+    <AppShell title="Зарплата сотрудников" subtitle="Исполнители и менеджеры по оформлению">
       {/* На мобильном список исполнителей сверху, детали под ним;
           с md — привычные две колонки. */}
       <div className="flex flex-col md:flex-row bg-white rounded-xl border border-gray-200 overflow-hidden">

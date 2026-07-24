@@ -62,6 +62,12 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending }: P
       </div>
 
       <div>
+        <p className={labelCls}>Разработка дизайна, ₽ (входит в чек)</p>
+        <input type="number" min={0} className={inputCls} value={form.designDevelopmentCost ?? 0}
+          onChange={e => set({ designDevelopmentCost: Number(e.target.value) })} />
+      </div>
+
+      <div>
         <p className={labelCls}>Примечание</p>
         <textarea rows={2} className={inputCls + ' resize-none'} value={form.note ?? ''}
           onChange={e => set({ note: e.target.value })} />

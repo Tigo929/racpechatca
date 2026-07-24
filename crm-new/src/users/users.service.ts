@@ -111,12 +111,15 @@ export class UsersService {
     const data: {
       isActive?: boolean;
       rateBasisPoints?: number;
+      designRateBasisPoints?: number;
       telegramUsername?: string | null;
     } = {};
 
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
     if (dto.rateBasisPoints !== undefined)
       data.rateBasisPoints = dto.rateBasisPoints;
+    if (dto.designRateBasisPoints !== undefined)
+      data.designRateBasisPoints = dto.designRateBasisPoints;
     if ('telegramUsername' in dto)
       data.telegramUsername =
         dto.telegramUsername?.replace(/^@/, '').trim() || null;

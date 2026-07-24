@@ -15,7 +15,12 @@ export const usersApi = {
 
   update: async (
     id: string,
-    patch: { isActive?: boolean; rateBasisPoints?: number; telegramUsername?: string | null },
+    patch: {
+      isActive?: boolean;
+      rateBasisPoints?: number;
+      designRateBasisPoints?: number;
+      telegramUsername?: string | null;
+    },
   ): Promise<AppUser> => {
     const { data } = await api.patch<AppUser>(`/users/${id}`, patch);
     return data;

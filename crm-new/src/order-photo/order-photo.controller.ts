@@ -22,6 +22,7 @@ import { OrderPhotoService } from './order-photo.service';
 import { OrderItemService } from './order-item.service';
 import { TshirtItemService } from './tshirt-item.service';
 import { StickerService } from './sticker.service';
+import { DailyPlanService } from './daily-plan.service';
 import DtoCreateOrder from './dto/create-order.dto';
 import DtoAllOrdersforQuery from './dto/all-oreders-for-query.dto';
 import UpdateStatus from './dto/update-status.dto';
@@ -48,24 +49,34 @@ export class OrderPhotoController {
     private readonly orderItemService: OrderItemService,
     private readonly tshirtItemService: TshirtItemService,
     private readonly stickerService: StickerService,
+    private readonly dailyPlanService: DailyPlanService,
   ) {}
+
+  // ── Admin: отправить «план дня» в рабочий чат прямо сейчас ──────────────────
+  // Плановая рассылка идёт автоматически в 10:00 по Москве; этот эндпоинт — для
+  // ручной отправки/проверки.
+  @Post('daily-plan/run')
+  @Roles(EnumRole.ADMIN)
+  runDailyPlan(@Query('dry') dry?: string) {
+    return this.dailyPlanService.runNow(new Date(), { dryRun: dry === 'true' });
+  }
 
   // ── Admin-only: create / update / delete order ─────────────────────────────
 
   @Post()
-  @Roles(EnumRole.ADMIN)
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
   createOrder(@Body() dto: DtoCreateOrder, @CurrentUser() me: RequestUser) {
     return this.orderPhotoService.createOrder(dto, me.id);
   }
 
   @Patch(':idOrder')
-  @Roles(EnumRole.ADMIN)
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
   updateOrder(@Param('idOrder') idOrder: string, @Body() dto: DtoUpdateOrder) {
     return this.orderPhotoService.updateOrder(idOrder, dto);
   }
 
   @Delete(':idOrder')
-  @Roles(EnumRole.ADMIN)
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
   deleteOrder(@Param('idOrder') idOrder: string) {
     return this.orderPhotoService.deleteOrder(idOrder);
   }
@@ -73,7 +84,7 @@ export class OrderPhotoController {
   // ── Admin-only: assign executor ────────────────────────────────────────────
 
   @Patch(':idOrder/assign')
-  @Roles(EnumRole.ADMIN)
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
   assignExecutor(
     @Param('idOrder') idOrder: string,
     @Body() dto: DtoAssignExecutor,
@@ -85,7 +96,7 @@ export class OrderPhotoController {
   // ── Admin-only: PDF-стикер заказа-футболки (58×40 мм) ───────────────────────
 
   @Get(':idOrder/sticker')
-  @Roles(EnumRole.ADMIN)
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
   async getSticker(
     @Param('idOrder') idOrder: string,
     @Res() res: Response,
@@ -116,7 +127,7 @@ export class OrderPhotoController {
   // ── Admin-only: отметка отзыва клиента ──────────────────────────────────────
 
   @Patch(':idOrder/review')
-  @Roles(EnumRole.ADMIN)
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
   setReview(@Param('idOrder') idOrder: string, @Body() dto: DtoSetReview) {
     return this.orderPhotoService.setReviewLeft(idOrder, dto.reviewLeft);
   }
@@ -124,7 +135,7 @@ export class OrderPhotoController {
   // ── Admin-only: add / update / delete items ────────────────────────────────
 
   @Post(':idOrder/items')
-  @Roles(EnumRole.ADMIN)
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
   addItemToOrder(
     @Param('idOrder') idOrder: string,
     @Body() dto: DtoCreateItemOrder,
@@ -133,7 +144,7 @@ export class OrderPhotoController {
   }
 
   @Patch('items/:idItem')
-  @Roles(EnumRole.ADMIN)
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
   updateItemOrder(
     @Param('idItem') idItem: string,
     @Body() dto: DtoUpdateItemOrder,
@@ -142,13 +153,13 @@ export class OrderPhotoController {
   }
 
   @Delete('items/:idItem')
-  @Roles(EnumRole.ADMIN)
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
   deleteItemOrder(@Param('idItem') idItem: string) {
     return this.orderItemService.deleteItemOrder(idItem);
   }
 
   @Post(':idOrder/tshirt-items')
-  @Roles(EnumRole.ADMIN)
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
   addTshirtItem(
     @Param('idOrder') idOrder: string,
     @Body() dto: DtoCreateTshirtItem,
@@ -157,7 +168,7 @@ export class OrderPhotoController {
   }
 
   @Patch('tshirt-items/:idItem')
-  @Roles(EnumRole.ADMIN)
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
   updateTshirtItem(
     @Param('idItem') idItem: string,
     @Body() dto: DtoUpdateTshirtItem,
@@ -166,7 +177,7 @@ export class OrderPhotoController {
   }
 
   @Delete('tshirt-items/:idItem')
-  @Roles(EnumRole.ADMIN)
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
   deleteTshirtItem(@Param('idItem') idItem: string) {
     return this.tshirtItemService.deleteTshirtItem(idItem);
   }

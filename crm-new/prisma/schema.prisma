@@ -17,12 +17,17 @@ model User {
   role            EnumRole @default(EXECUTOR)
   isActive        Boolean  @default(true)
   rateBasisPoints  Int?
+  // Ставка премии за разработку дизайна (в сотых процента). Есть только у роли
+  // ORDER_MANAGER: помимо базовой ставки, менеджер получает этот процент от
+  // суммы «разработка дизайна» в заказе. 4000 = 40%.
+  designRateBasisPoints Int?
   telegramUsername String?
 
   salaryAccruals     SalaryAccrual[]
   salaryPayments     SalaryPayment[]   @relation("SalaryPaymentExecutor")
   authorizedPayments SalaryPayment[]   @relation("SalaryPaymentAuthor")
   assignedOrders     OrderPhoto[]      @relation("OrderExecutor")
+  processedOrders    OrderPhoto[]      @relation("OrderProcessedBy")
   rateHistory        UserRateHistory[]
   expenseOrders      ExpenseOrder[]
   assignedTasks      Task[]            @relation("TaskAssignee")
@@ -32,6 +37,10 @@ model User {
 enum EnumRole {
   ADMIN
   EXECUTOR
+  // Менеджер по оформлению заказов: те же права по заказам, что у админа, но
+  // без доступа к «управляющим» разделам (склад, зарплата, отчёты, сотрудники,
+  // настройки). Получает базовую ставку за оформленный заказ + премию за дизайн.
+  ORDER_MANAGER
 }
 
 model OrderPhoto {
@@ -60,6 +69,16 @@ model OrderPhoto {
   // Когда статус менялся в последний раз. По нему видно «зависшие» заказы:
   // updatedAt для этого не годится — он дёргается от любой правки заказа.
   statusChangedAt DateTime?
+
+  // Стоимость «разработка дизайна» по заказу (свободная цена, без количества).
+  // Входит в totalOrder (клиент платит за неё) и служит базой премии менеджера
+  // по оформлению: см. designRateBasisPoints у пользователя и SalaryAccrual.kind.
+  designDevelopmentCost Int @default(0)
+
+  // Кто оформил заказ. Если это менеджер по оформлению (ORDER_MANAGER) — ему при
+  // переходе в «Отправлен» начисляется зарплата (базовая ставка + премия дизайна).
+  processedById String?
+  processedBy   User?   @relation("OrderProcessedBy", fields: [processedById], references: [id])
 
   // Модель футболки — производственные данные, уходят исполнителю-партнёру.
   tshirtModel String?
@@ -90,6 +109,7 @@ model OrderPhoto {
 
   @@index([status])
   @@index([executorId])
+  @@index([processedById])
   @@index([createdAt])
   @@index([productCategory])
   @@index([status, productCategory])
@@ -277,6 +297,16 @@ enum EnumAccrualStatus {
   REVERSED
 }
 
+/// Кому и за что начисление.
+///  - EXECUTOR: исполнителю за производство (база = чек − доставка).
+///  - MANAGER:  менеджеру по оформлению. salaryAmount = базовая часть
+///    (salaryBase × rateBasisPoints) + премия за дизайн (designBase ×
+///    designRateBasisPoints). salaryBase здесь = чек − доставка − дизайн.
+enum EnumAccrualKind {
+  EXECUTOR
+  MANAGER
+}
+
 model SalaryAccrual {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
@@ -288,9 +318,16 @@ model SalaryAccrual {
   executorId String
   executor   User   @relation(fields: [executorId], references: [id])
 
+  kind EnumAccrualKind @default(EXECUTOR)
+
   salaryBase      Int
   rateBasisPoints Int
   salaryAmount    Int
+
+  // Только для kind=MANAGER: база и ставка премии за разработку дизайна.
+  // Часть salaryAmount = round(designBase × designRateBasisPoints / 10000).
+  designBase            Int @default(0)
+  designRateBasisPoints Int @default(0)
 
   status     EnumAccrualStatus @default(PENDING)
   paidAmount Int               @default(0)
@@ -299,6 +336,7 @@ model SalaryAccrual {
 
   @@index([executorId, status])
   @@index([orderId, status])
+  @@index([orderId, kind])
 }
 
 model SalaryPayment {
@@ -441,4 +479,13 @@ enum EnumTaskStatus {
   IN_PROGRESS
   DONE
   CANCELLED
+}
+
+/// Одна строка на всю систему для флагов планировщиков. Нужна, чтобы
+/// ежедневные рассылки (например, план дня) не повторялись при рестарте
+/// контейнера: храним дату последней отправки по Москве (YYYY-MM-DD).
+model AppState {
+  id                  String  @id @default("default")
+  updatedAt           DateTime @updatedAt
+  dailyPlanLastSentOn String?
 }

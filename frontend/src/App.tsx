@@ -35,6 +35,15 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Разделы заказов, доступные и админу, и менеджеру по оформлению. */
+function OrderStaffRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/crm/login" replace />;
+  if (user.role !== 'ADMIN' && user.role !== 'ORDER_MANAGER')
+    return <Navigate to="/crm" replace />;
+  return <>{children}</>;
+}
+
 /** Гейт проверки токена — ждём, пока AuthProvider определит пользователя. */
 function CrmGate({ children }: { children: React.ReactNode }) {
   const { loading } = useAuth();
@@ -60,8 +69,8 @@ function AppRoutes() {
             страницу пересоздаться при переходе, чтобы фильтры не перетекали
             из одного раздела в другой. */}
         <Route path="/crm/photo" element={<CrmGate><PrivateRoute><OrdersPage key="photo" section="PHOTO" /></PrivateRoute></CrmGate>} />
-        <Route path="/crm/tshirt" element={<CrmGate><AdminRoute><OrdersPage key="tshirt" section="TSHIRT" /></AdminRoute></CrmGate>} />
-        <Route path="/crm/leads" element={<CrmGate><AdminRoute><OrdersPage key="leads" section="LEADS" /></AdminRoute></CrmGate>} />
+        <Route path="/crm/tshirt" element={<CrmGate><OrderStaffRoute><OrdersPage key="tshirt" section="TSHIRT" /></OrderStaffRoute></CrmGate>} />
+        <Route path="/crm/leads" element={<CrmGate><OrderStaffRoute><OrdersPage key="leads" section="LEADS" /></OrderStaffRoute></CrmGate>} />
         {/* Задачи видят все: администратор ставит, исполнитель ведёт свои */}
         <Route path="/crm/tasks" element={<CrmGate><PrivateRoute><TasksPage /></PrivateRoute></CrmGate>} />
         <Route path="/crm" element={<Navigate to="/crm/photo" replace />} />

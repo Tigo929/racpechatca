@@ -29,7 +29,9 @@ import { PartnerOutboundService } from './partner-outbound.service';
  */
 @Controller('order-photo')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(EnumRole.ADMIN)
+// Менеджер по оформлению ведёт заказы наравне с админом: отправка партнёру и
+// ТЗ-фото — часть оформления заказа-футболки.
+@Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
 export class PartnerAdminController {
   constructor(
     private readonly prisma: PrismaService,

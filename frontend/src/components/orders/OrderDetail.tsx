@@ -52,8 +52,15 @@ function generateConfirmationText(order: OrderPhoto): string {
   tshirtItems.forEach(i => {
     lines.push(`• Футболка ${i.color}, р-р ${i.size} × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
   });
+  // Разработка дизайна — такая же позиция состава: она входит в итог заказа,
+  // и без этой строки «сумма по позициям» не сходилась бы с «итого к оплате».
+  const designCost = order.designDevelopmentCost ?? 0;
+  if (designCost > 0) {
+    lines.push(`• Разработка дизайна — ${designCost.toLocaleString('ru-RU')} ₽`);
+  }
 
-  const itemsTotal = [...items, ...tshirtItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0);
+  const itemsTotal =
+    [...items, ...tshirtItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0) + designCost;
   const separator = '─────────────────';
 
   const isPickup = order.deliveryMethod === 'PICKUP';
@@ -105,8 +112,15 @@ function generateReadyText(order: OrderPhoto): string {
   tshirtItems.forEach(i => {
     lines.push(`• Футболка ${i.color}, р-р ${i.size} × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
   });
+  // Разработка дизайна — такая же позиция состава: она входит в итог заказа,
+  // и без этой строки «сумма по позициям» не сходилась бы с «итого к оплате».
+  const designCost = order.designDevelopmentCost ?? 0;
+  if (designCost > 0) {
+    lines.push(`• Разработка дизайна — ${designCost.toLocaleString('ru-RU')} ₽`);
+  }
 
-  const itemsTotal = [...items, ...tshirtItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0);
+  const itemsTotal =
+    [...items, ...tshirtItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0) + designCost;
   const separator = '─────────────────';
   const isPickup = order.deliveryMethod === 'PICKUP';
   const pickupAddr = resolvePickupAddress(order);
@@ -235,7 +249,10 @@ interface Props {
 
 export function OrderDetail({ orderId, onDeleted }: Props) {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'ADMIN';
+  // Менеджер по оформлению управляет заказами как админ (и видит суммы заказа).
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'ORDER_MANAGER';
+  // Разбивку прибыли владельца (расчёт с партнёром) видит только сам владелец.
+  const isOwner = user?.role === 'ADMIN';
 
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
@@ -250,7 +267,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
   const { data: partnerSettings } = useQuery({
     queryKey: ['partner-settings'],
     queryFn: partnerSettingsApi.get,
-    enabled: isAdmin && order?.productCategory === 'TSHIRT',
+    enabled: isOwner && order?.productCategory === 'TSHIRT',
     staleTime: 60_000,
   });
 
@@ -359,6 +376,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       urlCommunication: urlComm,
       deliveryMethod: order.deliveryMethod,
       deliveryCost: order.deliveryCost,
+      designDevelopmentCost: order.designDevelopmentCost ?? 0,
       note: order.note,
     });
     setEditing(true);
@@ -647,6 +665,9 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           {isAdmin && (
             <>
               <InfoRow label="Доставка" value={`${(order.deliveryCost ?? 0).toLocaleString()} ₽`} />
+              {(order.designDevelopmentCost ?? 0) > 0 && (
+                <InfoRow label="Разработка дизайна" value={`${(order.designDevelopmentCost ?? 0).toLocaleString()} ₽`} />
+              )}
               {order.note && <InfoRow label="Примечание" value={order.note} className="sm:col-span-2" />}
               <div className="sm:col-span-2 pt-2 border-t border-gray-100 flex justify-end">
                 <div className="text-right">

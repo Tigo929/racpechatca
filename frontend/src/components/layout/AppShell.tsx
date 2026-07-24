@@ -245,7 +245,11 @@ function UserBlock({ user, onLogout }: { user: NavProps['user']; onLogout: () =>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-white truncate">{user?.username}</p>
         <p className="text-xs" style={{ color: '#A5B4FC' }}>
-          {user?.role === 'ADMIN' ? 'Администратор' : 'Исполнитель'}
+          {user?.role === 'ADMIN'
+            ? 'Администратор'
+            : user?.role === 'ORDER_MANAGER'
+              ? 'Менеджер по оформлению'
+              : 'Исполнитель'}
         </p>
       </div>
       <button

@@ -217,9 +217,14 @@ export function TshirtItemsTable({ order }: Props) {
     designUrl: s.designUrl.trim() || undefined,
   });
 
+  // Разработка дизайна — полноценная позиция состава: входит в чек клиента,
+  // поэтому и показываем её в списке, и считаем в итоге по позициям.
+  const designCost = order.designDevelopmentCost ?? 0;
+
   const totalPositions =
     order.tshirtItems.reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
-    order.items.reduce((s, i) => s + (i.pricePosition ?? 0), 0);
+    order.items.reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
+    designCost;
 
   const addPending = addMutation.isPending || addFreeMutation.isPending;
 
@@ -386,7 +391,18 @@ export function TshirtItemsTable({ order }: Props) {
           </div>
         )}
 
-        {isAdmin && (order.tshirtItems.length > 0 || order.items.length > 0) && (
+        {designCost > 0 && (
+          <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border border-gray-100 bg-gray-50">
+            <span className="text-sm text-gray-700">Разработка дизайна</span>
+            {isAdmin && (
+              <span className="text-sm font-semibold tabular-nums">
+                {designCost.toLocaleString()} ₽
+              </span>
+            )}
+          </div>
+        )}
+
+        {isAdmin && (order.tshirtItems.length > 0 || order.items.length > 0 || designCost > 0) && (
           <div className="flex justify-end px-2 py-1 text-sm">
             <span className="text-gray-500 mr-2">Итого по позициям</span>
             <span className="font-semibold">{totalPositions.toLocaleString()} ₽</span>

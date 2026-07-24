@@ -149,7 +149,7 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
       });
 
       for (const order of orders) {
-        const ok = await this.telegram.sendToGroup(
+        const ok = await this.telegram.sendReviewReminder(
           this.buildGroupNotification(order),
         );
         if (!ok) continue;

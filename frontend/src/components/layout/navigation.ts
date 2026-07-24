@@ -30,9 +30,12 @@ export interface NavGroup {
   items: NavItem[];
 }
 
-const ALL: Role[] = ['ADMIN', 'EXECUTOR'];
+const ALL: Role[] = ['ADMIN', 'EXECUTOR', 'ORDER_MANAGER'];
 const ADMIN: Role[] = ['ADMIN'];
-const EXECUTOR: Role[] = ['EXECUTOR'];
+// Заказами менеджер по оформлению управляет наравне с админом.
+const AD_MGR: Role[] = ['ADMIN', 'ORDER_MANAGER'];
+// «Личный кабинет» по деньгам — у тех, кому начисляется зарплата.
+const SALARIED: Role[] = ['EXECUTOR', 'ORDER_MANAGER'];
 
 export const NAV_GROUPS: NavGroup[] = [
   {
@@ -40,13 +43,14 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Работа',
     items: [
       { to: '/crm/photo', label: 'Фотопечать', icon: Camera, roles: ALL, primary: true },
-      { to: '/crm/tshirt', label: 'Футболки', icon: Shirt, roles: ADMIN, primary: true },
-      { to: '/crm/leads', label: 'Обращения', icon: Bell, roles: ADMIN, badge: 'leads', primary: true },
+      { to: '/crm/tshirt', label: 'Футболки', icon: Shirt, roles: AD_MGR, primary: true },
+      { to: '/crm/leads', label: 'Обращения', icon: Bell, roles: AD_MGR, badge: 'leads', primary: true },
       { to: '/crm/tasks', label: 'Задачи', icon: CheckSquare, roles: ALL, badge: 'tasks', primary: true },
     ],
   },
   {
-    // Управление — сюда заходят по необходимости, а не постоянно.
+    // Управление — «управляющие позиции»: доступны только администратору.
+    // Менеджер по оформлению сюда не заходит.
     title: 'Управление',
     items: [
       { to: '/crm/salary', label: 'Зарплата', icon: Wallet, roles: ADMIN },
@@ -58,7 +62,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Личное',
     items: [
-      { to: '/crm/my-salary', label: 'Моя зарплата', icon: Wallet, roles: EXECUTOR, primary: true },
+      { to: '/crm/my-salary', label: 'Моя зарплата', icon: Wallet, roles: SALARIED, primary: true },
     ],
   },
 ];

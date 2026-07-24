@@ -12,10 +12,10 @@ import { DtoCreatePaymentByAccruals } from './dto/create-payment-by-accruals.dto
 export class SalaryService {
   constructor(private prisma: PrismaService) {}
 
-  /** Сводка по всем исполнителям: начисления и долг. */
+  /** Сводка по всем получателям зарплаты: исполнители и менеджеры по оформлению. */
   async getSummary() {
     const executors = await this.prisma.user.findMany({
-      where: { role: 'EXECUTOR' },
+      where: { role: { in: ['EXECUTOR', 'ORDER_MANAGER'] } },
       orderBy: { createdAt: 'asc' },
       include: {
         salaryAccruals: {
@@ -64,12 +64,15 @@ export class SalaryService {
       return {
         id: ex.id,
         username: ex.username,
+        role: ex.role,
         isActive: ex.isActive,
         rateBasisPoints: ex.rateBasisPoints,
         ratePercent:
           ex.rateBasisPoints === null
             ? null
             : (ex.rateBasisPoints / 100).toFixed(2),
+        // Ставка премии за дизайн — только у менеджера по оформлению.
+        designRateBasisPoints: ex.designRateBasisPoints,
         totalDebt,
         totalPaid,
         pendingAccruals: pending.map((a) => ({
@@ -78,8 +81,11 @@ export class SalaryService {
           completedAt: a.order.completedAt,
           urlCommunication: a.order.urlCommunication,
           communicationPlatform: a.order.communicationPlatform,
+          kind: a.kind,
           salaryBase: a.salaryBase,
           rateBasisPoints: a.rateBasisPoints,
+          designBase: a.designBase,
+          designRateBasisPoints: a.designRateBasisPoints,
           salaryAmount: a.salaryAmount,
           paidAmount: a.paidAmount,
           debt: a.salaryAmount - a.paidAmount,

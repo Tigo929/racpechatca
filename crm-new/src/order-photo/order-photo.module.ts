@@ -8,6 +8,7 @@ import { LeadController } from './lead.controller';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
 import { TelegramModule } from 'src/telegram/telegram.module';
 import { ReviewReminderService } from './review-reminder.service';
+import { DailyPlanService } from './daily-plan.service';
 import { PartnerSettingsModule } from 'src/partner/partner-settings.module';
 
 @Module({
@@ -19,6 +20,7 @@ import { PartnerSettingsModule } from 'src/partner/partner-settings.module';
     TshirtItemService,
     OrderFinancialIntegrityService,
     ReviewReminderService,
+    DailyPlanService,
   ],
 })
 export class OrderPhotoModule {}
