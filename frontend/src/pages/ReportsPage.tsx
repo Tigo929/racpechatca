@@ -351,7 +351,7 @@ export function ReportsPage() {
       actions={
         <button
           onClick={() => setShowAddExpense(true)}
-          className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          className="px-3.5 min-h-[44px] bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
           <span className="hidden sm:inline">+ Расходный ордер</span>
           <span className="sm:hidden">+ Расход</span>
