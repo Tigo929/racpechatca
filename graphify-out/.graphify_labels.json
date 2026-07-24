@@ -125,5 +125,6 @@
   "123": "@types/multer",
   "124": "@types/passport-jwt",
   "125": "@types/pdfkit",
-  "126": "typescript"
+  "126": "typescript",
+  "127": "eslint-config-prettier"
 }

@@ -10,6 +10,7 @@ import { ExpensesModule } from './expenses/expenses.module';
 import { PartnerModule } from './partner/partner.module';
 import { PartnerSettingsModule } from './partner/partner-settings.module';
 import { TasksModule } from './tasks/tasks.module';
+import { AvitoModule } from './avito/avito.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthController } from './health.controller';
 
@@ -28,6 +29,7 @@ import { HealthController } from './health.controller';
     PartnerModule,
     PartnerSettingsModule,
     TasksModule,
+    AvitoModule,
   ],
   controllers: [HealthController],
   providers: [],

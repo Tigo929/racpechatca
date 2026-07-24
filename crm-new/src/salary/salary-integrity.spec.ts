@@ -682,7 +682,7 @@ function makePaymentByAccrualsHarness(
     },
 
     paymentAccrualLink: {
-      create: jest.fn(() => Promise.resolve({ id: 'link-1' })),
+      create: jest.fn((_args: unknown) => Promise.resolve({ id: 'link-1' })),
     },
 
     orderPhoto: {
