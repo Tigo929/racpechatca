@@ -570,6 +570,7 @@ export interface AvitoMessengerSyncResult {
   skipped?: boolean;
   chatsSynced?: number;
   messagesSynced?: number;
+  errors?: string[];
 }
 
 /* ---------- Расчёт с партнёром (футболки) ---------- */

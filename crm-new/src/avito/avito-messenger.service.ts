@@ -47,7 +47,11 @@ export class AvitoMessengerService implements OnModuleInit, OnModuleDestroy {
         );
       });
     }, intervalMs);
-    void this.syncLatest();
+    void this.syncLatest().catch((err) => {
+      this.logger.warn(
+        `Avito Messenger initial sync failed: ${err instanceof Error ? err.message : err}`,
+      );
+    });
   }
 
   onModuleDestroy() {
@@ -64,14 +68,21 @@ export class AvitoMessengerService implements OnModuleInit, OnModuleDestroy {
         chatTypes: ['u2i'],
       });
       let messagesSynced = 0;
+      const errors: string[] = [];
       for (const chat of chats) {
-        await this.upsertChat(chat);
-        messagesSynced += await this.syncMessages(
-          chat.id,
-          DEFAULT_MESSAGE_LIMIT,
-        );
+        try {
+          await this.upsertChat(chat);
+          messagesSynced += await this.syncMessages(
+            chat.id,
+            DEFAULT_MESSAGE_LIMIT,
+          );
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          errors.push(`${chat.id}: ${message}`);
+          this.logger.warn(`Avito chat sync skipped: ${message}`);
+        }
       }
-      return { chatsSynced: chats.length, messagesSynced };
+      return { chatsSynced: chats.length, messagesSynced, errors };
     } finally {
       this.syncInFlight = false;
     }
