@@ -52,8 +52,15 @@ function generateConfirmationText(order: OrderPhoto): string {
   tshirtItems.forEach(i => {
     lines.push(`• Футболка ${i.color}, р-р ${i.size} × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
   });
+  // Разработка дизайна — такая же позиция состава: она входит в итог заказа,
+  // и без этой строки «сумма по позициям» не сходилась бы с «итого к оплате».
+  const designCost = order.designDevelopmentCost ?? 0;
+  if (designCost > 0) {
+    lines.push(`• Разработка дизайна — ${designCost.toLocaleString('ru-RU')} ₽`);
+  }
 
-  const itemsTotal = [...items, ...tshirtItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0);
+  const itemsTotal =
+    [...items, ...tshirtItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0) + designCost;
   const separator = '─────────────────';
 
   const isPickup = order.deliveryMethod === 'PICKUP';
@@ -105,8 +112,15 @@ function generateReadyText(order: OrderPhoto): string {
   tshirtItems.forEach(i => {
     lines.push(`• Футболка ${i.color}, р-р ${i.size} × ${i.quantity} шт — ${i.pricePosition.toLocaleString('ru-RU')} ₽`);
   });
+  // Разработка дизайна — такая же позиция состава: она входит в итог заказа,
+  // и без этой строки «сумма по позициям» не сходилась бы с «итого к оплате».
+  const designCost = order.designDevelopmentCost ?? 0;
+  if (designCost > 0) {
+    lines.push(`• Разработка дизайна — ${designCost.toLocaleString('ru-RU')} ₽`);
+  }
 
-  const itemsTotal = [...items, ...tshirtItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0);
+  const itemsTotal =
+    [...items, ...tshirtItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0) + designCost;
   const separator = '─────────────────';
   const isPickup = order.deliveryMethod === 'PICKUP';
   const pickupAddr = resolvePickupAddress(order);

@@ -97,17 +97,23 @@ export function AppShell({
       )}
 
       <div className="lg:pl-[232px]">
+        {/* paddingTop = безопасная зона: в index.html стоит viewport-fit=cover и
+            прозрачный статус-бар, поэтому без этого отступа шапка уезжает под
+            «динамический остров» айфона и её кнопки нельзя нажать. */}
         <header
           className="sticky top-0 z-20 border-b border-indigo-900/40"
-          style={{ background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 100%)' }}
+          style={{
+            background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 100%)',
+            paddingTop: 'env(safe-area-inset-top)',
+          }}
         >
-          <div className={`${maxW} mx-auto px-4 sm:px-6 py-3 flex items-center gap-3`}>
+          <div className={`${maxW} mx-auto px-4 sm:px-6 py-2 sm:py-3 flex items-center gap-2 sm:gap-3`}>
             <button
               onClick={() => setDrawerOpen(true)}
               aria-label="Открыть меню"
-              className="lg:hidden p-2 -ml-2 text-indigo-200 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              className="lg:hidden -ml-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-indigo-200 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             >
-              <Menu size={20} aria-hidden="true" />
+              <Menu size={22} aria-hidden="true" />
             </button>
 
             <div className="min-w-0 flex-1">
@@ -126,9 +132,9 @@ export function AppShell({
                 <button
                   onClick={onRefresh}
                   aria-label="Обновить данные"
-                  className="p-2 text-indigo-300 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-indigo-300 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                 >
-                  <RefreshCw size={16} aria-hidden="true" />
+                  <RefreshCw size={18} aria-hidden="true" />
                 </button>
               )}
               {actions}
@@ -280,16 +286,22 @@ function MobileDrawer({ onClose, ...props }: NavProps & { onClose: () => void })
       />
       <div
         className="relative flex flex-col w-72 max-w-[85vw] h-full shadow-2xl"
-        style={{ background: 'linear-gradient(180deg, #1E1B4B 0%, #262263 100%)' }}
+        style={{
+          background: 'linear-gradient(180deg, #1E1B4B 0%, #262263 100%)',
+          // Как и в шапке: не даём содержимому уехать под «остров» и под
+          // нижнюю полосу жестов айфона.
+          paddingTop: 'env(safe-area-inset-top)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
       >
         <div className="flex items-center justify-between pr-2">
           <Brand />
           <button
             onClick={onClose}
             aria-label="Закрыть меню"
-            className="p-2 text-indigo-300 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-indigo-300 hover:text-white rounded-lg hover:bg-indigo-800 transition-colors"
           >
-            <X size={20} aria-hidden="true" />
+            <X size={22} aria-hidden="true" />
           </button>
         </div>
         <NavList {...props} />
