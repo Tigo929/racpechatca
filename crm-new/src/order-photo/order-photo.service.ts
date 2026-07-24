@@ -24,7 +24,6 @@ import {
 import type { Prisma } from 'src/generated/prisma/client';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
 import { calculateSalarySnapshot } from 'src/salary/salary-calculation';
-import { StockService } from 'src/stock/stock.service';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 
@@ -103,7 +102,6 @@ export class OrderPhotoService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly financialIntegrity: OrderFinancialIntegrityService,
-    private readonly stock: StockService,
     private readonly telegram: TelegramService,
     private readonly partnerSettings: PartnerSettingsService,
   ) {}
@@ -847,14 +845,10 @@ export class OrderPhotoService {
         },
       });
 
-      // Склад: списываем остаток при переходе в «Отправлен» (блок при нехватке),
-      // возвращаем при уходе из «Отправлен».
+      // Уход из «Отправлен» — снимаем незакрытое начисление зарплаты.
+      // (Склад футболок отключён: заготовки предоставляет партнёр, свой
+      // остаток мы не ведём и при смене статуса ничего не списываем.)
       if (
-        newStatus === EnumStatus.SENT &&
-        lockedOrder.status !== EnumStatus.SENT
-      ) {
-        await this.stock.consumeForOrder(id, tx);
-      } else if (
         lockedOrder.status === EnumStatus.SENT &&
         newStatus !== EnumStatus.SENT
       ) {
@@ -872,7 +866,6 @@ export class OrderPhotoService {
           }
           await tx.salaryAccrual.delete({ where: { id: activeAccrual.id } });
         }
-        await this.stock.returnForOrder(id, tx);
       }
 
       // При переводе в SENT создаём начисление зарплаты исполнителю.
@@ -1042,9 +1035,6 @@ export class OrderPhotoService {
     await this.getOrderById(idOrder, '', EnumRole.ADMIN);
 
     return this.prisma.$transaction(async (tx) => {
-      // Возвращаем списанный со склада остаток (если заказ был отправлен).
-      await this.stock.returnForOrder(idOrder, tx);
-
       // Удаляем все начисления (любой статус) и их платёжные связи
       const accruals = await tx.salaryAccrual.findMany({
         where: { orderId: idOrder },

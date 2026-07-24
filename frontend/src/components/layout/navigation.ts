@@ -1,5 +1,5 @@
 import {
-  BarChart3, Bell, Boxes, Camera, CheckSquare, Settings, Shirt, Users, Wallet,
+  BarChart3, Bell, Camera, CheckSquare, Settings, Shirt, Users, Wallet,
   type LucideIcon,
 } from 'lucide-react';
 import type { EnumRole as Role } from '../../types/index';
@@ -49,7 +49,6 @@ export const NAV_GROUPS: NavGroup[] = [
     // Управление — сюда заходят по необходимости, а не постоянно.
     title: 'Управление',
     items: [
-      { to: '/crm/stock', label: 'Склад', icon: Boxes, roles: ADMIN },
       { to: '/crm/salary', label: 'Зарплата', icon: Wallet, roles: ADMIN },
       { to: '/crm/reports', label: 'Отчёты', icon: BarChart3, roles: ADMIN },
       { to: '/crm/users', label: 'Сотрудники', icon: Users, roles: ADMIN },

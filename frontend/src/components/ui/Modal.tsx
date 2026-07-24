@@ -65,15 +65,22 @@ export function Modal({ open, onClose, title, children, size = 'md' }: Props) {
         aria-labelledby={titleId}
         className={`relative bg-white rounded-none sm:rounded-2xl shadow-xl w-full ${widths[size]} max-h-[100dvh] sm:max-h-[90vh] flex flex-col overscroll-contain`}
       >
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-100">
+        {/* На телефоне модалка раскрывается во весь экран, поэтому её шапка
+            упирается в «динамический остров» — и крестик становится
+            ненажимаемым. Отступ по безопасной зоне решает это; на десктопе
+            inset = 0, и остаётся обычный отступ 1rem. */}
+        <div
+          className="flex items-center justify-between gap-2 px-4 sm:px-6 pb-4 border-b border-gray-100"
+          style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
+        >
           <h2 id={titleId} className="text-lg font-semibold text-gray-900">{title}</h2>
           <button
             ref={closeRef}
             onClick={onClose}
             aria-label="Закрыть"
-            className="p-2 -mr-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+            className="-mr-1 min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
           >
-            <X size={20} aria-hidden="true" />
+            <X size={22} aria-hidden="true" />
           </button>
         </div>
         <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">

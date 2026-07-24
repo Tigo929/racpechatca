@@ -7,7 +7,6 @@ import { UsersModule } from './users/users.module';
 import { SalaryModule } from './salary/salary.module';
 import { ReportsModule } from './reports/reports.module';
 import { ExpensesModule } from './expenses/expenses.module';
-import { StockModule } from './stock/stock.module';
 import { PartnerModule } from './partner/partner.module';
 import { PartnerSettingsModule } from './partner/partner-settings.module';
 import { TasksModule } from './tasks/tasks.module';
@@ -26,7 +25,6 @@ import { HealthController } from './health.controller';
     SalaryModule,
     ReportsModule,
     ExpensesModule,
-    StockModule,
     PartnerModule,
     PartnerSettingsModule,
     TasksModule,
