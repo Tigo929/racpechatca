@@ -71,11 +71,16 @@ describe('summarizeItems', () => {
 describe('buildDailyPlanMessage', () => {
   const maksim = {
     executor: { username: 'maksim', telegramUsername: 'maksim_tg' },
-    orders: [future, urgent], // намеренно не по порядку
+    inWork: [future, urgent], // намеренно не по порядку
+    ready: [
+      { numberOrder: 'R-SHIP', deliveryMethod: 'YANDEX_PVZ', items: [] },
+      { numberOrder: 'R-PICKUP', deliveryMethod: 'PICKUP', items: [] },
+    ],
   };
   const lesha = {
     executor: { username: 'lesha', telegramUsername: null },
-    orders: [today],
+    inWork: [today],
+    ready: [],
   };
 
   it('исполнитель с самой горящей задачей идёт первым, внутри — срочное сверху', () => {
@@ -93,6 +98,28 @@ describe('buildDailyPlanMessage', () => {
     expect(msg).toContain('lesha'); // без ника — по имени
     expect(msg).toContain('🔥');
     expect(msg).toContain('СРОЧНО');
+  });
+
+  it('блок «Готовы»: отгрузка помечена 🚚 и способом, самовывоз — 📦', () => {
+    const msg = buildDailyPlanMessage([maksim], NOW, 0);
+    expect(msg).toContain('Готовы (2)');
+    expect(msg).toContain('🚚');
+    expect(msg).toContain('отгрузить · Яндекс ПВЗ');
+    expect(msg).toContain('📦');
+    expect(msg).toContain('самовывоз');
+    // отгрузка идёт раньше самовывоза
+    expect(msg.indexOf('R-SHIP')).toBeLessThan(msg.indexOf('R-PICKUP'));
+  });
+
+  it('исполнитель только с готовыми заказами тоже попадает в план', () => {
+    const readyOnly = {
+      executor: { username: 'ready_guy', telegramUsername: null },
+      inWork: [],
+      ready: [{ numberOrder: 'R-ONLY', deliveryMethod: 'PICKUP', items: [] }],
+    };
+    const msg = buildDailyPlanMessage([readyOnly], NOW, 0);
+    expect(msg).toContain('ready_guy');
+    expect(msg).toContain('R-ONLY');
   });
 
   it('показывает предупреждение о заказах без исполнителя', () => {

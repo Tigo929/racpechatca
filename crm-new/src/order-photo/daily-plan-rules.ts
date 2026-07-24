@@ -27,6 +27,21 @@ export const PLAN_IN_WORK_STATUSES: EnumStatus[] = [
   EnumStatus.PRINTED,
 ];
 
+/** Статусы «готов» — работа сдана, заказ ждёт отгрузки или выдачи. */
+export const PLAN_READY_STATUSES: EnumStatus[] = [
+  EnumStatus.READY,
+  EnumStatus.DONE,
+];
+
+/** Способы доставки, требующие отгрузки (всё, кроме самовывоза). */
+const DELIVERY_LABEL: Record<string, string> = {
+  YANDEX_PVZ: 'Яндекс ПВЗ',
+  OZON_PVZ: 'Ozon ПВЗ',
+  OZON_SELLER: 'Ozon Продавец',
+  WB_SELLER: 'WB Продавец',
+  PICKUP: 'Самовывоз',
+};
+
 /** Рабочее окно рассылки плана: 10:00–21:59 по Москве. */
 export function isWithinPlanWindow(date: Date): boolean {
   const hour = moscowHour(date);
@@ -41,9 +56,16 @@ export interface PlanOrder {
   items: { formatPaper: string; quantity: number }[];
 }
 
+export interface ReadyOrder {
+  numberOrder: string;
+  deliveryMethod: string;
+  items: { formatPaper: string; quantity: number }[];
+}
+
 export interface PlanGroup {
   executor: { username: string; telegramUsername: string | null };
-  orders: PlanOrder[];
+  inWork: PlanOrder[];
+  ready: ReadyOrder[];
 }
 
 /**
@@ -75,6 +97,11 @@ export function orderMarker(order: PlanOrder, now: Date): string {
   return '🟢';
 }
 
+/** Нужна ли отгрузка (не самовывоз). */
+export function needsShipping(deliveryMethod: string): boolean {
+  return deliveryMethod !== 'PICKUP';
+}
+
 /** «10×15 ×20, Polaroid ×5» — краткий состав, максимум 3 формата. */
 export function summarizeItems(
   items: { formatPaper: string; quantity: number }[],
@@ -85,17 +112,24 @@ export function summarizeItems(
     const key = it.formatPaper?.trim() || 'позиция';
     byFormat.set(key, (byFormat.get(key) ?? 0) + (it.quantity ?? 0));
   }
-  const parts = [...byFormat].map(
-    ([f, q]) => `${escapeHtml(f)} ×${q}`,
-  );
+  const parts = [...byFormat].map(([f, q]) => `${escapeHtml(f)} ×${q}`);
   const shown = parts.slice(0, 3).join(', ');
   return parts.length > 3 ? `${shown}, …` : shown;
 }
 
-/** Хвост строки: срочность + человекочитаемый срок. */
-function orderTail(order: PlanOrder, now: Date): string {
+/** Хвост строки задачи в работе: срочность + человекочитаемый срок. */
+function inWorkTail(order: PlanOrder, now: Date): string {
   const label = formatDeadlineLabel(effectiveDeadline(order), now);
   return order.isUrgent ? `<b>СРОЧНО</b>, ${label}` : label;
+}
+
+/** Строка готового заказа: 🚚 отгрузить · <способ> либо 📦 самовывоз. */
+function readyLine(order: ReadyOrder): string {
+  const ship = needsShipping(order.deliveryMethod);
+  const marker = ship ? '🚚' : '📦';
+  const label = DELIVERY_LABEL[order.deliveryMethod] ?? order.deliveryMethod;
+  const action = ship ? `отгрузить · ${escapeHtml(label)}` : 'самовывоз';
+  return `${marker} <b>#${escapeHtml(order.numberOrder)}</b> · ${summarizeItems(order.items)} — ${action}`;
 }
 
 function dayMonth(now: Date): string {
@@ -104,40 +138,10 @@ function dayMonth(now: Date): string {
   return `${dd}.${mm}`;
 }
 
-/**
- * Собирает одно сообщение-план на весь день. Исполнители идут по «накалу»:
- * у кого самая горящая задача — тот выше. Внутри исполнителя — тоже сначала
- * срочное/просроченное, ниже спокойное.
- */
-export function buildDailyPlanMessage(
-  groups: PlanGroup[],
-  now: Date,
-  unassignedCount = 0,
-): string {
-  const sortedGroups = groups
-    .map((g) => ({
-      ...g,
-      orders: g.orders.slice().sort((a, b) => priorityKey(a, now) - priorityKey(b, now)),
-    }))
-    // Исполнитель с самой горящей задачей — первым.
-    .sort((a, b) => priorityKey(a.orders[0], now) - priorityKey(b.orders[0], now));
-
-  const blocks = sortedGroups.map((group) => {
-    const head = `<b>${mentionFor(group.executor)}</b> — ${group.orders.length} ${orderWord(group.orders.length)} в работе`;
-    const lines = group.orders.map((order) => {
-      const marker = orderMarker(order, now);
-      return `${marker} <b>#${escapeHtml(order.numberOrder)}</b> · ${summarizeItems(order.items)} — ${orderTail(order, now)}`;
-    });
-    return [head, ...lines].join('\n');
-  });
-
-  const header = `🌅 <b>План на ${dayMonth(now)}</b> — доброе утро!`;
-  const footer =
-    unassignedCount > 0
-      ? `\n⚠️ Без исполнителя в работе: <b>${unassignedCount}</b> ${orderWord(unassignedCount)} — назначьте исполнителя.`
-      : '';
-
-  return [header, '', blocks.join('\n\n'), footer].filter(Boolean).join('\n');
+/** Ключ сортировки исполнителя: самая горящая задача в работе; без работы — в конец. */
+function executorKey(group: PlanGroup, now: Date): number {
+  if (group.inWork.length === 0) return Number.POSITIVE_INFINITY;
+  return Math.min(...group.inWork.map((o) => priorityKey(o, now)));
 }
 
 function orderWord(n: number): string {
@@ -146,4 +150,57 @@ function orderWord(n: number): string {
   if (mod10 === 1 && mod100 !== 11) return 'заказ';
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'заказа';
   return 'заказов';
+}
+
+/**
+ * Собирает одно сообщение-план на весь день. Исполнители идут по «накалу»:
+ * у кого самая горящая задача в работе — тот выше. У каждого две подсекции:
+ * «в работе» (что делать, срочное сверху) и «готовы» (что отгрузить/выдать).
+ */
+export function buildDailyPlanMessage(
+  groups: PlanGroup[],
+  now: Date,
+  unassignedCount = 0,
+): string {
+  const blocks = groups
+    .slice()
+    .sort((a, b) => executorKey(a, now) - executorKey(b, now))
+    .map((group) => {
+      const lines: string[] = [`👤 <b>${mentionFor(group.executor)}</b>`];
+
+      if (group.inWork.length > 0) {
+        lines.push(`🔧 В работе (${group.inWork.length}):`);
+        for (const order of group.inWork
+          .slice()
+          .sort((a, b) => priorityKey(a, now) - priorityKey(b, now))) {
+          lines.push(
+            `${orderMarker(order, now)} <b>#${escapeHtml(order.numberOrder)}</b> · ${summarizeItems(order.items)} — ${inWorkTail(order, now)}`,
+          );
+        }
+      }
+
+      if (group.ready.length > 0) {
+        lines.push(`✅ Готовы (${group.ready.length}):`);
+        // Сначала то, что надо отгружать, — там больше действий; самовывоз ниже.
+        for (const order of group.ready
+          .slice()
+          .sort(
+            (a, b) =>
+              (needsShipping(a.deliveryMethod) ? 0 : 1) -
+              (needsShipping(b.deliveryMethod) ? 0 : 1),
+          )) {
+          lines.push(readyLine(order));
+        }
+      }
+
+      return lines.join('\n');
+    });
+
+  const header = `🌅 <b>План на ${dayMonth(now)}</b> — доброе утро!`;
+  const footer =
+    unassignedCount > 0
+      ? `\n⚠️ Без исполнителя в работе: <b>${unassignedCount}</b> ${orderWord(unassignedCount)} — назначьте исполнителя.`
+      : '';
+
+  return [header, '', blocks.join('\n\n'), footer].filter(Boolean).join('\n');
 }

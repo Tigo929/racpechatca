@@ -10,6 +10,7 @@ import { TelegramService } from 'src/telegram/telegram.service';
 import { moscowDateKey } from 'src/tasks/task-reminder-rules';
 import {
   PLAN_IN_WORK_STATUSES,
+  PLAN_READY_STATUSES,
   PlanGroup,
   buildDailyPlanMessage,
   isWithinPlanWindow,
@@ -129,7 +130,7 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
   private async buildPlan(
     now: Date,
   ): Promise<Omit<PlanResult, 'sent'>> {
-    const [orders, unassignedCount] = await Promise.all([
+    const [inWorkOrders, readyOrders, unassignedCount] = await Promise.all([
       this.prisma.orderPhoto.findMany({
         where: {
           executorId: { not: null },
@@ -146,6 +147,20 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
           items: { select: { formatPaper: true, quantity: true } },
         },
       }),
+      this.prisma.orderPhoto.findMany({
+        where: {
+          executorId: { not: null },
+          productCategory: EnumProductCategory.PHOTO,
+          status: { in: PLAN_READY_STATUSES },
+        },
+        select: {
+          numberOrder: true,
+          deliveryMethod: true,
+          executorId: true,
+          executor: { select: { username: true, telegramUsername: true } },
+          items: { select: { formatPaper: true, quantity: true } },
+        },
+      }),
       this.prisma.orderPhoto.count({
         where: {
           executorId: null,
@@ -156,18 +171,33 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
     ]);
 
     const byExecutor = new Map<string, PlanGroup>();
-    for (const order of orders) {
-      if (!order.executorId || !order.executor) continue;
-      let group = byExecutor.get(order.executorId);
+    const ensureGroup = (
+      executorId: string,
+      executor: { username: string; telegramUsername: string | null },
+    ): PlanGroup => {
+      let group = byExecutor.get(executorId);
       if (!group) {
-        group = { executor: order.executor, orders: [] };
-        byExecutor.set(order.executorId, group);
+        group = { executor, inWork: [], ready: [] };
+        byExecutor.set(executorId, group);
       }
-      group.orders.push({
+      return group;
+    };
+
+    for (const order of inWorkOrders) {
+      if (!order.executorId || !order.executor) continue;
+      ensureGroup(order.executorId, order.executor).inWork.push({
         numberOrder: order.numberOrder,
         deadline: order.deadline,
         createdAt: order.createdAt,
         isUrgent: order.isUrgent,
+        items: order.items,
+      });
+    }
+    for (const order of readyOrders) {
+      if (!order.executorId || !order.executor) continue;
+      ensureGroup(order.executorId, order.executor).ready.push({
+        numberOrder: order.numberOrder,
+        deliveryMethod: order.deliveryMethod,
         items: order.items,
       });
     }
@@ -178,7 +208,11 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
     }
 
     const message = buildDailyPlanMessage(groups, now, unassignedCount);
-    return { empty: false, orderCount: orders.length, message };
+    return {
+      empty: false,
+      orderCount: inWorkOrders.length + readyOrders.length,
+      message,
+    };
   }
 
   private async markSent(dayKey: string) {
