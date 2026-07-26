@@ -84,7 +84,7 @@ describe('buildDailyPlanMessage', () => {
   };
 
   it('исполнитель с самой горящей задачей идёт первым, внутри — срочное сверху', () => {
-    const msg = buildDailyPlanMessage([lesha, maksim], NOW, 0);
+    const msg = buildDailyPlanMessage([lesha, maksim], NOW, []);
     // maksim (срочный) выше lesha (только сегодня)
     expect(msg.indexOf('maksim_tg')).toBeLessThan(msg.indexOf('lesha'));
     // внутри maksim: срочный заказ выше будущего
@@ -92,7 +92,7 @@ describe('buildDailyPlanMessage', () => {
   });
 
   it('содержит заголовок дня, упоминания и маркеры', () => {
-    const msg = buildDailyPlanMessage([maksim, lesha], NOW, 0);
+    const msg = buildDailyPlanMessage([maksim, lesha], NOW, []);
     expect(msg).toContain('План на 24.07');
     expect(msg).toContain('@maksim_tg'); // ник → упоминание с @
     expect(msg).toContain('lesha'); // без ника — по имени
@@ -101,7 +101,7 @@ describe('buildDailyPlanMessage', () => {
   });
 
   it('блок «Готовы»: отгрузка помечена 🚚 и способом, самовывоз — 📦', () => {
-    const msg = buildDailyPlanMessage([maksim], NOW, 0);
+    const msg = buildDailyPlanMessage([maksim], NOW, []);
     expect(msg).toContain('Готовы (2)');
     expect(msg).toContain('🚚');
     expect(msg).toContain('отгрузить · Яндекс ПВЗ');
@@ -117,14 +117,31 @@ describe('buildDailyPlanMessage', () => {
       inWork: [],
       ready: [{ numberOrder: 'R-ONLY', deliveryMethod: 'PICKUP', items: [] }],
     };
-    const msg = buildDailyPlanMessage([readyOnly], NOW, 0);
+    const msg = buildDailyPlanMessage([readyOnly], NOW, []);
     expect(msg).toContain('ready_guy');
     expect(msg).toContain('R-ONLY');
   });
 
-  it('показывает предупреждение о заказах без исполнителя', () => {
-    const msg = buildDailyPlanMessage([maksim], NOW, 2);
-    expect(msg).toContain('Без исполнителя');
-    expect(msg).toContain('2');
+  it('блок нераспределённых: список заказов + тег диспетчера, срочное сверху', () => {
+    const unOverdue = order({
+      numberOrder: 'U-OVERDUE',
+      deadline: new Date('2026-07-22T09:00:00Z'),
+    });
+    const unFuture = order({
+      numberOrder: 'U-FUTURE',
+      deadline: new Date('2026-07-28T09:00:00Z'),
+    });
+    const msg = buildDailyPlanMessage([maksim], NOW, [unFuture, unOverdue], 'gts224');
+    expect(msg).toContain('Без исполнителя (2)');
+    expect(msg).toContain('@gts224'); // тег диспетчера
+    expect(msg).toContain('назначьте');
+    // просроченный нераспределённый выше будущего
+    expect(msg.indexOf('U-OVERDUE')).toBeLessThan(msg.indexOf('U-FUTURE'));
+  });
+
+  it('тег диспетчера необязателен: без него просто список без «назначьте»', () => {
+    const msg = buildDailyPlanMessage([maksim], NOW, [today]);
+    expect(msg).toContain('Без исполнителя (1)');
+    expect(msg).not.toContain('назначьте');
   });
 });

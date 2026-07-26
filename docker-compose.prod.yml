@@ -39,6 +39,8 @@ services:
       # уходят в общую группу (TELEGRAM_GROUP_CHAT_ID).
       TELEGRAM_REVIEW_CHAT_ID: ${TELEGRAM_REVIEW_CHAT_ID:-}
       TELEGRAM_REVIEW_THREAD_ID: ${TELEGRAM_REVIEW_THREAD_ID:-}
+      # Кого тегать в «плане дня» по нераспределённым заказам (ник без @).
+      TELEGRAM_UNASSIGNED_MENTION: ${TELEGRAM_UNASSIGNED_MENTION:-}
       # Интеграция с исполнителем-партнёром (см. docs/partner-integration.md)
       PARTNER_WEBHOOK_URL: ${PARTNER_WEBHOOK_URL:-}
       PARTNER_WEBHOOK_TOKEN: ${PARTNER_WEBHOOK_TOKEN:-}

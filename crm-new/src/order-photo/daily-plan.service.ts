@@ -4,6 +4,7 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EnumProductCategory } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TelegramService } from 'src/telegram/telegram.service';
@@ -12,6 +13,7 @@ import {
   PLAN_IN_WORK_STATUSES,
   PLAN_READY_STATUSES,
   PlanGroup,
+  PlanOrder,
   buildDailyPlanMessage,
   isWithinPlanWindow,
 } from './daily-plan-rules';
@@ -45,6 +47,7 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly telegram: TelegramService,
+    private readonly config: ConfigService,
   ) {}
 
   onModuleInit() {
@@ -130,7 +133,7 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
   private async buildPlan(
     now: Date,
   ): Promise<Omit<PlanResult, 'sent'>> {
-    const [inWorkOrders, readyOrders, unassignedCount] = await Promise.all([
+    const [inWorkOrders, readyOrders, unassignedRows] = await Promise.all([
       this.prisma.orderPhoto.findMany({
         where: {
           executorId: { not: null },
@@ -161,11 +164,18 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
           items: { select: { formatPaper: true, quantity: true } },
         },
       }),
-      this.prisma.orderPhoto.count({
+      this.prisma.orderPhoto.findMany({
         where: {
           executorId: null,
           productCategory: EnumProductCategory.PHOTO,
           status: { in: PLAN_IN_WORK_STATUSES },
+        },
+        select: {
+          numberOrder: true,
+          deadline: true,
+          createdAt: true,
+          isUrgent: true,
+          items: { select: { formatPaper: true, quantity: true } },
         },
       }),
     ]);
@@ -202,15 +212,26 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
       });
     }
 
+    const unassigned: PlanOrder[] = unassignedRows.map((o) => ({
+      numberOrder: o.numberOrder,
+      deadline: o.deadline,
+      createdAt: o.createdAt,
+      isUrgent: o.isUrgent,
+      items: o.items,
+    }));
+
     const groups = [...byExecutor.values()];
-    if (groups.length === 0 && unassignedCount === 0) {
+    if (groups.length === 0 && unassigned.length === 0) {
       return { empty: true, orderCount: 0, message: null };
     }
 
-    const message = buildDailyPlanMessage(groups, now, unassignedCount);
+    // Кого тегать по нераспределённым (диспетчер/владелец). Пусто — просто список.
+    const mention = this.config.get<string>('TELEGRAM_UNASSIGNED_MENTION');
+    const message = buildDailyPlanMessage(groups, now, unassigned, mention);
     return {
       empty: false,
-      orderCount: inWorkOrders.length + readyOrders.length,
+      orderCount:
+        inWorkOrders.length + readyOrders.length + unassigned.length,
       message,
     };
   }

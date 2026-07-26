@@ -144,23 +144,22 @@ function executorKey(group: PlanGroup, now: Date): number {
   return Math.min(...group.inWork.map((o) => priorityKey(o, now)));
 }
 
-function orderWord(n: number): string {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return 'заказ';
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'заказа';
-  return 'заказов';
+/** Упоминание диспетчера: «gts224» / «@gts224» → «@gts224» (экранируем). */
+function mentionHandle(raw: string): string {
+  return `@${escapeHtml(raw.trim().replace(/^@/, ''))}`;
 }
 
 /**
  * Собирает одно сообщение-план на весь день. Исполнители идут по «накалу»:
  * у кого самая горящая задача в работе — тот выше. У каждого две подсекции:
  * «в работе» (что делать, срочное сверху) и «готовы» (что отгрузить/выдать).
+ * Внизу — блок нераспределённых заказов с тегом диспетчера (mention).
  */
 export function buildDailyPlanMessage(
   groups: PlanGroup[],
   now: Date,
-  unassignedCount = 0,
+  unassigned: PlanOrder[] = [],
+  mention?: string,
 ): string {
   const blocks = groups
     .slice()
@@ -196,11 +195,25 @@ export function buildDailyPlanMessage(
       return lines.join('\n');
     });
 
-  const header = `🌅 <b>План на ${dayMonth(now)}</b> — доброе утро!`;
-  const footer =
-    unassignedCount > 0
-      ? `\n⚠️ Без исполнителя в работе: <b>${unassignedCount}</b> ${orderWord(unassignedCount)} — назначьте исполнителя.`
-      : '';
+  // Нераспределённые — отдельным блоком снизу, с тегом диспетчера и списком
+  // (срочное/просроченное сверху), чтобы их было видно и кому-то назначить.
+  let unassignedBlock = '';
+  if (unassigned.length > 0) {
+    const tag = mention ? ` — ${mentionHandle(mention)}, назначьте` : '';
+    const head = `🆓 <b>Без исполнителя (${unassigned.length})</b>${tag}:`;
+    const lines = unassigned
+      .slice()
+      .sort((a, b) => priorityKey(a, now) - priorityKey(b, now))
+      .map(
+        (order) =>
+          `${orderMarker(order, now)} <b>#${escapeHtml(order.numberOrder)}</b> · ${summarizeItems(order.items)} — ${inWorkTail(order, now)}`,
+      );
+    unassignedBlock = [head, ...lines].join('\n');
+  }
 
-  return [header, '', blocks.join('\n\n'), footer].filter(Boolean).join('\n');
+  const header = `🌅 <b>План на ${dayMonth(now)}</b> — доброе утро!`;
+
+  return [header, '', blocks.join('\n\n'), unassignedBlock]
+    .filter(Boolean)
+    .join('\n\n');
 }
