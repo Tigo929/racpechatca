@@ -9,6 +9,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import PDFDocument from 'pdfkit';
 import { toBuffer as barcodeToBuffer } from 'bwip-js';
+import sharp from 'sharp';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   EnumDeliveryMethod,
@@ -121,6 +122,7 @@ export class StickerService {
    */
   async generateTshirtSticker(
     orderId: string,
+    techSpec?: { buffer: Buffer; contentType: string },
   ): Promise<{ buffer: Buffer; filename: string }> {
     const order = await this.prisma.orderPhoto.findUnique({
       where: { id: orderId },
@@ -141,13 +143,16 @@ export class StickerService {
     // Предоплата 50% (как в тексте подтверждения клиенту); остаток при получении.
     const rest = total - Math.ceil(total * 0.5);
 
-    const barcodePng = await barcodeToBuffer({
-      bcid: 'code128',
-      text: order.numberOrder,
-      scale: 3,
-      height: 10,
-      includetext: false,
-    });
+    const qrOptions = SOCIAL_LINKS.map(
+      (s) =>
+        ({
+          bcid: 'qrcode',
+          text: s.url,
+          scale: 5,
+          eclevel: 'L',
+        }) as Parameters<typeof barcodeToBuffer>[0],
+    );
+    const qrCodes = await Promise.all(qrOptions.map((o) => barcodeToBuffer(o)));
 
     const fonts = this.loadFonts();
 
@@ -168,7 +173,14 @@ export class StickerService {
       const contentW = CLIENT_PAGE_W - M * 2;
       const centered = { width: contentW, align: 'center' as const };
 
-      let y = M + 4;
+      const captionH = 14;
+      const iconH = 20;
+      const gap = 10;
+      const qrSize = (contentW - gap * 2) / 3;
+      const qrY = CLIENT_PAGE_H - M - captionH - qrSize;
+      const iconY = qrY - iconH - 4;
+
+      let y = M + 18;
 
       doc
         .font('medium')
@@ -178,12 +190,6 @@ export class StickerService {
           lineBreak: false,
         });
       y += 28;
-
-      doc.image(barcodePng, M, y, {
-        fit: [contentW, 38],
-        align: 'center',
-      });
-      y += 42;
 
       doc
         .font('regular')
@@ -195,7 +201,29 @@ export class StickerService {
       y += 10;
 
       const lines = buildTshirtItemLines(order);
-      const MAX_ITEM_LINES = 6;
+      const promoPad = 9;
+      const promoTextW = contentW - promoPad * 2;
+      doc.font('medium').fontSize(11);
+      const mainH = doc.heightOfString(PROMO_MAIN, {
+        width: promoTextW,
+        align: 'center',
+      });
+      doc.font('medium').fontSize(9.5);
+      const tagsH = doc.heightOfString(PROMO_TAGS, {
+        width: promoTextW,
+        align: 'center',
+      });
+      doc.font('regular').fontSize(8.5);
+      const noteH = doc.heightOfString(PROMO_NOTE, {
+        width: promoTextW,
+        align: 'center',
+      });
+      const promoH = promoPad * 2 + mainH + 5 + tagsH + 3 + noteH;
+      const reservedBelowItems = 20 + 30 + promoH + 12;
+      const MAX_ITEM_LINES = Math.max(
+        1,
+        Math.min(8, Math.floor((iconY - y - reservedBelowItems) / 14)),
+      );
       const overflow = lines.length > MAX_ITEM_LINES;
       const shown = overflow ? lines.slice(0, MAX_ITEM_LINES - 1) : lines;
       doc.font('regular').fontSize(11);
@@ -240,25 +268,7 @@ export class StickerService {
         y += 30;
       }
 
-      const promoPad = 9;
-      const promoTextW = contentW - promoPad * 2;
-      doc.font('medium').fontSize(11);
-      const mainH = doc.heightOfString(PROMO_MAIN, {
-        width: promoTextW,
-        align: 'center',
-      });
-      doc.font('medium').fontSize(9.5);
-      const tagsH = doc.heightOfString(PROMO_TAGS, {
-        width: promoTextW,
-        align: 'center',
-      });
-      doc.font('regular').fontSize(8.5);
-      const noteH = doc.heightOfString(PROMO_NOTE, {
-        width: promoTextW,
-        align: 'center',
-      });
-      const promoH = promoPad * 2 + mainH + 5 + tagsH + 3 + noteH;
-      const promoY = Math.min(y, CLIENT_PAGE_H - M - promoH);
+      const promoY = Math.min(y, iconY - promoH - 12);
       doc.lineWidth(1.2).rect(M, promoY, contentW, promoH).stroke();
       let py = promoY + promoPad;
       doc.font('medium').fontSize(11).text(PROMO_MAIN, M + promoPad, py, {
@@ -275,6 +285,57 @@ export class StickerService {
         width: promoTextW,
         align: 'center',
       });
+
+      qrCodes.forEach((png, i) => {
+        const x = M + i * (qrSize + gap);
+        const cx = x + qrSize / 2;
+        if (SOCIAL_LINKS[i].icon === 'instagram') {
+          drawInstagramIcon(doc, cx - iconH / 2, iconY, iconH);
+        } else {
+          drawTelegramIcon(doc, cx - iconH / 2, iconY, iconH);
+        }
+        doc.image(png, x, qrY, { width: qrSize, height: qrSize });
+        doc
+          .font('regular')
+          .fontSize(9)
+          .text(SOCIAL_LINKS[i].label, x, qrY + qrSize + 3, {
+            width: qrSize,
+            align: 'center',
+            lineBreak: false,
+          });
+      });
+
+      if (techSpec?.contentType.startsWith('image/')) {
+        doc.addPage({
+          size: [CLIENT_PAGE_W, CLIENT_PAGE_H],
+          margins: { top: M, bottom: M, left: M, right: M },
+        });
+        doc
+          .font('medium')
+          .fontSize(16)
+          .text('ТЗ-макет', M, M, { ...centered, lineBreak: false });
+        doc.font('regular').fontSize(10).text(`№ ${order.numberOrder}`, M, M + 22, {
+          ...centered,
+          lineBreak: false,
+        });
+
+        const imageAreaY = M + 42;
+        const imageAreaH = CLIENT_PAGE_H - imageAreaY - M;
+        sharp(techSpec.buffer)
+          .rotate()
+          .png()
+          .toBuffer()
+          .then((png) => {
+            doc.image(png, M, imageAreaY, {
+              fit: [contentW, imageAreaH],
+              align: 'center',
+              valign: 'center',
+            });
+            doc.end();
+          })
+          .catch(reject);
+        return;
+      }
 
       doc.end();
     });

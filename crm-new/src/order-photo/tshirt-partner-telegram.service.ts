@@ -6,7 +6,6 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import type { Prisma } from 'src/generated/prisma/client';
 import { TelegramService } from 'src/telegram/telegram.service';
 import {
-  EnumDeliveryMethod,
   EnumPartnerSyncStatus,
   EnumPrintLocation,
   EnumPrintType,
@@ -30,14 +29,6 @@ const PRINT_TYPE_LABELS: Record<EnumPrintType, string> = {
   DTG: 'DTG',
   SILK: 'Шелкография',
   SUBLIMATION: 'Сублимация',
-};
-
-const DELIVERY_LABELS: Record<EnumDeliveryMethod, string> = {
-  YANDEX_PVZ: 'Яндекс ПВЗ',
-  OZON_PVZ: 'Ozon ПВЗ',
-  PICKUP: 'Самовывоз',
-  OZON_SELLER: 'Ozon Seller',
-  WB_SELLER: 'WB Seller',
 };
 
 const EXT_CONTENT_TYPE: Record<string, string> = {
@@ -126,43 +117,21 @@ export class TshirtPartnerTelegramService {
           [{ text: 'Не готов', callback_data: `tshirt:${order.id}:not_ready` }],
         ],
       };
-      const fileSent =
-        contentType === 'application/pdf'
-          ? await this.telegram.sendDocument(
-              this.chatId,
-              buffer,
-              filename,
-              contentType,
-              caption,
-              this.threadId || undefined,
-              keyboard,
-            )
-          : await this.telegram.sendPhoto(
-              this.chatId,
-              buffer,
-              filename,
-              contentType,
-              caption,
-              this.threadId || undefined,
-              keyboard,
-            );
-
-      if (!fileSent) {
-        await this.markFailed(orderId, 'Telegram не принял ТЗ-файл.');
-        return;
-      }
-
-      const sticker = await this.sticker.generateTshirtSticker(orderId);
-      const stickerSent = await this.telegram.sendDocument(
+      const sticker = await this.sticker.generateTshirtSticker(orderId, {
+        buffer,
+        contentType,
+      });
+      const sent = await this.telegram.sendDocument(
         this.chatId,
         sticker.buffer,
         sticker.filename,
         'application/pdf',
-        `🏷 Стикер со штрихкодом: <b>${escapeHtml(order.numberOrder)}</b>`,
+        caption,
         this.threadId || undefined,
+        keyboard,
       );
-      if (!stickerSent) {
-        await this.markFailed(orderId, 'Telegram не принял PDF-стикер.');
+      if (!sent) {
+        await this.markFailed(orderId, 'Telegram не принял PDF-пакет ТЗ.');
         return;
       }
 
@@ -211,25 +180,8 @@ export class TshirtPartnerTelegramService {
         settings.partnerRateBasisPoints,
       );
       return [
-        '',
-        `<b>Позиция ${index + 1}</b>`,
-        `Цвет: ${escapeHtml(item.color)}`,
-        `Размер: ${escapeHtml(item.size)}`,
-        `Количество: ${item.quantity}`,
-        `Место печати: ${escapeHtml(PRINT_LOCATION_LABELS[item.printLocation] ?? item.printLocation)}`,
-        `Тип печати: ${escapeHtml(PRINT_TYPE_LABELS[item.printType] ?? item.printType)}`,
-        `Футболка клиента: ${item.clientItem ? 'да' : 'нет'}`,
-        `Сумма без дизайна: <b>${money(productionPrice)}</b>`,
-        `Футболка: ${item.clientItem ? '0 ₽ (вещь клиента)' : money(item.blankCost * item.quantity)}`,
-        `Печать/термо: ${money(item.thermalCost * item.quantity)}`,
-        `Материалы позиции: ${money(positionSettlement.materials)}`,
-        `Доля исполнителя по позиции: ${money(positionSettlement.partnerProfit)}`,
-        ...(item.designUrl
-          ? [`Макет/ссылка: ${escapeHtml(item.designUrl)}`]
-          : []),
-        ...(item.designNote
-          ? [`Комментарий к макету: ${escapeHtml(item.designNote)}`]
-          : []),
+        `${index + 1}) ${escapeHtml(item.color)} ${escapeHtml(item.size)} ×${item.quantity}, ${escapeHtml(PRINT_LOCATION_LABELS[item.printLocation] ?? item.printLocation)}, ${escapeHtml(PRINT_TYPE_LABELS[item.printType] ?? item.printType)}`,
+        `   Без дизайна: <b>${money(productionPrice)}</b>; футболка: ${item.clientItem ? '0 ₽' : money(item.blankCost * item.quantity)}; печать: ${money(item.thermalCost * item.quantity)}; доля: ${money(positionSettlement.partnerProfit)}`,
       ];
     });
 
@@ -239,25 +191,17 @@ export class TshirtPartnerTelegramService {
       ...(order.tshirtModel
         ? [`Модель: ${escapeHtml(order.tshirtModel)}`]
         : []),
-      `Доставка: ${escapeHtml(DELIVERY_LABELS[order.deliveryMethod] ?? order.deliveryMethod)}`,
-      ...(order.note
-        ? ['', '<b>Описание/примечание:</b>', escapeHtml(order.note)]
-        : []),
       '',
-      '<b>Что печатать:</b>',
       ...items,
       '',
       '<b>Расчёт для исполнителя</b>',
-      `Сумма футболок без разработки дизайна: <b>${money(
+      `Без дизайна: <b>${money(
         settlement.tshirtRevenue -
           order.tshirtItems.reduce((s, i) => s + i.designCost, 0),
       )}</b>`,
       `Материалы: ${money(settlement.materials)}`,
-      `Делимая маржа: ${money(settlement.margin)}`,
-      `Доля исполнителя (${settings.partnerRateBasisPoints / 100}%): <b>${money(
-        settlement.partnerProfit,
-      )}</b>`,
-      `Итого к выплате исполнителю: <b>${money(settlement.reward)}</b>`,
+      `Доля (${settings.partnerRateBasisPoints / 100}%): <b>${money(settlement.partnerProfit)}</b>`,
+      `К выплате: <b>${money(settlement.reward)}</b>`,
     ].join('\n');
   }
 

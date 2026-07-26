@@ -856,11 +856,6 @@ export class OrderPhotoService {
       }
     }
 
-    const shouldSendTshirtTask =
-      newStatus === EnumStatus.SENT &&
-      order.status !== EnumStatus.SENT &&
-      order.productCategory === EnumProductCategory.TSHIRT;
-
     const result = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`
         SELECT "id"
@@ -1070,11 +1065,6 @@ export class OrderPhotoService {
       return updated;
     });
 
-    if (shouldSendTshirtTask) {
-      await this.tshirtPartnerTelegram.sendOrder(id);
-      return this.getOrderById(id, userId, userRole);
-    }
-
     return result;
   }
 
@@ -1092,8 +1082,20 @@ export class OrderPhotoService {
       throw new BadRequestException('В заказе нет позиций-футболок.');
     }
 
+    await this.tshirtPartnerTelegram.sendOrder(id);
+
+    const sent = await this.prisma.orderPhoto.findUnique({
+      where: { id },
+      select: { partnerSyncStatus: true, partnerSyncError: true },
+    });
+    if (sent?.partnerSyncStatus !== 'SENT') {
+      throw new BadRequestException(
+        sent?.partnerSyncError ?? 'Не удалось отправить ТЗ исполнителю.',
+      );
+    }
+
     if (order.status !== EnumStatus.SENT) {
-      return this.updateStatusOrder(
+      await this.updateStatusOrder(
         id,
         { status: EnumStatus.SENT },
         userId,
@@ -1101,7 +1103,6 @@ export class OrderPhotoService {
       );
     }
 
-    await this.tshirtPartnerTelegram.sendOrder(id);
     return this.getOrderById(id, userId, userRole);
   }
 
