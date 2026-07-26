@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { PrismaService } from 'src/prisma/prisma.service';
 import type { Prisma } from 'src/generated/prisma/client';
 import { TelegramService } from 'src/telegram/telegram.service';
+import { StickerService } from './sticker.service';
 import {
   EnumPartnerSyncStatus,
   EnumPrintLocation,
@@ -61,6 +62,7 @@ export class TshirtPartnerTelegramService {
     private readonly prisma: PrismaService,
     private readonly telegram: TelegramService,
     private readonly partnerSettings: PartnerSettingsService,
+    private readonly stickerService: StickerService,
     config: ConfigService,
   ) {
     this.chatId = (
@@ -106,27 +108,24 @@ export class TshirtPartnerTelegramService {
       const ext = filename.split('.').pop()?.toLowerCase() ?? '';
       const contentType = EXT_CONTENT_TYPE[ext] ?? 'application/octet-stream';
       const caption = await this.buildMessage(order);
+      const sticker = await this.stickerService.generateTshirtSticker(
+        orderId,
+        contentType.startsWith('image/')
+          ? { buffer, contentType }
+          : undefined,
+      );
 
-      const sent =
-        contentType === 'application/pdf'
-          ? await this.telegram.sendDocument(
-              this.chatId,
-              buffer,
-              filename,
-              contentType,
-              caption,
-              this.threadId || undefined,
-            )
-          : await this.telegram.sendPhoto(
-              this.chatId,
-              buffer,
-              filename,
-              contentType,
-              caption,
-              this.threadId || undefined,
-            );
+      const sent = await this.telegram.sendDocument(
+        this.chatId,
+        sticker.buffer,
+        sticker.filename,
+        'application/pdf',
+        caption,
+        this.threadId || undefined,
+        this.buildStatusButtons(orderId),
+      );
       if (!sent) {
-        await this.markFailed(orderId, 'Telegram не принял ТЗ-файл.');
+        await this.markFailed(orderId, 'Telegram не принял PDF-стикер.');
         return;
       }
 
@@ -145,6 +144,29 @@ export class TshirtPartnerTelegramService {
       );
       await this.markFailed(orderId, message);
     }
+  }
+
+  private buildStatusButtons(orderId: string) {
+    return {
+      inline_keyboard: [
+        [
+          {
+            text: 'В работе',
+            callback_data: `tshirt:${orderId}:work`,
+          },
+          {
+            text: 'Готово',
+            callback_data: `tshirt:${orderId}:ready`,
+          },
+        ],
+        [
+          {
+            text: 'Не готов',
+            callback_data: `tshirt:${orderId}:not_ready`,
+          },
+        ],
+      ],
+    };
   }
 
   private async buildMessage(order: TshirtOrderWithItems): Promise<string> {
