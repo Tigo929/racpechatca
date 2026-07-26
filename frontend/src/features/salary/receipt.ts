@@ -17,10 +17,37 @@ function escapeHtml(s: string): string {
     .replace(/>/g, '&gt;');
 }
 
+function formatFilenameDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 10);
+  return date.toLocaleDateString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+function sanitizeFilenamePart(value: string): string {
+  return value
+    .replace(/[<>:"/\\|?*]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildReceiptTitle(
+  executor: ExecutorSalaryData,
+  result: PaymentByAccrualsResult,
+): string {
+  const date = formatFilenameDate(result.paidAt);
+  const executorName = sanitizeFilenamePart(executor.username) || 'Исполнитель';
+  return `${date} - ${executorName}`;
+}
+
 function buildReceiptHtml(
   executor: ExecutorSalaryData,
   result: PaymentByAccrualsResult,
 ): string {
+  const title = buildReceiptTitle(executor, result);
   const rows = [...result.accruals]
     .sort((a, b) => a.orderNumber.localeCompare(b.orderNumber))
     .map(
@@ -38,7 +65,7 @@ function buildReceiptHtml(
 
   return `<!doctype html>
 <html lang="ru"><head><meta charset="UTF-8"/>
-<title>Расчётный листок — ${escapeHtml(executor.username)} — ${result.paidAt.slice(0, 10)}</title>
+<title>${escapeHtml(title)}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; font-size: 12px; color: #111; padding: 32px; }
