@@ -20,7 +20,7 @@ describe('TshirtPartnerTelegramService', () => {
     await fs.rm(uploadDir, { recursive: true, force: true });
   });
 
-  it('sends the tech spec and then attaches the PDF sticker before marking SENT', async () => {
+  it('sends the tech spec with status buttons and a sticker download button before marking SENT', async () => {
     const orderId = 'order-1';
     const techSpecBuffer = Buffer.from('fake-png');
     await fs.writeFile(path.join(uploadDir, 'techspec.png'), techSpecBuffer);
@@ -59,11 +59,12 @@ describe('TshirtPartnerTelegramService', () => {
     const partnerSettings = {
       get: jest.fn().mockResolvedValue({ partnerRateBasisPoints: 3000 }),
     };
-    const stickerService = {
-      generateTshirtSticker: jest.fn().mockResolvedValue({
-        buffer: Buffer.from('%PDF sticker'),
-        filename: 'sticker-20260726-001.pdf',
-      }),
+    const stickerLinks = {
+      buildStickerUrl: jest
+        .fn()
+        .mockReturnValue(
+          'https://crm.example.test/telegram/tshirt-orders/order-1/sticker.pdf?token=signed',
+        ),
     };
     const config = {
       get: jest.fn((key: string) => {
@@ -80,13 +81,13 @@ describe('TshirtPartnerTelegramService', () => {
       prisma as never,
       telegram as never,
       partnerSettings as never,
-      stickerService as never,
+      stickerLinks as never,
       config as never,
     );
 
     await service.sendOrder(orderId);
 
-    expect(stickerService.generateTshirtSticker).toHaveBeenCalledWith(orderId);
+    expect(stickerLinks.buildStickerUrl).toHaveBeenCalledWith(orderId);
     expect(telegram.sendPhoto).toHaveBeenCalledTimes(1);
     expect(telegram.sendPhoto).toHaveBeenCalledWith(
       '-1004309818132',
@@ -95,17 +96,23 @@ describe('TshirtPartnerTelegramService', () => {
       'image/png',
       expect.stringContaining('20260726-001'),
       '8',
-      expect.objectContaining({ inline_keyboard: expect.any(Array) }),
+      {
+        inline_keyboard: [
+          [
+            { text: 'В работе', callback_data: `tshirt:${orderId}:work` },
+            { text: 'Готово', callback_data: `tshirt:${orderId}:ready` },
+          ],
+          [{ text: 'Не готов', callback_data: `tshirt:${orderId}:not_ready` }],
+          [
+            {
+              text: 'Распечатать стикер',
+              url: 'https://crm.example.test/telegram/tshirt-orders/order-1/sticker.pdf?token=signed',
+            },
+          ],
+        ],
+      },
     );
-    expect(telegram.sendDocument).toHaveBeenCalledTimes(1);
-    expect(telegram.sendDocument).toHaveBeenCalledWith(
-      '-1004309818132',
-      Buffer.from('%PDF sticker'),
-      'sticker-20260726-001.pdf',
-      'application/pdf',
-      expect.stringContaining('Стикер для печати'),
-      '8',
-    );
+    expect(telegram.sendDocument).not.toHaveBeenCalled();
     expect(prisma.orderPhoto.update).toHaveBeenLastCalledWith({
       where: { id: orderId },
       data: {
@@ -116,7 +123,7 @@ describe('TshirtPartnerTelegramService', () => {
     });
   });
 
-  it('does not mark SENT when the sticker document is rejected by Telegram', async () => {
+  it('does not send or mark SENT when the sticker URL cannot be built', async () => {
     const orderId = 'order-2';
     await fs.writeFile(path.join(uploadDir, 'techspec.png'), 'fake-png');
 
@@ -149,17 +156,14 @@ describe('TshirtPartnerTelegramService', () => {
     };
     const telegram = {
       sendPhoto: jest.fn().mockResolvedValue(true),
-      sendDocument: jest.fn().mockResolvedValue(false),
+      sendDocument: jest.fn().mockResolvedValue(true),
     };
     const service = new TshirtPartnerTelegramService(
       prisma as never,
       telegram as never,
       { get: jest.fn().mockResolvedValue({ partnerRateBasisPoints: 3000 }) } as never,
       {
-        generateTshirtSticker: jest.fn().mockResolvedValue({
-          buffer: Buffer.from('%PDF sticker'),
-          filename: 'sticker-20260726-002.pdf',
-        }),
+        buildStickerUrl: jest.fn().mockReturnValue(null),
       } as never,
       {
         get: jest.fn((key: string) =>
@@ -174,11 +178,14 @@ describe('TshirtPartnerTelegramService', () => {
 
     await service.sendOrder(orderId);
 
+    expect(telegram.sendPhoto).not.toHaveBeenCalled();
+    expect(telegram.sendDocument).not.toHaveBeenCalled();
     expect(prisma.orderPhoto.update).toHaveBeenLastCalledWith({
       where: { id: orderId },
       data: {
         partnerSyncStatus: EnumPartnerSyncStatus.FAILED,
-        partnerSyncError: 'Telegram не принял PDF-стикер.',
+        partnerSyncError:
+          'PUBLIC_BASE_URL или секрет для ссылки на стикер не задан.',
       },
     });
   });
