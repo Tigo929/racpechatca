@@ -375,6 +375,31 @@ describe('salary accrual integrity', () => {
     expect(adminCall.where).not.toHaveProperty('executorId');
   });
 
+  it('hides SENT orders from search results unless the status is explicit', async () => {
+    const stub = createPrismaStub();
+    stub.orderPhoto.findMany.mockResolvedValue([]);
+    stub.orderPhoto.count.mockResolvedValue(0);
+    const service = createOrderService(stub);
+
+    await service.getAllOrders({ search: 'client' }, 'admin-1', EnumRole.ADMIN);
+    const searchCall = stub.orderPhoto.findMany.mock.calls.at(-1)?.[0] as {
+      where: Record<string, unknown>;
+    };
+    expect(searchCall.where.status).toEqual({ not: EnumStatus.SENT });
+
+    await service.getAllOrders(
+      { search: 'client', status: EnumStatus.SENT },
+      'admin-1',
+      EnumRole.ADMIN,
+    );
+    const explicitStatusCall = stub.orderPhoto.findMany.mock.calls.at(
+      -1,
+    )?.[0] as {
+      where: Record<string, unknown>;
+    };
+    expect(explicitStatusCall.where.status).toBe(EnumStatus.SENT);
+  });
+
   it('blocks financial editing after an active accrual with 409', async () => {
     const stub = createPrismaStub();
     stub.salaryAccrual.findFirst.mockResolvedValue({ id: 'accrual-1' });

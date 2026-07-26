@@ -43,9 +43,9 @@ function ExecutorListItem({
           className={`text-xs px-1.5 py-0.5 rounded-full shrink-0 ${
             active ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
           }`}
-          title="Всего заказов с начислением"
+          title="Начислений к выплате"
         >
-          {ex.pendingAccruals.length + ex.closedAccruals.length} зак.
+          {ex.pendingAccruals.length > 0 ? `${ex.pendingAccruals.length} к выплате` : 'нет долга'}
         </span>
       </div>
       <div className={`text-sm mt-0.5 ${active ? 'text-blue-200' : 'text-gray-500'}`}>
@@ -150,10 +150,7 @@ function ExecutorDetail({
   const [error, setError] = useState('');
 
   const pending = executor.pendingAccruals;
-  const allRows: AccrualBrief[] = [
-    ...pending,
-    ...executor.closedAccruals.map((c) => ({ ...c, debt: 0, salaryBase: 0, rateBasisPoints: 0 })),
-  ].sort((a, b) => a.orderNumber.localeCompare(b.orderNumber));
+  const allRows = [...pending].sort((a, b) => a.orderNumber.localeCompare(b.orderNumber));
 
   const selectedTotal = useMemo(
     () => pending.filter((a) => selected.has(a.id)).reduce((s, a) => s + a.debt, 0),
@@ -205,12 +202,8 @@ function ExecutorDetail({
             {' · '}Всего выплачено: <strong>{fmt(executor.totalPaid)}</strong>
           </p>
           <p className="text-sm text-gray-500 mt-0.5">
-            Заказов всего:{' '}
-            <strong className="text-gray-900">
-              {pending.length + executor.closedAccruals.length}
-            </strong>
-            {' · '}к оплате: <strong className="text-orange-600">{pending.length}</strong>
-            {' · '}оплачено: <strong className="text-green-600">{executor.closedAccruals.length}</strong>
+            К выплате заказов: <strong className="text-gray-900">{pending.length}</strong>
+            {' · '}оплачено ранее: <strong className="text-green-600">{executor.closedAccruals.length}</strong>
           </p>
         </div>
         {pending.length > 0 && (
@@ -223,9 +216,7 @@ function ExecutorDetail({
       {/* Table */}
       <div className="flex-1 overflow-auto rounded-xl border border-gray-200 bg-white">
         {allRows.length === 0 ? (
-          <div className="flex items-center justify-center h-32 text-gray-400 text-sm">
-            Начислений нет
-          </div>
+          <div className="flex items-center justify-center h-32 text-gray-400 text-sm">К выплате начислений нет</div>
         ) : (
           <table className="w-full text-sm">
             <thead>

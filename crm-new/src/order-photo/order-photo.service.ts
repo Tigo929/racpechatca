@@ -516,17 +516,20 @@ export class OrderPhotoService {
     const searchTerm = query.search?.replace(/^@/, '').trim() || undefined;
 
     return {
-      // When searching by contact/number or filtering by review mark, don't
-      // restrict by status: the order might already be SENT/PAID/LEAD (the
-      // review card counts exactly those). Without search/review filter the
-      // list hides closed statuses by default; stats can opt out entirely.
+      // Search should still find leads/paid orders by contact or number, but
+      // SENT is intentionally hidden from search results unless explicitly
+      // selected by the status filter: those orders are already handed off.
+      // Review filters keep their wider status scope because the review cards
+      // work with sent/paid orders.
       ...(options.applyListStatusDefaults
         ? {
             status: query.status
               ? query.status
-              : searchTerm || query.reviewLeft !== undefined
-                ? undefined
-                : { notIn: DEFAULT_LIST_HIDDEN_STATUSES },
+              : searchTerm
+                ? { not: EnumStatus.SENT }
+                : query.reviewLeft !== undefined
+                  ? undefined
+                  : { notIn: DEFAULT_LIST_HIDDEN_STATUSES },
           }
         : {}),
       sourceOrder: query.sourceOrder,
