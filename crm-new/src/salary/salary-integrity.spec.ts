@@ -92,6 +92,8 @@ function makeOrder(productCategory: 'PHOTO' | 'TSHIRT' = 'PHOTO') {
     note: null,
     status: EnumStatus.READY_FOR_REVIEW,
     productCategory,
+    techSpecPhotoPath:
+      productCategory === 'TSHIRT' ? 'uploads/techspec-test.png' : null,
     deadline: null,
     isUrgent: false,
     executorId: 'executor-1',
@@ -99,7 +101,20 @@ function makeOrder(productCategory: 'PHOTO' | 'TSHIRT' = 'PHOTO') {
     completedAt: null,
     clientPaidAt: null,
     items: [],
-    tshirtItems: [],
+    tshirtItems:
+      productCategory === 'TSHIRT'
+        ? [
+            {
+              id: 'tshirt-item-1',
+              pricePosition: 1500,
+              designCost: 0,
+              quantity: 1,
+              thermalCost: 300,
+              blankCost: 400,
+              clientItem: false,
+            },
+          ]
+        : [],
     accruals: [],
   };
 }
