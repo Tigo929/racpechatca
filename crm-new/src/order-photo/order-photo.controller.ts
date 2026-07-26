@@ -239,11 +239,14 @@ export class OrderPhotoController {
 
   @Post(':idOrder/send-tshirt-telegram')
   @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
-  async sendTshirtTelegram(
+  sendTshirtTelegram(
     @Param('idOrder') idOrder: string,
     @CurrentUser() me: RequestUser,
   ) {
-    await this.tshirtPartnerTelegram.sendOrder(idOrder);
-    return this.orderPhotoService.getOrderById(idOrder, me.id, me.role);
+    return this.orderPhotoService.dispatchTshirtToPartner(
+      idOrder,
+      me.id,
+      me.role,
+    );
   }
 }

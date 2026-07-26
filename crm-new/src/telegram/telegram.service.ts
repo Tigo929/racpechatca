@@ -66,11 +66,13 @@ export class TelegramService {
     contentType: string,
     caption?: string,
     threadId?: string,
+    replyMarkup?: unknown,
   ): Promise<boolean> {
     return this.sendMultipart('sendPhoto', chatId, 'photo', photo, filename, {
       caption,
       contentType,
       threadId,
+      replyMarkup,
     });
   }
 
@@ -81,6 +83,7 @@ export class TelegramService {
     contentType: string,
     caption?: string,
     threadId?: string,
+    replyMarkup?: unknown,
   ): Promise<boolean> {
     return this.sendMultipart(
       'sendDocument',
@@ -88,8 +91,29 @@ export class TelegramService {
       'document',
       document,
       filename,
-      { caption, contentType, threadId },
+      { caption, contentType, threadId, replyMarkup },
     );
+  }
+
+  async answerCallbackQuery(
+    callbackQueryId: string,
+    text?: string,
+  ): Promise<boolean> {
+    if (!this.token) return false;
+    try {
+      const res = await fetch(
+        `https://api.telegram.org/bot${this.token}/answerCallbackQuery`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackQueryId, text }),
+        },
+      );
+      return res.ok;
+    } catch (err) {
+      this.logger.error('Telegram answerCallbackQuery network error', err);
+      return false;
+    }
   }
 
   /** Отправляет сообщение в общую рабочую группу (id из TELEGRAM_GROUP_CHAT_ID). */
@@ -129,6 +153,7 @@ export class TelegramService {
       caption?: string;
       contentType: string;
       threadId?: string;
+      replyMarkup?: unknown;
     },
   ): Promise<boolean> {
     if (!this.token) {
@@ -144,6 +169,9 @@ export class TelegramService {
     if (options.caption) {
       form.set('caption', options.caption);
       form.set('parse_mode', 'HTML');
+    }
+    if (options.replyMarkup) {
+      form.set('reply_markup', JSON.stringify(options.replyMarkup));
     }
     form.set(
       fileField,

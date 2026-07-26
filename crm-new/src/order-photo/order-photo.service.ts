@@ -1078,6 +1078,33 @@ export class OrderPhotoService {
     return result;
   }
 
+  async dispatchTshirtToPartner(id: string, userId: string, userRole: string) {
+    const order = await this.getOrderById(id, userId, userRole);
+    if (order.productCategory !== EnumProductCategory.TSHIRT) {
+      throw new BadRequestException('Исполнителю отправляются только футболки.');
+    }
+    if (!order.techSpecPhotoPath) {
+      throw new BadRequestException(
+        'Сначала прикрепите ТЗ-фото, затем отправляйте исполнителю.',
+      );
+    }
+    if ((order.tshirtItems?.length ?? 0) === 0) {
+      throw new BadRequestException('В заказе нет позиций-футболок.');
+    }
+
+    if (order.status !== EnumStatus.SENT) {
+      return this.updateStatusOrder(
+        id,
+        { status: EnumStatus.SENT },
+        userId,
+        userRole,
+      );
+    }
+
+    await this.tshirtPartnerTelegram.sendOrder(id);
+    return this.getOrderById(id, userId, userRole);
+  }
+
   async updateOrder(idOrder: string, dto: DtoUpdateOrder) {
     const order = await this.getOrderById(idOrder, '', EnumRole.ADMIN);
     const deliveryChanged = dto.deliveryCost !== undefined;

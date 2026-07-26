@@ -139,14 +139,13 @@ export class StickerService {
     const isPickup = order.deliveryMethod === EnumDeliveryMethod.PICKUP;
     const total = order.totalOrder ?? 0;
     // Предоплата 50% (как в тексте подтверждения клиенту); остаток при получении.
-    const prepay = Math.ceil(total * 0.5);
-    const rest = total - prepay;
+    const rest = total - Math.ceil(total * 0.5);
 
     const barcodePng = await barcodeToBuffer({
       bcid: 'code128',
       text: order.numberOrder,
       scale: 3,
-      height: 7,
+      height: 10,
       includetext: false,
     });
 
@@ -154,8 +153,8 @@ export class StickerService {
 
     const buffer = await new Promise<Buffer>((resolve, reject) => {
       const doc = new PDFDocument({
-        size: [PAGE_W, PAGE_H],
-        margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
+        size: [CLIENT_PAGE_W, CLIENT_PAGE_H],
+        margins: { top: 14, bottom: 0, left: 14, right: 14 },
       });
       const chunks: Buffer[] = [];
       doc.on('data', (c: Buffer) => chunks.push(c));
@@ -165,67 +164,117 @@ export class StickerService {
       doc.registerFont('regular', fonts.regular);
       doc.registerFont('medium', fonts.medium);
 
-      const contentW = PAGE_W - MARGIN * 2;
+      const M = 14;
+      const contentW = CLIENT_PAGE_W - M * 2;
+      const centered = { width: contentW, align: 'center' as const };
 
-      // № заказа
+      let y = M + 4;
+
       doc
         .font('medium')
-        .fontSize(9)
-        .text(`№ ${order.numberOrder}`, MARGIN, MARGIN, {
-          width: contentW,
-          align: 'center',
-          lineGap: 0,
+        .fontSize(22)
+        .text(`№ ${order.numberOrder}`, M, y, {
+          ...centered,
+          lineBreak: false,
         });
+      y += 28;
 
-      // Штрихкод — вписываем по ширине этикетки.
-      doc.image(barcodePng, MARGIN, doc.y + 1, {
-        fit: [contentW, 20],
+      doc.image(barcodePng, M, y, {
+        fit: [contentW, 38],
         align: 'center',
       });
-      doc.y += 22;
+      y += 42;
 
-      // Позиции-футболки (свободные позиции сюда не попадают).
-      doc.font('regular').fontSize(7);
-      for (const item of order.tshirtItems) {
-        const size = SIZE_LABELS[item.size] ?? item.size;
-        const place = PRINT_LOCATION_LABELS[item.printLocation] ?? '';
-        doc.text(
-          `${item.color} · ${size} · ${place} × ${item.quantity}`,
-          MARGIN,
-          doc.y,
-          { width: contentW, lineGap: 0.5 },
-        );
+      doc
+        .font('regular')
+        .fontSize(11)
+        .text('Спасибо за обращение!', M, y, { ...centered, lineBreak: false });
+      y += 20;
+
+      doc.moveTo(M, y).lineTo(CLIENT_PAGE_W - M, y).lineWidth(1).stroke();
+      y += 10;
+
+      const lines = buildTshirtItemLines(order);
+      const MAX_ITEM_LINES = 6;
+      const overflow = lines.length > MAX_ITEM_LINES;
+      const shown = overflow ? lines.slice(0, MAX_ITEM_LINES - 1) : lines;
+      doc.font('regular').fontSize(11);
+      for (const line of shown) {
+        doc.text(line, M, y, {
+          width: contentW,
+          lineBreak: false,
+          ellipsis: true,
+        });
+        y += 14;
+      }
+      if (overflow) {
+        doc.text(`+ ещё ${lines.length - shown.length} поз.`, M, y, {
+          width: contentW,
+          lineBreak: false,
+        });
+        y += 14;
       }
 
-      // Разделитель
-      doc.moveDown(0.2);
-      const lineY = doc.y;
-      doc
-        .moveTo(MARGIN, lineY)
-        .lineTo(PAGE_W - MARGIN, lineY)
-        .lineWidth(0.5)
-        .stroke();
-      doc.y = lineY + 2;
+      y += 6;
+      doc.moveTo(M, y).lineTo(CLIENT_PAGE_W - M, y).lineWidth(1).stroke();
+      y += 14;
 
-      // Итог + оплата (предоплата/остаток — только для самовывоза)
-      doc.font('medium').fontSize(8);
-      doc.text(`Итого: ${formatRub(total)}`, MARGIN, doc.y, {
-        width: contentW,
-      });
       if (isPickup) {
         doc
-          .font('regular')
-          .fontSize(7)
-          .text(`Предоплата: ${formatRub(prepay)}`, MARGIN, doc.y, {
-            width: contentW,
-          });
-        doc
           .font('medium')
-          .fontSize(8)
-          .text(`При получении: ${formatRub(rest)}`, MARGIN, doc.y, {
+          .fontSize(16)
+          .text(`К оплате: ${formatRub(rest)}`, M, y, {
             width: contentW,
+            lineBreak: false,
           });
+        y += 30;
+      } else {
+        doc.font('regular').fontSize(12).text('Доставка №', M, y, {
+          lineBreak: false,
+        });
+        doc
+          .moveTo(M + 72, y + 15)
+          .lineTo(CLIENT_PAGE_W - M, y + 15)
+          .lineWidth(1)
+          .stroke();
+        y += 30;
       }
+
+      const promoPad = 9;
+      const promoTextW = contentW - promoPad * 2;
+      doc.font('medium').fontSize(11);
+      const mainH = doc.heightOfString(PROMO_MAIN, {
+        width: promoTextW,
+        align: 'center',
+      });
+      doc.font('medium').fontSize(9.5);
+      const tagsH = doc.heightOfString(PROMO_TAGS, {
+        width: promoTextW,
+        align: 'center',
+      });
+      doc.font('regular').fontSize(8.5);
+      const noteH = doc.heightOfString(PROMO_NOTE, {
+        width: promoTextW,
+        align: 'center',
+      });
+      const promoH = promoPad * 2 + mainH + 5 + tagsH + 3 + noteH;
+      const promoY = Math.min(y, CLIENT_PAGE_H - M - promoH);
+      doc.lineWidth(1.2).rect(M, promoY, contentW, promoH).stroke();
+      let py = promoY + promoPad;
+      doc.font('medium').fontSize(11).text(PROMO_MAIN, M + promoPad, py, {
+        width: promoTextW,
+        align: 'center',
+      });
+      py += mainH + 5;
+      doc.font('medium').fontSize(9.5).text(PROMO_TAGS, M + promoPad, py, {
+        width: promoTextW,
+        align: 'center',
+      });
+      py += tagsH + 3;
+      doc.font('regular').fontSize(8.5).text(PROMO_NOTE, M + promoPad, py, {
+        width: promoTextW,
+        align: 'center',
+      });
 
       doc.end();
     });
@@ -522,5 +571,21 @@ function buildPhotoItemLines(order: {
       ? ''
       : ` ${TYPE_PAPER_LABELS[i.typePaper] ?? i.typePaper}`;
     return `${i.formatPaper}${type} × ${i.quantity} шт`;
+  });
+}
+
+/** Строки состава для футболочного стикера: «Белый · L · Грудь × 1 шт». */
+function buildTshirtItemLines(order: {
+  tshirtItems: {
+    color: string;
+    size: EnumTshirtSize;
+    printLocation: EnumPrintLocation;
+    quantity: number;
+  }[];
+}): string[] {
+  return order.tshirtItems.map((i) => {
+    const size = SIZE_LABELS[i.size] ?? i.size;
+    const place = PRINT_LOCATION_LABELS[i.printLocation] ?? i.printLocation;
+    return `${i.color} · ${size} · ${place} × ${i.quantity} шт`;
   });
 }

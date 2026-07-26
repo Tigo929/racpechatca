@@ -34,6 +34,7 @@ services:
       TZ: Europe/Moscow
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_GROUP_CHAT_ID: ${TELEGRAM_GROUP_CHAT_ID}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
       # Напоминания об отзывах — в отдельный чат/тему форума. Если пусто —
       # уходят в общую группу (TELEGRAM_GROUP_CHAT_ID).
       TELEGRAM_REVIEW_CHAT_ID: ${TELEGRAM_REVIEW_CHAT_ID:-}

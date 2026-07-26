@@ -756,8 +756,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 </p>
               ) : (
                 <p className="text-sm text-gray-600">
-                  При статусе «Отправлен» CRM отправит ТЗ-фото и описание в
-                  Telegram-чат исполнителя.
+                  Нажмите «Отправить исполнителю»: CRM проверит ТЗ-фото,
+                  поставит статус «Отправлен» и отправит заказ в Telegram.
                 </p>
               )}
               {!order.techSpecPhotoPath && (
@@ -767,13 +767,12 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 </p>
               )}
             </div>
-            {order.status === "SENT" && (
+            {order.status !== "PAID" && (
               <button
                 onClick={() => sendTshirtTelegramMutation.mutate()}
                 disabled={
                   sendTshirtTelegramMutation.isPending ||
-                  order.partnerSyncStatus === "PENDING" ||
-                  !order.techSpecPhotoPath
+                  order.partnerSyncStatus === "PENDING"
                 }
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               >
@@ -782,7 +781,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   ? "Отправка…"
                   : order.partnerSyncStatus === "SENT"
                     ? "Отправить повторно"
-                    : "Отправить в Telegram"}
+                    : "Отправить исполнителю"}
               </button>
             )}
           </div>
