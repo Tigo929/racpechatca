@@ -23,6 +23,7 @@ import { OrderItemService } from './order-item.service';
 import { TshirtItemService } from './tshirt-item.service';
 import { StickerService } from './sticker.service';
 import { DailyPlanService } from './daily-plan.service';
+import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 import DtoCreateOrder from './dto/create-order.dto';
 import DtoAllOrdersforQuery from './dto/all-oreders-for-query.dto';
 import UpdateStatus from './dto/update-status.dto';
@@ -50,6 +51,7 @@ export class OrderPhotoController {
     private readonly tshirtItemService: TshirtItemService,
     private readonly stickerService: StickerService,
     private readonly dailyPlanService: DailyPlanService,
+    private readonly tshirtPartnerTelegram: TshirtPartnerTelegramService,
   ) {}
 
   // ── Admin: отправить «план дня» в рабочий чат прямо сейчас ──────────────────
@@ -233,5 +235,15 @@ export class OrderPhotoController {
       me.id,
       me.role,
     );
+  }
+
+  @Post(':idOrder/send-tshirt-telegram')
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  async sendTshirtTelegram(
+    @Param('idOrder') idOrder: string,
+    @CurrentUser() me: RequestUser,
+  ) {
+    await this.tshirtPartnerTelegram.sendOrder(idOrder);
+    return this.orderPhotoService.getOrderById(idOrder, me.id, me.role);
   }
 }

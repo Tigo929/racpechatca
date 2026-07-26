@@ -9,6 +9,7 @@ import {
   Copy,
   UserCheck,
   X,
+  Send,
   Printer,
   Paperclip,
   AlarmClock,
@@ -339,6 +340,21 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
     },
     onError: (error: unknown) =>
       toast.error(getErrorMessage(error, "Не удалось загрузить ТЗ-фото")),
+  });
+
+  const sendTshirtTelegramMutation = useMutation({
+    mutationFn: () => ordersApi.sendTshirtTelegram(orderId),
+    onSuccess: (updated) => {
+      qc.setQueryData(["order", orderId], updated);
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      if (updated.partnerSyncStatus === "SENT") {
+        toast.success("ТЗ отправлено в Telegram");
+      } else {
+        toast.error(updated.partnerSyncError ?? "Не удалось отправить ТЗ");
+      }
+    },
+    onError: (error: unknown) =>
+      toast.error(getErrorMessage(error, "Ошибка отправки в Telegram")),
   });
 
   const handleViewPhoto = async () => {
@@ -751,6 +767,24 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 </p>
               )}
             </div>
+            {order.status === "SENT" && (
+              <button
+                onClick={() => sendTshirtTelegramMutation.mutate()}
+                disabled={
+                  sendTshirtTelegramMutation.isPending ||
+                  order.partnerSyncStatus === "PENDING" ||
+                  !order.techSpecPhotoPath
+                }
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+              >
+                <Send size={13} aria-hidden="true" />
+                {sendTshirtTelegramMutation.isPending
+                  ? "Отправка…"
+                  : order.partnerSyncStatus === "SENT"
+                    ? "Отправить повторно"
+                    : "Отправить в Telegram"}
+              </button>
+            )}
           </div>
         </div>
       )}

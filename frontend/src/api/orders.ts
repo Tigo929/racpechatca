@@ -110,6 +110,12 @@ export const ordersApi = {
     return data;
   },
 
+  /** Повторно отправить футболочное ТЗ исполнителю в Telegram. */
+  sendTshirtTelegram: async (orderId: string): Promise<OrderPhoto> => {
+    const { data } = await api.post<OrderPhoto>(`/order-photo/${orderId}/send-tshirt-telegram`);
+    return data;
+  },
+
   update: async (id: string, dto: UpdateOrderDto): Promise<OrderPhoto> => {
     const { data } = await api.patch<OrderPhoto>(`/order-photo/${id}`, dto);
     return data;
