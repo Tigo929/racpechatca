@@ -29,6 +29,7 @@ export class PartnerOutboundService {
   private readonly webhookUrl: string;
   private readonly webhookToken: string;
   private readonly publicBaseUrl: string;
+  private readonly enabled: boolean;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -38,6 +39,8 @@ export class PartnerOutboundService {
     this.webhookUrl = config.get<string>('PARTNER_WEBHOOK_URL') || '';
     this.webhookToken = config.get<string>('PARTNER_WEBHOOK_TOKEN') || '';
     this.publicBaseUrl = config.get<string>('PUBLIC_BASE_URL') || '';
+    this.enabled =
+      (config.get<string>('PARTNER_WEBHOOK_ENABLED') ?? 'false') === 'true';
   }
 
   async sendOrder(orderId: string) {
@@ -69,6 +72,13 @@ export class PartnerOutboundService {
         partnerSyncError: null,
       },
     });
+
+    if (!this.enabled) {
+      return this.markFailed(
+        orderId,
+        'Отправка в CRM партнёра отключена. ТЗ отправляется в Telegram при переводе заказа в «Отправлен».',
+      );
+    }
 
     if (!this.webhookUrl) {
       return this.markFailed(

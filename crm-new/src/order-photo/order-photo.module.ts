@@ -10,6 +10,7 @@ import { TelegramModule } from 'src/telegram/telegram.module';
 import { ReviewReminderService } from './review-reminder.service';
 import { DailyPlanService } from './daily-plan.service';
 import { PartnerSettingsModule } from 'src/partner/partner-settings.module';
+import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 
 @Module({
   imports: [TelegramModule, StickerModule, PartnerSettingsModule],
@@ -21,6 +22,7 @@ import { PartnerSettingsModule } from 'src/partner/partner-settings.module';
     OrderFinancialIntegrityService,
     ReviewReminderService,
     DailyPlanService,
+    TshirtPartnerTelegramService,
   ],
 })
 export class OrderPhotoModule {}

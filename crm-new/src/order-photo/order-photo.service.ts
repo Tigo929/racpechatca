@@ -29,6 +29,7 @@ import {
 } from 'src/salary/salary-calculation';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
+import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 
 function buildCommunicationUrl(
   platform: EnumCommunication,
@@ -107,6 +108,7 @@ export class OrderPhotoService {
     private readonly financialIntegrity: OrderFinancialIntegrityService,
     private readonly telegram: TelegramService,
     private readonly partnerSettings: PartnerSettingsService,
+    private readonly tshirtPartnerTelegram: TshirtPartnerTelegramService,
   ) {}
 
   async createOrder(dto: DtoCreateOrder, adminId?: string) {
@@ -840,7 +842,26 @@ export class OrderPhotoService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    if (
+      newStatus === EnumStatus.SENT &&
+      order.productCategory === EnumProductCategory.TSHIRT
+    ) {
+      if (!order.techSpecPhotoPath) {
+        throw new BadRequestException(
+          'Сначала прикрепите ТЗ-фото, затем переводите заказ в «Отправлен».',
+        );
+      }
+      if ((order.tshirtItems?.length ?? 0) === 0) {
+        throw new BadRequestException('В заказе нет позиций-футболок.');
+      }
+    }
+
+    const shouldSendTshirtTask =
+      newStatus === EnumStatus.SENT &&
+      order.status !== EnumStatus.SENT &&
+      order.productCategory === EnumProductCategory.TSHIRT;
+
+    const result = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`
         SELECT "id"
         FROM "OrderPhoto"
@@ -907,7 +928,11 @@ export class OrderPhotoService {
 
         if (executor && executor.rateBasisPoints !== null) {
           const existingAccrual = await tx.salaryAccrual.findFirst({
-            where: { orderId: id, kind: 'EXECUTOR', status: { not: 'REVERSED' } },
+            where: {
+              orderId: id,
+              kind: 'EXECUTOR',
+              status: { not: 'REVERSED' },
+            },
           });
 
           if (!existingAccrual) {
@@ -938,7 +963,11 @@ export class OrderPhotoService {
 
         if (manager && manager.role === EnumRole.ORDER_MANAGER) {
           const existingManagerAccrual = await tx.salaryAccrual.findFirst({
-            where: { orderId: id, kind: 'MANAGER', status: { not: 'REVERSED' } },
+            where: {
+              orderId: id,
+              kind: 'MANAGER',
+              status: { not: 'REVERSED' },
+            },
           });
 
           if (!existingManagerAccrual) {
@@ -1040,6 +1069,13 @@ export class OrderPhotoService {
 
       return updated;
     });
+
+    if (shouldSendTshirtTask) {
+      await this.tshirtPartnerTelegram.sendOrder(id);
+      return this.getOrderById(id, userId, userRole);
+    }
+
+    return result;
   }
 
   async updateOrder(idOrder: string, dto: DtoUpdateOrder) {

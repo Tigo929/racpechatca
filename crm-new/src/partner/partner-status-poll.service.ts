@@ -26,6 +26,7 @@ export class PartnerStatusPollService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PartnerStatusPollService.name);
   private readonly statusUrlBase: string;
   private readonly token: string;
+  private readonly enabled: boolean;
   private timer?: NodeJS.Timeout;
   private startupTimer?: NodeJS.Timeout;
   private running = false;
@@ -39,9 +40,15 @@ export class PartnerStatusPollService implements OnModuleInit, OnModuleDestroy {
       .trim()
       .replace(/\/+$/, '');
     this.token = (config.get<string>('PARTNER_WEBHOOK_TOKEN') ?? '').trim();
+    this.enabled =
+      (config.get<string>('PARTNER_STATUS_POLL_ENABLED') ?? 'false') === 'true';
   }
 
   onModuleInit() {
+    if (!this.enabled) {
+      this.logger.log('Partner status poll disabled');
+      return;
+    }
     this.timer = setInterval(() => {
       this.poll().catch((err: unknown) => {
         this.logger.error('Partner status poll failed', err);

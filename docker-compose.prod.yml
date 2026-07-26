@@ -1,5 +1,4 @@
 services:
-
   postgres:
     image: postgres:16-alpine
     restart: always
@@ -40,8 +39,12 @@ services:
       TELEGRAM_REVIEW_CHAT_ID: ${TELEGRAM_REVIEW_CHAT_ID:-}
       TELEGRAM_REVIEW_THREAD_ID: ${TELEGRAM_REVIEW_THREAD_ID:-}
       # Интеграция с исполнителем-партнёром (см. docs/partner-integration.md)
+      TSHIRT_PARTNER_TELEGRAM_CHAT_ID: ${TSHIRT_PARTNER_TELEGRAM_CHAT_ID:-}
+      TSHIRT_PARTNER_TELEGRAM_THREAD_ID: ${TSHIRT_PARTNER_TELEGRAM_THREAD_ID:-}
+      PARTNER_WEBHOOK_ENABLED: ${PARTNER_WEBHOOK_ENABLED:-false}
       PARTNER_WEBHOOK_URL: ${PARTNER_WEBHOOK_URL:-}
       PARTNER_WEBHOOK_TOKEN: ${PARTNER_WEBHOOK_TOKEN:-}
+      PARTNER_STATUS_POLL_ENABLED: ${PARTNER_STATUS_POLL_ENABLED:-false}
       PARTNER_API_TOKEN: ${PARTNER_API_TOKEN:-}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       # Avito API. Пусто — клиент просто не настроен и молчит; на работу CRM
@@ -58,7 +61,11 @@ services:
     networks:
       - internal
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health >/dev/null || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://localhost:3000/health >/dev/null || exit 1",
+        ]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -81,7 +88,8 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz >/dev/null || exit 1"]
+      test:
+        ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz >/dev/null || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 5
