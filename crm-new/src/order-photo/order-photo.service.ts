@@ -74,6 +74,11 @@ const DEFAULT_LIST_HIDDEN_STATUSES: EnumStatus[] = [
   EnumStatus.LEAD,
 ];
 
+const TSHIRT_LIST_HIDDEN_STATUSES: EnumStatus[] = [
+  EnumStatus.PAID,
+  EnumStatus.LEAD,
+];
+
 const CONTROL_CLOSED_STATUSES: EnumStatus[] = [
   EnumStatus.PAID,
   EnumStatus.SENT,
@@ -515,6 +520,10 @@ export class OrderPhotoService {
   ): Prisma.OrderPhotoWhereInput {
     // Strip leading @ so "@username" matches "https://t.me/username".
     const searchTerm = query.search?.replace(/^@/, '').trim() || undefined;
+    const defaultHiddenStatuses =
+      query.productCategory === EnumProductCategory.TSHIRT
+        ? TSHIRT_LIST_HIDDEN_STATUSES
+        : DEFAULT_LIST_HIDDEN_STATUSES;
 
     return {
       // Search should still find leads/paid orders by contact or number, but
@@ -530,7 +539,7 @@ export class OrderPhotoService {
                 ? { not: EnumStatus.SENT }
                 : query.reviewLeft !== undefined
                   ? undefined
-                  : { notIn: DEFAULT_LIST_HIDDEN_STATUSES },
+                  : { notIn: defaultHiddenStatuses },
           }
         : {}),
       sourceOrder: query.sourceOrder,

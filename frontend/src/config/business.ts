@@ -24,15 +24,15 @@ export const businessConfig = {
  * исполнитель, клиент забирает заказ по его адресу, а не по основному.
  * Ключ — username в нижнем регистре.
  */
-const smallPassagePickupAddress = 'Малый проезд, 7 корпус 2, подъезд 1';
+const izmailovskySevenPickupAddress = 'Измайловский проезд, 7 корпус 2, подъезд 1';
 
 const executorPickupAddresses: Record<string, string> = {
   максим: 'Измайловский проезд, 7к2, подъезд 1',
   maxim: 'Измайловский проезд, 7к2, подъезд 1',
   maksim: 'Измайловский проезд, 7к2, подъезд 1',
-  'максим кузьмин': smallPassagePickupAddress,
-  'кузьмин максим': smallPassagePickupAddress,
-  самогов: smallPassagePickupAddress,
+  'максим кузьмин': izmailovskySevenPickupAddress,
+  'кузьмин максим': izmailovskySevenPickupAddress,
+  самогов: izmailovskySevenPickupAddress,
 };
 
 /** Адрес самовывоза для заказа: адрес исполнителя (если задан) или общий. */
@@ -46,7 +46,7 @@ export function resolvePickupAddress(order: {
     ((executorName.includes('максим') && executorName.includes('кузьмин')) ||
       executorName.includes('самогов'))
   ) {
-    return smallPassagePickupAddress;
+    return izmailovskySevenPickupAddress;
   }
   if (executorName && executorPickupAddresses[executorName]) {
     return executorPickupAddresses[executorName];

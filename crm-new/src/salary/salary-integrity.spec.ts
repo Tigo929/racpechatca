@@ -400,6 +400,28 @@ describe('salary accrual integrity', () => {
     expect(explicitStatusCall.where.status).toBe(EnumStatus.SENT);
   });
 
+  it('keeps SENT orders visible in the all tshirt list', async () => {
+    const stub = createPrismaStub();
+    stub.orderPhoto.findMany.mockResolvedValue([]);
+    stub.orderPhoto.count.mockResolvedValue(0);
+    const service = createOrderService(stub);
+
+    await service.getAllOrders(
+      { productCategory: 'TSHIRT' },
+      'admin-1',
+      EnumRole.ADMIN,
+    );
+
+    const call = stub.orderPhoto.findMany.mock.calls.at(-1)?.[0] as {
+      where: { status?: { notIn?: EnumStatus[] } };
+    };
+    expect(call.where.status?.notIn).toEqual([
+      EnumStatus.PAID,
+      EnumStatus.LEAD,
+    ]);
+    expect(call.where.status?.notIn).not.toContain(EnumStatus.SENT);
+  });
+
   it('blocks financial editing after an active accrual with 409', async () => {
     const stub = createPrismaStub();
     stub.salaryAccrual.findFirst.mockResolvedValue({ id: 'accrual-1' });
