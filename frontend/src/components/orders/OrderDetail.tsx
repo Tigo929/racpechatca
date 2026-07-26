@@ -465,7 +465,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
               status={order.status}
               productCategory={order.productCategory}
             />
-            {/* Дедлайн и срочность — только для незакрытых заказов */}
+            {/* Дедлайн — для фото, срочность — для любого незакрытого заказа */}
             {(() => {
               const isClosed = [
                 "PAID",
@@ -474,12 +474,14 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 "COMPLETED",
                 "CANCELLED",
               ].includes(order.status);
-              if (order.productCategory === "TSHIRT") return null;
               if (isClosed) return null;
-              const dl = getDeadlineInfo(order.deadline, order.createdAt);
+              const tracksDeadline = order.productCategory !== "TSHIRT";
+              const dl = tracksDeadline
+                ? getDeadlineInfo(order.deadline, order.createdAt)
+                : null;
               return (
                 <>
-                  {dl.label && (
+                  {dl?.label && (
                     <span
                       className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${dl.badgeClass}`}
                     >
@@ -510,23 +512,22 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
         </div>
         <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
           {/* Кнопка Срочно — только для незакрытых заказов */}
-          {order.productCategory !== "TSHIRT" &&
-            !["PAID", "SENT", "DONE", "COMPLETED", "CANCELLED"].includes(
-              order.status,
-            ) && (
-              <button
-                onClick={toggleUrgent}
-                disabled={updateMutation.isPending}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 ${
-                  order.isUrgent
-                    ? "bg-red-500 text-white hover:bg-red-600"
-                    : "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
-                }`}
-              >
-                <Flame size={13} aria-hidden="true" />
-                {order.isUrgent ? "Снять срочность" : "Срочно"}
-              </button>
-            )}
+          {!["PAID", "SENT", "DONE", "COMPLETED", "CANCELLED"].includes(
+            order.status,
+          ) && (
+            <button
+              onClick={toggleUrgent}
+              disabled={updateMutation.isPending}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 ${
+                order.isUrgent
+                  ? "bg-red-500 text-white hover:bg-red-600"
+                  : "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+              }`}
+            >
+              <Flame size={13} aria-hidden="true" />
+              {order.isUrgent ? "Снять срочность" : "Срочно"}
+            </button>
+          )}
           {/* Клиентский стикер на пакет — печатают и админ, и исполнитель,
               как только заказ готов. */}
           {order.productCategory === "PHOTO" &&

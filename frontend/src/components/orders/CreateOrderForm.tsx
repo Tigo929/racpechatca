@@ -2,7 +2,7 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, Camera, Shirt } from 'lucide-react';
+import { Plus, Trash2, Camera, Shirt, Flame, Clock } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { ordersApi } from '../../api/orders';
@@ -55,6 +55,7 @@ const baseSchema = z.object({
   deliveryMethod: z.enum(['YANDEX_PVZ', 'OZON_PVZ', 'PICKUP', 'OZON_SELLER', 'WB_SELLER']),
   deliveryCost: z.coerce.number().int().min(0),
   note: z.string().optional(),
+  isUrgent: z.boolean().optional(),
   executorId: z.string().optional(),
   freePrice: z.boolean().optional(),
   // «Требуется разработать дизайн» (только футболки): свободная сумма, входит
@@ -136,6 +137,7 @@ export function CreateOrderForm({ onClose }: Props) {
       communicationPlatform: 'TELEGRAM',
       deliveryMethod: 'PICKUP',
       deliveryCost: 0,
+      isUrgent: false,
       executorId: '',
       freePrice: false,
       needsDesign: false,
@@ -152,6 +154,7 @@ export function CreateOrderForm({ onClose }: Props) {
 
   const productCategory = useWatch({ control, name: 'productCategory' });
   const communicationPlatform = useWatch({ control, name: 'communicationPlatform' });
+  const isUrgent = useWatch({ control, name: 'isUrgent' }) ?? false;
   const freePrice = useWatch({ control, name: 'freePrice' });
   const needsDesign = useWatch({ control, name: 'needsDesign' });
   const photoItemsWatch = useWatch({ control, name: 'items' });
@@ -229,6 +232,7 @@ export function CreateOrderForm({ onClose }: Props) {
         deliveryMethod: data.deliveryMethod,
         deliveryCost: data.deliveryCost,
         note: data.note,
+        isUrgent: data.isUrgent ?? false,
         executorId: data.executorId || undefined,
         productCategory: data.productCategory,
         freePrice: true,
@@ -250,6 +254,7 @@ export function CreateOrderForm({ onClose }: Props) {
       deliveryMethod: data.deliveryMethod,
       deliveryCost: data.deliveryCost,
       note: data.note,
+      isUrgent: data.isUrgent ?? false,
       executorId: data.executorId || undefined,
     };
 
@@ -315,6 +320,7 @@ export function CreateOrderForm({ onClose }: Props) {
       deliveryMethod: data.deliveryMethod ?? 'PICKUP',
       deliveryCost: data.deliveryCost ?? 0,
       note: data.note,
+      isUrgent: data.isUrgent ?? false,
       productCategory: data.productCategory ?? 'PHOTO',
       status: 'LEAD',
       // У футболок исполнителя нет — печатает партнёр.
@@ -359,6 +365,36 @@ export function CreateOrderForm({ onClose }: Props) {
             <option value="MAX">MAX</option>
             <option value="OZON">Ozon</option>
           </select>
+        </div>
+      </div>
+
+      <div>
+        <label className={labelCls}>Срочность заказа</label>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setValue('isUrgent', false, { shouldDirty: true })}
+            className={`flex items-center justify-center gap-2 min-h-[44px] rounded-lg border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+              !isUrgent
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+            }`}
+          >
+            <Clock size={16} aria-hidden="true" />
+            Несрочный
+          </button>
+          <button
+            type="button"
+            onClick={() => setValue('isUrgent', true, { shouldDirty: true })}
+            className={`flex items-center justify-center gap-2 min-h-[44px] rounded-lg border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 ${
+              isUrgent
+                ? 'border-red-300 bg-red-50 text-red-700'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+            }`}
+          >
+            <Flame size={16} aria-hidden="true" />
+            Срочный
+          </button>
         </div>
       </div>
 

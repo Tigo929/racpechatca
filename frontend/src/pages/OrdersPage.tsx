@@ -324,7 +324,7 @@ export function OrdersPage({ section }: Props) {
                   order.status === 'CANCELLED'
                 );
                 const isPaid = order.status === 'PAID';
-                const showUrgent = tracksDeadline && order.isUrgent && !isClosed;
+                const showUrgent = order.isUrgent && !isClosed;
                 const stalledDays = getStalledDays(order);
                 return (
                   <button
@@ -423,7 +423,7 @@ export function OrdersPage({ section }: Props) {
                       order.status === 'CANCELLED'
                     );
                     const isPaid = order.status === 'PAID';
-                    const showUrgent = tracksDeadline && order.isUrgent && !isClosed;
+                    const showUrgent = order.isUrgent && !isClosed;
                     const stalledDays = getStalledDays(order);
                     const rowBg = isPaid
                       ? 'opacity-50'

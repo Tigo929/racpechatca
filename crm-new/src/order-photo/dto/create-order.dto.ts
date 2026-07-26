@@ -88,6 +88,10 @@ export default class DtoCreateOrder {
   @IsOptional()
   note?: string;
 
+  @IsBoolean()
+  @IsOptional()
+  isUrgent?: boolean;
+
   /** Модель футболки — производственные данные, передаются исполнителю-партнёру. */
   @IsOptional()
   @IsString()

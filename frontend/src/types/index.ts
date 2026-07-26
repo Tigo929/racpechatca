@@ -187,6 +187,7 @@ export interface CreateOrderDto {
   designDevelopmentCost?: number;
   /** Ручной итог заказа (если задан) — вместо расчёта из позиций. */
   customTotal?: number;
+  isUrgent?: boolean;
   /** Модель футболки — производственные данные для исполнителя-партнёра. */
   tshirtModel?: string;
   items?: CreateItemDto[];

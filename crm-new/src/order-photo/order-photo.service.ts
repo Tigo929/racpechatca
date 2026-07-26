@@ -246,6 +246,7 @@ export class OrderPhotoService {
           deliveryCost: dto.deliveryCost,
           designDevelopmentCost,
           note: dto.note,
+          isUrgent: dto.isUrgent ?? false,
           tshirtModel: dto.tshirtModel,
           productCategory,
           executorId: dto.executorId ?? undefined,
@@ -465,7 +466,7 @@ export class OrderPhotoService {
         order.status === EnumStatus.LEAD;
       const tracksDeadline =
         order.productCategory !== EnumProductCategory.TSHIRT;
-      const isUrgent = tracksDeadline && order.isUrgent && !isControlClosed;
+      const isUrgent = order.isUrgent && !isControlClosed;
       // «Просрочен» — как в таблице: дедлайн прошёл (< 0). Заказ со сроком
       // «сегодня» показывается отдельно и просроченным не считается.
       const days = this.daysLeft(order.deadline, order.createdAt);
