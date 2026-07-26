@@ -115,16 +115,40 @@ export class TshirtPartnerTelegramService {
           : undefined,
       );
 
-      const sent = await this.telegram.sendDocument(
+      const sentTechSpec =
+        contentType === 'application/pdf'
+          ? await this.telegram.sendDocument(
+              this.chatId,
+              buffer,
+              filename,
+              contentType,
+              caption,
+              this.threadId || undefined,
+              this.buildStatusButtons(orderId),
+            )
+          : await this.telegram.sendPhoto(
+              this.chatId,
+              buffer,
+              filename,
+              contentType,
+              caption,
+              this.threadId || undefined,
+              this.buildStatusButtons(orderId),
+            );
+      if (!sentTechSpec) {
+        await this.markFailed(orderId, 'Telegram не принял ТЗ-файл.');
+        return;
+      }
+
+      const sentSticker = await this.telegram.sendDocument(
         this.chatId,
         sticker.buffer,
         sticker.filename,
         'application/pdf',
-        caption,
+        `Стикер для печати: <b>${escapeHtml(order.numberOrder)}</b>`,
         this.threadId || undefined,
-        this.buildStatusButtons(orderId),
       );
-      if (!sent) {
+      if (!sentSticker) {
         await this.markFailed(orderId, 'Telegram не принял PDF-стикер.');
         return;
       }
