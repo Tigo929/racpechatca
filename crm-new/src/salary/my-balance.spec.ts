@@ -1,15 +1,18 @@
 import { PrismaService } from 'src/prisma/prisma.service';
+import { EnumStatus } from 'src/generated/prisma/enums';
 import { SalaryService } from './salary.service';
 
 type AsyncMock = jest.Mock<Promise<unknown>, unknown[]>;
 
 interface Stub {
+  user: { findMany: AsyncMock };
   salaryAccrual: { findMany: AsyncMock };
   salaryPayment: { findMany: AsyncMock };
 }
 
 function createStub(): Stub {
   return {
+    user: { findMany: jest.fn<Promise<unknown>, unknown[]>() },
     salaryAccrual: { findMany: jest.fn<Promise<unknown>, unknown[]>() },
     salaryPayment: { findMany: jest.fn<Promise<unknown>, unknown[]>() },
   };
@@ -63,7 +66,7 @@ describe('SalaryService.getMyBalance', () => {
     await service.getMyBalance('ex-42');
 
     const accrualArgs = prisma.salaryAccrual.findMany.mock.calls[0][0] as {
-      where: { executorId: string; status: unknown };
+      where: { executorId: string; status: unknown; order: unknown };
     };
     const paymentArgs = prisma.salaryPayment.findMany.mock.calls[0][0] as {
       where: { executorId: string };
@@ -73,6 +76,7 @@ describe('SalaryService.getMyBalance', () => {
     expect(paymentArgs.where.executorId).toBe('ex-42');
     // REVERSED — снятые начисления, в личном балансе им не место.
     expect(accrualArgs.where.status).toEqual({ not: 'REVERSED' });
+    expect(accrualArgs.where.order).toEqual({ status: EnumStatus.SENT });
   });
 
   it('не раскрывает чеки заказов: в выборке нет полей заказа', async () => {
@@ -108,5 +112,64 @@ describe('SalaryService.getMyBalance', () => {
       totalPaid: 0,
       payments: [],
     });
+  });
+
+  it('в сводке к выплате оставляет только начисления по заказам в SENT', async () => {
+    prisma.user.findMany.mockResolvedValue([
+      {
+        id: 'ex-1',
+        username: 'Максимов',
+        role: 'EXECUTOR',
+        isActive: true,
+        rateBasisPoints: 3000,
+        designRateBasisPoints: null,
+        salaryPayments: [],
+        salaryAccruals: [
+          {
+            id: 'sent-accrual',
+            kind: 'EXECUTOR',
+            salaryBase: 1000,
+            rateBasisPoints: 3000,
+            designBase: null,
+            designRateBasisPoints: null,
+            salaryAmount: 300,
+            paidAmount: 0,
+            status: 'PENDING',
+            order: {
+              numberOrder: '202607-001',
+              completedAt: null,
+              urlCommunication: 'https://t.me/client',
+              communicationPlatform: 'TELEGRAM',
+              status: EnumStatus.SENT,
+            },
+          },
+          {
+            id: 'paid-order-accrual',
+            kind: 'EXECUTOR',
+            salaryBase: 2000,
+            rateBasisPoints: 3000,
+            designBase: null,
+            designRateBasisPoints: null,
+            salaryAmount: 600,
+            paidAmount: 0,
+            status: 'PENDING',
+            order: {
+              numberOrder: '202607-002',
+              completedAt: null,
+              urlCommunication: 'https://t.me/client2',
+              communicationPlatform: 'TELEGRAM',
+              status: EnumStatus.PAID,
+            },
+          },
+        ],
+      },
+    ]);
+
+    const [executor] = await service.getSummary();
+
+    expect(executor.totalDebt).toBe(300);
+    expect(executor.pendingAccruals.map((a: { id: string }) => a.id)).toEqual([
+      'sent-accrual',
+    ]);
   });
 });

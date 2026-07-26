@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from 'src/generated/prisma/client';
+import { EnumStatus } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DtoCreatePayment } from './dto/create-payment.dto';
 import { DtoCreatePaymentByAccruals } from './dto/create-payment-by-accruals.dto';
@@ -29,6 +30,7 @@ export class SalaryService {
                 deliveryCost: true,
                 urlCommunication: true,
                 communicationPlatform: true,
+                status: true,
               },
             },
           },
@@ -46,6 +48,7 @@ export class SalaryService {
     return executors.map((ex) => {
       const pending = ex.salaryAccruals.filter(
         (a) =>
+          a.order.status === EnumStatus.SENT &&
           (a.status === 'PENDING' || a.status === 'PARTIALLY_PAID') &&
           a.paidAmount < a.salaryAmount,
       );
@@ -115,7 +118,11 @@ export class SalaryService {
   async getMyBalance(executorId: string) {
     const [accruals, payments] = await Promise.all([
       this.prisma.salaryAccrual.findMany({
-        where: { executorId, status: { not: 'REVERSED' } },
+        where: {
+          executorId,
+          status: { not: 'REVERSED' },
+          order: { status: EnumStatus.SENT },
+        },
         select: { salaryAmount: true, paidAmount: true, status: true },
       }),
       this.prisma.salaryPayment.findMany({
@@ -183,12 +190,14 @@ export class SalaryService {
       if (!executor) throw new NotFoundException('Исполнитель не найден');
 
       const lockedRows = await tx.$queryRaw<{ id: string }[]>`
-        SELECT "id"
+        SELECT "SalaryAccrual"."id"
         FROM "SalaryAccrual"
-        WHERE "executorId" = ${dto.executorId}
-          AND "status" IN ('PENDING', 'PARTIALLY_PAID')
-        ORDER BY "createdAt" ASC, "id" ASC
-        FOR UPDATE
+        JOIN "OrderPhoto" ON "OrderPhoto"."id" = "SalaryAccrual"."orderId"
+        WHERE "SalaryAccrual"."executorId" = ${dto.executorId}
+          AND "SalaryAccrual"."status" IN ('PENDING', 'PARTIALLY_PAID')
+          AND "OrderPhoto"."status" = ${EnumStatus.SENT}
+        ORDER BY "SalaryAccrual"."createdAt" ASC, "SalaryAccrual"."id" ASC
+        FOR UPDATE OF "SalaryAccrual"
       `;
 
       const pendingAccruals = lockedRows.length
@@ -298,6 +307,7 @@ export class SalaryService {
           id: { in: dto.accrualIds },
           executorId: dto.executorId,
           status: { in: ['PENDING', 'PARTIALLY_PAID'] },
+          order: { status: EnumStatus.SENT },
         },
         include: {
           order: {

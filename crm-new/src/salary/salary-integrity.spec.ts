@@ -647,7 +647,7 @@ type PaymentByAccrualsHarness = {
   _accruals: AccrualByIdRow[];
   statusHistoryCreated: unknown[];
   salaryAccrual: {
-    findMany: jest.Mock<Promise<AccrualByIdRow[]>, []>;
+    findMany: jest.Mock<Promise<AccrualByIdRow[]>, unknown[]>;
     update: jest.Mock<
       Promise<AccrualByIdRow | undefined>,
       [
@@ -802,6 +802,41 @@ describe('createPaymentByAccruals — StatusHistory audit trail', () => {
       toStatus: 'PAID',
       changedBy: 'admin-1',
     });
+  });
+
+  it('only pays selected accruals whose orders are still SENT', async () => {
+    const harness = makePaymentByAccrualsHarness([
+      {
+        id: 'accrual-1',
+        orderId: 'order-1',
+        executorId: 'executor-1',
+        salaryBase: 900,
+        rateBasisPoints: 3000,
+        salaryAmount: 270,
+        paidAmount: 0,
+        status: 'PENDING',
+        createdAt: new Date('2026-06-01'),
+        order: {
+          numberOrder: '202606-001',
+          totalOrder: 1000,
+          deliveryCost: 100,
+          createdAt: new Date('2026-06-01'),
+          status: 'SENT',
+          urlCommunication: 'https://t.me/client',
+          communicationPlatform: 'TELEGRAM',
+        },
+      },
+    ]);
+
+    await svc(harness).createPaymentByAccruals(
+      { executorId: 'executor-1', accrualIds: ['accrual-1'] },
+      'admin-1',
+    );
+
+    const findArgs = harness.salaryAccrual.findMany.mock.calls[0]?.[0] as {
+      where: { order: { status: string } };
+    };
+    expect(findArgs.where.order).toEqual({ status: EnumStatus.SENT });
   });
 
   it('skips orderPhoto.update and statusHistory.create if order is already PAID', async () => {
