@@ -86,10 +86,7 @@ describe('TshirtPartnerTelegramService', () => {
 
     await service.sendOrder(orderId);
 
-    expect(stickerService.generateTshirtSticker).toHaveBeenCalledWith(orderId, {
-      buffer: techSpecBuffer,
-      contentType: 'image/png',
-    });
+    expect(stickerService.generateTshirtSticker).toHaveBeenCalledWith(orderId);
     expect(telegram.sendPhoto).toHaveBeenCalledTimes(1);
     expect(telegram.sendPhoto).toHaveBeenCalledWith(
       '-1004309818132',

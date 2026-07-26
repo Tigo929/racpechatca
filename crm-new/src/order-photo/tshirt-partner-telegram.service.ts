@@ -110,9 +110,6 @@ export class TshirtPartnerTelegramService {
       const caption = await this.buildMessage(order);
       const sticker = await this.stickerService.generateTshirtSticker(
         orderId,
-        contentType.startsWith('image/')
-          ? { buffer, contentType }
-          : undefined,
       );
 
       const sentTechSpec =
