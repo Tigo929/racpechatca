@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { PDFDocument } from 'pdf-lib';
+import sharp from 'sharp';
 import { PrismaService } from 'src/prisma/prisma.service';
 import type { Prisma } from 'src/generated/prisma/client';
 import { TelegramService } from 'src/telegram/telegram.service';
@@ -43,6 +45,12 @@ const EXT_CONTENT_TYPE: Record<string, string> = {
 type TshirtOrderWithItems = Prisma.OrderPhotoGetPayload<{
   include: { tshirtItems: true };
 }>;
+
+interface TechSpecAttachment {
+  filename: string;
+  buffer: Buffer;
+  contentType: string;
+}
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -107,7 +115,7 @@ export class TshirtPartnerTelegramService {
     }
 
     try {
-      const caption = await this.buildMessage(order);
+      const caption = await this.buildMessage(order, filenames.length);
       const stickerUrl = this.stickerLinks.buildStickerUrl(orderId);
       if (!stickerUrl) {
         await this.markFailed(
@@ -117,29 +125,22 @@ export class TshirtPartnerTelegramService {
         return;
       }
       const replyMarkup = this.buildStatusButtons(orderId, stickerUrl);
-
-      const sentTechSpec = await this.sendTechSpecFile(
-        filenames[0],
-        caption,
-        replyMarkup,
+      const attachments = await Promise.all(
+        filenames.map((filename) => this.readTechSpecFile(filename)),
       );
+
+      const sentTechSpec =
+        attachments.length === 1
+          ? await this.sendTechSpecFile(attachments[0], caption, replyMarkup)
+          : await this.sendTechSpecBundle(
+              order,
+              attachments,
+              caption,
+              replyMarkup,
+            );
       if (!sentTechSpec) {
         await this.markFailed(orderId, 'Telegram не принял ТЗ-файл.');
         return;
-      }
-
-      for (let index = 1; index < filenames.length; index += 1) {
-        const sentExtra = await this.sendTechSpecFile(
-          filenames[index],
-          this.buildExtraCaption(order, index, filenames.length),
-        );
-        if (!sentExtra) {
-          await this.markFailed(
-            orderId,
-            `Telegram не принял дополнительный ТЗ-файл ${index + 1}/${filenames.length}.`,
-          );
-          return;
-        }
       }
 
       await this.prisma.orderPhoto.update({
@@ -188,48 +189,111 @@ export class TshirtPartnerTelegramService {
     };
   }
 
-  private async sendTechSpecFile(
+  private async readTechSpecFile(
     filename: string,
+  ): Promise<TechSpecAttachment> {
+    const buffer = await fs.readFile(path.join(this.uploadDir, filename));
+    const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+    return {
+      filename,
+      buffer,
+      contentType: EXT_CONTENT_TYPE[ext] ?? 'application/octet-stream',
+    };
+  }
+
+  private async sendTechSpecFile(
+    file: TechSpecAttachment,
     caption: string,
     replyMarkup?: unknown,
   ): Promise<boolean> {
-    const buffer = await fs.readFile(path.join(this.uploadDir, filename));
-    const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-    const contentType = EXT_CONTENT_TYPE[ext] ?? 'application/octet-stream';
-    return contentType === 'application/pdf'
+    return file.contentType === 'application/pdf'
       ? this.telegram.sendDocument(
           this.chatId,
-          buffer,
-          filename,
-          contentType,
+          file.buffer,
+          file.filename,
+          file.contentType,
           caption,
           this.threadId || undefined,
           replyMarkup,
         )
       : this.telegram.sendPhoto(
           this.chatId,
-          buffer,
-          filename,
-          contentType,
+          file.buffer,
+          file.filename,
+          file.contentType,
           caption,
           this.threadId || undefined,
           replyMarkup,
         );
   }
 
-  private buildExtraCaption(
+  private async sendTechSpecBundle(
     order: TshirtOrderWithItems,
-    index: number,
-    total: number,
-  ): string {
-    return [
-      '🧾 <b>Дополнительное ТЗ</b>',
-      `Заказ: <b>${escapeHtml(order.numberOrder)}</b>`,
-      `Файл ${index + 1} из ${total}`,
-    ].join('\n');
+    attachments: TechSpecAttachment[],
+    caption: string,
+    replyMarkup: unknown,
+  ): Promise<boolean> {
+    const bundle = await this.buildTechSpecBundle(order, attachments);
+    return this.telegram.sendDocument(
+      this.chatId,
+      bundle.buffer,
+      bundle.filename,
+      bundle.contentType,
+      caption,
+      this.threadId || undefined,
+      replyMarkup,
+    );
   }
 
-  private async buildMessage(order: TshirtOrderWithItems): Promise<string> {
+  private async buildTechSpecBundle(
+    order: TshirtOrderWithItems,
+    attachments: TechSpecAttachment[],
+  ): Promise<TechSpecAttachment> {
+    const pdf = await PDFDocument.create();
+
+    for (const attachment of attachments) {
+      if (attachment.contentType === 'application/pdf') {
+        const source = await PDFDocument.load(attachment.buffer);
+        const pages = await pdf.copyPages(source, source.getPageIndices());
+        pages.forEach((page) => pdf.addPage(page));
+        continue;
+      }
+
+      const image = await sharp(attachment.buffer)
+        .rotate()
+        .jpeg({ quality: 92 })
+        .toBuffer();
+      const embedded = await pdf.embedJpg(image);
+      const [pageWidth, pageHeight] =
+        embedded.width >= embedded.height ? [841.89, 595.28] : [595.28, 841.89];
+      const margin = 28;
+      const scale = Math.min(
+        (pageWidth - margin * 2) / embedded.width,
+        (pageHeight - margin * 2) / embedded.height,
+      );
+      const width = embedded.width * scale;
+      const height = embedded.height * scale;
+      const page = pdf.addPage([pageWidth, pageHeight]);
+      page.drawImage(embedded, {
+        x: (pageWidth - width) / 2,
+        y: (pageHeight - height) / 2,
+        width,
+        height,
+      });
+    }
+
+    const bytes = await pdf.save();
+    return {
+      filename: `techspec-${order.numberOrder}.pdf`,
+      buffer: Buffer.from(bytes),
+      contentType: 'application/pdf',
+    };
+  }
+
+  private async buildMessage(
+    order: TshirtOrderWithItems,
+    attachmentCount: number,
+  ): Promise<string> {
     const settings = await this.partnerSettings.get();
     const settlement = settleOrder(
       order.tshirtItems.map((i) => ({
@@ -267,6 +331,9 @@ export class TshirtPartnerTelegramService {
       `Заказ: <b>${escapeHtml(order.numberOrder)}</b>`,
       ...(order.tshirtModel
         ? [`Модель: ${escapeHtml(order.tshirtModel)}`]
+        : []),
+      ...(attachmentCount > 1
+        ? [`ТЗ: <b>${attachmentCount} файлов в одном PDF</b>`]
         : []),
       '',
       ...items,

@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import sharp from 'sharp';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 import {
   EnumPartnerSyncStatus,
@@ -20,13 +21,23 @@ describe('TshirtPartnerTelegramService', () => {
     await fs.rm(uploadDir, { recursive: true, force: true });
   });
 
-  it('sends all tech spec files with buttons only on the main message before marking SENT', async () => {
+  it('sends multiple tech spec files as one PDF message with buttons before marking SENT', async () => {
     const orderId = 'order-1';
-    const techSpecBuffer = Buffer.from('fake-png');
-    const extraTechSpecBuffer = Buffer.from('extra-png');
-    await fs.writeFile(path.join(uploadDir, 'techspec-1.png'), techSpecBuffer);
+    const jpeg = await sharp({
+      create: {
+        width: 4,
+        height: 4,
+        channels: 3,
+        background: '#fff',
+      },
+    })
+      .jpeg()
+      .toBuffer();
+    const techSpecBuffer = jpeg;
+    const extraTechSpecBuffer = jpeg;
+    await fs.writeFile(path.join(uploadDir, 'techspec-1.jpg'), techSpecBuffer);
     await fs.writeFile(
-      path.join(uploadDir, 'techspec-2.png'),
+      path.join(uploadDir, 'techspec-2.jpg'),
       extraTechSpecBuffer,
     );
 
@@ -34,8 +45,8 @@ describe('TshirtPartnerTelegramService', () => {
       id: orderId,
       numberOrder: '20260726-001',
       tshirtModel: 'Classic',
-      techSpecPhotoPath: 'techspec-1.png',
-      techSpecPhotoPaths: ['techspec-1.png', 'techspec-2.png'],
+      techSpecPhotoPath: 'techspec-1.jpg',
+      techSpecPhotoPaths: ['techspec-1.jpg', 'techspec-2.jpg'],
       tshirtItems: [
         {
           color: 'Белая',
@@ -94,13 +105,14 @@ describe('TshirtPartnerTelegramService', () => {
     await service.sendOrder(orderId);
 
     expect(stickerLinks.buildStickerUrl).toHaveBeenCalledWith(orderId);
-    expect(telegram.sendPhoto).toHaveBeenCalledTimes(2);
-    expect(telegram.sendPhoto).toHaveBeenCalledWith(
+    expect(telegram.sendPhoto).not.toHaveBeenCalled();
+    expect(telegram.sendDocument).toHaveBeenCalledTimes(1);
+    expect(telegram.sendDocument).toHaveBeenCalledWith(
       '-1004309818132',
-      techSpecBuffer,
-      'techspec-1.png',
-      'image/png',
-      expect.stringContaining('20260726-001'),
+      expect.any(Buffer),
+      'techspec-20260726-001.pdf',
+      'application/pdf',
+      expect.stringContaining('2 файлов в одном PDF'),
       '8',
       {
         inline_keyboard: [
@@ -118,16 +130,8 @@ describe('TshirtPartnerTelegramService', () => {
         ],
       },
     );
-    expect(telegram.sendPhoto).toHaveBeenCalledWith(
-      '-1004309818132',
-      extraTechSpecBuffer,
-      'techspec-2.png',
-      'image/png',
-      expect.stringContaining('Файл 2 из 2'),
-      '8',
-      undefined,
-    );
-    expect(telegram.sendDocument).not.toHaveBeenCalled();
+    const pdfBuffer = telegram.sendDocument.mock.calls[0][1] as Buffer;
+    expect(pdfBuffer.subarray(0, 4).toString()).toBe('%PDF');
     expect(prisma.orderPhoto.update).toHaveBeenLastCalledWith({
       where: { id: orderId },
       data: {
