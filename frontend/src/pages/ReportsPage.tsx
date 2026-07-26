@@ -4,14 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Camera, Shirt } from 'lucide-react';
 import { reportsApi } from '../api/reports';
 import { expensesApi } from '../api/expenses';
-import type {
-  PnlMetrics,
-  MonthData,
-  ExpenseOrder,
-  CreateExpenseDto,
-  EnumExpenseCategory,
-  WeeklyReport,
-} from '../types/index';
+import type { PnlMetrics, MonthData, ExpenseOrder, CreateExpenseDto, EnumExpenseCategory, WeeklyReport } from '../types/index';
 import { EXPENSE_CATEGORY_LABELS } from '../types/index';
 import { getErrorMessage } from '../utils/get-error-message';
 import { formatCurrency as fmt, formatDate as fmtDate } from '../utils/format';
@@ -27,11 +20,7 @@ const spent = (m: PnlMetrics): number => m.totalExpenses + m.salaryPaid;
 // ── Таблица «период × продукты» ──────────────────────────────────────────────
 
 function Cell({ value, dim, highlight, neg }: { value: string; dim?: boolean; highlight?: boolean; neg?: boolean }) {
-  return (
-    <td className={`py-2.5 px-3 text-right tabular-nums ${dim ? 'text-gray-400' : ''} ${highlight ? 'font-bold text-green-700' : ''} ${neg ? 'text-red-600' : ''}`}>
-      {value}
-    </td>
-  );
+  return <td className={`py-2.5 px-3 text-right tabular-nums ${dim ? 'text-gray-400' : ''} ${highlight ? 'font-bold text-green-700' : ''} ${neg ? 'text-red-600' : ''}`}>{value}</td>;
 }
 
 function ProductCell({ count, revenue }: { count: number; revenue: number }) {
@@ -44,19 +33,9 @@ function ProductCell({ count, revenue }: { count: number; revenue: number }) {
   );
 }
 
-function PnlRow({
-  label, m, isTotal, onClick, selected,
-}: {
-  label: string;
-  m: PnlMetrics;
-  isTotal?: boolean;
-  onClick?: () => void;
-  selected?: boolean;
-}) {
+function PnlRow({ label, m, isTotal, onClick, selected }: { label: string; m: PnlMetrics; isTotal?: boolean; onClick?: () => void; selected?: boolean }) {
   const active = m.orderCount > 0 || spent(m) > 0;
-  const base = isTotal
-    ? 'bg-gray-50 font-bold border-t-2 border-gray-300'
-    : `border-b border-gray-100 ${onClick ? 'cursor-pointer' : ''} ${selected ? 'bg-blue-50' : 'hover:bg-gray-50'}`;
+  const base = isTotal ? 'bg-gray-50 font-bold border-t-2 border-gray-300' : `border-b border-gray-100 ${onClick ? 'cursor-pointer' : ''} ${selected ? 'bg-blue-50' : 'hover:bg-gray-50'}`;
   return (
     <tr className={`${base} text-sm`} onClick={onClick}>
       <td className={`py-2.5 px-4 ${isTotal ? 'font-bold' : 'text-gray-700'}`}>{label}</td>
@@ -69,23 +48,23 @@ function PnlRow({
   );
 }
 
-function PnlTable({
-  firstCol, rows, total, onRowClick, selectedKey,
-}: {
-  firstCol: string;
-  rows: { key: string; label: string; m: PnlMetrics }[];
-  total?: PnlMetrics;
-  onRowClick?: (key: string) => void;
-  selectedKey?: string;
-}) {
+function PnlTable({ firstCol, rows, total, onRowClick, selectedKey }: { firstCol: string; rows: { key: string; label: string; m: PnlMetrics }[]; total?: PnlMetrics; onRowClick?: (key: string) => void; selectedKey?: string }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
           <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
             <th className="py-3 px-4 text-left">{firstCol}</th>
-            <th className="py-3 px-3 text-right"><span className="inline-flex items-center gap-1 justify-end"><Camera size={12} /> Фото</span></th>
-            <th className="py-3 px-3 text-right"><span className="inline-flex items-center gap-1 justify-end"><Shirt size={12} /> Футболки</span></th>
+            <th className="py-3 px-3 text-right">
+              <span className="inline-flex items-center gap-1 justify-end">
+                <Camera size={12} /> Фото
+              </span>
+            </th>
+            <th className="py-3 px-3 text-right">
+              <span className="inline-flex items-center gap-1 justify-end">
+                <Shirt size={12} /> Футболки
+              </span>
+            </th>
             <th className="py-3 px-3 text-right">Выручка</th>
             <th className="py-3 px-3 text-right">Расходы</th>
             <th className="py-3 px-3 text-right">Прибыль</th>
@@ -93,9 +72,7 @@ function PnlTable({
         </thead>
         <tbody>
           {rows.map((r) => (
-            <PnlRow key={r.key} label={r.label} m={r.m}
-              onClick={onRowClick ? () => onRowClick(r.key) : undefined}
-              selected={selectedKey === r.key} />
+            <PnlRow key={r.key} label={r.label} m={r.m} onClick={onRowClick ? () => onRowClick(r.key) : undefined} selected={selectedKey === r.key} />
           ))}
           {total && <PnlRow label="Итого" m={total} isTotal />}
         </tbody>
@@ -109,15 +86,29 @@ function PnlTable({
 function ExpenseStructure({ m, periodLabel }: { m: PnlMetrics; periodLabel: string }) {
   const items = [
     { label: 'Фотоматериалы', value: m.materialsPhoto, color: 'bg-sky-400' },
-    { label: 'Футболки / печать', value: m.materialsTshirt, color: 'bg-violet-400' },
-    { label: 'Упаковка / доставка', value: m.deliverySupplies, color: 'bg-amber-400' },
+    {
+      label: 'Футболки / печать',
+      value: m.materialsTshirt,
+      color: 'bg-violet-400',
+    },
+    {
+      label: 'Упаковка / доставка',
+      value: m.deliverySupplies,
+      color: 'bg-amber-400',
+    },
     { label: 'Оборудование', value: m.equipment, color: 'bg-emerald-400' },
     { label: 'Реклама', value: m.marketing, color: 'bg-pink-400' },
     { label: 'Доля Гриши', value: m.partnerShare, color: 'bg-indigo-400' },
-    { label: 'Вознаграждение партнёру', value: m.partnerReward, color: 'bg-teal-400' },
+    {
+      label: 'Вознаграждение партнёру',
+      value: m.partnerReward,
+      color: 'bg-teal-400',
+    },
     { label: 'Прочее', value: m.other, color: 'bg-gray-400' },
     { label: 'Зарплата', value: m.salaryPaid, color: 'bg-rose-500' },
-  ].filter((i) => i.value > 0).sort((a, b) => b.value - a.value);
+  ]
+    .filter((i) => i.value > 0)
+    .sort((a, b) => b.value - a.value);
 
   const total = items.reduce((s, i) => s + i.value, 0);
 
@@ -194,14 +185,20 @@ function AddExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
   const mutation = useMutation({
     mutationFn: (dto: CreateExpenseDto) => expensesApi.create(dto),
-    onSuccess: () => { onSuccess(); onClose(); },
+    onSuccess: () => {
+      onSuccess();
+      onClose();
+    },
     onError: (e) => setError(getErrorMessage(e)),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const a = parseInt(amount, 10);
-    if (!a || a <= 0) { setError('Введите корректную сумму'); return; }
+    if (!a || a <= 0) {
+      setError('Введите корректную сумму');
+      return;
+    }
     mutation.mutate({ category, amount: a, note: note.trim() || undefined });
   };
 
@@ -212,41 +209,30 @@ function AddExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Категория</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as EnumExpenseCategory)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
+            <select value={category} onChange={(e) => setCategory(e.target.value as EnumExpenseCategory)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               {(Object.keys(EXPENSE_CATEGORY_LABELS) as EnumExpenseCategory[]).map((c) => (
-                <option key={c} value={c}>{EXPENSE_CATEGORY_LABELS[c]}</option>
+                <option key={c} value={c}>
+                  {EXPENSE_CATEGORY_LABELS[c]}
+                </option>
               ))}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Сумма (₽)</label>
-            <input
-              type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
-            />
+            <input type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" autoFocus />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Примечание <span className="text-gray-400">(необязательно)</span>
             </label>
-            <input
-              type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Например: закуп футболок 50 шт."
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Например: закуп футболок 50 шт." className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           {error && <p className="text-red-600 text-sm">{error}</p>}
           <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose}
-              className="flex-1 border border-gray-300 rounded-lg py-2.5 text-sm font-medium hover:bg-gray-50">
+            <button type="button" onClick={onClose} className="flex-1 border border-gray-300 rounded-lg py-2.5 text-sm font-medium hover:bg-gray-50">
               Отмена
             </button>
-            <button type="submit" disabled={mutation.isPending}
-              className="flex-1 bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+            <button type="submit" disabled={mutation.isPending} className="flex-1 bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
               {mutation.isPending ? 'Сохранение...' : 'Добавить'}
             </button>
           </div>
@@ -256,7 +242,20 @@ function AddExpenseModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   );
 }
 
-// ── Expense list (расходные ордера за месяц) ──────────────────────────────────
+// ── Expense list (расходные операции за месяц) ────────────────────────────────
+
+function expenseCategoryLabel(exp: ExpenseOrder): string {
+  if (exp.category === 'SALARY') return 'Зарплата';
+  return EXPENSE_CATEGORY_LABELS[exp.category] ?? exp.category;
+}
+
+function expenseDetails(exp: ExpenseOrder): string | null {
+  if (exp.kind === 'SALARY_PAYMENT') {
+    const base = exp.salaryExecutor ? `Выплата: ${exp.salaryExecutor.username}` : 'Выплата зарплаты';
+    return exp.note ? `${base} · ${exp.note}` : base;
+  }
+  return exp.note ?? null;
+}
 
 function ExpenseList({ year, month }: { year: number; month: number }) {
   const qc = useQueryClient();
@@ -270,42 +269,46 @@ function ExpenseList({ year, month }: { year: number; month: number }) {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['expenses', year] }),
   });
 
-  // Только ордера выбранного месяца.
+  // Только операции выбранного месяца.
   const expenses = all.filter((e: ExpenseOrder) => new Date(e.createdAt).getMonth() === month - 1);
 
   if (isLoading) return <div className="text-gray-400 text-sm py-4 text-center">Загрузка...</div>;
-  if (expenses.length === 0)
-    return <div className="text-gray-400 text-sm py-4 text-center">Нет расходных ордеров за {MONTH_LABELS_FULL[month - 1]}</div>;
+  if (expenses.length === 0) return <div className="text-gray-400 text-sm py-4 text-center">Нет расходных операций за {MONTH_LABELS_FULL[month - 1]}</div>;
 
   return (
     <div className="space-y-1">
-      {expenses.map((exp: ExpenseOrder) => (
-        <div key={exp.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50 group">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-              {EXPENSE_CATEGORY_LABELS[exp.category] ?? exp.category}
-            </span>
-            <div>
-              <span className="font-semibold text-sm tabular-nums">{fmt(exp.amount)}</span>
-              {exp.note && <span className="text-gray-500 text-sm ml-2">{exp.note}</span>}
+      {expenses.map((exp: ExpenseOrder) => {
+        const isSalary = exp.kind === 'SALARY_PAYMENT';
+        const details = expenseDetails(exp);
+        return (
+          <div key={exp.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50 group">
+            <div className="flex items-center gap-3">
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isSalary ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-gray-100 text-gray-700'}`}>{expenseCategoryLabel(exp)}</span>
+              <div>
+                <span className="font-semibold text-sm tabular-nums">{fmt(exp.amount)}</span>
+                {details && <span className="text-gray-500 text-sm ml-2">{details}</span>}
+                {isSalary && <span className="text-gray-400 text-xs ml-2">выдал: {exp.createdBy.username}</span>}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-400">{fmtDate(exp.createdAt)}</span>
+              {!isSalary && (
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Удалить расходный ордер на ${fmt(exp.amount)}?`)) {
+                      deleteMutation.mutate(exp.id);
+                    }
+                  }}
+                  disabled={deleteMutation.isPending}
+                  className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition-opacity disabled:opacity-30"
+                >
+                  удалить
+                </button>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">{fmtDate(exp.createdAt)}</span>
-            <button
-              onClick={() => {
-                if (window.confirm(`Удалить расходный ордер на ${fmt(exp.amount)}?`)) {
-                  deleteMutation.mutate(exp.id);
-                }
-              }}
-              disabled={deleteMutation.isPending}
-              className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition-opacity disabled:opacity-30"
-            >
-              удалить
-            </button>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -325,7 +328,11 @@ export function ReportsPage() {
     queryFn: () => reportsApi.getYears(),
   });
 
-  const { data: report, isLoading, error } = useQuery({
+  const {
+    data: report,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['monthly-report', year],
     queryFn: () => reportsApi.getMonthly(year),
     staleTime: 30_000,
@@ -349,10 +356,7 @@ export function ReportsPage() {
     <AppShell
       title="Финансовый отчёт"
       actions={
-        <button
-          onClick={() => setShowAddExpense(true)}
-          className="px-3.5 min-h-[44px] bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-        >
+        <button onClick={() => setShowAddExpense(true)} className="px-3.5 min-h-[44px] bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
           <span className="hidden sm:inline">+ Расходный ордер</span>
           <span className="sm:hidden">+ Расход</span>
         </button>
@@ -364,13 +368,7 @@ export function ReportsPage() {
           <span className="text-sm text-gray-500">Год:</span>
           <div className="flex gap-2">
             {(years.length > 0 ? years : [currentYear]).map((y) => (
-              <button
-                key={y}
-                onClick={() => setYear(y)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  y === year ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:border-blue-400'
-                }`}
-              >
+              <button key={y} onClick={() => setYear(y)} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${y === year ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:border-blue-400'}`}>
                 {y}
               </button>
             ))}
@@ -391,15 +389,16 @@ export function ReportsPage() {
               </div>
               <PnlTable
                 firstCol="Месяц"
-                rows={report.months.map((m) => ({ key: String(m.month), label: m.label, m }))}
+                rows={report.months.map((m) => ({
+                  key: String(m.month),
+                  label: m.label,
+                  m,
+                }))}
                 total={report.totals}
                 onRowClick={(key) => setMonth(Number(key))}
                 selectedKey={String(month)}
               />
-              <p className="text-xs text-gray-400 px-5 py-3">
-                Прибыль = выручка − доставка (транзит) − расходные ордера − зарплата. Доставка в прибыль не входит.
-                Учитываются завершённые заказы (отправлено / оплачено).
-              </p>
+              <p className="text-xs text-gray-400 px-5 py-3">Прибыль = выручка − доставка (транзит) − расходные ордера − зарплата. Доставка в прибыль не входит. Учитываются завершённые заказы (отправлено / оплачено).</p>
             </div>
 
             {/* Детализация выбранного месяца */}
@@ -407,13 +406,7 @@ export function ReportsPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="font-semibold text-gray-900 mr-1">Месяц:</h2>
                 {MONTH_LABELS_SHORT.map((label, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setMonth(idx + 1)}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                      month === idx + 1 ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-blue-400'
-                    }`}
-                  >
+                  <button key={idx} onClick={() => setMonth(idx + 1)} className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${month === idx + 1 ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-blue-400'}`}>
                     {label}
                   </button>
                 ))}
@@ -446,11 +439,13 @@ export function ReportsPage() {
                 {monthData && <ExpenseStructure m={monthData} periodLabel={MONTH_LABELS_FULL[month - 1]} />}
               </div>
 
-              {/* Расходные ордера за месяц */}
+              {/* Расходные операции за месяц */}
               <div className="bg-white border border-gray-200 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-semibold text-gray-900">Расходные ордера — {MONTH_LABELS_FULL[month - 1]}</h2>
-                  <button onClick={() => setShowAddExpense(true)} className="text-sm text-blue-600 hover:underline">+ Добавить</button>
+                  <h2 className="font-semibold text-gray-900">Расходные операции — {MONTH_LABELS_FULL[month - 1]}</h2>
+                  <button onClick={() => setShowAddExpense(true)} className="text-sm text-blue-600 hover:underline">
+                    + Добавить
+                  </button>
                 </div>
                 <ExpenseList year={year} month={month} />
               </div>
@@ -459,9 +454,7 @@ export function ReportsPage() {
         )}
       </div>
 
-      {showAddExpense && (
-        <AddExpenseModal onClose={() => setShowAddExpense(false)} onSuccess={refetchAll} />
-      )}
+      {showAddExpense && <AddExpenseModal onClose={() => setShowAddExpense(false)} onSuccess={refetchAll} />}
     </AppShell>
   );
 }

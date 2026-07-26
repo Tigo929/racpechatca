@@ -1,40 +1,19 @@
 export type EnumProductCategory = 'PHOTO' | 'TSHIRT';
 
 export type EnumTshirtSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
-export type EnumPrintLocation =
-  | 'FRONT'
-  | 'BACK'
-  | 'FRONT_BACK'
-  | 'SLEEVE_LEFT'
-  | 'SLEEVE_RIGHT'
-  | 'FULL'
-  | 'BY_TZ';
+export type EnumPrintLocation = 'FRONT' | 'BACK' | 'FRONT_BACK' | 'SLEEVE_LEFT' | 'SLEEVE_RIGHT' | 'FULL' | 'BY_TZ';
 
-export type EnumStatus =
-  | 'LEAD'
-  | 'NEW'
-  | 'FOLDER_STRUCTURE_CREATED'
-  | 'IN_PROGRESS'
-  | 'PRINTED'
-  | 'READY'
-  | 'DONE'
-  | 'SENT'
-  | 'PAID'
-  | 'READY_FOR_REVIEW'
-  | 'COMPLETED'
-  | 'CANCELLED';
+export type EnumStatus = 'LEAD' | 'NEW' | 'FOLDER_STRUCTURE_CREATED' | 'IN_PROGRESS' | 'PRINTED' | 'READY' | 'DONE' | 'SENT' | 'PAID' | 'READY_FOR_REVIEW' | 'COMPLETED' | 'CANCELLED';
 
 export type EnumSourceOrder = 'AVITO' | 'OZON' | 'WB' | 'LOCAL';
 
 export type EnumCommunication = 'AVITO' | 'TELEGRAM' | 'MAX' | 'OZON';
 
-export type EnumDeliveryMethod =
-  'YANDEX_PVZ' | 'OZON_PVZ' | 'PICKUP' | 'OZON_SELLER' | 'WB_SELLER';
+export type EnumDeliveryMethod = 'YANDEX_PVZ' | 'OZON_PVZ' | 'PICKUP' | 'OZON_SELLER' | 'WB_SELLER';
 
 export type EnumTypePaper = 'GLOSS' | 'MATTE';
 
-export type EnumAccrualStatus =
-  'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'SETTLED' | 'REVERSED';
+export type EnumAccrualStatus = 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'SETTLED' | 'REVERSED';
 
 /** Статус отправки заказа партнёру CoolABC (внешняя печать футболок). */
 export type EnumPartnerSyncStatus = 'PENDING' | 'SENT' | 'FAILED';
@@ -431,15 +410,7 @@ export interface WeeklyReport {
 
 // ── Expense Order types ───────────────────────────────────────────────────────
 
-export type EnumExpenseCategory =
-  | 'MATERIALS_PHOTO'
-  | 'MATERIALS_TSHIRT'
-  | 'DELIVERY_SUPPLIES'
-  | 'EQUIPMENT'
-  | 'MARKETING'
-  | 'PARTNER_SHARE'
-  | 'PARTNER_REWARD'
-  | 'OTHER';
+export type EnumExpenseCategory = 'MATERIALS_PHOTO' | 'MATERIALS_TSHIRT' | 'DELIVERY_SUPPLIES' | 'EQUIPMENT' | 'MARKETING' | 'PARTNER_SHARE' | 'PARTNER_REWARD' | 'OTHER';
 
 export const EXPENSE_CATEGORY_LABELS: Record<EnumExpenseCategory, string> = {
   MATERIALS_PHOTO: 'Материалы — Фото',
@@ -455,10 +426,13 @@ export const EXPENSE_CATEGORY_LABELS: Record<EnumExpenseCategory, string> = {
 export interface ExpenseOrder {
   id: string;
   createdAt: string;
-  category: EnumExpenseCategory;
+  kind?: 'EXPENSE_ORDER' | 'SALARY_PAYMENT';
+  category: EnumExpenseCategory | 'SALARY';
   amount: number;
   note?: string | null;
   createdBy: { id: string; username: string };
+  salaryPaymentId?: string;
+  salaryExecutor?: { id: string; username: string };
 }
 
 export interface CreateExpenseDto {
@@ -479,12 +453,7 @@ export const TASK_STATUS_LABELS: Record<EnumTaskStatus, string> = {
 };
 
 /** Порядок в интерфейсе: сначала то, что ещё в работе. */
-export const TASK_STATUS_FLOW: EnumTaskStatus[] = [
-  'OPEN',
-  'IN_PROGRESS',
-  'DONE',
-  'CANCELLED',
-];
+export const TASK_STATUS_FLOW: EnumTaskStatus[] = ['OPEN', 'IN_PROGRESS', 'DONE', 'CANCELLED'];
 
 export interface Task {
   id: string;
