@@ -19,6 +19,7 @@ import { TechSpecStorageService } from './tech-spec-storage.service';
 import { buildPartnerOrderPayload } from './partner-payload';
 import { PartnerSettingsService } from './partner-settings.service';
 import { DtoPartnerStatus } from './dto/partner-status.dto';
+import { getTechSpecPathAt } from './tech-spec-paths';
 import {
   PARTNER_SETTABLE_STATUSES,
   fromPartnerStatus,
@@ -110,16 +111,37 @@ export class PartnerApiController {
     @Param('idOrder') idOrder: string,
     @Res() res: Response,
   ): Promise<void> {
+    await this.streamTechSpecPhoto(idOrder, 0, res);
+  }
+
+  /** Конкретный ТЗ-файл из набора, номер начинается с нуля. */
+  @Get(':idOrder/techspec-photo/:index')
+  async getTechSpecPhotoByIndex(
+    @Param('idOrder') idOrder: string,
+    @Param('index') indexRaw: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const index = Number(indexRaw);
+    if (!Number.isInteger(index) || index < 0) {
+      throw new BadRequestException('Некорректный номер ТЗ-файла');
+    }
+    await this.streamTechSpecPhoto(idOrder, index, res);
+  }
+
+  private async streamTechSpecPhoto(
+    idOrder: string,
+    index: number,
+    res: Response,
+  ): Promise<void> {
     const order = await this.prisma.orderPhoto.findUnique({
       where: { id: idOrder },
-      select: { techSpecPhotoPath: true },
+      select: { techSpecPhotoPath: true, techSpecPhotoPaths: true },
     });
-    if (!order?.techSpecPhotoPath) {
+    const filename = getTechSpecPathAt(order, index);
+    if (!filename) {
       throw new NotFoundException('ТЗ-фото не прикреплено');
     }
-    const { buffer, contentType } = await this.storage.read(
-      order.techSpecPhotoPath,
-    );
+    const { buffer, contentType } = await this.storage.read(filename);
     res.setHeader('Content-Type', contentType);
     res.end(buffer);
   }

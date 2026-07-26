@@ -332,14 +332,15 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
   };
 
   const uploadPhotoMutation = useMutation({
-    mutationFn: (file: File) => ordersApi.uploadTechSpecPhoto(orderId, file),
+    mutationFn: (files: File[]) =>
+      ordersApi.uploadTechSpecPhotos(orderId, files),
     onSuccess: (updated) => {
       qc.setQueryData(["order", orderId], updated);
       qc.invalidateQueries({ queryKey: ["orders"] });
-      toast.success("ТЗ-фото прикреплено");
+      toast.success("ТЗ-файлы прикреплены");
     },
     onError: (error: unknown) =>
-      toast.error(getErrorMessage(error, "Не удалось загрузить ТЗ-фото")),
+      toast.error(getErrorMessage(error, "Не удалось загрузить ТЗ-файлы")),
   });
 
   const sendTshirtTelegramMutation = useMutation({
@@ -357,14 +358,14 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       toast.error(getErrorMessage(error, "Ошибка отправки в Telegram")),
   });
 
-  const handleViewPhoto = async () => {
+  const handleViewPhoto = async (index = 0) => {
     try {
-      const blob = await ordersApi.getTechSpecPhoto(orderId);
+      const blob = await ordersApi.getTechSpecPhoto(orderId, index);
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank");
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
-      toast.error(getErrorMessage(error, "Не удалось открыть ТЗ-фото"));
+      toast.error(getErrorMessage(error, "Не удалось открыть ТЗ-файл"));
     }
   };
 
@@ -442,6 +443,14 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
   }
 
   if (!order) return null;
+
+  const techSpecPaths =
+    order.techSpecPhotoPaths && order.techSpecPhotoPaths.length > 0
+      ? order.techSpecPhotoPaths
+      : order.techSpecPhotoPath
+        ? [order.techSpecPhotoPath]
+        : [];
+  const hasTechSpecFiles = techSpecPaths.length > 0;
 
   return (
     <div className="space-y-6">
@@ -694,32 +703,41 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
               );
             })()}
 
-          {/* ТЗ-фото (согласованный макет) */}
+          {/* ТЗ-файлы (согласованный макет и уточнения) */}
           <div className="flex items-center gap-3 flex-wrap">
             <label className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 cursor-pointer transition-colors">
               <Paperclip size={13} aria-hidden="true" />
-              {order.techSpecPhotoPath
-                ? "Заменить ТЗ-фото"
-                : "Прикрепить ТЗ-фото"}
+              {hasTechSpecFiles ? "Заменить ТЗ-файлы" : "Прикрепить ТЗ-файлы"}
               <input
                 type="file"
                 accept="image/*,application/pdf"
+                multiple
                 className="hidden"
                 disabled={uploadPhotoMutation.isPending}
                 onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) uploadPhotoMutation.mutate(file);
+                  const files = Array.from(e.target.files ?? []);
+                  if (files.length > 0) uploadPhotoMutation.mutate(files);
                   e.target.value = "";
                 }}
               />
             </label>
-            {order.techSpecPhotoPath && (
-              <button
-                onClick={handleViewPhoto}
-                className="text-xs text-indigo-700 underline hover:text-indigo-900"
-              >
-                Открыть ТЗ-фото
-              </button>
+            {hasTechSpecFiles && (
+              <div className="flex items-center gap-2 flex-wrap text-xs">
+                <span className="text-gray-500">
+                  Прикреплено: {techSpecPaths.length}
+                </span>
+                {techSpecPaths.map((path, index) => (
+                  <button
+                    key={`${path}-${index}`}
+                    onClick={() => handleViewPhoto(index)}
+                    className="text-indigo-700 underline hover:text-indigo-900"
+                  >
+                    {techSpecPaths.length === 1
+                      ? "Открыть ТЗ"
+                      : `Открыть ТЗ ${index + 1}`}
+                  </button>
+                ))}
+              </div>
             )}
             {uploadPhotoMutation.isPending && (
               <span className="text-xs text-gray-500">Загрузка…</span>
@@ -756,13 +774,13 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 </p>
               ) : (
                 <p className="text-sm text-gray-600">
-                  Нажмите «Отправить исполнителю»: CRM проверит ТЗ-фото,
+                  Нажмите «Отправить исполнителю»: CRM проверит ТЗ-файлы,
                   поставит статус «Отправлен» и отправит заказ в Telegram.
                 </p>
               )}
-              {!order.techSpecPhotoPath && (
+              {!hasTechSpecFiles && (
                 <p className="text-xs text-gray-400 mt-0.5">
-                  Сначала прикрепите ТЗ-фото — без него статус «Отправлен» не
+                  Сначала прикрепите ТЗ-файл — без него статус «Отправлен» не
                   поставится.
                 </p>
               )}

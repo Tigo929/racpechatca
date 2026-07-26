@@ -27,6 +27,7 @@ const EXT_CONTENT_TYPE: Record<string, string> = {
 // пережимается в WebP и на диск ложится в разы меньше — большим держим
 // только приёмный лимит исходника.
 export const TECH_SPEC_MAX_BYTES = 30 * 1024 * 1024; // 30 МБ
+export const TECH_SPEC_MAX_FILES = 10;
 
 // Макет — производственный референс, поэтому качество держим высоким, а
 // уменьшаем только совсем крупные снимки: детали принта должны остаться
@@ -53,6 +54,37 @@ export class TechSpecStorageService {
     orderId: string,
     file: { buffer: Buffer; mimetype: string; size: number },
   ): Promise<string> {
+    const [filename] = await this.saveMany(orderId, [file]);
+    return filename;
+  }
+
+  /** Сохраняет набор ТЗ-файлов заказа, полностью заменяя прошлый набор. */
+  async saveMany(
+    orderId: string,
+    files: { buffer: Buffer; mimetype: string; size: number }[],
+  ): Promise<string[]> {
+    if (files.length === 0) {
+      throw new BadRequestException('Файл не передан');
+    }
+    if (files.length > TECH_SPEC_MAX_FILES) {
+      throw new BadRequestException(
+        `Можно прикрепить не больше ${TECH_SPEC_MAX_FILES} файлов`,
+      );
+    }
+    const extensions = files.map((file) => this.validate(file));
+    await fs.mkdir(this.baseDir, { recursive: true });
+    await this.remove(orderId);
+
+    const filenames: string[] = [];
+    for (const [index, file] of files.entries()) {
+      filenames.push(
+        await this.saveOne(orderId, file, extensions[index], index),
+      );
+    }
+    return filenames;
+  }
+
+  private validate(file: { mimetype: string; size: number }): string {
     const ext = ALLOWED[file.mimetype];
     if (!ext) {
       throw new BadRequestException(
@@ -62,14 +94,20 @@ export class TechSpecStorageService {
     if (file.size > TECH_SPEC_MAX_BYTES) {
       throw new BadRequestException('Файл больше 30 МБ');
     }
-    await fs.mkdir(this.baseDir, { recursive: true });
-    // Убираем возможный старый файл заказа с другим расширением.
-    await this.remove(orderId);
+    return ext;
+  }
 
+  private async saveOne(
+    orderId: string,
+    file: { buffer: Buffer; mimetype: string; size: number },
+    ext: string,
+    index: number,
+  ): Promise<string> {
+    const suffix = index + 1;
     // PDF оставляем как есть: это векторный документ, конвертация только
     // испортит качество макета.
     if (ext === 'pdf') {
-      const filename = `techspec-${orderId}.pdf`;
+      const filename = `techspec-${orderId}-${suffix}.pdf`;
       await fs.writeFile(path.join(this.baseDir, filename), file.buffer);
       return filename;
     }
@@ -95,7 +133,7 @@ export class TechSpecStorageService {
       );
     }
 
-    const filename = `techspec-${orderId}.webp`;
+    const filename = `techspec-${orderId}-${suffix}.webp`;
     await fs.writeFile(path.join(this.baseDir, filename), converted);
     return filename;
   }
@@ -122,10 +160,22 @@ export class TechSpecStorageService {
 
   /** Удаляет все файлы макета заказа (любое расширение). */
   private async remove(orderId: string): Promise<void> {
-    for (const ext of Object.values(ALLOWED)) {
-      await fs
-        .unlink(path.join(this.baseDir, `techspec-${orderId}.${ext}`))
-        .catch(() => undefined);
+    let entries: string[];
+    try {
+      entries = await fs.readdir(this.baseDir);
+    } catch {
+      return;
+    }
+
+    const prefix = `techspec-${orderId}`;
+    const legacyNames = new Set(
+      Object.values(ALLOWED).map((ext) => `${prefix}.${ext}`),
+    );
+    for (const entry of entries) {
+      if (!legacyNames.has(entry) && !entry.startsWith(`${prefix}-`)) {
+        continue;
+      }
+      await fs.unlink(path.join(this.baseDir, entry)).catch(() => undefined);
     }
   }
 }

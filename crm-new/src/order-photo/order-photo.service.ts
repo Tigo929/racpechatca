@@ -29,6 +29,7 @@ import {
 } from 'src/salary/salary-calculation';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
+import { hasTechSpecFiles } from 'src/partner/tech-spec-paths';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 
 function buildCommunicationUrl(
@@ -846,7 +847,7 @@ export class OrderPhotoService {
       newStatus === EnumStatus.SENT &&
       order.productCategory === EnumProductCategory.TSHIRT
     ) {
-      if (!order.techSpecPhotoPath) {
+      if (!hasTechSpecFiles(order)) {
         throw new BadRequestException(
           'Сначала прикрепите ТЗ-фото, затем переводите заказ в «Отправлен».',
         );
@@ -1071,9 +1072,11 @@ export class OrderPhotoService {
   async dispatchTshirtToPartner(id: string, userId: string, userRole: string) {
     const order = await this.getOrderById(id, userId, userRole);
     if (order.productCategory !== EnumProductCategory.TSHIRT) {
-      throw new BadRequestException('Исполнителю отправляются только футболки.');
+      throw new BadRequestException(
+        'Исполнителю отправляются только футболки.',
+      );
     }
-    if (!order.techSpecPhotoPath) {
+    if (!hasTechSpecFiles(order)) {
       throw new BadRequestException(
         'Сначала прикрепите ТЗ-фото, затем отправляйте исполнителю.',
       );

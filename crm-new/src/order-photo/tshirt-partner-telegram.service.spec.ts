@@ -20,16 +20,22 @@ describe('TshirtPartnerTelegramService', () => {
     await fs.rm(uploadDir, { recursive: true, force: true });
   });
 
-  it('sends the tech spec with status buttons and a sticker download button before marking SENT', async () => {
+  it('sends all tech spec files with buttons only on the main message before marking SENT', async () => {
     const orderId = 'order-1';
     const techSpecBuffer = Buffer.from('fake-png');
-    await fs.writeFile(path.join(uploadDir, 'techspec.png'), techSpecBuffer);
+    const extraTechSpecBuffer = Buffer.from('extra-png');
+    await fs.writeFile(path.join(uploadDir, 'techspec-1.png'), techSpecBuffer);
+    await fs.writeFile(
+      path.join(uploadDir, 'techspec-2.png'),
+      extraTechSpecBuffer,
+    );
 
     const order = {
       id: orderId,
       numberOrder: '20260726-001',
       tshirtModel: 'Classic',
-      techSpecPhotoPath: 'techspec.png',
+      techSpecPhotoPath: 'techspec-1.png',
+      techSpecPhotoPaths: ['techspec-1.png', 'techspec-2.png'],
       tshirtItems: [
         {
           color: 'Белая',
@@ -88,11 +94,11 @@ describe('TshirtPartnerTelegramService', () => {
     await service.sendOrder(orderId);
 
     expect(stickerLinks.buildStickerUrl).toHaveBeenCalledWith(orderId);
-    expect(telegram.sendPhoto).toHaveBeenCalledTimes(1);
+    expect(telegram.sendPhoto).toHaveBeenCalledTimes(2);
     expect(telegram.sendPhoto).toHaveBeenCalledWith(
       '-1004309818132',
       techSpecBuffer,
-      'techspec.png',
+      'techspec-1.png',
       'image/png',
       expect.stringContaining('20260726-001'),
       '8',
@@ -111,6 +117,15 @@ describe('TshirtPartnerTelegramService', () => {
           ],
         ],
       },
+    );
+    expect(telegram.sendPhoto).toHaveBeenCalledWith(
+      '-1004309818132',
+      extraTechSpecBuffer,
+      'techspec-2.png',
+      'image/png',
+      expect.stringContaining('Файл 2 из 2'),
+      '8',
+      undefined,
     );
     expect(telegram.sendDocument).not.toHaveBeenCalled();
     expect(prisma.orderPhoto.update).toHaveBeenLastCalledWith({
@@ -132,6 +147,7 @@ describe('TshirtPartnerTelegramService', () => {
       numberOrder: '20260726-002',
       tshirtModel: null,
       techSpecPhotoPath: 'techspec.png',
+      techSpecPhotoPaths: ['techspec.png'],
       tshirtItems: [
         {
           color: 'Черная',
@@ -161,17 +177,20 @@ describe('TshirtPartnerTelegramService', () => {
     const service = new TshirtPartnerTelegramService(
       prisma as never,
       telegram as never,
-      { get: jest.fn().mockResolvedValue({ partnerRateBasisPoints: 3000 }) } as never,
+      {
+        get: jest.fn().mockResolvedValue({ partnerRateBasisPoints: 3000 }),
+      } as never,
       {
         buildStickerUrl: jest.fn().mockReturnValue(null),
       } as never,
       {
-        get: jest.fn((key: string) =>
-          ({
-            TSHIRT_PARTNER_TELEGRAM_CHAT_ID: '-1004309818132',
-            TSHIRT_PARTNER_TELEGRAM_THREAD_ID: '8',
-            UPLOAD_DIR: uploadDir,
-          })[key],
+        get: jest.fn(
+          (key: string) =>
+            ({
+              TSHIRT_PARTNER_TELEGRAM_CHAT_ID: '-1004309818132',
+              TSHIRT_PARTNER_TELEGRAM_THREAD_ID: '8',
+              UPLOAD_DIR: uploadDir,
+            })[key],
         ),
       } as never,
     );

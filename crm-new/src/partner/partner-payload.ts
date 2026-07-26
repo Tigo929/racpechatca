@@ -5,6 +5,7 @@ import {
 } from 'src/generated/prisma/enums';
 import { settleOrder } from './partner-settlement';
 import { toPartnerStatus } from './partner-status';
+import { getTechSpecPaths } from './tech-spec-paths';
 
 // Человекочитаемые метки — дублируем к кодам, чтобы производство не ошиблось.
 const PRINT_LOCATION_LABELS: Record<EnumPrintLocation, string> = {
@@ -32,6 +33,7 @@ export interface PartnerOrderForPayload {
   totalOrder: number | null;
   deliveryMethod: string;
   techSpecPhotoPath: string | null;
+  techSpecPhotoPaths?: string[] | null;
   tshirtItems: {
     color: string;
     size: string;
@@ -66,6 +68,11 @@ export function buildPartnerOrderPayload(
   const balanceDue = total - prepaid;
   const isPickup = order.deliveryMethod === EnumDeliveryMethod.PICKUP;
   const base = baseUrl.replace(/\/+$/, '');
+  const techSpecUrls = getTechSpecPaths(order).map((_, index) =>
+    index === 0
+      ? `${base}/partner/orders/${order.id}/techspec-photo`
+      : `${base}/partner/orders/${order.id}/techspec-photo/${index}`,
+  );
 
   // Складская сводка для партнёра: сколько заготовок и каких (цвет+размер) нужно
   // списать. Агрегируем по цвету+размеру; изделия клиента выделяем флагом
@@ -147,9 +154,8 @@ export function buildPartnerOrderPayload(
     },
     files: {
       // Партнёр скачивает по этим ссылкам со своим X-Partner-Token.
-      tech_spec_url: order.techSpecPhotoPath
-        ? `${base}/partner/orders/${order.id}/techspec-photo`
-        : null,
+      tech_spec_url: techSpecUrls[0] ?? null,
+      tech_spec_urls: techSpecUrls,
       sticker_url: `${base}/partner/orders/${order.id}/sticker`,
     },
   };

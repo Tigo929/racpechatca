@@ -13,6 +13,7 @@ import {
 } from 'src/generated/prisma/enums';
 import { buildPartnerOrderPayload } from './partner-payload';
 import { PartnerSettingsService } from './partner-settings.service';
+import { hasTechSpecFiles } from './tech-spec-paths';
 
 /**
  * Исходящая отправка заказа исполнителю-партнёру (мы инициируем push).
@@ -57,7 +58,7 @@ export class PartnerOutboundService {
     if (order.tshirtItems.length === 0) {
       throw new BadRequestException('В заказе нет позиций-футболок');
     }
-    if (!order.techSpecPhotoPath) {
+    if (!hasTechSpecFiles(order)) {
       throw new BadRequestException(
         'Сначала прикрепите ТЗ-фото (согласованный макет), затем отправляйте',
       );

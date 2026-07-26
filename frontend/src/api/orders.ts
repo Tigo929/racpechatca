@@ -84,10 +84,13 @@ export const ordersApi = {
     return data;
   },
 
-  /** Прикрепить ТЗ-фото (согласованный макет) к заказу. */
-  uploadTechSpecPhoto: async (orderId: string, file: File): Promise<OrderPhoto> => {
+  /** Прикрепить ТЗ-файлы (согласованный макет + уточнения) к заказу. */
+  uploadTechSpecPhotos: async (
+    orderId: string,
+    files: File[],
+  ): Promise<OrderPhoto> => {
     const form = new FormData();
-    form.append('file', file);
+    files.forEach((file) => form.append('files', file));
     const { data } = await api.post<OrderPhoto>(
       `/order-photo/${orderId}/techspec-photo`,
       form,
@@ -95,10 +98,20 @@ export const ordersApi = {
     return data;
   },
 
-  /** Просмотр прикреплённого ТЗ-фото (blob для открытия во вкладке). */
-  getTechSpecPhoto: async (orderId: string): Promise<Blob> => {
+  /** Прикрепить одно ТЗ-фото к заказу. Оставлено для старых вызовов. */
+  uploadTechSpecPhoto: async (
+    orderId: string,
+    file: File,
+  ): Promise<OrderPhoto> => {
+    return ordersApi.uploadTechSpecPhotos(orderId, [file]);
+  },
+
+  /** Просмотр прикреплённого ТЗ-файла (blob для открытия во вкладке). */
+  getTechSpecPhoto: async (orderId: string, index = 0): Promise<Blob> => {
     const { data } = await api.get<Blob>(
-      `/order-photo/${orderId}/techspec-photo`,
+      index === 0
+        ? `/order-photo/${orderId}/techspec-photo`
+        : `/order-photo/${orderId}/techspec-photo/${index}`,
       { responseType: 'blob' },
     );
     return data;

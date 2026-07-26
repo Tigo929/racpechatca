@@ -116,8 +116,10 @@ export interface OrderPhoto {
   clientPaidAt?: string | null;
   /** Модель футболки — производственные данные для исполнителя-партнёра. */
   tshirtModel?: string | null;
-  /** Прикреплено ли ТЗ-фото (согласованный макет). */
+  /** Первый ТЗ-файл (оставлен для старых заказов и совместимости). */
   techSpecPhotoPath?: string | null;
+  /** Все прикреплённые ТЗ-файлы (согласованный макет + уточнения). */
+  techSpecPhotoPaths?: string[] | null;
   /** Отправка заказа исполнителю-партнёру (только TSHIRT). */
   partnerSyncStatus?: EnumPartnerSyncStatus | null;
   partnerSyncError?: string | null;

@@ -13,6 +13,7 @@ import {
 } from 'src/generated/prisma/enums';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 import { settleOrder, settlePosition } from 'src/partner/partner-settlement';
+import { getTechSpecPaths } from 'src/partner/tech-spec-paths';
 
 const PRINT_LOCATION_LABELS: Record<EnumPrintLocation, string> = {
   FRONT: 'Грудь',
@@ -97,16 +98,15 @@ export class TshirtPartnerTelegramService {
       );
       return;
     }
-    if (!order.techSpecPhotoPath) {
+    const filenames = getTechSpecPaths(order).map((filename) =>
+      path.basename(filename),
+    );
+    if (filenames.length === 0) {
       await this.markFailed(orderId, 'ТЗ-фото не прикреплено.');
       return;
     }
 
     try {
-      const filename = path.basename(order.techSpecPhotoPath);
-      const buffer = await fs.readFile(path.join(this.uploadDir, filename));
-      const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-      const contentType = EXT_CONTENT_TYPE[ext] ?? 'application/octet-stream';
       const caption = await this.buildMessage(order);
       const stickerUrl = this.stickerLinks.buildStickerUrl(orderId);
       if (!stickerUrl) {
@@ -118,29 +118,28 @@ export class TshirtPartnerTelegramService {
       }
       const replyMarkup = this.buildStatusButtons(orderId, stickerUrl);
 
-      const sentTechSpec =
-        contentType === 'application/pdf'
-          ? await this.telegram.sendDocument(
-              this.chatId,
-              buffer,
-              filename,
-              contentType,
-              caption,
-              this.threadId || undefined,
-              replyMarkup,
-            )
-          : await this.telegram.sendPhoto(
-              this.chatId,
-              buffer,
-              filename,
-              contentType,
-              caption,
-              this.threadId || undefined,
-              replyMarkup,
-            );
+      const sentTechSpec = await this.sendTechSpecFile(
+        filenames[0],
+        caption,
+        replyMarkup,
+      );
       if (!sentTechSpec) {
         await this.markFailed(orderId, 'Telegram не принял ТЗ-файл.');
         return;
+      }
+
+      for (let index = 1; index < filenames.length; index += 1) {
+        const sentExtra = await this.sendTechSpecFile(
+          filenames[index],
+          this.buildExtraCaption(order, index, filenames.length),
+        );
+        if (!sentExtra) {
+          await this.markFailed(
+            orderId,
+            `Telegram не принял дополнительный ТЗ-файл ${index + 1}/${filenames.length}.`,
+          );
+          return;
+        }
       }
 
       await this.prisma.orderPhoto.update({
@@ -187,6 +186,47 @@ export class TshirtPartnerTelegramService {
         ],
       ],
     };
+  }
+
+  private async sendTechSpecFile(
+    filename: string,
+    caption: string,
+    replyMarkup?: unknown,
+  ): Promise<boolean> {
+    const buffer = await fs.readFile(path.join(this.uploadDir, filename));
+    const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+    const contentType = EXT_CONTENT_TYPE[ext] ?? 'application/octet-stream';
+    return contentType === 'application/pdf'
+      ? this.telegram.sendDocument(
+          this.chatId,
+          buffer,
+          filename,
+          contentType,
+          caption,
+          this.threadId || undefined,
+          replyMarkup,
+        )
+      : this.telegram.sendPhoto(
+          this.chatId,
+          buffer,
+          filename,
+          contentType,
+          caption,
+          this.threadId || undefined,
+          replyMarkup,
+        );
+  }
+
+  private buildExtraCaption(
+    order: TshirtOrderWithItems,
+    index: number,
+    total: number,
+  ): string {
+    return [
+      '🧾 <b>Дополнительное ТЗ</b>',
+      `Заказ: <b>${escapeHtml(order.numberOrder)}</b>`,
+      `Файл ${index + 1} из ${total}`,
+    ].join('\n');
   }
 
   private async buildMessage(order: TshirtOrderWithItems): Promise<string> {

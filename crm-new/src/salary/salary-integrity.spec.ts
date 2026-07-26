@@ -94,6 +94,8 @@ function makeOrder(productCategory: 'PHOTO' | 'TSHIRT' = 'PHOTO') {
     productCategory,
     techSpecPhotoPath:
       productCategory === 'TSHIRT' ? 'uploads/techspec-test.png' : null,
+    techSpecPhotoPaths:
+      productCategory === 'TSHIRT' ? ['uploads/techspec-test.png'] : [],
     deadline: null,
     isUrgent: false,
     executorId: 'executor-1',
@@ -130,9 +132,7 @@ function createOrderService(stub: PrismaStub) {
     sendToGroup: jest.fn<Promise<boolean>, [string]>().mockResolvedValue(true),
   };
   const partnerSettings = {
-    syncRewardExpense: jest
-      .fn<Promise<void>, unknown[]>()
-      .mockResolvedValue(),
+    syncRewardExpense: jest.fn<Promise<void>, unknown[]>().mockResolvedValue(),
   };
   return new OrderPhotoService(
     stub as unknown as PrismaService,

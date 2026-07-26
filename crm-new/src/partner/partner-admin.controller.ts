@@ -6,11 +6,11 @@ import {
   Param,
   Post,
   Res,
-  UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { EnumRole } from 'src/generated/prisma/enums';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
@@ -20,8 +20,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import {
   TechSpecStorageService,
   TECH_SPEC_MAX_BYTES,
+  TECH_SPEC_MAX_FILES,
 } from './tech-spec-storage.service';
 import { PartnerOutboundService } from './partner-outbound.service';
+import { getTechSpecPathAt } from './tech-spec-paths';
 
 /**
  * Админские действия по отправке заказа партнёру: загрузка ТЗ-фото
@@ -42,23 +44,33 @@ export class PartnerAdminController {
   /** Прикрепить ТЗ-фото (согласованный с клиентом макет) к заказу. */
   @Post(':idOrder/techspec-photo')
   @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: TECH_SPEC_MAX_BYTES } }),
+    AnyFilesInterceptor({
+      limits: { fileSize: TECH_SPEC_MAX_BYTES, files: TECH_SPEC_MAX_FILES },
+    }),
   )
   async uploadTechSpecPhoto(
     @Param('idOrder') idOrder: string,
-    @UploadedFile() file: Express.Multer.File | undefined,
+    @UploadedFiles() files: Express.Multer.File[] = [],
   ) {
-    if (!file) throw new BadRequestException('Файл не передан');
+    if (files.length === 0) throw new BadRequestException('Файл не передан');
+    if (files.length > TECH_SPEC_MAX_FILES) {
+      throw new BadRequestException(
+        `Можно прикрепить не больше ${TECH_SPEC_MAX_FILES} файлов`,
+      );
+    }
     const order = await this.prisma.orderPhoto.findUnique({
       where: { id: idOrder },
       select: { id: true },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
 
-    const filename = await this.storage.save(idOrder, file);
+    const filenames = await this.storage.saveMany(idOrder, files);
     return this.prisma.orderPhoto.update({
       where: { id: idOrder },
-      data: { techSpecPhotoPath: filename },
+      data: {
+        techSpecPhotoPath: filenames[0] ?? null,
+        techSpecPhotoPaths: filenames,
+      },
       include: {
         items: true,
         tshirtItems: true,
@@ -73,16 +85,37 @@ export class PartnerAdminController {
     @Param('idOrder') idOrder: string,
     @Res() res: Response,
   ): Promise<void> {
+    await this.streamTechSpecPhoto(idOrder, 0, res);
+  }
+
+  /** Просмотр конкретного ТЗ-файла по порядковому номеру, начиная с нуля. */
+  @Get(':idOrder/techspec-photo/:index')
+  async viewTechSpecPhotoByIndex(
+    @Param('idOrder') idOrder: string,
+    @Param('index') indexRaw: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const index = Number(indexRaw);
+    if (!Number.isInteger(index) || index < 0) {
+      throw new BadRequestException('Некорректный номер ТЗ-файла');
+    }
+    await this.streamTechSpecPhoto(idOrder, index, res);
+  }
+
+  private async streamTechSpecPhoto(
+    idOrder: string,
+    index: number,
+    res: Response,
+  ): Promise<void> {
     const order = await this.prisma.orderPhoto.findUnique({
       where: { id: idOrder },
-      select: { techSpecPhotoPath: true },
+      select: { techSpecPhotoPath: true, techSpecPhotoPaths: true },
     });
-    if (!order?.techSpecPhotoPath) {
+    const filename = getTechSpecPathAt(order, index);
+    if (!filename) {
       throw new NotFoundException('ТЗ-фото не прикреплено');
     }
-    const { buffer, contentType } = await this.storage.read(
-      order.techSpecPhotoPath,
-    );
+    const { buffer, contentType } = await this.storage.read(filename);
     res.setHeader('Content-Type', contentType);
     res.end(buffer);
   }
