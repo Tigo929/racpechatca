@@ -25,6 +25,7 @@ import { StickerService } from './sticker.service';
 import { DailyPlanService } from './daily-plan.service';
 import { ShipmentLeadService } from './shipment-lead.service';
 import { DtoSetShipmentLead } from './dto/set-shipment-lead.dto';
+import { StatusSummaryService } from './status-summary.service';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 import DtoCreateOrder from './dto/create-order.dto';
 import DtoAllOrdersforQuery from './dto/all-oreders-for-query.dto';
@@ -55,6 +56,7 @@ export class OrderPhotoController {
     private readonly dailyPlanService: DailyPlanService,
     private readonly tshirtPartnerTelegram: TshirtPartnerTelegramService,
     private readonly shipmentLeadService: ShipmentLeadService,
+    private readonly statusSummaryService: StatusSummaryService,
   ) {}
 
   // ── Admin: отправить «план дня» в рабочий чат прямо сейчас ──────────────────
@@ -78,6 +80,17 @@ export class OrderPhotoController {
   @Roles(EnumRole.ADMIN)
   setShipmentLead(@Body() dto: DtoSetShipmentLead) {
     return this.shipmentLeadService.set(dto.userId ?? null);
+  }
+
+  // ── Admin: ручная «сводка по заказам» в рабочий чат ─────────────────────────
+  // Кнопка в Настройках — можно отправлять сколько угодно раз в день (утром
+  // проверить фронт работ, вечером — что сделано).
+  @Post('status-summary/run')
+  @Roles(EnumRole.ADMIN)
+  runStatusSummary(@Query('dry') dry?: string) {
+    return this.statusSummaryService.runNow(new Date(), {
+      dryRun: dry === 'true',
+    });
   }
 
   // ── Admin-only: create / update / delete order ─────────────────────────────

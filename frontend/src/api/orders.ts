@@ -177,4 +177,12 @@ export const ordersApi = {
     const { data } = await api.delete<OrderPhoto>(`/order-photo/tshirt-items/${itemId}`);
     return data;
   },
+
+  /** Ручная сводка по заказам в рабочий чат (утренний контроль / вечерний итог). */
+  sendStatusSummary: async (): Promise<{ sent: boolean; message: string }> => {
+    const { data } = await api.post<{ sent: boolean; message: string }>(
+      '/order-photo/status-summary/run',
+    );
+    return data;
+  },
 };

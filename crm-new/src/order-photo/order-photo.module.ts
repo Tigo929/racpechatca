@@ -10,6 +10,7 @@ import { TelegramModule } from 'src/telegram/telegram.module';
 import { ReviewReminderService } from './review-reminder.service';
 import { DailyPlanService } from './daily-plan.service';
 import { ShipmentLeadService } from './shipment-lead.service';
+import { StatusSummaryService } from './status-summary.service';
 import { PartnerSettingsModule } from 'src/partner/partner-settings.module';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 
@@ -24,6 +25,7 @@ import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service'
     ReviewReminderService,
     DailyPlanService,
     ShipmentLeadService,
+    StatusSummaryService,
     TshirtPartnerTelegramService,
   ],
 })

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Shirt, Info, Truck } from 'lucide-react';
+import { Shirt, Info, Truck, Send } from 'lucide-react';
 import { AppShell } from '../components/layout/AppShell';
 import { partnerSettingsApi } from '../api/partnerSettings';
 import { shipmentLeadApi } from '../api/shipmentLead';
 import { usersApi } from '../api/users';
+import { ordersApi } from '../api/orders';
 import { getErrorMessage } from '../utils/get-error-message';
 import type { AppUser, PartnerSettings } from '../types/index';
 
@@ -97,6 +98,47 @@ function ShipmentLeadCard() {
   );
 }
 
+/**
+ * Ручная «сводка по заказам» в рабочий чат: те же цифры, что раньше стояли
+ * карточками на странице заказов. Можно отправлять сколько угодно раз в
+ * день — утром проверить фронт работ, вечером понять, что сделано.
+ */
+function StatusSummaryCard() {
+  const send = useMutation({
+    mutationFn: () => ordersApi.sendStatusSummary(),
+    onSuccess: (res) => {
+      toast.success(
+        res.sent
+          ? 'Сводка отправлена в чат'
+          : 'Не удалось отправить — проверьте настройки Telegram-бота',
+      );
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Не удалось отправить сводку')),
+  });
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
+      <div className="flex items-center gap-2">
+        <Send size={16} className="text-amber-500" aria-hidden="true" />
+        <h2 className="text-sm font-semibold text-gray-900">Сводка по заказам в чат</h2>
+      </div>
+      <p className="text-xs text-gray-500">
+        Отправляет в рабочий чат текущие цифры: новые, в работе, готовы, отправлено без
+        оплаты, оплачено, срочные/просроченные, без отзыва. Жмите когда нужно — утром,
+        чтобы понять фронт работ, вечером — что сделано за день.
+      </p>
+      <button
+        onClick={() => send.mutate()}
+        disabled={send.isPending}
+        className="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+      >
+        <Send size={14} aria-hidden="true" />
+        {send.isPending ? 'Отправка…' : 'Отправить сейчас'}
+      </button>
+    </div>
+  );
+}
+
 interface FormState {
   thermalTransferCost: string;
   blankTshirtCost: string;
@@ -163,6 +205,7 @@ export default function SettingsPage() {
   return (
     <AppShell title="Настройки" subtitle="Отгрузки и расчёт с партнёром" width="narrow" onRefresh={() => void refetch()}>
       <div className="max-w-xl space-y-5">
+        <StatusSummaryCard />
         <ShipmentLeadCard />
         {isLoading || !form ? (
           <p className="py-16 text-center text-gray-400">Загрузка настроек партнёра…</p>
