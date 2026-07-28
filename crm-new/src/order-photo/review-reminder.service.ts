@@ -149,8 +149,21 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
       });
 
       for (const order of orders) {
+        // Кнопка: оператор нажимает после отправки запроса отзыва клиенту —
+        // вебхук (telegram-webhook.controller) ставит отметку в CRM.
+        const replyMarkup = {
+          inline_keyboard: [
+            [
+              {
+                text: '✅ Отправил клиенту',
+                callback_data: `review:${order.id}:sent`,
+              },
+            ],
+          ],
+        };
         const ok = await this.telegram.sendReviewReminder(
           this.buildGroupNotification(order),
+          replyMarkup,
         );
         if (!ok) continue;
 

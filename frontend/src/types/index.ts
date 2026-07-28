@@ -87,6 +87,10 @@ export interface OrderPhoto {
   clientReviewLeft?: boolean;
   /** Когда CRM напомнила рабочей группе попросить отзыв. */
   reviewReminderNotifiedAt?: string | null;
+  /** Когда оператор нажал «Отправил клиенту» под напоминанием об отзыве. */
+  reviewRequestSentAt?: string | null;
+  /** Кто нажал «Отправил клиенту» (Telegram-ник/имя). */
+  reviewRequestSentBy?: string | null;
   /** Когда статус менялся в последний раз — по нему видно зависшие заказы. */
   statusChangedAt?: string | null;
   executorId?: string | null;

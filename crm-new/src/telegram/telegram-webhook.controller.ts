@@ -4,11 +4,15 @@ import { EnumProductCategory, EnumStatus } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TelegramService } from './telegram.service';
 
+type TelegramCallback = {
+  id: string;
+  data?: string;
+  from?: { id: number; username?: string; first_name?: string };
+  message?: { message_id: number; chat: { id: number } };
+};
+
 type TelegramCallbackUpdate = {
-  callback_query?: {
-    id: string;
-    data?: string;
-  };
+  callback_query?: TelegramCallback;
 };
 
 @Controller('telegram')
@@ -33,7 +37,15 @@ export class TelegramWebhookController {
 
     const callback = update.callback_query;
     const data = callback?.data ?? '';
-    if (!callback || !data.startsWith('tshirt:')) return { ok: true };
+    if (!callback) return { ok: true };
+
+    // Кнопка «Отправил клиенту» под напоминанием об отзыве.
+    if (data.startsWith('review:')) {
+      await this.handleReviewSent(callback, data);
+      return { ok: true };
+    }
+
+    if (!data.startsWith('tshirt:')) return { ok: true };
 
     const [, orderId, action] = data.split(':');
     const status =
@@ -84,5 +96,69 @@ export class TelegramWebhookController {
     }
 
     return { ok: true };
+  }
+
+  /**
+   * Оператор нажал «Отправил клиенту» под напоминанием об отзыве: ставим отметку
+   * «запрос отзыва отправлен» (дата + кто) и меняем кнопку на «✅ Отправлено».
+   */
+  private async handleReviewSent(
+    callback: TelegramCallback,
+    data: string,
+  ): Promise<void> {
+    const [, orderId, action] = data.split(':');
+    // review:noop (кнопка уже в состоянии «отправлено») или что-то иное.
+    if (action !== 'sent' || !orderId) {
+      await this.telegram.answerCallbackQuery(callback.id, 'Уже отмечено ✅');
+      return;
+    }
+
+    const who = callback.from?.username
+      ? `@${callback.from.username}`
+      : (callback.from?.first_name ?? 'сотрудник');
+
+    try {
+      const order = await this.prisma.orderPhoto.findUnique({
+        where: { id: orderId },
+        select: { id: true, reviewRequestSentAt: true },
+      });
+      if (!order) {
+        await this.telegram.answerCallbackQuery(callback.id, 'Заказ не найден');
+        return;
+      }
+
+      // Идемпотентно: первое нажатие проставляет отметку, повторные — нет.
+      if (!order.reviewRequestSentAt) {
+        await this.prisma.orderPhoto.update({
+          where: { id: orderId },
+          data: { reviewRequestSentAt: new Date(), reviewRequestSentBy: who },
+        });
+      }
+
+      // Меняем кнопку на неактивную отметку, чтобы в чате было видно факт.
+      if (callback.message) {
+        await this.telegram.editMessageReplyMarkup(
+          callback.message.chat.id,
+          callback.message.message_id,
+          {
+            inline_keyboard: [
+              [{ text: `✅ Отправлено — ${who}`, callback_data: 'review:noop' }],
+            ],
+          },
+        );
+      }
+
+      await this.telegram.answerCallbackQuery(
+        callback.id,
+        'Отмечено: запрос отзыва отправлен',
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Review callback failed: ${message}`);
+      await this.telegram.answerCallbackQuery(
+        callback.id,
+        'Не удалось обновить CRM',
+      );
+    }
   }
 }

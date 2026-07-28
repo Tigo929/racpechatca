@@ -274,6 +274,11 @@ export function OrdersPage({ section }: Props) {
                             <Star size={10} aria-hidden="true" className="fill-emerald-600" /> отзыв
                           </span>
                         )}
+                        {isAdmin && !order.clientReviewLeft && order.reviewRequestSentAt && (
+                          <span className="inline-flex items-center gap-0.5 text-sky-600 font-medium" title="Оператор отправил клиенту запрос отзыва">
+                            📨 запрос
+                          </span>
+                        )}
                       </div>
                       {isAdmin && (
                         <span className="text-sm font-bold text-gray-900 tabular-nums">
@@ -409,6 +414,11 @@ export function OrdersPage({ section }: Props) {
                             <Star size={11} aria-hidden="true" className={order.clientReviewLeft ? 'fill-emerald-600' : ''} />
                             {order.clientReviewLeft ? 'Оставил' : 'Нет'}
                           </button>
+                          {!order.clientReviewLeft && order.reviewRequestSentAt && (
+                            <div className="mt-1 text-[11px] text-sky-600" title={order.reviewRequestSentBy ? `Отправил: ${order.reviewRequestSentBy}` : undefined}>
+                              📨 запрос отправлен
+                            </div>
+                          )}
                         </td>
                       )}
                       {isAdmin && (

@@ -68,6 +68,10 @@ model OrderPhoto {
   clientReviewLeft         Boolean             @default(false)
   // Когда CRM автоматически напомнила рабочей группе попросить отзыв у клиента.
   reviewReminderNotifiedAt DateTime?
+  // Когда оператор подтвердил (кнопкой в Telegram), что отправил клиенту запрос
+  // отзыва, и кто именно. Отдельно от clientReviewLeft (клиент оставил отзыв).
+  reviewRequestSentAt      DateTime?
+  reviewRequestSentBy      String?
   // Когда статус менялся в последний раз. По нему видно «зависшие» заказы:
   // updatedAt для этого не годится — он дёргается от любой правки заказа.
   statusChangedAt          DateTime?

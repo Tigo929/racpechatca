@@ -27,6 +27,7 @@ export class TelegramService {
     chatId: string,
     text: string,
     threadId?: string,
+    replyMarkup?: unknown,
   ): Promise<boolean> {
     if (!this.token) {
       this.logger.warn('TELEGRAM_BOT_TOKEN not set — notification skipped');
@@ -43,6 +44,7 @@ export class TelegramService {
           text,
           parse_mode: 'HTML',
           disable_web_page_preview: true,
+          ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
         }),
       });
       if (!res.ok) {
@@ -132,15 +134,49 @@ export class TelegramService {
    * [+ TELEGRAM_REVIEW_THREAD_ID]). Если он не задан — в общую рабочую группу,
    * чтобы напоминания не пропали при отсутствии настройки.
    */
-  async sendReviewReminder(text: string): Promise<boolean> {
+  async sendReviewReminder(
+    text: string,
+    replyMarkup?: unknown,
+  ): Promise<boolean> {
     if (this.reviewChatId) {
       return this.sendMessage(
         this.reviewChatId,
         text,
         this.reviewThreadId || undefined,
+        replyMarkup,
       );
     }
-    return this.sendToGroup(text);
+    return this.sendMessage(this.groupChatId, text, undefined, replyMarkup);
+  }
+
+  /**
+   * Меняет только inline-клавиатуру у уже отправленного сообщения (например,
+   * заменить кнопку на «✅ Отправлено»). chatId+messageId берём из callback_query.
+   */
+  async editMessageReplyMarkup(
+    chatId: string | number,
+    messageId: number,
+    replyMarkup: unknown,
+  ): Promise<boolean> {
+    if (!this.token) return false;
+    try {
+      const res = await fetch(
+        `https://api.telegram.org/bot${this.token}/editMessageReplyMarkup`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            message_id: messageId,
+            reply_markup: replyMarkup,
+          }),
+        },
+      );
+      return res.ok;
+    } catch (err) {
+      this.logger.error('Telegram editMessageReplyMarkup network error', err);
+      return false;
+    }
   }
 
   private async sendMultipart(
