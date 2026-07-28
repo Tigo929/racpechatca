@@ -99,33 +99,36 @@ function ShipmentLeadCard() {
 }
 
 /**
- * Ручная «сводка по заказам» в рабочий чат: те же цифры, что раньше стояли
- * карточками на странице заказов. Можно отправлять сколько угодно раз в
- * день — утром проверить фронт работ, вечером понять, что сделано.
+ * Ручная отправка «плана дня» в рабочий чат — тот же текст, что уходит
+ * автоматически в 10:00 по Москве (по исполнителям: в работе / готовы + блок
+ * отгрузок). Жать можно сколько угодно раз в день: утром — проконтролировать,
+ * вечером — посмотреть сводку за день.
  */
-function StatusSummaryCard() {
+function DailyPlanCard() {
   const send = useMutation({
-    mutationFn: () => ordersApi.sendStatusSummary(),
+    mutationFn: () => ordersApi.sendDailyPlan(),
     onSuccess: (res) => {
-      toast.success(
-        res.sent
-          ? 'Сводка отправлена в чат'
-          : 'Не удалось отправить — проверьте настройки Telegram-бота',
-      );
+      if (res.empty) {
+        toast('Нет активных заказов для плана дня', { icon: 'ℹ️' });
+      } else if (res.sent) {
+        toast.success(`План дня отправлен в чат (${res.orderCount} заказ.)`);
+      } else {
+        toast.error('Не удалось отправить — проверьте настройки Telegram-бота');
+      }
     },
-    onError: (e) => toast.error(getErrorMessage(e, 'Не удалось отправить сводку')),
+    onError: (e) => toast.error(getErrorMessage(e, 'Не удалось отправить план дня')),
   });
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
       <div className="flex items-center gap-2">
         <Send size={16} className="text-amber-500" aria-hidden="true" />
-        <h2 className="text-sm font-semibold text-gray-900">Сводка по заказам в чат</h2>
+        <h2 className="text-sm font-semibold text-gray-900">План дня в чат</h2>
       </div>
       <p className="text-xs text-gray-500">
-        Отправляет в рабочий чат текущие цифры: новые, в работе, готовы, отправлено без
-        оплаты, оплачено, срочные/просроченные, без отзыва. Жмите когда нужно — утром,
-        чтобы понять фронт работ, вечером — что сделано за день.
+        Отправляет в рабочий чат план дня: по каждому исполнителю — заказы в работе и
+        готовые к отгрузке/выдаче. Автоматически уходит в 10:00, но можно отправить и
+        вручную в любой момент — утром проконтролировать, вечером посмотреть сводку.
       </p>
       <button
         onClick={() => send.mutate()}
@@ -205,7 +208,7 @@ export default function SettingsPage() {
   return (
     <AppShell title="Настройки" subtitle="Отгрузки и расчёт с партнёром" width="narrow" onRefresh={() => void refetch()}>
       <div className="max-w-xl space-y-5">
-        <StatusSummaryCard />
+        <DailyPlanCard />
         <ShipmentLeadCard />
         {isLoading || !form ? (
           <p className="py-16 text-center text-gray-400">Загрузка настроек партнёра…</p>

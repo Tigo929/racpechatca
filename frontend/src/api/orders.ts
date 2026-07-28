@@ -178,11 +178,24 @@ export const ordersApi = {
     return data;
   },
 
-  /** Ручная сводка по заказам в рабочий чат (утренний контроль / вечерний итог). */
-  sendStatusSummary: async (): Promise<{ sent: boolean; message: string }> => {
-    const { data } = await api.post<{ sent: boolean; message: string }>(
-      '/order-photo/status-summary/run',
-    );
+  /**
+   * Ручная отправка «плана дня» в рабочий чат (тот же текст, что уходит
+   * автоматически в 10:00): по исполнителям — в работе/готовы + блок отгрузок.
+   * Можно жать сколько угодно раз в день — утром проконтролировать, вечером
+   * посмотреть сводку.
+   */
+  sendDailyPlan: async (): Promise<{
+    empty: boolean;
+    sent: boolean;
+    orderCount: number;
+    message: string | null;
+  }> => {
+    const { data } = await api.post<{
+      empty: boolean;
+      sent: boolean;
+      orderCount: number;
+      message: string | null;
+    }>('/order-photo/daily-plan/run');
     return data;
   },
 };
