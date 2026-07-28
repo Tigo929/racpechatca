@@ -12,6 +12,7 @@ import { PartnerSettingsModule } from './partner/partner-settings.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ScenarioModule } from './scenarios/scenario.module';
 import { AvitoModule } from './avito/avito.module';
+import { GulianModule } from './gulian/gulian.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthController } from './health.controller';
 
@@ -32,6 +33,7 @@ import { HealthController } from './health.controller';
     TasksModule,
     AvitoModule,
     ScenarioModule,
+    GulianModule,
   ],
   controllers: [HealthController],
   providers: [],
