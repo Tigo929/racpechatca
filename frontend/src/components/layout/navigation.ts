@@ -3,7 +3,7 @@ import {
   Bell,
   Camera,
   CheckSquare,
-  MessageCircle,
+  // MessageCircle — вернуть вместе с пунктом Avito ниже.
   Settings,
   Shirt,
   Users,
@@ -64,13 +64,16 @@ export const NAV_GROUPS: NavGroup[] = [
         roles: AD_MGR,
         primary: true,
       },
-      {
-        to: '/crm/avito',
-        label: 'Avito',
-        icon: MessageCircle,
-        roles: AD_MGR,
-        primary: true,
-      },
+      // Avito временно отключён (нет оборота — экономим на API). Код модуля,
+      // страница и роут /crm/avito остаются в проекте — чтобы вернуть, просто
+      // раскомментируйте этот пункт.
+      // {
+      //   to: '/crm/avito',
+      //   label: 'Avito',
+      //   icon: MessageCircle,
+      //   roles: AD_MGR,
+      //   primary: true,
+      // },
       {
         to: '/crm/leads',
         label: 'Обращения',

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Check, X } from 'lucide-react';
 import type { UpdateOrderDto } from '../../types/index';
 
@@ -7,13 +8,18 @@ interface Props {
   onSave: () => void;
   onCancel: () => void;
   isPending: boolean;
+  /** Дизайн — свободная сумма только для футболок. У фото секцию не показываем. */
+  productCategory: 'PHOTO' | 'TSHIRT';
 }
 
 const inputCls = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent';
 const labelCls = 'text-xs text-gray-500 mb-1';
 
-export function OrderEditForm({ form, onChange, onSave, onCancel, isPending }: Props) {
+export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, productCategory }: Props) {
   const set = (patch: Partial<UpdateOrderDto>) => onChange({ ...form, ...patch });
+  // «Нужен дизайн» — включён, если у заказа уже есть сумма дизайна. Выключение
+  // обнуляет сумму, чтобы дизайн ушёл из чека.
+  const [designEnabled, setDesignEnabled] = useState((form.designDevelopmentCost ?? 0) > 0);
 
   return (
     <div className="space-y-4">
@@ -61,11 +67,42 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending }: P
         </div>
       </div>
 
-      <div>
-        <p className={labelCls}>Разработка дизайна, ₽ (входит в чек)</p>
-        <input type="number" min={0} className={inputCls} value={form.designDevelopmentCost ?? 0}
-          onChange={e => set({ designDevelopmentCost: Number(e.target.value) })} />
-      </div>
+      {/* Дизайн — только футболки. Кнопка «Нужен дизайн» раскрывает сумму;
+          её можно менять и добавлять к уже созданному заказу. */}
+      {productCategory === 'TSHIRT' && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 space-y-2">
+          <label className="flex items-center gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={designEnabled}
+              onChange={e => {
+                const on = e.target.checked;
+                setDesignEnabled(on);
+                // Выключили — сумма дизайна уходит из чека; включили — база под ввод.
+                set({ designDevelopmentCost: on ? (form.designDevelopmentCost ?? 0) : 0 });
+              }}
+              className="w-4 h-4 accent-amber-600"
+            />
+            <span className="text-sm font-medium text-gray-800">Нужен дизайн</span>
+          </label>
+          {designEnabled && (
+            <div>
+              <p className={labelCls}>Стоимость разработки дизайна, ₽</p>
+              <input
+                type="number"
+                min={0}
+                className={inputCls}
+                placeholder="1000"
+                value={form.designDevelopmentCost ?? 0}
+                onChange={e => set({ designDevelopmentCost: Number(e.target.value) })}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Входит в чек клиента отдельной суммой. От неё считается премия менеджера по оформлению.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div>
         <p className={labelCls}>Примечание</p>

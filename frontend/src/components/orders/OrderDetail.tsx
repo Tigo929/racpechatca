@@ -815,6 +815,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           onSave={() => updateMutation.mutate(form)}
           onCancel={() => setEditing(false)}
           isPending={updateMutation.isPending}
+          productCategory={order.productCategory}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">

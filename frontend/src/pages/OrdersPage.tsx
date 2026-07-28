@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Search, ChevronLeft, ChevronRight, Printer, Flame, Clock, Camera, Shirt, Wallet, LayoutList, Sparkles, CheckCircle2, TrendingUp, Star, AlarmClock, Plus } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Flame, Clock, Camera, Shirt, Star, AlarmClock, Plus } from 'lucide-react';
 import { getDeadlineInfo } from '../utils/deadline';
 import { getStalledDays } from '../utils/stalled';
 import { ordersApi } from '../api/orders';
@@ -15,7 +15,6 @@ import { STATUS_FLOW, TSHIRT_STATUS_FLOW, STATUS_LABELS, TSHIRT_STATUS_LABELS } 
 import { AppShell } from '../components/layout/AppShell';
 import { useAuth } from '../context/useAuth';
 import type { EnumStatus, EnumProductCategory, OrdersQuery } from '../types/index';
-import { formatCurrency } from '../utils/format';
 
 const PAGE_SIZE = 10;
 
@@ -53,22 +52,6 @@ export function OrdersPage({ section }: Props) {
   const [searchInput, setSearchInput] = useState('');
 
   const qc = useQueryClient();
-  const statsQuery = useMemo<OrdersQuery>(
-    () => ({
-      status: query.status,
-      sourceOrder: query.sourceOrder,
-      productCategory: query.productCategory,
-      reviewLeft: query.reviewLeft,
-      search: query.search,
-    }),
-    [
-      query.status,
-      query.sourceOrder,
-      query.productCategory,
-      query.reviewLeft,
-      query.search,
-    ],
-  );
 
   // debounce: отправляем поиск через 350ms после последнего нажатия
   useEffect(() => {
@@ -81,12 +64,6 @@ export function OrdersPage({ section }: Props) {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['orders', query],
     queryFn: () => ordersApi.getAll(query),
-    placeholderData: (prev) => prev,
-  });
-
-  const { data: stats } = useQuery({
-    queryKey: ['orders', 'stats', statsQuery],
-    queryFn: () => ordersApi.getStats(statsQuery),
     placeholderData: (prev) => prev,
   });
 
@@ -144,90 +121,6 @@ export function OrdersPage({ section }: Props) {
       ) : undefined}
     >
       <div className="space-y-4">
-
-        {/* Статистика */}
-        {stats && (() => {
-          const statCards = [
-            {
-              label: 'Активных',
-              value: stats.activeCount,
-              hint: `${stats.matchingTotal} в списке`,
-              icon: <LayoutList size={18} />,
-              color: 'from-indigo-500 to-indigo-600',
-              text: 'text-indigo-600',
-            },
-            {
-              label: 'Новых',
-              value: stats.newCount,
-              hint: stats.leadCount > 0 ? `${stats.leadCount} обращ.` : 'ожидают старта',
-              icon: <Sparkles size={18} />,
-              color: 'from-amber-500 to-amber-600',
-              text: 'text-amber-600',
-            },
-            {
-              label: 'В работе',
-              value: stats.inProgressCount,
-              hint: 'обработка/печать',
-              icon: <Printer size={18} />,
-              color: 'from-sky-500 to-sky-600',
-              text: 'text-sky-600',
-            },
-            {
-              label: 'Готовы',
-              value: stats.readyCount,
-              hint: 'к выдаче/отправке',
-              icon: <CheckCircle2 size={18} />,
-              color: 'from-emerald-500 to-emerald-600',
-              text: 'text-emerald-600',
-            },
-            {
-              label: stats.alertCount > 0 ? 'Требуют внимания' : 'В порядке',
-              value: stats.alertCount,
-              hint: `${stats.overdueCount} просроч. · ${stats.urgentCount} сроч.`,
-              icon: stats.alertCount > 0 ? <Flame size={18} /> : <TrendingUp size={18} />,
-              color: stats.alertCount > 0 ? 'from-red-500 to-red-600' : 'from-violet-500 to-violet-600',
-              text: stats.alertCount > 0 ? 'text-red-600' : 'text-violet-600',
-            },
-            ...(isAdmin
-              ? [
-                  {
-                    label: 'Без оплаты',
-                    value: stats.sentUnpaidCount,
-                    hint: stats.sentUnpaidAmount
-                      ? formatCurrency(stats.sentUnpaidAmount)
-                      : 'отправлено',
-                    icon: <Wallet size={18} />,
-                    color: 'from-orange-500 to-orange-600',
-                    text: 'text-orange-600',
-                  },
-                  {
-                    label: 'Без отзыва',
-                    value: stats.reviewPendingCount ?? 0,
-                    hint: `${stats.reviewRemindedCount ?? 0} напомнили, ждём`,
-                    icon: <Star size={18} />,
-                    color: 'from-fuchsia-500 to-fuchsia-600',
-                    text: 'text-fuchsia-600',
-                  },
-                ]
-              : []),
-          ];
-          return (
-            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
-              {statCards.map(stat => (
-                <div key={stat.label} className="bg-white rounded-2xl p-4 shadow-sm border border-white/80 flex items-center gap-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 8px rgba(0,0,0,0.04)' }}>
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${stat.color} text-white shadow-sm`}>
-                    {stat.icon}
-                  </div>
-                  <div>
-                    <p className={`text-2xl font-bold tabular-nums ${stat.text}`}>{stat.value}</p>
-                    <p className="text-xs text-gray-400 leading-tight">{stat.label}</p>
-                    <p className="text-[11px] text-gray-400 leading-tight mt-0.5">{stat.hint}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
-        })()}
 
         {/* Поиск */}
         <div className="relative">
@@ -311,7 +204,7 @@ export function OrdersPage({ section }: Props) {
             <>
             {/* Мобильный вид — карточки вместо широкой таблицы */}
             <div className="md:hidden divide-y divide-gray-100">
-              {orders.map(order => {
+              {orders.map((order, idx) => {
                 const tracksDeadline = order.productCategory !== 'TSHIRT';
                 const dl = tracksDeadline
                   ? getDeadlineInfo(order.deadline, order.createdAt)
@@ -334,6 +227,11 @@ export function OrdersPage({ section }: Props) {
                       isPaid ? 'opacity-50' : showUrgent ? 'bg-red-50 border-l-[3px] border-l-red-500' : ''
                     }`}
                   >
+                    <div className="flex items-start gap-3">
+                    <span className="text-sm text-gray-400 tabular-nums pt-0.5 w-5 text-right shrink-0">
+                      {(query.page ? query.page - 1 : 0) * PAGE_SIZE + idx + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1.5">
                       <span className="flex items-center gap-1.5 font-mono text-sm font-bold text-indigo-700 tabular-nums">
                         {showUrgent && <Flame size={13} className="text-red-500 flex-shrink-0" aria-hidden="true" />}
@@ -383,6 +281,8 @@ export function OrdersPage({ section }: Props) {
                         </span>
                       )}
                     </div>
+                    </div>
+                    </div>
                   </button>
                 );
               })}
@@ -392,6 +292,7 @@ export function OrdersPage({ section }: Props) {
               <table className="w-full">
                 <thead>
                   <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider w-12">№</th>
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Номер</th>
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Тип</th>
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Дата</th>
@@ -437,6 +338,9 @@ export function OrdersPage({ section }: Props) {
                       className={`cursor-pointer group ${rowBg} ${showUrgent ? 'border-l-[3px] border-l-red-500' : ''}`}
                       style={{ borderBottom: '1px solid #F8FAFC' }}
                     >
+                      <td className="px-4 py-3.5 text-right text-sm text-gray-400 tabular-nums">
+                        {(query.page ? query.page - 1 : 0) * PAGE_SIZE + idx + 1}
+                      </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2">
                           {showUrgent && (

@@ -251,6 +251,17 @@ export interface AppUser {
   stalledOrdersCount?: number;
 }
 
+/** «Старший дня» по отгрузкам — кого план дня тегает в блоке отгрузок. */
+export interface ShipmentLead {
+  userId: string | null;
+  user: {
+    id: string;
+    username: string;
+    role: EnumRole;
+    telegramUsername: string | null;
+  } | null;
+}
+
 export interface OrdersQuery {
   page?: number;
   limit?: number;
@@ -434,6 +445,8 @@ export interface ExpenseOrder {
   createdBy: { id: string; username: string };
   salaryPaymentId?: string;
   salaryExecutor?: { id: string; username: string };
+  /** Заказ-источник (для авто-расходов вроде вознаграждения партнёру). */
+  order?: { id: string; numberOrder: string } | null;
 }
 
 export interface CreateExpenseDto {

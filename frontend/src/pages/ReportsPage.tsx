@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AppShell } from '../components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Camera, Shirt } from 'lucide-react';
+import { Camera, Shirt, ChevronDown, ChevronRight, Handshake } from 'lucide-react';
 import { reportsApi } from '../api/reports';
 import { expensesApi } from '../api/expenses';
 import type { PnlMetrics, MonthData, ExpenseOrder, CreateExpenseDto, EnumExpenseCategory, WeeklyReport } from '../types/index';
@@ -257,8 +257,15 @@ function expenseDetails(exp: ExpenseOrder): string | null {
   return exp.note ?? null;
 }
 
+/** «(заработок партнёра 411 ₽)» → «заработок партнёра 411 ₽»; иначе — вся заметка. */
+function partnerProfitText(note?: string | null): string {
+  if (!note) return '';
+  return note.match(/\(([^)]+)\)/)?.[1] ?? note;
+}
+
 function ExpenseList({ year, month }: { year: number; month: number }) {
   const qc = useQueryClient();
+  const [partnerOpen, setPartnerOpen] = useState(false);
   const { data: all = [], isLoading } = useQuery({
     queryKey: ['expenses', year],
     queryFn: () => expensesApi.getAll(year),
@@ -275,9 +282,51 @@ function ExpenseList({ year, month }: { year: number; month: number }) {
   if (isLoading) return <div className="text-gray-400 text-sm py-4 text-center">Загрузка...</div>;
   if (expenses.length === 0) return <div className="text-gray-400 text-sm py-4 text-center">Нет расходных операций за {MONTH_LABELS_FULL[month - 1]}</div>;
 
+  // Вознаграждение партнёру — авто-расходы по каждому оплаченному футболочному
+  // заказу. Сворачиваем их в одну строку с разбивкой по заказам, чтобы список
+  // не тонул в десятках однотипных строк.
+  const partnerRewards = expenses.filter((e) => e.category === 'PARTNER_REWARD');
+  const others = expenses.filter((e) => e.category !== 'PARTNER_REWARD');
+  const partnerTotal = partnerRewards.reduce((s, e) => s + e.amount, 0);
+
   return (
     <div className="space-y-1">
-      {expenses.map((exp: ExpenseOrder) => {
+      {partnerRewards.length > 0 && (
+        <div className="rounded-lg border border-teal-100 bg-teal-50/40 overflow-hidden">
+          <button
+            onClick={() => setPartnerOpen((v) => !v)}
+            className="w-full flex items-center justify-between py-2.5 px-3 hover:bg-teal-50 transition-colors"
+          >
+            <div className="flex items-center gap-2.5">
+              {partnerOpen ? <ChevronDown size={15} className="text-teal-600" /> : <ChevronRight size={15} className="text-teal-600" />}
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 inline-flex items-center gap-1">
+                <Handshake size={12} /> Вознаграждение партнёру
+              </span>
+              <span className="text-gray-500 text-sm">{partnerRewards.length} зак.</span>
+            </div>
+            <span className="font-semibold text-sm tabular-nums">{fmt(partnerTotal)}</span>
+          </button>
+          {partnerOpen && (
+            <div className="border-t border-teal-100 divide-y divide-teal-50/70">
+              {partnerRewards.map((exp) => (
+                <div key={exp.id} className="flex items-center justify-between py-2 px-3 pl-9 text-sm">
+                  <div className="min-w-0 flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold tabular-nums">
+                      {exp.order ? `#${exp.order.numberOrder}` : 'заказ'}
+                    </span>
+                    <span className="text-gray-500">{partnerProfitText(exp.note)}</span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-semibold tabular-nums">{fmt(exp.amount)}</span>
+                    <span className="text-xs text-gray-400">{fmtDate(exp.createdAt)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {others.map((exp: ExpenseOrder) => {
         const isSalary = exp.kind === 'SALARY_PAYMENT';
         const details = expenseDetails(exp);
         return (
