@@ -68,6 +68,12 @@ export interface PlanGroup {
   ready: ReadyOrder[];
 }
 
+/** «Старший дня» по отгрузкам — кого тегаем в блоке отгрузок. */
+export interface ShipmentLead {
+  username: string;
+  telegramUsername: string | null;
+}
+
 /**
  * Дедлайн заказа для плана: у фото он задаётся при создании, но на всякий
  * случай падаем на «создан + 3 дня», как это делает список заказов.
@@ -132,6 +138,35 @@ function readyLine(order: ReadyOrder): string {
   return `${marker} <b>#${escapeHtml(order.numberOrder)}</b> · ${summarizeItems(order.items)} — ${action}`;
 }
 
+/** Строка заказа в блоке отгрузок: 🚚 #номер · состав — способ доставки. */
+function shipmentLine(order: ReadyOrder): string {
+  const label = DELIVERY_LABEL[order.deliveryMethod] ?? order.deliveryMethod;
+  return `🚚 <b>#${escapeHtml(order.numberOrder)}</b> · ${summarizeItems(order.items)} — ${escapeHtml(label)}`;
+}
+
+/**
+ * Блок «Отгрузки» для старшего дня: собирает готовые заказы, требующие поставки
+ * (всё, кроме самовывоза), тегает ответственного и напоминает оформить поставки
+ * и проконтролировать отгрузку. Пусто (нет таких заказов) — блока нет.
+ */
+export function buildShipmentBlock(
+  groups: PlanGroup[],
+  lead: ShipmentLead | null,
+): string | null {
+  const orders = groups
+    .flatMap((g) => g.ready)
+    .filter((o) => needsShipping(o.deliveryMethod))
+    .sort((a, b) => a.numberOrder.localeCompare(b.numberOrder));
+  if (orders.length === 0) return null;
+
+  const head = lead
+    ? `📦 <b>Отгрузки</b> — старший ${mentionFor(lead)} (${orders.length})`
+    : `📦 <b>Отгрузки</b> (${orders.length}) — ⚠️ старший дня не назначен (Настройки)`;
+  const tail = 'Оформи поставки и проконтролируй отгрузку. После отправки — переведи заказ в «Отправлен».';
+
+  return [head, ...orders.map(shipmentLine), '', tail].join('\n');
+}
+
 function dayMonth(now: Date): string {
   // moscowDateKey → «2026-07-24»; берём день и месяц.
   const [, mm, dd] = moscowDateKey(now).split('-');
@@ -161,6 +196,7 @@ export function buildDailyPlanMessage(
   groups: PlanGroup[],
   now: Date,
   unassignedCount = 0,
+  shipmentLead: ShipmentLead | null = null,
 ): string {
   const blocks = groups
     .slice()
@@ -197,10 +233,19 @@ export function buildDailyPlanMessage(
     });
 
   const header = `🌅 <b>План на ${dayMonth(now)}</b> — доброе утро!`;
+  const shipmentBlock = buildShipmentBlock(groups, shipmentLead);
   const footer =
     unassignedCount > 0
       ? `\n⚠️ Без исполнителя в работе: <b>${unassignedCount}</b> ${orderWord(unassignedCount)} — назначьте исполнителя.`
       : '';
 
-  return [header, '', blocks.join('\n\n'), footer].filter(Boolean).join('\n');
+  return [
+    header,
+    '',
+    blocks.join('\n\n'),
+    ...(shipmentBlock ? ['', shipmentBlock] : []),
+    footer,
+  ]
+    .filter(Boolean)
+    .join('\n');
 }

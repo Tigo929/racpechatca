@@ -33,6 +33,7 @@ model User {
   assignedTasks      Task[]            @relation("TaskAssignee")
   authoredTasks      Task[]            @relation("TaskAuthor")
   avitoMessages      AvitoMessage[]
+  shipmentLeadState  AppState[]        @relation("ShipmentLead")
 }
 
 enum EnumRole {
@@ -108,6 +109,10 @@ model OrderPhoto {
   completedAt  DateTime?
   sentAt       DateTime?
   clientPaidAt DateTime?
+  // Когда заказ ушёл в «закрытые» (Оплачен/Завершён/Отменён). Пусто у активных.
+  // По этому полю список сортируется: активные сверху, закрытые — вниз.
+  // Сбрасывается в null при возврате заказа в работу.
+  closedAt     DateTime?
 
   items          ItemPhoto[]
   tshirtItems    ItemTshirt[]
@@ -123,6 +128,7 @@ model OrderPhoto {
   @@index([executorId])
   @@index([processedById])
   @@index([createdAt])
+  @@index([closedAt])
   @@index([productCategory])
   @@index([status, productCategory])
   @@index([productCategory, status, reviewReminderNotifiedAt])
@@ -564,4 +570,10 @@ model AppState {
   id                  String   @id @default("default")
   updatedAt           DateTime @updatedAt
   dailyPlanLastSentOn String?
+
+  // «Старший дня» по отгрузкам: кого тегать в плане дня, чтобы он оформил
+  // поставки по готовым фотозаказам и проконтролировал отгрузку. Обычно админ
+  // или менеджер по оформлению. SetNull: удаление пользователя не ломает флаг.
+  shipmentLeadUserId String?
+  shipmentLead       User?   @relation("ShipmentLead", fields: [shipmentLeadUserId], references: [id], onDelete: SetNull)
 }

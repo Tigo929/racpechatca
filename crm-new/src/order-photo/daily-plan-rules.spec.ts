@@ -127,4 +127,34 @@ describe('buildDailyPlanMessage', () => {
     expect(msg).toContain('Без исполнителя');
     expect(msg).toContain('2');
   });
+
+  describe('блок отгрузок (старший дня)', () => {
+    const lead = { username: 'boss', telegramUsername: 'boss_tg' };
+
+    it('тегает старшего и перечисляет только заказы с отгрузкой (без самовывоза)', () => {
+      const msg = buildDailyPlanMessage([maksim], NOW, 0, lead);
+      expect(msg).toContain('Отгрузки');
+      expect(msg).toContain('@boss_tg');
+      expect(msg).toContain('R-SHIP'); // Яндекс ПВЗ — нужна поставка
+      // Самовывоз (R-PICKUP) в блок отгрузок не попадает
+      const shipmentPart = msg.slice(msg.indexOf('Отгрузки'));
+      expect(shipmentPart).not.toContain('R-PICKUP');
+    });
+
+    it('без старшего, но при наличии отгрузок — предупреждение «не назначен»', () => {
+      const msg = buildDailyPlanMessage([maksim], NOW, 0, null);
+      expect(msg).toContain('Отгрузки');
+      expect(msg).toContain('не назначен');
+    });
+
+    it('если все готовые — самовывоз, блока отгрузок нет', () => {
+      const pickupOnly = {
+        executor: { username: 'p', telegramUsername: null },
+        inWork: [],
+        ready: [{ numberOrder: 'R-PU', deliveryMethod: 'PICKUP', items: [] }],
+      };
+      const msg = buildDailyPlanMessage([pickupOnly], NOW, 0, lead);
+      expect(msg).not.toContain('📦 <b>Отгрузки</b>');
+    });
+  });
 });

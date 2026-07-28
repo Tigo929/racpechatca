@@ -130,7 +130,8 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
   private async buildPlan(
     now: Date,
   ): Promise<Omit<PlanResult, 'sent'>> {
-    const [inWorkOrders, readyOrders, unassignedCount] = await Promise.all([
+    const [inWorkOrders, readyOrders, unassignedCount, appState] =
+      await Promise.all([
       this.prisma.orderPhoto.findMany({
         where: {
           executorId: { not: null },
@@ -166,6 +167,15 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
           executorId: null,
           productCategory: EnumProductCategory.PHOTO,
           status: { in: PLAN_IN_WORK_STATUSES },
+        },
+      }),
+      // «Старший дня» по отгрузкам — кого тегать в блоке отгрузок.
+      this.prisma.appState.findUnique({
+        where: { id: STATE_ID },
+        select: {
+          shipmentLead: {
+            select: { username: true, telegramUsername: true },
+          },
         },
       }),
     ]);
@@ -207,7 +217,12 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
       return { empty: true, orderCount: 0, message: null };
     }
 
-    const message = buildDailyPlanMessage(groups, now, unassignedCount);
+    const message = buildDailyPlanMessage(
+      groups,
+      now,
+      unassignedCount,
+      appState?.shipmentLead ?? null,
+    );
     return {
       empty: false,
       orderCount: inWorkOrders.length + readyOrders.length,

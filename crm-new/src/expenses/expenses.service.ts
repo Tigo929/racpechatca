@@ -31,7 +31,11 @@ export class ExpensesService {
       this.prisma.expenseOrder.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        include: { createdBy: { select: { id: true, username: true } } },
+        include: {
+          createdBy: { select: { id: true, username: true } },
+          // Номер заказа нужен для разбивки «Вознаграждение партнёру» в отчёте.
+          order: { select: { id: true, numberOrder: true } },
+        },
       }),
       this.prisma.salaryPayment.findMany({
         where,
@@ -59,6 +63,7 @@ export class ExpensesService {
       createdBy: payment.paidBy,
       salaryPaymentId: payment.id,
       salaryExecutor: payment.executor,
+      order: null,
     }));
 
     return [...manualRows, ...salaryRows].sort(

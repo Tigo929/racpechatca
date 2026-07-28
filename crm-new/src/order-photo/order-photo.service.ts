@@ -87,6 +87,15 @@ const CONTROL_CLOSED_STATUSES: EnumStatus[] = [
   EnumStatus.CANCELLED,
 ];
 
+// «Закрытые» для сортировки списка: оплачен и снятые с потока. Такие заказы
+// получают closedAt и опускаются в самый низ, активные (в т.ч. «Отправлен»,
+// ждущий оплаты) остаются сверху.
+const CLOSED_STATUSES: EnumStatus[] = [
+  EnumStatus.PAID,
+  EnumStatus.COMPLETED,
+  EnumStatus.CANCELLED,
+];
+
 // «Активные» на дашборде — заказы в работе прямо сейчас. LEAD и SENT не
 // считаем: у обращений и неоплаченных отправок есть свои карточки, иначе
 // цифра «Активных» не сходится со списком и вводит в заблуждение.
@@ -360,7 +369,12 @@ export class OrderPhotoService {
         where,
         take: limit,
         skip: (page - 1) * limit,
-        orderBy: [{ createdAt: 'asc' }],
+        // Активные заказы сверху, оплаченные/закрытые — вниз. closedAt пуст у
+        // активных (nulls first), внутри каждой группы — по дате создания.
+        orderBy: [
+          { closedAt: { sort: 'asc', nulls: 'first' } },
+          { createdAt: 'asc' },
+        ],
         include: {
           items: true,
           tshirtItems: true,
@@ -1068,6 +1082,11 @@ export class OrderPhotoService {
           ...(newStatus === EnumStatus.COMPLETED
             ? { completedAt: lockedOrder.completedAt ?? new Date() }
             : {}),
+          // closedAt: ставим при уходе в закрытые статусы (для сортировки списка),
+          // сбрасываем при возврате заказа в работу.
+          closedAt: CLOSED_STATUSES.includes(newStatus)
+            ? (lockedOrder.closedAt ?? new Date())
+            : null,
         },
         include: {
           items: true,

@@ -23,6 +23,8 @@ import { OrderItemService } from './order-item.service';
 import { TshirtItemService } from './tshirt-item.service';
 import { StickerService } from './sticker.service';
 import { DailyPlanService } from './daily-plan.service';
+import { ShipmentLeadService } from './shipment-lead.service';
+import { DtoSetShipmentLead } from './dto/set-shipment-lead.dto';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 import DtoCreateOrder from './dto/create-order.dto';
 import DtoAllOrdersforQuery from './dto/all-oreders-for-query.dto';
@@ -52,6 +54,7 @@ export class OrderPhotoController {
     private readonly stickerService: StickerService,
     private readonly dailyPlanService: DailyPlanService,
     private readonly tshirtPartnerTelegram: TshirtPartnerTelegramService,
+    private readonly shipmentLeadService: ShipmentLeadService,
   ) {}
 
   // ── Admin: отправить «план дня» в рабочий чат прямо сейчас ──────────────────
@@ -61,6 +64,20 @@ export class OrderPhotoController {
   @Roles(EnumRole.ADMIN)
   runDailyPlan(@Query('dry') dry?: string) {
     return this.dailyPlanService.runNow(new Date(), { dryRun: dry === 'true' });
+  }
+
+  // ── Admin: «старший дня» по отгрузкам (кого тегать в плане дня) ─────────────
+  // Двухсегментные пути — не конфликтуют с одиночным параметром `:idOrder`.
+  @Get('daily-plan/shipment-lead')
+  @Roles(EnumRole.ADMIN)
+  getShipmentLead() {
+    return this.shipmentLeadService.get();
+  }
+
+  @Patch('daily-plan/shipment-lead')
+  @Roles(EnumRole.ADMIN)
+  setShipmentLead(@Body() dto: DtoSetShipmentLead) {
+    return this.shipmentLeadService.set(dto.userId ?? null);
   }
 
   // ── Admin-only: create / update / delete order ─────────────────────────────

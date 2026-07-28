@@ -9,6 +9,7 @@ import { OrderFinancialIntegrityService } from './order-financial-integrity.serv
 import { TelegramModule } from 'src/telegram/telegram.module';
 import { ReviewReminderService } from './review-reminder.service';
 import { DailyPlanService } from './daily-plan.service';
+import { ShipmentLeadService } from './shipment-lead.service';
 import { PartnerSettingsModule } from 'src/partner/partner-settings.module';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 
@@ -22,6 +23,7 @@ import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service'
     OrderFinancialIntegrityService,
     ReviewReminderService,
     DailyPlanService,
+    ShipmentLeadService,
     TshirtPartnerTelegramService,
   ],
 })
