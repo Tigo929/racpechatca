@@ -13,6 +13,7 @@ import {
   EnumPrintLocation,
   EnumPrintType,
 } from 'src/generated/prisma/enums';
+import { buildPartnerCaption, buildPartnerButtons } from 'src/order-photo/partner-telegram-format';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 import { settleOrder, settlePosition } from 'src/partner/partner-settlement';
 import { getTechSpecPaths } from 'src/partner/tech-spec-paths';
@@ -138,7 +139,7 @@ export class TshirtPartnerTelegramService {
               caption,
               replyMarkup,
             );
-      if (!sentTechSpec) {
+      if (sentTechSpec === false) {
         await this.markFailed(orderId, 'Telegram не принял ТЗ-файл.');
         return;
       }
@@ -149,6 +150,10 @@ export class TshirtPartnerTelegramService {
           partnerSyncStatus: EnumPartnerSyncStatus.SENT,
           partnerSyncAt: new Date(),
           partnerSyncError: null,
+          partnerTgChatId: this.chatId,
+          partnerTgMessageId: typeof sentTechSpec === 'number' ? sentTechSpec : null,
+          executorSentAt: new Date(),
+          sourceRevision: { increment: 1 },
         },
       });
     } catch (err) {
@@ -161,32 +166,7 @@ export class TshirtPartnerTelegramService {
   }
 
   private buildStatusButtons(orderId: string, stickerUrl: string) {
-    return {
-      inline_keyboard: [
-        [
-          {
-            text: 'В работе',
-            callback_data: `tshirt:${orderId}:work`,
-          },
-          {
-            text: 'Готово',
-            callback_data: `tshirt:${orderId}:ready`,
-          },
-        ],
-        [
-          {
-            text: 'Не готов',
-            callback_data: `tshirt:${orderId}:not_ready`,
-          },
-        ],
-        [
-          {
-            text: 'Распечатать стикер',
-            url: stickerUrl,
-          },
-        ],
-      ],
-    };
+    return buildPartnerButtons(orderId, stickerUrl);
   }
 
   private async readTechSpecFile(
@@ -205,7 +185,9 @@ export class TshirtPartnerTelegramService {
     file: TechSpecAttachment,
     caption: string,
     replyMarkup?: unknown,
-  ): Promise<boolean> {
+    // id отправленного сообщения (его сохраняем, чтобы потом редактировать
+    // подпись под кнопками) либо false, если Telegram не принял файл.
+  ): Promise<number | false> {
     return file.contentType === 'application/pdf'
       ? this.telegram.sendDocument(
           this.chatId,
@@ -232,7 +214,7 @@ export class TshirtPartnerTelegramService {
     attachments: TechSpecAttachment[],
     caption: string,
     replyMarkup: unknown,
-  ): Promise<boolean> {
+  ): Promise<number | false> {
     const bundle = await this.buildTechSpecBundle(order, attachments);
     return this.telegram.sendDocument(
       this.chatId,

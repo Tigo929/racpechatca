@@ -30,6 +30,7 @@ import {
 import { TelegramService } from 'src/telegram/telegram.service';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 import { hasTechSpecFiles } from 'src/partner/tech-spec-paths';
+import { GulianOutboxService } from 'src/gulian/gulian-outbox.service';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 
 function buildCommunicationUrl(
@@ -124,6 +125,7 @@ export class OrderPhotoService {
     private readonly telegram: TelegramService,
     private readonly partnerSettings: PartnerSettingsService,
     private readonly tshirtPartnerTelegram: TshirtPartnerTelegramService,
+    private readonly gulianOutbox: GulianOutboxService,
   ) {}
 
   async createOrder(dto: DtoCreateOrder, adminId?: string) {
@@ -1136,6 +1138,31 @@ export class OrderPhotoService {
         userId,
         userRole,
       );
+    }
+
+    // Enqueue Gulian CRM event
+    const dispatchedOrder = await this.prisma.orderPhoto.findUnique({
+      where: { id },
+      include: { tshirtItems: true },
+    });
+    if (dispatchedOrder) {
+      try {
+        const settings = await this.partnerSettings.get();
+        await this.gulianOutbox.enqueue(this.prisma, {
+          id: dispatchedOrder.id,
+          numberOrder: dispatchedOrder.numberOrder,
+          status: dispatchedOrder.status as any,
+          createdAt: dispatchedOrder.createdAt,
+          updatedAt: dispatchedOrder.updatedAt,
+          executorSentAt: dispatchedOrder.executorSentAt as Date | null,
+          sourceRevision: (dispatchedOrder as any).sourceRevision ?? 1,
+          partnerTgChatId: (dispatchedOrder as any).partnerTgChatId ?? null,
+          partnerTgMessageId: (dispatchedOrder as any).partnerTgMessageId ?? null,
+          tshirtItems: dispatchedOrder.tshirtItems,
+        }, settings.partnerRateBasisPoints);
+      } catch (gulErr) {
+        this.logger.warn(`Gulian enqueue failed after dispatch: ${gulErr}`);
+      }
     }
 
     return this.getOrderById(id, userId, userRole);

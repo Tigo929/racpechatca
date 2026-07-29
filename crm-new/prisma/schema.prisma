@@ -118,6 +118,22 @@ model OrderPhoto {
   // Сбрасывается в null при возврате заказа в работу.
   closedAt     DateTime?
 
+  // Telegram partner message reference
+  partnerTgMessageId         Int?
+  partnerTgChatId            String?
+
+  // Gulian CRM integration
+  sourceRevision             Int       @default(1)
+  executorSentAt             DateTime?
+  gulianSyncStatus           String?
+  gulianLastAttemptAt        DateTime?
+  gulianLastSyncedAt         DateTime?
+  gulianLastError            String?
+  gulianSettlementOrderId    Int?
+  gulianSettlementOrderNumber String?
+  gulianPositionId           Int?
+  gulianAppliedRevision      Int?
+
   items          ItemPhoto[]
   tshirtItems    ItemTshirt[]
   accruals       SalaryAccrual[]
@@ -281,6 +297,7 @@ enum EnumStatus {
   READY_FOR_REVIEW
   COMPLETED
   CANCELLED
+  PROBLEM
 }
 
 enum EnumDeliveryMethod {
@@ -580,4 +597,27 @@ model AppState {
   // или менеджер по оформлению. SetNull: удаление пользователя не ломает флаг.
   shipmentLeadUserId String?
   shipmentLead       User?   @relation("ShipmentLead", fields: [shipmentLeadUserId], references: [id], onDelete: SetNull)
+}
+
+model GulianOutbox {
+  id              String    @id @default(uuid())
+  eventId         String    @unique
+  eventType       String    @default("order.upsert")
+  aggregateId     String
+  externalOrderId String
+  sourceRevision  Int
+  payloadJson     Json
+  status          String    @default("pending")
+  attempts        Int       @default(0)
+  nextAttemptAt   DateTime  @default(now())
+  lastAttemptAt   DateTime?
+  deliveredAt     DateTime?
+  lastError       String?
+  responseCode    Int?
+  responseBody    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([aggregateId])
 }

@@ -69,7 +69,7 @@ export class TelegramService {
     caption?: string,
     threadId?: string,
     replyMarkup?: unknown,
-  ): Promise<boolean> {
+  ): Promise<number | false> {
     return this.sendMultipart('sendPhoto', chatId, 'photo', photo, filename, {
       caption,
       contentType,
@@ -86,7 +86,7 @@ export class TelegramService {
     caption?: string,
     threadId?: string,
     replyMarkup?: unknown,
-  ): Promise<boolean> {
+  ): Promise<number | false> {
     return this.sendMultipart(
       'sendDocument',
       chatId,
@@ -191,7 +191,7 @@ export class TelegramService {
       threadId?: string;
       replyMarkup?: unknown;
     },
-  ): Promise<boolean> {
+  ): Promise<number | false> {
     if (!this.token) {
       this.logger.warn('TELEGRAM_BOT_TOKEN not set — notification skipped');
       return false;
@@ -228,10 +228,44 @@ export class TelegramService {
         this.logger.error(`Telegram ${method} failed [${res.status}]: ${body}`);
         return false;
       }
-      return true;
+      const json = (await res.clone().json().catch(() => ({}))) as { result?: { message_id?: number } };
+      return json.result?.message_id ?? false;
     } catch (err) {
       this.logger.error(`Telegram ${method} network error`, err);
       return false;
     }
   }
+  async editMessageCaption(
+    chatId: string,
+    messageId: number,
+    caption: string,
+    replyMarkup?: unknown,
+  ): Promise<boolean> {
+    if (!this.token) return false;
+    try {
+      const res = await fetch(
+        `https://api.telegram.org/bot${this.token}/editMessageCaption`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            message_id: messageId,
+            caption,
+            parse_mode: 'HTML',
+            ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+          }),
+        },
+      );
+      if (!res.ok) {
+        const body = await res.text();
+        this.logger.warn(`editMessageCaption [${res.status}]: ${body}`);
+      }
+      return res.ok;
+    } catch (err) {
+      this.logger.error('editMessageCaption error', err);
+      return false;
+    }
+  }
+
 }

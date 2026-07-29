@@ -198,4 +198,14 @@ export const ordersApi = {
     }>('/order-photo/daily-plan/run');
     return data;
   },
+
+  retryGulianSync: async (orderId: string): Promise<{ retried: number }> => {
+    const { data } = await api.post<{ retried: number }>(`/order-photo/${orderId}/retry-gulian`);
+    return data;
+  },
+
+  bulkDispatch: async (orderIds: string[]): Promise<{ sent: number; failed: number }> => {
+    const { data } = await api.post<{ sent: number; failed: number }>('/order-photo/bulk-dispatch', { orderIds });
+    return data;
+  },
 };

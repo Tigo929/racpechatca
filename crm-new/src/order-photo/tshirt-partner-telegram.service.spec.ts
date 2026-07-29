@@ -117,13 +117,16 @@ describe('TshirtPartnerTelegramService', () => {
       {
         inline_keyboard: [
           [
-            { text: 'В работе', callback_data: `tshirt:${orderId}:work` },
-            { text: 'Готово', callback_data: `tshirt:${orderId}:ready` },
+            { text: '🔄 В работе', callback_data: `tshirt:${orderId}:work` },
+            { text: '🖨️ Напечатано', callback_data: `tshirt:${orderId}:printed` },
           ],
-          [{ text: 'Не готов', callback_data: `tshirt:${orderId}:not_ready` }],
+          [
+            { text: '✅ Готово', callback_data: `tshirt:${orderId}:ready` },
+            { text: '❌ Не готово', callback_data: `tshirt:${orderId}:not_ready` },
+          ],
           [
             {
-              text: 'Распечатать стикер',
+              text: '🏷️ Распечатать стикер',
               url: 'https://crm.example.test/telegram/tshirt-orders/order-1/sticker.pdf?token=signed',
             },
           ],
@@ -138,6 +141,12 @@ describe('TshirtPartnerTelegramService', () => {
         partnerSyncStatus: EnumPartnerSyncStatus.SENT,
         partnerSyncAt: expect.any(Date),
         partnerSyncError: null,
+        // Координаты сообщения у партнёра — по ним потом редактируем подпись
+        // под кнопками; отметка отправки и ревизия уходят в очередь gulian.
+        partnerTgChatId: '-1004309818132',
+        partnerTgMessageId: null,
+        executorSentAt: expect.any(Date),
+        sourceRevision: { increment: 1 },
       },
     });
   });

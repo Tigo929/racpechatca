@@ -9,6 +9,8 @@ import { OrderFinancialIntegrityService } from 'src/order-photo/order-financial-
 import { OrderPhotoService } from 'src/order-photo/order-photo.service';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
+import { TshirtPartnerTelegramService } from 'src/order-photo/tshirt-partner-telegram.service';
+import { GulianOutboxService } from 'src/gulian/gulian-outbox.service';
 import { SalaryService } from './salary.service';
 import { calculateSalarySnapshot } from './salary-calculation';
 
@@ -134,11 +136,21 @@ function createOrderService(stub: PrismaStub) {
   const partnerSettings = {
     syncRewardExpense: jest.fn<Promise<void>, unknown[]>().mockResolvedValue(),
   };
+  // Отправка ТЗ партнёру и очередь синхронизации с gulian в этих тестах не
+  // участвуют — заглушки нужны только чтобы собрать сервис.
+  const tshirtPartnerTelegram = {
+    sendOrder: jest.fn<Promise<void>, [string]>().mockResolvedValue(),
+  };
+  const gulianOutbox = {
+    enqueueOrderEvent: jest.fn<Promise<void>, unknown[]>().mockResolvedValue(),
+  };
   return new OrderPhotoService(
     stub as unknown as PrismaService,
     financialIntegrity as unknown as OrderFinancialIntegrityService,
     telegram as unknown as TelegramService,
     partnerSettings as unknown as PartnerSettingsService,
+    tshirtPartnerTelegram as unknown as TshirtPartnerTelegramService,
+    gulianOutbox as unknown as GulianOutboxService,
   );
 }
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
@@ -21,6 +21,8 @@ import {
   resolvePickupAddress,
 } from "../../config/business";
 import { COMMUNICATION_LABELS, DELIVERY_LABELS } from "../../constants";
+import { GulianSyncBlock } from './GulianSyncBlock';
+import { DispatchToExecutorModal } from './DispatchToExecutorModal';
 
 function pvzReminder(deliveryMethod: string): string[] {
   if (deliveryMethod === "YANDEX_PVZ") {
@@ -318,6 +320,20 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
     enabled: isOwner && order?.productCategory === "TSHIRT",
     staleTime: 60_000,
   });
+
+  const [showDispatchModal, setShowDispatchModal] = useState(false);
+
+  const tshirtPayout = useMemo(() => {
+    if (!partnerSettings || !(order?.tshirtItems?.length)) return null;
+    const items = order!.tshirtItems!;
+    const qty = items.reduce((s, i) => s + i.quantity, 0);
+    const s = computeSettlement(items, partnerSettings.partnerRateBasisPoints);
+    const totalKopecks = Math.round(s.reward * 100);
+    const mode = qty > 0 && totalKopecks % qty === 0 ? 'per_unit' as const : 'order_total' as const;
+    const totalPayoutRub = Math.round(s.reward);
+    const unitPayoutRub = mode === 'per_unit' ? Math.round(s.reward / qty) : null;
+    return { quantity: qty, totalPayoutRub, unitPayoutRub, mode };
+  }, [order?.tshirtItems, partnerSettings]);
 
   const updateMutation = useMutation({
     mutationFn: (dto: UpdateOrderDto) => ordersApi.update(orderId, dto),
@@ -792,7 +808,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             </div>
             {order.status !== "PAID" && (
               <button
-                onClick={() => sendTshirtTelegramMutation.mutate()}
+                onClick={() => setShowDispatchModal(true)}
                 disabled={
                   sendTshirtTelegramMutation.isPending ||
                   order.partnerSyncStatus === "PENDING"
@@ -802,13 +818,27 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 <Send size={13} aria-hidden="true" />
                 {sendTshirtTelegramMutation.isPending
                   ? "Отправка…"
-                  : order.partnerSyncStatus === "SENT"
-                    ? "Отправить повторно"
-                    : "Отправить исполнителю"}
+                  : (order as any).executorSentAt
+                    ? "Повторно отправить исполнителю"
+                    : "Отправить заказ исполнителю"}
               </button>
             )}
           </div>
+          {(order as any).executorSentAt && (
+            <GulianSyncBlock orderId={order.id} order={order as any} />
+          )}
         </div>
+      )}
+
+      {showDispatchModal && tshirtPayout && order && (
+        <DispatchToExecutorModal
+          orderNumber={String(order.numberOrder ?? order.id)}
+          payout={tshirtPayout}
+          isResend={(order as any).executorSentAt != null}
+          isPending={sendTshirtTelegramMutation.isPending}
+          onConfirm={() => { setShowDispatchModal(false); sendTshirtTelegramMutation.mutate(); }}
+          onCancel={() => setShowDispatchModal(false)}
+        />
       )}
 
       {/* Details */}
