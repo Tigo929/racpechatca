@@ -681,6 +681,16 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 order.tshirtItems ?? [],
                 partnerSettings.partnerRateBasisPoints,
               );
+              // Партнёр делит только печать футболок. Разработка дизайна и
+              // свободные позиции (кружки, баннеры, доп. услуги) — полностью
+              // ваши: они в чеке клиента, но в делёж с партнёром не входят.
+              // Без них «Моя прибыль» была занижена ровно на эти суммы.
+              const designRub = order.designDevelopmentCost ?? 0;
+              const extraRub = (order.items ?? []).reduce(
+                (sum, i) => sum + (i.pricePosition ?? 0),
+                0,
+              );
+              const ownerTotal = s.ownerProfit + designRub + extraRub;
               const money = (v: number) => `${v.toLocaleString("ru-RU")} ₽`;
               const Row = ({
                 l,
@@ -715,10 +725,22 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                     v={money(s.reward)}
                     strong
                   />
-                  <Row l="Моя прибыль" v={money(s.ownerProfit)} strong />
+
+                  <div className="pt-1.5 mt-1 border-t border-gray-100 space-y-1">
+                    <Row l="Прибыль с футболок" v={money(s.ownerProfit)} />
+                    {designRub > 0 && (
+                      <Row l="+ Разработка дизайна" v={money(designRub)} />
+                    )}
+                    {extraRub > 0 && (
+                      <Row l="+ Доп. позиции" v={money(extraRub)} />
+                    )}
+                    <Row l="Моя прибыль" v={money(ownerTotal)} strong />
+                  </div>
+
                   <p className="text-[11px] text-gray-400 pt-1">
                     Расход «Вознаграждение партнёру» на {money(s.reward)}{" "}
-                    создаётся при статусе «Оплачен».
+                    создаётся при статусе «Оплачен». Доставка сюда не входит —
+                    она транзитная.
                   </p>
                 </div>
               );
