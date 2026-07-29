@@ -328,7 +328,7 @@ export class TshirtPartnerTelegramService {
 
     return [
       `🧾 <b>Заказ на футболку</b>`,
-      `Заказ: <b>${escapeHtml(order.numberOrder)}</b>`,
+      `Заказ: <code>${escapeHtml(order.numberOrder)}</code>`,
       ...(order.tshirtModel
         ? [`Модель: ${escapeHtml(order.tshirtModel)}`]
         : []),

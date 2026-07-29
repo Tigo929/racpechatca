@@ -811,7 +811,7 @@ export class OrderPhotoService {
     return [
       `🔔 ${handle}, вам назначена задача!`,
       '',
-      `📋 Заказ: <b>${escapeHtml(order.numberOrder)}</b>`,
+      `📋 Заказ: <code>${escapeHtml(order.numberOrder)}</code>`,
       `🏷 Категория: ${category}`,
       ...deadlineLine,
       '',

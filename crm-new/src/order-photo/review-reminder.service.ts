@@ -203,7 +203,7 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
     return [
       '⭐ <b>Пора попросить отзыв</b>',
       '',
-      `Заказ: <b>${escapeHtml(order.numberOrder)}</b>`,
+      `Заказ: <code>${escapeHtml(order.numberOrder)}</code>`,
       `Категория: <b>${escapeHtml(categoryLabel(order.productCategory))}</b>`,
       `Отправлен: ${escapeHtml(sentAt)}`,
       `Канал: ${escapeHtml(platform)}`,

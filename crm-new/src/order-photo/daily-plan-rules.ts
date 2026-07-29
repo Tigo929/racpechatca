@@ -135,13 +135,13 @@ function readyLine(order: ReadyOrder): string {
   const marker = ship ? '🚚' : '📦';
   const label = DELIVERY_LABEL[order.deliveryMethod] ?? order.deliveryMethod;
   const action = ship ? `отгрузить · ${escapeHtml(label)}` : 'самовывоз';
-  return `${marker} <b>#${escapeHtml(order.numberOrder)}</b> · ${summarizeItems(order.items)} — ${action}`;
+  return `${marker} #<code>${escapeHtml(order.numberOrder)}</code> · ${summarizeItems(order.items)} — ${action}`;
 }
 
 /** Строка заказа в блоке отгрузок: 🚚 #номер · состав — способ доставки. */
 function shipmentLine(order: ReadyOrder): string {
   const label = DELIVERY_LABEL[order.deliveryMethod] ?? order.deliveryMethod;
-  return `🚚 <b>#${escapeHtml(order.numberOrder)}</b> · ${summarizeItems(order.items)} — ${escapeHtml(label)}`;
+  return `🚚 #<code>${escapeHtml(order.numberOrder)}</code> · ${summarizeItems(order.items)} — ${escapeHtml(label)}`;
 }
 
 /**
@@ -210,7 +210,7 @@ export function buildDailyPlanMessage(
           .slice()
           .sort((a, b) => priorityKey(a, now) - priorityKey(b, now))) {
           lines.push(
-            `${orderMarker(order, now)} <b>#${escapeHtml(order.numberOrder)}</b> · ${summarizeItems(order.items)} — ${inWorkTail(order, now)}`,
+            `${orderMarker(order, now)} #<code>${escapeHtml(order.numberOrder)}</code> · ${summarizeItems(order.items)} — ${inWorkTail(order, now)}`,
           );
         }
       }

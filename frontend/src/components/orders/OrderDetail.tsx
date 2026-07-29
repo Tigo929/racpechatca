@@ -15,7 +15,11 @@ import {
   AlarmClock,
 } from "lucide-react";
 import { usersApi } from "../../api/users";
-import { businessConfig, resolvePickupAddress } from "../../config/business";
+import {
+  businessConfig,
+  formatOrderNumberForClient,
+  resolvePickupAddress,
+} from "../../config/business";
 import { COMMUNICATION_LABELS, DELIVERY_LABELS } from "../../constants";
 
 function pvzReminder(deliveryMethod: string): string[] {
@@ -89,7 +93,7 @@ function generateConfirmationText(order: OrderPhoto): string {
 
   return [
     "✅ Отлично, ваш заказ подтверждён!",
-    `📌 Номер заказа: ${order.numberOrder}`,
+    `📌 Номер заказа: ${formatOrderNumberForClient(order)}`,
     "",
     "📋 Состав заказа:",
     ...lines,
@@ -153,7 +157,7 @@ function generateReadyText(order: OrderPhoto): string {
 
   return [
     "🎉 Ваш заказ готов!",
-    `📌 Номер заказа: ${order.numberOrder}`,
+    `📌 Номер заказа: ${formatOrderNumberForClient(order)}`,
     "",
     "📋 Состав заказа:",
     ...lines,
