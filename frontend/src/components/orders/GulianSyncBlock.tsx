@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { ordersApi } from "../../api/orders";
-import { toast } from "../../utils/toast";
 
 type Props = {
   orderId: string;
@@ -28,7 +27,6 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
 
 export function GulianSyncBlock({ orderId, order }: Props) {
   const qc = useQueryClient();
-  const [showLog, setShowLog] = useState(false);
 
   const retryMutation = useMutation({
     mutationFn: () => ordersApi.retryGulianSync(orderId),

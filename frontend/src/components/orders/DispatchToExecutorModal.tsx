@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Send, X } from "lucide-react";
 
 type PayoutInfo = {
