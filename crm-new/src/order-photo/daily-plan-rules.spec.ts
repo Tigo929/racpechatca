@@ -100,18 +100,19 @@ describe('buildDailyPlanMessage', () => {
     expect(msg).toContain('СРОЧНО');
   });
 
-  it('блок «Готовы»: отгрузка помечена 🚚 и способом, самовывоз — 📦', () => {
+  it('у исполнителя «Готовы к выдаче» — только самовывоз, без дублей отгрузок', () => {
     const msg = buildDailyPlanMessage([maksim], NOW, 0);
-    expect(msg).toContain('Готовы (2)');
-    expect(msg).toContain('🚚');
-    expect(msg).toContain('отгрузить · Яндекс ПВЗ');
+    // У maksim готовы 2 заказа, но отгрузочный ушёл в блок «Отгрузки».
+    expect(msg).toContain('Готовы к выдаче (1)');
     expect(msg).toContain('📦');
     expect(msg).toContain('самовывоз');
-    // отгрузка идёт раньше самовывоза
-    expect(msg.indexOf('R-SHIP')).toBeLessThan(msg.indexOf('R-PICKUP'));
+    const executorPart = msg.slice(0, msg.indexOf('📦 <b>Отгрузки</b>'));
+    expect(executorPart).not.toContain('R-SHIP');
+    // Отгрузочный заказ упомянут ровно один раз — в блоке отгрузок.
+    expect(msg.split('R-SHIP').length - 1).toBe(1);
   });
 
-  it('исполнитель только с готовыми заказами тоже попадает в план', () => {
+  it('исполнитель только с готовыми к выдаче заказами попадает в план', () => {
     const readyOnly = {
       executor: { username: 'ready_guy', telegramUsername: null },
       inWork: [],
@@ -120,6 +121,29 @@ describe('buildDailyPlanMessage', () => {
     const msg = buildDailyPlanMessage([readyOnly], NOW, 0);
     expect(msg).toContain('ready_guy');
     expect(msg).toContain('R-ONLY');
+  });
+
+  it('исполнителя, у которого только отгрузки, в блоке исполнителей нет', () => {
+    const shipOnly = {
+      executor: { username: 'ship_guy', telegramUsername: null },
+      inWork: [],
+      ready: [{ numberOrder: 'R-S', deliveryMethod: 'YANDEX_PVZ', items: [] }],
+    };
+    const msg = buildDailyPlanMessage([shipOnly], NOW, 0, null);
+    // Имя не мелькает отдельным пустым блоком, а заказ виден в «Отгрузках».
+    expect(msg).not.toContain('ship_guy');
+    expect(msg).toContain('R-S');
+  });
+
+  it('ручной вызов: нейтральный заголовок со временем вместо «доброе утро»', () => {
+    const manual = buildDailyPlanMessage([maksim], NOW, 0, null, { manual: true });
+    expect(manual).toContain('Проверка по заказам');
+    expect(manual).toContain('24.07, 12:00'); // NOW = 12:00 по Москве
+    expect(manual).not.toContain('доброе утро');
+
+    const scheduled = buildDailyPlanMessage([maksim], NOW, 0);
+    expect(scheduled).toContain('доброе утро');
+    expect(scheduled).not.toContain('Проверка по заказам');
   });
 
   it('показывает предупреждение о заказах без исполнителя', () => {

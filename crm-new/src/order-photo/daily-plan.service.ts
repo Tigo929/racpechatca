@@ -106,19 +106,17 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
     opts: { dryRun?: boolean } = {},
   ): Promise<PlanResult> {
     if (opts.dryRun) {
-      const built = await this.buildPlan(now);
+      const built = await this.buildPlan(now, true);
       return { ...built, sent: false };
     }
-    const result = await this.buildAndSend(now);
-    if (!result.empty && result.sent) {
-      await this.markSent(moscowDateKey(now));
-    }
-    return result;
+    // Ручную проверку НЕ отмечаем как отправленный план дня: иначе утренняя
+    // рассылка за этот день уже не уйдёт. Это разные сообщения.
+    return this.buildAndSend(now, true);
   }
 
   /** Собирает план из заказов в работе и шлёт в группу (тема General). */
-  private async buildAndSend(now: Date): Promise<PlanResult> {
-    const built = await this.buildPlan(now);
+  private async buildAndSend(now: Date, manual = false): Promise<PlanResult> {
+    const built = await this.buildPlan(now, manual);
     if (built.empty || built.message === null) {
       return { ...built, sent: false };
     }
@@ -129,6 +127,7 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
   /** Формирует текст плана из заказов в работе (без отправки). */
   private async buildPlan(
     now: Date,
+    manual = false,
   ): Promise<Omit<PlanResult, 'sent'>> {
     const [inWorkOrders, readyOrders, unassignedCount, appState] =
       await Promise.all([
@@ -222,6 +221,7 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
       now,
       unassignedCount,
       appState?.shipmentLead ?? null,
+      { manual },
     );
     return {
       empty: false,

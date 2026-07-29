@@ -173,6 +173,13 @@ function dayMonth(now: Date): string {
   return `${dd}.${mm}`;
 }
 
+/** «21:40» по Москве — для ручной проверки важно, на какой момент снимок. */
+function moscowHm(now: Date): string {
+  const m = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(m.getUTCHours())}:${pad(m.getUTCMinutes())}`;
+}
+
 /** Ключ сортировки исполнителя: самая горящая задача в работе; без работы — в конец. */
 function executorKey(group: PlanGroup, now: Date): number {
   if (group.inWork.length === 0) return Number.POSITIVE_INFINITY;
@@ -190,18 +197,33 @@ function orderWord(n: number): string {
 /**
  * Собирает одно сообщение-план на весь день. Исполнители идут по «накалу»:
  * у кого самая горящая задача в работе — тот выше. У каждого две подсекции:
- * «в работе» (что делать, срочное сверху) и «готовы» (что отгрузить/выдать).
+ * «в работе» (что делать) и «готовы к выдаче» (самовывоз — клиент заберёт сам).
+ *
+ * Заказы, требующие отгрузки, в блок исполнителя НЕ попадают: они целиком
+ * уходят в общий блок «Отгрузки» к старшему дня — иначе один и тот же заказ
+ * дублировался в сообщении дважды.
+ *
+ * `manual` — сообщение вызвано кнопкой, а не расписанием: тогда вместо
+ * «доброе утро» ставим нейтральный заголовок проверки со временем снимка.
  */
 export function buildDailyPlanMessage(
   groups: PlanGroup[],
   now: Date,
   unassignedCount = 0,
   shipmentLead: ShipmentLead | null = null,
+  options: { manual?: boolean } = {},
 ): string {
   const blocks = groups
     .slice()
     .sort((a, b) => executorKey(a, now) - executorKey(b, now))
     .map((group) => {
+      // Готовые к выдаче = только самовывоз; отгрузки ведёт старший дня.
+      const readyForPickup = group.ready.filter(
+        (o) => !needsShipping(o.deliveryMethod),
+      );
+      // Показывать нечего — исполнителя в плане не упоминаем.
+      if (group.inWork.length === 0 && readyForPickup.length === 0) return '';
+
       const lines: string[] = [`👤 <b>${mentionFor(group.executor)}</b>`];
 
       if (group.inWork.length > 0) {
@@ -215,24 +237,20 @@ export function buildDailyPlanMessage(
         }
       }
 
-      if (group.ready.length > 0) {
-        lines.push(`✅ Готовы (${group.ready.length}):`);
-        // Сначала то, что надо отгружать, — там больше действий; самовывоз ниже.
-        for (const order of group.ready
-          .slice()
-          .sort(
-            (a, b) =>
-              (needsShipping(a.deliveryMethod) ? 0 : 1) -
-              (needsShipping(b.deliveryMethod) ? 0 : 1),
-          )) {
+      if (readyForPickup.length > 0) {
+        lines.push(`✅ Готовы к выдаче (${readyForPickup.length}):`);
+        for (const order of readyForPickup) {
           lines.push(readyLine(order));
         }
       }
 
       return lines.join('\n');
-    });
+    })
+    .filter(Boolean);
 
-  const header = `🌅 <b>План на ${dayMonth(now)}</b> — доброе утро!`;
+  const header = options.manual
+    ? `🔎 <b>Проверка по заказам</b> — ${dayMonth(now)}, ${moscowHm(now)}`
+    : `🌅 <b>План на ${dayMonth(now)}</b> — доброе утро!`;
   const shipmentBlock = buildShipmentBlock(groups, shipmentLead);
   const footer =
     unassignedCount > 0
