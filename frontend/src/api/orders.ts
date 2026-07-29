@@ -123,10 +123,39 @@ export const ordersApi = {
     return data;
   },
 
-  /** Повторно отправить футболочное ТЗ исполнителю в Telegram. */
+  getTshirtDispatchPreview: async (orderId: string): Promise<{
+    quantity: number;
+    payoutCalculationMode: 'per_unit' | 'order_total';
+    unitPayoutAmountKopecks: number | null;
+    totalPayoutAmountKopecks: number;
+  }> => {
+    const { data } = await api.get(
+      `/order-photo/${orderId}/tshirt-dispatch-preview`,
+    );
+    return data;
+  },
+
+  /** Отправить футболочное ТЗ и поставить событие Gulian в outbox. */
   sendTshirtTelegram: async (orderId: string): Promise<OrderPhoto> => {
     const { data } = await api.post<OrderPhoto>(`/order-photo/${orderId}/send-tshirt-telegram`);
     return data;
+  },
+
+  sendTshirtToGulian: async (orderId: string): Promise<OrderPhoto> => {
+    const { data } = await api.post<OrderPhoto>(
+      `/order-photo/${orderId}/send-gulian`,
+    );
+    return data;
+  },
+
+  bulkDispatchTshirtToGulian: async (orderIds: string[]) => {
+    const { data } = await api.post(`/order-photo/bulk-dispatch`, { orderIds });
+    return data as {
+      total: number;
+      succeeded: number;
+      failed: number;
+      results: Array<{ orderId: string; success: boolean; error?: string }>;
+    };
   },
 
   update: async (id: string, dto: UpdateOrderDto): Promise<OrderPhoto> => {
@@ -186,3 +215,6 @@ export const ordersApi = {
     return data;
   },
 };
+
+
+

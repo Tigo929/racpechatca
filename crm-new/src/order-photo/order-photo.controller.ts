@@ -37,6 +37,7 @@ import { DtoCreateTshirtItem } from './dto/create-tshirt-item.dto';
 import { DtoUpdateTshirtItem } from './dto/update-tshirt-item.dto';
 import { DtoAssignExecutor } from './dto/assign-executor.dto';
 import { DtoSetReview } from './dto/set-review.dto';
+import { DtoBulkDispatch } from './dto/bulk-dispatch.dto';
 
 interface RequestUser {
   id: string;
@@ -245,6 +246,18 @@ export class OrderPhotoController {
     return this.tshirtItemService.getTshirtItem(idItem, me.id, me.role);
   }
 
+  @Get(':idOrder/tshirt-dispatch-preview')
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  getTshirtDispatchPreview(@Param('idOrder') idOrder: string) {
+    return this.orderPhotoService.getTshirtDispatchPreview(idOrder);
+  }
+
+  @Get(':idOrder/gulian-log')
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  getGulianLog(@Param('idOrder') idOrder: string) {
+    return this.orderPhotoService.getGulianLog(idOrder);
+  }
+
   @Get(':idOrder')
   getOrderById(
     @Param('idOrder') idOrder: string,
@@ -279,4 +292,35 @@ export class OrderPhotoController {
       me.role,
     );
   }
+
+  @Post(':idOrder/send-gulian')
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  sendTshirtGulian(
+    @Param('idOrder') idOrder: string,
+    @CurrentUser() me: RequestUser,
+  ) {
+    return this.orderPhotoService.sendTshirtToGulian(
+      idOrder,
+      me.id,
+      me.role,
+    );
+  }
+
+  @Post(':idOrder/retry-gulian')
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  retryGulianSync(
+    @Param('idOrder') idOrder: string,
+    @CurrentUser() me: RequestUser,
+  ) {
+    return this.orderPhotoService.retryGulianSync(idOrder, me.id);
+  }
+
+  @Post('bulk-dispatch')
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  bulkDispatch(@Body() dto: DtoBulkDispatch, @CurrentUser() me: RequestUser) {
+    return this.orderPhotoService.bulkDispatch(dto.orderIds, me.id, me.role);
+  }
 }
+
+
+

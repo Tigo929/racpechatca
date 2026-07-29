@@ -107,6 +107,25 @@ model OrderPhoto {
   partnerSyncStatus EnumPartnerSyncStatus?
   partnerSyncError  String?
   partnerSyncAt     DateTime?
+  // Версия состояния заказа, передаваемая в Gulian CRM.
+  sourceRevision    Int                    @default(1)
+
+  // Telegram-сообщение исполнителю.
+  telegramChatId    String?
+  telegramMessageId String?
+
+  // Последнее известное состояние асинхронной передачи в Gulian CRM.
+  gulianSyncState             EnumGulianSyncState @default(NOT_SENT)
+  gulianLastAttemptAt         DateTime?
+  gulianLastSyncedAt          DateTime?
+  gulianLastError             String?
+  gulianSettlementOrderNumber String?
+  gulianSettlementOrderId     Int?
+  gulianPositionId            Int?
+  gulianAppliedRevision       Int?
+
+  // Причина производственной проблемы, выбранная в Telegram.
+  productionProblemReason String?
 
   executorId   String?
   executor     User?     @relation("OrderExecutor", fields: [executorId], references: [id])
@@ -118,15 +137,17 @@ model OrderPhoto {
   // Сбрасывается в null при возврате заказа в работу.
   closedAt     DateTime?
 
-  items          ItemPhoto[]
-  tshirtItems    ItemTshirt[]
-  accruals       SalaryAccrual[]
-  statusHistory  StatusHistory[]
-  assignments    OrderAssignment[]
-  stockMovements StockMovement[]
-  tasks          Task[]
-  expenses       ExpenseOrder[]
-  avitoChats     AvitoChat[]
+  items                ItemPhoto[]
+  tshirtItems          ItemTshirt[]
+  accruals             SalaryAccrual[]
+  statusHistory        StatusHistory[]
+  assignments          OrderAssignment[]
+  stockMovements       StockMovement[]
+  tasks                Task[]
+  expenses             ExpenseOrder[]
+  avitoChats           AvitoChat[]
+  gulianOutbox         GulianOutboxEvent[]
+  integrationAuditLogs IntegrationAuditLog[]
 
   @@index([status])
   @@index([executorId])
@@ -273,6 +294,7 @@ enum EnumStatus {
   NEW
   FOLDER_STRUCTURE_CREATED
   IN_PROGRESS
+  PROBLEM
   PRINTED
   READY
   DONE
@@ -580,4 +602,67 @@ model AppState {
   // или менеджер по оформлению. SetNull: удаление пользователя не ломает флаг.
   shipmentLeadUserId String?
   shipmentLead       User?   @relation("ShipmentLead", fields: [shipmentLeadUserId], references: [id], onDelete: SetNull)
+}
+
+enum EnumGulianSyncState {
+  NOT_SENT
+  PENDING
+  PROCESSING
+  DELIVERED
+  ERROR
+  REJECTED_PAID
+}
+
+enum EnumGulianOutboxStatus {
+  PENDING
+  PROCESSING
+  DELIVERED
+  FAILED
+}
+
+/// Transactional outbox CRM «Распечатка» → Gulian CRM.
+model GulianOutboxEvent {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  eventId         String @unique
+  eventType       String @default("order.upsert")
+  aggregateId     String
+  externalOrderId String
+  sourceRevision  Int
+  payloadJson     Json
+
+  status        EnumGulianOutboxStatus @default(PENDING)
+  attempts      Int                    @default(0)
+  nextAttemptAt DateTime?
+  lastAttemptAt DateTime?
+  deliveredAt   DateTime?
+  lastError     String?
+  responseCode  Int?
+  responseBody  String?
+
+  order OrderPhoto @relation(fields: [aggregateId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt, createdAt])
+  @@index([aggregateId, createdAt])
+  @@index([externalOrderId, sourceRevision])
+}
+
+/// Журнал интеграционных действий и ошибок до/после создания outbox.
+model IntegrationAuditLog {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  orderId String?
+  order   OrderPhoto? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  action  String
+  level   String  @default("info")
+  actor   String?
+  message String
+  details Json?
+
+  @@index([orderId, createdAt])
+  @@index([action, createdAt])
 }

@@ -4,7 +4,6 @@ import * as path from 'node:path';
 import sharp from 'sharp';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 import {
-  EnumPartnerSyncStatus,
   EnumPrintLocation,
   EnumPrintType,
   EnumTshirtSize,
@@ -70,8 +69,8 @@ describe('TshirtPartnerTelegramService', () => {
       },
     };
     const telegram = {
-      sendPhoto: jest.fn().mockResolvedValue(true),
-      sendDocument: jest.fn().mockResolvedValue(true),
+      sendPhotoWithResult: jest.fn().mockResolvedValue({ chatId: '-1004309818132', messageId: '77' }),
+      sendDocumentWithResult: jest.fn().mockResolvedValue({ chatId: '-1004309818132', messageId: '77' }),
     };
     const partnerSettings = {
       get: jest.fn().mockResolvedValue({ partnerRateBasisPoints: 3000 }),
@@ -102,12 +101,12 @@ describe('TshirtPartnerTelegramService', () => {
       config as never,
     );
 
-    await service.sendOrder(orderId);
+    const sent = await service.sendOrder(orderId);
 
     expect(stickerLinks.buildStickerUrl).toHaveBeenCalledWith(orderId);
-    expect(telegram.sendPhoto).not.toHaveBeenCalled();
-    expect(telegram.sendDocument).toHaveBeenCalledTimes(1);
-    expect(telegram.sendDocument).toHaveBeenCalledWith(
+    expect(telegram.sendPhotoWithResult).not.toHaveBeenCalled();
+    expect(telegram.sendDocumentWithResult).toHaveBeenCalledTimes(1);
+    expect(telegram.sendDocumentWithResult).toHaveBeenCalledWith(
       '-1004309818132',
       expect.any(Buffer),
       'techspec-20260726-001.pdf',
@@ -117,10 +116,10 @@ describe('TshirtPartnerTelegramService', () => {
       {
         inline_keyboard: [
           [
-            { text: 'В работе', callback_data: `tshirt:${orderId}:work` },
+            { text: 'В работу', callback_data: `tshirt:${orderId}:work` },
             { text: 'Готово', callback_data: `tshirt:${orderId}:ready` },
           ],
-          [{ text: 'Не готов', callback_data: `tshirt:${orderId}:not_ready` }],
+          [{ text: 'Проблема', callback_data: `tshirt:${orderId}:problem` }],
           [
             {
               text: 'Распечатать стикер',
@@ -130,16 +129,11 @@ describe('TshirtPartnerTelegramService', () => {
         ],
       },
     );
-    const pdfBuffer = telegram.sendDocument.mock.calls[0][1] as Buffer;
+    const pdfBuffer = telegram.sendDocumentWithResult.mock.calls[0][1] as Buffer;
     expect(pdfBuffer.subarray(0, 4).toString()).toBe('%PDF');
-    expect(prisma.orderPhoto.update).toHaveBeenLastCalledWith({
-      where: { id: orderId },
-      data: {
-        partnerSyncStatus: EnumPartnerSyncStatus.SENT,
-        partnerSyncAt: expect.any(Date),
-        partnerSyncError: null,
-      },
-    });
+    expect(sent).toEqual({ chatId: '-1004309818132', messageId: '77' });
+    expect(prisma.orderPhoto.update).not.toHaveBeenCalled();
+
   });
 
   it('does not send or mark SENT when the sticker URL cannot be built', async () => {
@@ -175,8 +169,8 @@ describe('TshirtPartnerTelegramService', () => {
       },
     };
     const telegram = {
-      sendPhoto: jest.fn().mockResolvedValue(true),
-      sendDocument: jest.fn().mockResolvedValue(true),
+      sendPhotoWithResult: jest.fn().mockResolvedValue({ chatId: '-1004309818132', messageId: '77' }),
+      sendDocumentWithResult: jest.fn().mockResolvedValue({ chatId: '-1004309818132', messageId: '77' }),
     };
     const service = new TshirtPartnerTelegramService(
       prisma as never,
@@ -199,17 +193,16 @@ describe('TshirtPartnerTelegramService', () => {
       } as never,
     );
 
-    await service.sendOrder(orderId);
+    await expect(service.sendOrder(orderId)).rejects.toThrow(
+      'PUBLIC_BASE_URL или секрет для ссылки на стикер не задан.',
+    );
 
-    expect(telegram.sendPhoto).not.toHaveBeenCalled();
-    expect(telegram.sendDocument).not.toHaveBeenCalled();
-    expect(prisma.orderPhoto.update).toHaveBeenLastCalledWith({
-      where: { id: orderId },
-      data: {
-        partnerSyncStatus: EnumPartnerSyncStatus.FAILED,
-        partnerSyncError:
-          'PUBLIC_BASE_URL или секрет для ссылки на стикер не задан.',
-      },
-    });
+    expect(telegram.sendPhotoWithResult).not.toHaveBeenCalled();
+    expect(telegram.sendDocumentWithResult).not.toHaveBeenCalled();
+    expect(prisma.orderPhoto.update).not.toHaveBeenCalled();
+
   });
 });
+
+
+

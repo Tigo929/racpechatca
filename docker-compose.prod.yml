@@ -48,7 +48,14 @@ services:
       PARTNER_STATUS_POLL_ENABLED: ${PARTNER_STATUS_POLL_ENABLED:-false}
       PARTNER_API_TOKEN: ${PARTNER_API_TOKEN:-}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
-      # Avito API. Пусто — клиент просто не настроен и молчит; на работу CRM
+      # Асинхронная передача заказов в Gulian CRM через transactional outbox.
+      GULIAN_INTEGRATION_ENABLED: ${GULIAN_INTEGRATION_ENABLED:-false}
+      GULIAN_INTEGRATION_BASE_URL: ${GULIAN_INTEGRATION_BASE_URL:-}
+      GULIAN_INTEGRATION_SECRET: ${GULIAN_INTEGRATION_SECRET:-}
+      GULIAN_INTEGRATION_TIMEOUT_SECONDS: ${GULIAN_INTEGRATION_TIMEOUT_SECONDS:-15}
+      GULIAN_INTEGRATION_MAX_ATTEMPTS: ${GULIAN_INTEGRATION_MAX_ATTEMPTS:-20}
+      GULIAN_INTEGRATION_BULK_SIZE: ${GULIAN_INTEGRATION_BULK_SIZE:-100}
+      GULIAN_INTEGRATION_SCAN_INTERVAL_SECONDS: ${GULIAN_INTEGRATION_SCAN_INTERVAL_SECONDS:-10}      # Avito API. Пусто — клиент просто не настроен и молчит; на работу CRM
       # это не влияет (проверяется в AvitoService при первом обращении).
       AVITO_CLIENT_ID: ${AVITO_CLIENT_ID:-}
       AVITO_CLIENT_SECRET: ${AVITO_CLIENT_SECRET:-}
@@ -105,3 +112,4 @@ volumes:
 
 networks:
   internal:
+

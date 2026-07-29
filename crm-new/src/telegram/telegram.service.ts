@@ -1,13 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+export interface TelegramSentMessage {
+  chatId: string;
+  messageId: string;
+}
+
 @Injectable()
 export class TelegramService {
   private readonly logger = new Logger(TelegramService.name);
   private readonly token: string;
   private readonly groupChatId: string;
-  // Отдельный чат/тема для напоминаний об отзывах. Если не задан — падаем
-  // обратно в общую рабочую группу (см. sendReviewReminder).
   private readonly reviewChatId: string;
   private readonly reviewThreadId: string;
 
@@ -18,11 +21,6 @@ export class TelegramService {
     this.reviewThreadId = config.get<string>('TELEGRAM_REVIEW_THREAD_ID') ?? '';
   }
 
-  /**
-   * Отправляет сообщение в произвольный чат (parse_mode=HTML).
-   * threadId — id темы форум-супергруппы (message_thread_id); если чат не форум,
-   * не передавайте его.
-   */
   async sendMessage(
     chatId: string,
     text: string,
@@ -33,24 +31,25 @@ export class TelegramService {
       this.logger.warn('TELEGRAM_BOT_TOKEN not set — notification skipped');
       return false;
     }
-    const url = `https://api.telegram.org/bot${this.token}/sendMessage`;
     try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          ...(threadId ? { message_thread_id: Number(threadId) } : {}),
-          text,
-          parse_mode: 'HTML',
-          disable_web_page_preview: true,
-          ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
-        }),
-      });
+      const res = await fetch(
+        `https://api.telegram.org/bot${this.token}/sendMessage`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            ...(threadId ? { message_thread_id: Number(threadId) } : {}),
+            text,
+            parse_mode: 'HTML',
+            disable_web_page_preview: true,
+            ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+          }),
+        },
+      );
       if (!res.ok) {
-        const body = await res.text();
         this.logger.error(
-          `Telegram sendMessage failed [${res.status}]: ${body}`,
+          `Telegram sendMessage failed [${res.status}]: ${await res.text()}`,
         );
         return false;
       }
@@ -70,12 +69,36 @@ export class TelegramService {
     threadId?: string,
     replyMarkup?: unknown,
   ): Promise<boolean> {
-    return this.sendMultipart('sendPhoto', chatId, 'photo', photo, filename, {
-      caption,
-      contentType,
-      threadId,
-      replyMarkup,
-    });
+    return Boolean(
+      await this.sendPhotoWithResult(
+        chatId,
+        photo,
+        filename,
+        contentType,
+        caption,
+        threadId,
+        replyMarkup,
+      ),
+    );
+  }
+
+  async sendPhotoWithResult(
+    chatId: string,
+    photo: Buffer,
+    filename: string,
+    contentType: string,
+    caption?: string,
+    threadId?: string,
+    replyMarkup?: unknown,
+  ): Promise<TelegramSentMessage | null> {
+    return this.sendMultipartWithResult(
+      'sendPhoto',
+      chatId,
+      'photo',
+      photo,
+      filename,
+      { caption, contentType, threadId, replyMarkup },
+    );
   }
 
   async sendDocument(
@@ -87,7 +110,29 @@ export class TelegramService {
     threadId?: string,
     replyMarkup?: unknown,
   ): Promise<boolean> {
-    return this.sendMultipart(
+    return Boolean(
+      await this.sendDocumentWithResult(
+        chatId,
+        document,
+        filename,
+        contentType,
+        caption,
+        threadId,
+        replyMarkup,
+      ),
+    );
+  }
+
+  async sendDocumentWithResult(
+    chatId: string,
+    document: Buffer,
+    filename: string,
+    contentType: string,
+    caption?: string,
+    threadId?: string,
+    replyMarkup?: unknown,
+  ): Promise<TelegramSentMessage | null> {
+    return this.sendMultipartWithResult(
       'sendDocument',
       chatId,
       'document',
@@ -118,7 +163,6 @@ export class TelegramService {
     }
   }
 
-  /** Отправляет сообщение в общую рабочую группу (id из TELEGRAM_GROUP_CHAT_ID). */
   async sendToGroup(text: string): Promise<boolean> {
     if (!this.groupChatId) {
       this.logger.warn(
@@ -129,11 +173,6 @@ export class TelegramService {
     return this.sendMessage(this.groupChatId, text);
   }
 
-  /**
-   * Напоминания об отзывах — в выделенный чат/тему (TELEGRAM_REVIEW_CHAT_ID
-   * [+ TELEGRAM_REVIEW_THREAD_ID]). Если он не задан — в общую рабочую группу,
-   * чтобы напоминания не пропали при отсутствии настройки.
-   */
   async sendReviewReminder(
     text: string,
     replyMarkup?: unknown,
@@ -149,37 +188,54 @@ export class TelegramService {
     return this.sendMessage(this.groupChatId, text, undefined, replyMarkup);
   }
 
-  /**
-   * Меняет только inline-клавиатуру у уже отправленного сообщения (например,
-   * заменить кнопку на «✅ Отправлено»). chatId+messageId берём из callback_query.
-   */
   async editMessageReplyMarkup(
     chatId: string | number,
     messageId: number,
     replyMarkup: unknown,
   ): Promise<boolean> {
+    return this.callJson('editMessageReplyMarkup', {
+      chat_id: chatId,
+      message_id: messageId,
+      reply_markup: replyMarkup,
+    });
+  }
+
+  async editMessageCaption(
+    chatId: string | number,
+    messageId: number,
+    caption: string,
+    replyMarkup: unknown,
+  ): Promise<boolean> {
+    return this.callJson('editMessageCaption', {
+      chat_id: chatId,
+      message_id: messageId,
+      caption,
+      parse_mode: 'HTML',
+      reply_markup: replyMarkup,
+    });
+  }
+
+  private async callJson(method: string, body: unknown): Promise<boolean> {
     if (!this.token) return false;
     try {
-      const res = await fetch(
-        `https://api.telegram.org/bot${this.token}/editMessageReplyMarkup`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: chatId,
-            message_id: messageId,
-            reply_markup: replyMarkup,
-          }),
-        },
-      );
+      const res = await fetch(`https://api.telegram.org/bot${this.token}/${method}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        this.logger.error(
+          `Telegram ${method} failed [${res.status}]: ${await res.text()}`,
+        );
+      }
       return res.ok;
     } catch (err) {
-      this.logger.error('Telegram editMessageReplyMarkup network error', err);
+      this.logger.error(`Telegram ${method} network error`, err);
       return false;
     }
   }
 
-  private async sendMultipart(
+  private async sendMultipartWithResult(
     method: 'sendPhoto' | 'sendDocument',
     chatId: string,
     fileField: 'photo' | 'document',
@@ -191,10 +247,10 @@ export class TelegramService {
       threadId?: string;
       replyMarkup?: unknown;
     },
-  ): Promise<boolean> {
+  ): Promise<TelegramSentMessage | null> {
     if (!this.token) {
       this.logger.warn('TELEGRAM_BOT_TOKEN not set — notification skipped');
-      return false;
+      return null;
     }
 
     const form = new FormData();
@@ -218,20 +274,30 @@ export class TelegramService {
     try {
       const res = await fetch(
         `https://api.telegram.org/bot${this.token}/${method}`,
-        {
-          method: 'POST',
-          body: form,
-        },
+        { method: 'POST', body: form },
       );
+      const body = await res.text();
       if (!res.ok) {
-        const body = await res.text();
         this.logger.error(`Telegram ${method} failed [${res.status}]: ${body}`);
-        return false;
+        return null;
       }
-      return true;
+      const parsed = JSON.parse(body) as {
+        ok?: boolean;
+        result?: { message_id?: number; chat?: { id?: number | string } };
+      };
+      const messageId = parsed.result?.message_id;
+      const resultChatId = parsed.result?.chat?.id;
+      if (!parsed.ok || messageId === undefined || resultChatId === undefined) {
+        this.logger.error(`Telegram ${method} response has no message identifiers`);
+        return null;
+      }
+      return {
+        chatId: String(resultChatId),
+        messageId: String(messageId),
+      };
     } catch (err) {
       this.logger.error(`Telegram ${method} network error`, err);
-      return false;
+      return null;
     }
   }
 }

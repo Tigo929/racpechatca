@@ -20,6 +20,7 @@ export const STATUS_LABELS: Record<EnumStatus, string> = {
   READY_FOR_REVIEW: 'На проверке',
   COMPLETED: 'Завершён',
   CANCELLED: 'Отменён',
+  PROBLEM: 'Проблема',
 };
 
 // Поток статусов для фотографий (без нового executor-flow)
@@ -41,6 +42,7 @@ export const TSHIRT_STATUS_FLOW: EnumStatus[] = [
   'SENT',
   'IN_PROGRESS',
   'READY',
+  'PROBLEM',
   'PAID',
 ];
 
@@ -59,6 +61,7 @@ export const TSHIRT_STATUS_LABELS: Record<EnumStatus, string> = {
   READY_FOR_REVIEW: 'На проверке',
   COMPLETED: 'Завершён',
   CANCELLED: 'Отменён',
+  PROBLEM: 'Проблема',
 };
 
 export const COMMUNICATION_LABELS: Record<EnumCommunication, string> = {
@@ -101,3 +104,4 @@ export const TSHIRT_COLORS = ['Белый', 'Чёрный'];
 // SENT сюда НЕ входит: из «Отправлен» админ может перейти в «Оплачен»
 // или вернуть назад в «Готов» (степпер показывает кнопки перехода).
 export const TERMINAL_STATUSES: EnumStatus[] = ['COMPLETED', 'CANCELLED', 'PAID'];
+

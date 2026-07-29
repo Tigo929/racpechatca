@@ -17,6 +17,8 @@ import { DtoCreateLead } from './dto/create-lead.dto';
 import { DtoAssignExecutor } from './dto/assign-executor.dto';
 import {
   EnumCommunication,
+  EnumGulianSyncState,
+  EnumPartnerSyncStatus,
   EnumProductCategory,
   EnumRole,
   EnumStatus,
@@ -31,6 +33,8 @@ import { TelegramService } from 'src/telegram/telegram.service';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 import { hasTechSpecFiles } from 'src/partner/tech-spec-paths';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
+import { GulianOutboxService } from 'src/gulian-integration/gulian-outbox.service';
+import { productionStatusFromOrderStatus } from 'src/gulian-integration/gulian-payload';
 
 function buildCommunicationUrl(
   platform: EnumCommunication,
@@ -124,6 +128,7 @@ export class OrderPhotoService {
     private readonly telegram: TelegramService,
     private readonly partnerSettings: PartnerSettingsService,
     private readonly tshirtPartnerTelegram: TshirtPartnerTelegramService,
+    private readonly gulianOutbox: GulianOutboxService,
   ) {}
 
   async createOrder(dto: DtoCreateOrder, adminId?: string) {
@@ -608,6 +613,7 @@ export class OrderPhotoService {
         items: true,
         tshirtItems: true,
         executor: { select: { id: true, username: true } },
+        gulianOutbox: { orderBy: { createdAt: 'desc' }, take: 1 },
         accruals: {
           select: {
             id: true,
@@ -870,19 +876,6 @@ export class OrderPhotoService {
       );
     }
 
-    if (
-      newStatus === EnumStatus.SENT &&
-      order.productCategory === EnumProductCategory.TSHIRT
-    ) {
-      if (!hasTechSpecFiles(order)) {
-        throw new BadRequestException(
-          'Сначала прикрепите ТЗ-фото, затем переводите заказ в «Отправлен».',
-        );
-      }
-      if ((order.tshirtItems?.length ?? 0) === 0) {
-        throw new BadRequestException('В заказе нет позиций-футболок.');
-      }
-    }
 
     const result = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`
@@ -897,10 +890,18 @@ export class OrderPhotoService {
         include: {
           items: true,
           tshirtItems: true,
+          gulianOutbox: { orderBy: { createdAt: 'desc' }, take: 1 },
           executor: { select: { id: true, username: true } },
         },
       });
       if (!lockedOrder) throw new NotFoundException('Заказ не найден');
+
+      const gulianProductionStatus =
+        lockedOrder.productCategory === EnumProductCategory.TSHIRT &&
+        (lockedOrder.telegramMessageId || (lockedOrder.gulianOutbox?.length ?? 0) > 0) &&
+        lockedOrder.status !== newStatus
+          ? productionStatusFromOrderStatus(newStatus)
+          : null;
 
       // Записываем историю изменения статуса
       await tx.statusHistory.create({
@@ -917,6 +918,7 @@ export class OrderPhotoService {
       // (Склад футболок отключён: заготовки предоставляет партнёр, свой
       // остаток мы не ведём и при смене статуса ничего не списываем.)
       if (
+        lockedOrder.productCategory !== EnumProductCategory.TSHIRT &&
         lockedOrder.status === EnumStatus.SENT &&
         newStatus !== EnumStatus.SENT
       ) {
@@ -1070,6 +1072,13 @@ export class OrderPhotoService {
         where: { id },
         data: {
           status: dto.status,
+          ...(gulianProductionStatus
+            ? { sourceRevision: { increment: 1 } }
+            : {}),
+          productionProblemReason:
+            newStatus === EnumStatus.PROBLEM
+              ? (lockedOrder.productionProblemReason ?? 'Требуется уточнение')
+              : null,
           // Отсчёт «зависания» начинается заново с каждой сменой статуса.
           statusChangedAt: new Date(),
           // sentAt ставим и при прямом переводе в PAID (минуя SENT — типично
@@ -1095,8 +1104,28 @@ export class OrderPhotoService {
         },
       });
 
+      if (gulianProductionStatus) {
+        await this.gulianOutbox.enqueueCurrent(tx, {
+          orderId: id,
+          productionStatus: gulianProductionStatus,
+          actor: userId,
+          action: 'production_status_changed',
+        });
+      }
+
       return updated;
     });
+
+    if (
+      result.productCategory === EnumProductCategory.TSHIRT &&
+      result.telegramMessageId
+    ) {
+      await this.tshirtPartnerTelegram.refreshOrderMessage(id).catch((error) =>
+        this.logger.warn(
+          `Не удалось обновить Telegram для заказа ${id}: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+      );
+    }
 
     return result;
   }
@@ -1116,31 +1145,277 @@ export class OrderPhotoService {
     if ((order.tshirtItems?.length ?? 0) === 0) {
       throw new BadRequestException('В заказе нет позиций-футболок.');
     }
-
-    await this.tshirtPartnerTelegram.sendOrder(id);
-
-    const sent = await this.prisma.orderPhoto.findUnique({
-      where: { id },
-      select: { partnerSyncStatus: true, partnerSyncError: true },
-    });
-    if (sent?.partnerSyncStatus !== 'SENT') {
+    if (order.status === EnumStatus.CANCELLED) {
       throw new BadRequestException(
-        sent?.partnerSyncError ?? 'Не удалось отправить ТЗ исполнителю.',
+        'Отменённый заказ нельзя отправить исполнителю.',
       );
     }
 
-    if (order.status !== EnumStatus.SENT) {
-      await this.updateStatusOrder(
-        id,
-        { status: EnumStatus.SENT },
-        userId,
-        userRole,
-      );
+    let telegramMessage: { chatId: string; messageId: string };
+    try {
+      telegramMessage = await this.tshirtPartnerTelegram.sendOrder(id);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Не удалось отправить ТЗ исполнителю.';
+      await this.prisma.orderPhoto.update({
+        where: { id },
+        data: {
+          partnerSyncStatus: EnumPartnerSyncStatus.FAILED,
+          partnerSyncError: message,
+          gulianSyncState: EnumGulianSyncState.NOT_SENT,
+          gulianLastError: message,
+        },
+      });
+      await this.gulianOutbox.recordAudit({
+        orderId: id,
+        actor: userId,
+        action: 'telegram_dispatch_failed',
+        level: 'error',
+        message,
+      });
+      throw new BadRequestException(message);
     }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT "id" FROM "OrderPhoto" WHERE "id" = ${id} FOR UPDATE
+      `;
+      const lockedOrder = await tx.orderPhoto.findUnique({
+        where: { id },
+        include: {
+          items: true,
+          tshirtItems: true,
+          gulianOutbox: { orderBy: { createdAt: 'desc' }, take: 1 },
+        },
+      });
+      if (!lockedOrder) throw new NotFoundException('Заказ не найден');
+      if (lockedOrder.status === EnumStatus.CANCELLED) {
+        throw new BadRequestException(
+          'Отменённый заказ нельзя отправить исполнителю.',
+        );
+      }
+      if (!lockedOrder.numberOrder?.trim() || !hasTechSpecFiles(lockedOrder)) {
+        throw new BadRequestException('Заказ заполнен не полностью.');
+      }
+      if (lockedOrder.tshirtItems.length === 0) {
+        throw new BadRequestException('В заказе нет позиций-футболок.');
+      }
+
+      const isRedispatch = Boolean(
+        lockedOrder.telegramMessageId || (lockedOrder.gulianOutbox?.length ?? 0),
+      );
+      if (lockedOrder.status !== EnumStatus.SENT) {
+        await tx.statusHistory.create({
+          data: {
+            orderId: id,
+            fromStatus: lockedOrder.status,
+            toStatus: EnumStatus.SENT,
+            changedBy: userId,
+          },
+        });
+      }
+
+      if (lockedOrder.processedById) {
+        const manager = await tx.user.findUnique({
+          where: { id: lockedOrder.processedById },
+        });
+        if (manager?.role === EnumRole.ORDER_MANAGER) {
+          const existing = await tx.salaryAccrual.findFirst({
+            where: {
+              orderId: id,
+              kind: 'MANAGER',
+              status: { not: 'REVERSED' },
+            },
+          });
+          if (!existing) {
+            const snapshot = calculateManagerSalarySnapshot(
+              lockedOrder.totalOrder,
+              lockedOrder.deliveryCost,
+              lockedOrder.designDevelopmentCost,
+              manager.rateBasisPoints,
+              manager.designRateBasisPoints,
+            );
+            if (snapshot.salaryAmount > 0) {
+              await tx.salaryAccrual.create({
+                data: {
+                  orderId: id,
+                  executorId: manager.id,
+                  kind: 'MANAGER',
+                  salaryBase: snapshot.salaryBase,
+                  rateBasisPoints: snapshot.rateBasisPoints,
+                  salaryAmount: snapshot.salaryAmount,
+                  designBase: snapshot.designBase,
+                  designRateBasisPoints: snapshot.designRateBasisPoints,
+                  status: snapshot.status,
+                },
+              });
+            }
+          }
+        }
+      }
+
+      await tx.orderPhoto.update({
+        where: { id },
+        data: {
+          status: EnumStatus.SENT,
+          statusChangedAt: new Date(),
+          sentAt: lockedOrder.sentAt ?? new Date(),
+          closedAt: null,
+          sourceRevision: isRedispatch
+            ? { increment: 1 }
+            : lockedOrder.sourceRevision,
+          telegramChatId: telegramMessage.chatId,
+          telegramMessageId: telegramMessage.messageId,
+          productionProblemReason: null,
+          partnerSyncStatus: EnumPartnerSyncStatus.SENT,
+          partnerSyncAt: new Date(),
+          partnerSyncError: null,
+        },
+      });
+
+      if ((lockedOrder.gulianOutbox?.length ?? 0) > 0) {
+        await this.gulianOutbox.enqueueCurrent(tx, {
+          orderId: id,
+          productionStatus: 'sent',
+          actor: userId,
+          action: 'telegram_ids_attached',
+        });
+      }
+
+    });
 
     return this.getOrderById(id, userId, userRole);
   }
 
+  async sendTshirtToGulian(id: string, userId: string, userRole: string) {
+    const order = await this.getOrderById(id, userId, userRole);
+    if (order.productCategory !== EnumProductCategory.TSHIRT) {
+      throw new BadRequestException('В Gulian отправляются только футболки.');
+    }
+    if (!order.numberOrder?.trim()) {
+      throw new BadRequestException('У заказа отсутствует номер.');
+    }
+    if ((order.tshirtItems?.length ?? 0) === 0) {
+      throw new BadRequestException('В заказе нет позиций-футболок.');
+    }
+    if (order.status === EnumStatus.CANCELLED) {
+      throw new BadRequestException('Отменённый заказ нельзя отправить в Gulian.');
+    }
+    await this.gulianOutbox.preview(id);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT "id" FROM "OrderPhoto" WHERE "id" = ${id} FOR UPDATE
+      `;
+      const lockedOrder = await tx.orderPhoto.findUnique({
+        where: { id },
+        include: {
+          tshirtItems: true,
+          gulianOutbox: { orderBy: { createdAt: 'desc' }, take: 1 },
+        },
+      });
+      if (!lockedOrder) throw new NotFoundException('Заказ не найден');
+      if (lockedOrder.status === EnumStatus.CANCELLED) {
+        throw new BadRequestException('Отменённый заказ нельзя отправить в Gulian.');
+      }
+
+      const hasPreviousGulianEvent = (lockedOrder.gulianOutbox?.length ?? 0) > 0;
+      if (lockedOrder.status !== EnumStatus.SENT) {
+        await tx.statusHistory.create({
+          data: {
+            orderId: id,
+            fromStatus: lockedOrder.status,
+            toStatus: EnumStatus.SENT,
+            changedBy: userId,
+          },
+        });
+      }
+      await tx.orderPhoto.update({
+        where: { id },
+        data: {
+          status: EnumStatus.SENT,
+          statusChangedAt: new Date(),
+          sentAt: lockedOrder.sentAt ?? new Date(),
+          closedAt: null,
+          sourceRevision: hasPreviousGulianEvent
+            ? { increment: 1 }
+            : lockedOrder.sourceRevision,
+        },
+      });
+      await this.gulianOutbox.enqueueCurrent(tx, {
+        orderId: id,
+        productionStatus: 'sent',
+        actor: userId,
+        action: hasPreviousGulianEvent
+          ? 'gulian_manual_redispatch'
+          : 'gulian_manual_dispatch',
+      });
+    });
+    return this.getOrderById(id, userId, userRole);
+  }
+
+  async getTshirtDispatchPreview(id: string) {
+    return this.gulianOutbox.preview(id);
+  }
+
+  async getGulianLog(id: string) {
+    return this.gulianOutbox.getLog(id);
+  }
+
+  async retryGulianSync(id: string, actor?: string) {
+    return this.gulianOutbox.retry(id, actor);
+  }
+
+  async bulkDispatch(
+    orderIds: string[],
+    userId: string,
+    userRole: string,
+  ) {
+    const uniqueIds = [...new Set(orderIds ?? [])];
+    if (uniqueIds.length === 0) {
+      throw new BadRequestException('Не выбраны заказы для отправки.');
+    }
+    if (uniqueIds.length > 100) {
+      throw new BadRequestException('За один раз можно отправить не более 100 заказов.');
+    }
+
+    const results: Array<{
+      orderId: string;
+      success: boolean;
+      externalOrderId?: string;
+      eventId?: string;
+      error?: string;
+    }> = [];
+    for (const orderId of uniqueIds) {
+      try {
+        const dispatched = await this.sendTshirtToGulian(
+          orderId,
+          userId,
+          userRole,
+        );
+        results.push({
+          orderId,
+          success: true,
+          externalOrderId: dispatched.numberOrder,
+          eventId: dispatched.gulianOutbox[0]?.eventId,
+        });
+      } catch (error) {
+        results.push({
+          orderId,
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+    return {
+      total: results.length,
+      succeeded: results.filter((item) => item.success).length,
+      failed: results.filter((item) => !item.success).length,
+      results,
+    };
+  }
   async updateOrder(idOrder: string, dto: DtoUpdateOrder) {
     const order = await this.getOrderById(idOrder, '', EnumRole.ADMIN);
     const deliveryChanged = dto.deliveryCost !== undefined;
@@ -1236,3 +1511,4 @@ export class OrderPhotoService {
     });
   }
 }
+

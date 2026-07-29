@@ -1,21 +1,24 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { PDFDocument } from 'pdf-lib';
 import sharp from 'sharp';
-import { PrismaService } from 'src/prisma/prisma.service';
 import type { Prisma } from 'src/generated/prisma/client';
-import { TelegramService } from 'src/telegram/telegram.service';
-import { TelegramStickerLinkService } from 'src/telegram/telegram-sticker-link.service';
 import {
-  EnumPartnerSyncStatus,
   EnumPrintLocation,
   EnumPrintType,
+  EnumStatus,
 } from 'src/generated/prisma/enums';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 import { settleOrder, settlePosition } from 'src/partner/partner-settlement';
 import { getTechSpecPaths } from 'src/partner/tech-spec-paths';
+import { PrismaService } from 'src/prisma/prisma.service';
+import {
+  TelegramService,
+  type TelegramSentMessage,
+} from 'src/telegram/telegram.service';
+import { TelegramStickerLinkService } from 'src/telegram/telegram-sticker-link.service';
 
 const PRINT_LOCATION_LABELS: Record<EnumPrintLocation, string> = {
   FRONT: 'Грудь',
@@ -26,14 +29,19 @@ const PRINT_LOCATION_LABELS: Record<EnumPrintLocation, string> = {
   FULL: 'Полная запечатка',
   BY_TZ: 'По ТЗ',
 };
-
 const PRINT_TYPE_LABELS: Record<EnumPrintType, string> = {
   DTF: 'DTF',
   DTG: 'DTG',
   SILK: 'Шелкография',
   SUBLIMATION: 'Сублимация',
 };
-
+const STATUS_LABELS: Partial<Record<EnumStatus, string>> = {
+  SENT: 'Отправлен исполнителю',
+  IN_PROGRESS: 'В работе',
+  READY: 'Готов',
+  PROBLEM: 'Проблема',
+  CANCELLED: 'Отменён',
+};
 const EXT_CONTENT_TYPE: Record<string, string> = {
   webp: 'image/webp',
   jpg: 'image/jpeg',
@@ -45,17 +53,18 @@ const EXT_CONTENT_TYPE: Record<string, string> = {
 type TshirtOrderWithItems = Prisma.OrderPhotoGetPayload<{
   include: { tshirtItems: true };
 }>;
-
 interface TechSpecAttachment {
   filename: string;
   buffer: Buffer;
   contentType: string;
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
-
 function money(value: number): string {
   return `${value.toLocaleString('ru-RU')} ₽`;
 }
@@ -84,114 +93,102 @@ export class TshirtPartnerTelegramService {
       config.get<string>('UPLOAD_DIR') || path.join(process.cwd(), 'uploads');
   }
 
-  async sendOrder(orderId: string): Promise<void> {
+  async sendOrder(orderId: string): Promise<TelegramSentMessage> {
     const order = await this.prisma.orderPhoto.findUnique({
       where: { id: orderId },
       include: { tshirtItems: true },
     });
-    if (!order) return;
-
-    await this.prisma.orderPhoto.update({
-      where: { id: orderId },
-      data: {
-        partnerSyncStatus: EnumPartnerSyncStatus.PENDING,
-        partnerSyncError: null,
-      },
-    });
-
+    if (!order) throw new BadRequestException('Заказ не найден');
     if (!this.chatId) {
-      await this.markFailed(
-        orderId,
+      throw new BadRequestException(
         'TSHIRT_PARTNER_TELEGRAM_CHAT_ID не задан — некуда отправлять ТЗ.',
       );
-      return;
     }
     const filenames = getTechSpecPaths(order).map((filename) =>
       path.basename(filename),
     );
     if (filenames.length === 0) {
-      await this.markFailed(orderId, 'ТЗ-фото не прикреплено.');
-      return;
+      throw new BadRequestException('ТЗ-фото не прикреплено.');
     }
 
-    try {
-      const caption = await this.buildMessage(order, filenames.length);
-      const stickerUrl = this.stickerLinks.buildStickerUrl(orderId);
-      if (!stickerUrl) {
-        await this.markFailed(
-          orderId,
-          'PUBLIC_BASE_URL или секрет для ссылки на стикер не задан.',
-        );
-        return;
-      }
-      const replyMarkup = this.buildStatusButtons(orderId, stickerUrl);
-      const attachments = await Promise.all(
-        filenames.map((filename) => this.readTechSpecFile(filename)),
+    const stickerUrl = this.stickerLinks.buildStickerUrl(orderId);
+    if (!stickerUrl) {
+      throw new BadRequestException(
+        'PUBLIC_BASE_URL или секрет для ссылки на стикер не задан.',
       );
-
-      const sentTechSpec =
-        attachments.length === 1
-          ? await this.sendTechSpecFile(attachments[0], caption, replyMarkup)
-          : await this.sendTechSpecBundle(
-              order,
-              attachments,
-              caption,
-              replyMarkup,
-            );
-      if (!sentTechSpec) {
-        await this.markFailed(orderId, 'Telegram не принял ТЗ-файл.');
-        return;
-      }
-
-      await this.prisma.orderPhoto.update({
-        where: { id: orderId },
-        data: {
-          partnerSyncStatus: EnumPartnerSyncStatus.SENT,
-          partnerSyncAt: new Date(),
-          partnerSyncError: null,
-        },
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(
-        `Не удалось отправить ТЗ заказа ${order.numberOrder} в Telegram: ${message}`,
-      );
-      await this.markFailed(orderId, message);
     }
+    const caption = await this.buildMessage(
+      order,
+      filenames.length,
+      EnumStatus.SENT,
+    );
+    const replyMarkup = this.buildStatusButtons(orderId, stickerUrl);
+    const attachments = await Promise.all(
+      filenames.map((filename) => this.readTechSpecFile(filename)),
+    );
+    const sent =
+      attachments.length === 1
+        ? await this.sendTechSpecFile(attachments[0], caption, replyMarkup)
+        : await this.sendTechSpecBundle(
+            order,
+            attachments,
+            caption,
+            replyMarkup,
+          );
+    if (!sent) throw new BadRequestException('Telegram не принял ТЗ-файл.');
+    return sent;
+  }
+
+  async refreshOrderMessage(orderId: string): Promise<boolean> {
+    const order = await this.prisma.orderPhoto.findUnique({
+      where: { id: orderId },
+      include: { tshirtItems: true },
+    });
+    if (!order?.telegramChatId || !order.telegramMessageId) return false;
+    const stickerUrl = this.stickerLinks.buildStickerUrl(orderId);
+    if (!stickerUrl) return false;
+    const caption = await this.buildMessage(
+      order,
+      getTechSpecPaths(order).length,
+      order.status,
+    );
+    return this.telegram.editMessageCaption(
+      order.telegramChatId,
+      Number(order.telegramMessageId),
+      caption,
+      this.buildStatusButtons(orderId, stickerUrl),
+    );
+  }
+
+  buildProblemReasonButtons(orderId: string) {
+    const button = (text: string, code: string) => ({
+      text,
+      callback_data: `tshirt:${orderId}:problem:${code}`,
+    });
+    return {
+      inline_keyboard: [
+        [button('Нет файла', 'file'), button('Проблема с макетом', 'layout')],
+        [button('Нет изделия', 'item'), button('Брак', 'defect')],
+        [button('Требуется уточнение', 'clarify')],
+        [button('Другое', 'other')],
+      ],
+    };
   }
 
   private buildStatusButtons(orderId: string, stickerUrl: string) {
     return {
       inline_keyboard: [
         [
-          {
-            text: 'В работе',
-            callback_data: `tshirt:${orderId}:work`,
-          },
-          {
-            text: 'Готово',
-            callback_data: `tshirt:${orderId}:ready`,
-          },
+          { text: 'В работу', callback_data: `tshirt:${orderId}:work` },
+          { text: 'Готово', callback_data: `tshirt:${orderId}:ready` },
         ],
-        [
-          {
-            text: 'Не готов',
-            callback_data: `tshirt:${orderId}:not_ready`,
-          },
-        ],
-        [
-          {
-            text: 'Распечатать стикер',
-            url: stickerUrl,
-          },
-        ],
+        [{ text: 'Проблема', callback_data: `tshirt:${orderId}:problem` }],
+        [{ text: 'Распечатать стикер', url: stickerUrl }],
       ],
     };
   }
 
-  private async readTechSpecFile(
-    filename: string,
-  ): Promise<TechSpecAttachment> {
+  private async readTechSpecFile(filename: string): Promise<TechSpecAttachment> {
     const buffer = await fs.readFile(path.join(this.uploadDir, filename));
     const ext = filename.split('.').pop()?.toLowerCase() ?? '';
     return {
@@ -204,10 +201,10 @@ export class TshirtPartnerTelegramService {
   private async sendTechSpecFile(
     file: TechSpecAttachment,
     caption: string,
-    replyMarkup?: unknown,
-  ): Promise<boolean> {
+    replyMarkup: unknown,
+  ): Promise<TelegramSentMessage | null> {
     return file.contentType === 'application/pdf'
-      ? this.telegram.sendDocument(
+      ? this.telegram.sendDocumentWithResult(
           this.chatId,
           file.buffer,
           file.filename,
@@ -216,7 +213,7 @@ export class TshirtPartnerTelegramService {
           this.threadId || undefined,
           replyMarkup,
         )
-      : this.telegram.sendPhoto(
+      : this.telegram.sendPhotoWithResult(
           this.chatId,
           file.buffer,
           file.filename,
@@ -232,9 +229,9 @@ export class TshirtPartnerTelegramService {
     attachments: TechSpecAttachment[],
     caption: string,
     replyMarkup: unknown,
-  ): Promise<boolean> {
+  ): Promise<TelegramSentMessage | null> {
     const bundle = await this.buildTechSpecBundle(order, attachments);
-    return this.telegram.sendDocument(
+    return this.telegram.sendDocumentWithResult(
       this.chatId,
       bundle.buffer,
       bundle.filename,
@@ -250,7 +247,6 @@ export class TshirtPartnerTelegramService {
     attachments: TechSpecAttachment[],
   ): Promise<TechSpecAttachment> {
     const pdf = await PDFDocument.create();
-
     for (const attachment of attachments) {
       if (attachment.contentType === 'application/pdf') {
         const source = await PDFDocument.load(attachment.buffer);
@@ -258,7 +254,6 @@ export class TshirtPartnerTelegramService {
         pages.forEach((page) => pdf.addPage(page));
         continue;
       }
-
       const image = await sharp(attachment.buffer)
         .rotate()
         .jpeg({ quality: 92 })
@@ -281,11 +276,9 @@ export class TshirtPartnerTelegramService {
         height,
       });
     }
-
-    const bytes = await pdf.save();
     return {
       filename: `techspec-${order.numberOrder}.pdf`,
-      buffer: Buffer.from(bytes),
+      buffer: Buffer.from(await pdf.save()),
       contentType: 'application/pdf',
     };
   }
@@ -293,31 +286,14 @@ export class TshirtPartnerTelegramService {
   private async buildMessage(
     order: TshirtOrderWithItems,
     attachmentCount: number,
+    status: EnumStatus,
   ): Promise<string> {
     const settings = await this.partnerSettings.get();
-    const settlement = settleOrder(
-      order.tshirtItems.map((i) => ({
-        pricePosition: i.pricePosition,
-        designCost: i.designCost,
-        quantity: i.quantity,
-        thermalCost: i.thermalCost,
-        blankCost: i.blankCost,
-        clientItem: i.clientItem,
-      })),
-      settings.partnerRateBasisPoints,
-    );
-
+    const settlement = settleOrder(order.tshirtItems, settings.partnerRateBasisPoints);
     const items = order.tshirtItems.flatMap((item, index) => {
       const productionPrice = item.pricePosition - item.designCost;
       const positionSettlement = settlePosition(
-        {
-          pricePosition: item.pricePosition,
-          designCost: item.designCost,
-          quantity: item.quantity,
-          thermalCost: item.thermalCost,
-          blankCost: item.blankCost,
-          clientItem: item.clientItem,
-        },
+        item,
         settings.partnerRateBasisPoints,
       );
       return [
@@ -325,13 +301,15 @@ export class TshirtPartnerTelegramService {
         `   Без дизайна: <b>${money(productionPrice)}</b>; футболка: ${item.clientItem ? '0 ₽' : money(item.blankCost * item.quantity)}; печать: ${money(item.thermalCost * item.quantity)}; доля: ${money(positionSettlement.partnerProfit)}`,
       ];
     });
-
+    const statusLabel = STATUS_LABELS[status] ?? status;
     return [
-      `🧾 <b>Заказ на футболку</b>`,
+      '🧾 <b>Заказ на футболку</b>',
       `Заказ: <b>${escapeHtml(order.numberOrder)}</b>`,
-      ...(order.tshirtModel
-        ? [`Модель: ${escapeHtml(order.tshirtModel)}`]
+      `Статус: <b>${escapeHtml(statusLabel)}</b>`,
+      ...(status === EnumStatus.PROBLEM && order.productionProblemReason
+        ? [`Причина: <b>${escapeHtml(order.productionProblemReason)}</b>`]
         : []),
+      ...(order.tshirtModel ? [`Модель: ${escapeHtml(order.tshirtModel)}`] : []),
       ...(attachmentCount > 1
         ? [`ТЗ: <b>${attachmentCount} файлов в одном PDF</b>`]
         : []),
@@ -341,21 +319,11 @@ export class TshirtPartnerTelegramService {
       '<b>Расчёт для исполнителя</b>',
       `Без дизайна: <b>${money(
         settlement.tshirtRevenue -
-          order.tshirtItems.reduce((s, i) => s + i.designCost, 0),
+          order.tshirtItems.reduce((sum, item) => sum + item.designCost, 0),
       )}</b>`,
       `Материалы: ${money(settlement.materials)}`,
       `Доля (${settings.partnerRateBasisPoints / 100}%): <b>${money(settlement.partnerProfit)}</b>`,
       `К выплате: <b>${money(settlement.reward)}</b>`,
     ].join('\n');
-  }
-
-  private async markFailed(orderId: string, error: string): Promise<void> {
-    await this.prisma.orderPhoto.update({
-      where: { id: orderId },
-      data: {
-        partnerSyncStatus: EnumPartnerSyncStatus.FAILED,
-        partnerSyncError: error,
-      },
-    });
   }
 }

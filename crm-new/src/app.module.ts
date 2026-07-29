@@ -14,11 +14,13 @@ import { ScenarioModule } from './scenarios/scenario.module';
 import { AvitoModule } from './avito/avito.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthController } from './health.controller';
+import { GulianIntegrationModule } from './gulian-integration/gulian-integration.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    GulianIntegrationModule,
     // 5 запросов на /lead с одного IP за 60 секунд
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 5 }]),
     AuthModule,

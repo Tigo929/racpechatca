@@ -349,7 +349,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       qc.setQueryData(["order", orderId], updated);
       qc.invalidateQueries({ queryKey: ["orders"] });
       if (updated.partnerSyncStatus === "SENT") {
-        toast.success("ТЗ отправлено в Telegram");
+        toast.success("Заказ отправлен исполнителю в Telegram");
       } else {
         toast.error(updated.partnerSyncError ?? "Не удалось отправить ТЗ");
       }
@@ -357,6 +357,61 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
     onError: (error: unknown) =>
       toast.error(getErrorMessage(error, "Ошибка отправки в Telegram")),
   });
+
+  const sendTshirtGulianMutation = useMutation({
+    mutationFn: () => ordersApi.sendTshirtToGulian(orderId),
+    onSuccess: (updated) => {
+      qc.setQueryData(["order", orderId], updated);
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      toast.success("Заказ поставлен в очередь передачи в CRM исполнителя");
+    },
+    onError: (error: unknown) =>
+      toast.error(getErrorMessage(error, "Ошибка отправки в CRM исполнителя")),
+  });
+
+  const handleSendTshirtTelegram = async () => {
+    if (!order) return;
+    try {
+      const preview = await ordersApi.getTshirtDispatchPreview(orderId);
+      const rubles = (kopecks: number | null) =>
+        kopecks === null
+          ? "не рассчитывается отдельно"
+          : `${(kopecks / 100).toLocaleString("ru-RU")} ₽`;
+      const confirmed = window.confirm(
+        `Отправить заказ №${order.numberOrder} исполнителю?\n\n` +
+          `Количество: ${preview.quantity} шт.\n` +
+          `Выплата за единицу: ${rubles(preview.unitPayoutAmountKopecks)}\n` +
+          `Общая выплата: ${rubles(preview.totalPayoutAmountKopecks)}`,
+      );
+      if (confirmed) sendTshirtTelegramMutation.mutate();
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error, "Не удалось проверить заказ перед отправкой"),
+      );
+    }
+  };
+
+  const handleSendTshirtGulian = async () => {
+    if (!order) return;
+    try {
+      const preview = await ordersApi.getTshirtDispatchPreview(orderId);
+      const rubles = (kopecks: number | null) =>
+        kopecks === null
+          ? "не рассчитывается отдельно"
+          : `${(kopecks / 100).toLocaleString("ru-RU")} ₽`;
+      const confirmed = window.confirm(
+        `Отправить заказ №${order.numberOrder} в CRM исполнителя?\n\n` +
+          `Количество: ${preview.quantity} шт.\n` +
+          `Выплата за единицу: ${rubles(preview.unitPayoutAmountKopecks)}\n` +
+          `Общая выплата: ${rubles(preview.totalPayoutAmountKopecks)}`,
+      );
+      if (confirmed) sendTshirtGulianMutation.mutate();
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error, "Не удалось проверить заказ перед отправкой"),
+      );
+    }
+  };
 
   const handleViewPhoto = async (index = 0) => {
     try {
@@ -779,29 +834,41 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   поставит статус «Отправлен» и отправит заказ в Telegram.
                 </p>
               )}
+              {order.gulianSyncState && order.gulianSyncState !== "NOT_SENT" && (
+                <p className={`text-xs mt-1 ${order.gulianSyncState === "ERROR" || order.gulianSyncState === "REJECTED_PAID" ? "text-red-600" : "text-indigo-700"}`}>
+                  CRM исполнителя: {order.gulianSyncState === "PENDING" ? "ожидает передачи" : order.gulianSyncState === "PROCESSING" ? "передаётся" : order.gulianSyncState === "DELIVERED" ? "передан" : order.gulianSyncState === "REJECTED_PAID" ? "отклонено после оплаты" : "ошибка"}
+                  {order.gulianSettlementOrderNumber ? ` · расчёт ${order.gulianSettlementOrderNumber}` : ""}
+                </p>
+              )}
               {!hasTechSpecFiles && (
                 <p className="text-xs text-gray-400 mt-0.5">
                   Сначала прикрепите ТЗ-файл — без него статус «Отправлен» не
                   поставится.
                 </p>
               )}
-            </div>
-            {order.status !== "PAID" && (
-              <button
-                onClick={() => sendTshirtTelegramMutation.mutate()}
-                disabled={
-                  sendTshirtTelegramMutation.isPending ||
-                  order.partnerSyncStatus === "PENDING"
-                }
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-              >
-                <Send size={13} aria-hidden="true" />
-                {sendTshirtTelegramMutation.isPending
-                  ? "Отправка…"
-                  : order.partnerSyncStatus === "SENT"
-                    ? "Отправить повторно"
-                    : "Отправить исполнителю"}
-              </button>
+            </div>            {order.status !== "PAID" && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => void handleSendTshirtTelegram()}
+                  disabled={sendTshirtTelegramMutation.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-60 transition-colors"
+                >
+                  <Send size={13} aria-hidden="true" />
+                  {sendTshirtTelegramMutation.isPending
+                    ? "Отправка…"
+                    : "Отправить в Telegram"}
+                </button>
+                <button
+                  onClick={() => void handleSendTshirtGulian()}
+                  disabled={sendTshirtGulianMutation.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+                >
+                  <Send size={13} aria-hidden="true" />
+                  {sendTshirtGulianMutation.isPending
+                    ? "Постановка в очередь…"
+                    : "Отправить в CRM исполнителя"}
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -879,3 +946,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
     </div>
   );
 }
+
+
+
+
+

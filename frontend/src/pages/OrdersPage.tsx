@@ -50,6 +50,7 @@ export function OrdersPage({ section }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const qc = useQueryClient();
 
@@ -88,6 +89,30 @@ export function OrdersPage({ section }: Props) {
   const statusFlow = (section === 'TSHIRT' ? TSHIRT_STATUS_FLOW : STATUS_FLOW)
     .filter(s => s !== 'LEAD');
   const statusLabels = section === 'TSHIRT' ? TSHIRT_STATUS_LABELS : STATUS_LABELS;
+
+  const bulkDispatchMutation = useMutation({
+    mutationFn: () => ordersApi.bulkDispatchTshirtToGulian(selectedIds),
+    onSuccess: (result) => {
+      toast.success(`В Gulian поставлено: ${result.succeeded}; ошибок: ${result.failed}`);
+      setSelectedIds([]);
+      void qc.invalidateQueries({ queryKey: ['orders'] });
+    },
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : 'Массовая отправка не выполнена'),
+  });
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
+    );
+  };
+
+  const toggleAllVisible = () => {
+    const visibleIds = orders.filter((order) => order.productCategory === 'TSHIRT').map((order) => order.id);
+    setSelectedIds((current) =>
+      visibleIds.every((id) => current.includes(id)) ? current.filter((id) => !visibleIds.includes(id)) : [...new Set([...current, ...visibleIds])],
+    );
+  };
 
   const reviewMutation = useMutation({
     mutationFn: ({ id, reviewLeft }: { id: string; reviewLeft: boolean }) =>
@@ -184,6 +209,18 @@ export function OrdersPage({ section }: Props) {
             </div>
           )}
         </div>
+
+        {isAdmin && section === 'TSHIRT' && (
+          <div className="flex items-center gap-3 flex-wrap bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3">
+            <label className="inline-flex items-center gap-2 text-sm text-indigo-800 font-medium">
+              <input type="checkbox" checked={orders.length > 0 && orders.every((order) => selectedIds.includes(order.id))} onChange={toggleAllVisible} />
+              Выбрать все на странице
+            </label>
+            <button type="button" disabled={selectedIds.length === 0 || bulkDispatchMutation.isPending} onClick={() => bulkDispatchMutation.mutate()} className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">
+              {bulkDispatchMutation.isPending ? 'Постановка…' : `Отправить выбранные в CRM исполнителя (${selectedIds.length})`}
+            </button>
+          </div>
+        )}
 
         {/* Таблица */}
         <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.05)' }}>
@@ -297,6 +334,7 @@ export function OrdersPage({ section }: Props) {
               <table className="w-full">
                 <thead>
                   <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                    {isAdmin && section === 'TSHIRT' && <th scope="col" className="px-3 py-3 text-xs font-semibold text-gray-400">Выбор</th>}
                     <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider w-12">№</th>
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Номер</th>
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Тип</th>
@@ -343,6 +381,11 @@ export function OrdersPage({ section }: Props) {
                       className={`cursor-pointer group ${rowBg} ${showUrgent ? 'border-l-[3px] border-l-red-500' : ''}`}
                       style={{ borderBottom: '1px solid #F8FAFC' }}
                     >
+                      {isAdmin && section === 'TSHIRT' && (
+                        <td className="px-3 py-3.5" onClick={(event) => event.stopPropagation()}>
+                          <input type="checkbox" checked={selectedIds.includes(order.id)} onChange={() => toggleSelected(order.id)} aria-label={`Выбрать заказ ${order.numberOrder}`} />
+                        </td>
+                      )}
                       <td className="px-4 py-3.5 text-right text-sm text-gray-400 tabular-nums">
                         {(query.page ? query.page - 1 : 0) * PAGE_SIZE + idx + 1}
                       </td>
@@ -472,3 +515,5 @@ export function OrdersPage({ section }: Props) {
     </AppShell>
   );
 }
+
+

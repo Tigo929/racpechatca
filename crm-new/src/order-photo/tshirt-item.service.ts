@@ -11,6 +11,8 @@ import { DtoUpdateTshirtItem } from './dto/update-tshirt-item.dto';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
 import { calcItemPricePosition } from './order-pricing';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
+import { GulianOutboxService } from 'src/gulian-integration/gulian-outbox.service';
+import { productionStatusFromOrderStatus } from 'src/gulian-integration/gulian-payload';
 
 @Injectable()
 export class TshirtItemService {
@@ -18,6 +20,7 @@ export class TshirtItemService {
     private readonly prisma: PrismaService,
     private readonly financialIntegrity: OrderFinancialIntegrityService,
     private readonly partnerSettings: PartnerSettingsService,
+    private readonly gulianOutbox: GulianOutboxService,
   ) {}
 
   async addTshirtItem(orderId: string, dto: DtoCreateTshirtItem) {
@@ -123,7 +126,7 @@ export class TshirtItemService {
   private async recalcAndReturn(tx: Prisma.TransactionClient, orderId: string) {
     const order = await tx.orderPhoto.findUnique({
       where: { id: orderId },
-      include: { items: true, tshirtItems: true },
+      include: { items: true, tshirtItems: true, gulianOutbox: { orderBy: { createdAt: 'desc' }, take: 1 } },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
     // Сумма заказа = все сохранённые pricePosition (футболки + фото) + доставка.
@@ -135,10 +138,16 @@ export class TshirtItemService {
       (s, i) => s + (i.pricePosition ?? 0),
       0,
     );
+    const productionStatus = (order.telegramMessageId || order.gulianOutbox?.length)
+      ? productionStatusFromOrderStatus(order.status)
+      : null;
     const updated = await tx.orderPhoto.update({
       where: { id: orderId },
-      include: { items: true, tshirtItems: true },
-      data: { totalOrder: tshirtTotal + itemsTotal + order.deliveryCost },
+      include: { items: true, tshirtItems: true, gulianOutbox: { orderBy: { createdAt: 'desc' }, take: 1 } },
+      data: {
+        totalOrder: tshirtTotal + itemsTotal + order.deliveryCost,
+        ...(productionStatus ? { sourceRevision: { increment: 1 } } : {}),
+      },
     });
     // Невыплаченное начисление подгоняем под новую сумму заказа.
     await this.financialIntegrity.recalcPendingAccrual(
@@ -147,6 +156,15 @@ export class TshirtItemService {
       updated.deliveryCost,
       tx,
     );
+    if (productionStatus) {
+      await this.gulianOutbox.enqueueCurrent(tx, {
+        orderId,
+        productionStatus,
+        actor: 'crm',
+        action: 'production_items_changed',
+      });
+    }
     return updated;
   }
 }
+

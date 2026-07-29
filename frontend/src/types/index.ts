@@ -3,7 +3,7 @@ export type EnumProductCategory = 'PHOTO' | 'TSHIRT';
 export type EnumTshirtSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
 export type EnumPrintLocation = 'FRONT' | 'BACK' | 'FRONT_BACK' | 'SLEEVE_LEFT' | 'SLEEVE_RIGHT' | 'FULL' | 'BY_TZ';
 
-export type EnumStatus = 'LEAD' | 'NEW' | 'FOLDER_STRUCTURE_CREATED' | 'IN_PROGRESS' | 'PRINTED' | 'READY' | 'DONE' | 'SENT' | 'PAID' | 'READY_FOR_REVIEW' | 'COMPLETED' | 'CANCELLED';
+export type EnumStatus = 'LEAD' | 'NEW' | 'FOLDER_STRUCTURE_CREATED' | 'IN_PROGRESS' | 'PRINTED' | 'READY' | 'DONE' | 'SENT' | 'PAID' | 'READY_FOR_REVIEW' | 'COMPLETED' | 'CANCELLED' | 'PROBLEM';
 
 export type EnumSourceOrder = 'AVITO' | 'OZON' | 'WB' | 'LOCAL';
 
@@ -17,6 +17,7 @@ export type EnumAccrualStatus = 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'SETTLED
 
 /** Статус отправки заказа партнёру CoolABC (внешняя печать футболок). */
 export type EnumPartnerSyncStatus = 'PENDING' | 'SENT' | 'FAILED';
+export type EnumGulianSyncState = 'NOT_SENT' | 'PENDING' | 'PROCESSING' | 'DELIVERED' | 'ERROR' | 'REJECTED_PAID';
 
 export interface ItemTshirt {
   id: string;
@@ -107,6 +108,17 @@ export interface OrderPhoto {
   partnerSyncStatus?: EnumPartnerSyncStatus | null;
   partnerSyncError?: string | null;
   partnerSyncAt?: string | null;
+  sourceRevision?: number;
+  telegramChatId?: string | null;
+  telegramMessageId?: string | null;
+  gulianSyncState?: EnumGulianSyncState;
+  gulianLastAttemptAt?: string | null;
+  gulianLastSyncedAt?: string | null;
+  gulianLastError?: string | null;
+  gulianSettlementOrderNumber?: string | null;
+  gulianSettlementOrderId?: number | null;
+  gulianPositionId?: number | null;
+  gulianAppliedRevision?: number | null;
   items: ItemPhoto[];
   tshirtItems: ItemTshirt[];
   accruals?: OrderAccrualBrief[];
@@ -580,3 +592,4 @@ export interface OrderSettlement {
   tshirtRevenue: number;
   rateBasisPoints: number;
 }
+
