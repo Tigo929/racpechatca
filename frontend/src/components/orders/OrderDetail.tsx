@@ -80,10 +80,19 @@ function generateConfirmationText(order: OrderPhoto): string {
       `• Разработка дизайна — ${designCost.toLocaleString("ru-RU")} ₽`,
     );
   }
+  // Срочность — тоже позиция состава: клиент за неё платит и должен видеть,
+  // за что именно. В зарплату сотрудников она при этом не попадает.
+  const urgencyFee = order.urgencyFee ?? 0;
+  if (urgencyFee > 0) {
+    lines.push(
+      `• Срочное изготовление — ${urgencyFee.toLocaleString("ru-RU")} ₽`,
+    );
+  }
 
   const itemsTotal =
     [...items, ...tshirtItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
-    designCost;
+    designCost +
+    urgencyFee;
   const separator = "─────────────────";
 
   const isPickup = order.deliveryMethod === "PICKUP";
@@ -149,10 +158,19 @@ function generateReadyText(order: OrderPhoto): string {
       `• Разработка дизайна — ${designCost.toLocaleString("ru-RU")} ₽`,
     );
   }
+  // Срочность — тоже позиция состава: клиент за неё платит и должен видеть,
+  // за что именно. В зарплату сотрудников она при этом не попадает.
+  const urgencyFee = order.urgencyFee ?? 0;
+  if (urgencyFee > 0) {
+    lines.push(
+      `• Срочное изготовление — ${urgencyFee.toLocaleString("ru-RU")} ₽`,
+    );
+  }
 
   const itemsTotal =
     [...items, ...tshirtItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
-    designCost;
+    designCost +
+    urgencyFee;
   const separator = "─────────────────";
   const isPickup = order.deliveryMethod === "PICKUP";
   const pickupAddr = resolvePickupAddress(order);
@@ -445,6 +463,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       deliveryMethod: order.deliveryMethod,
       deliveryCost: order.deliveryCost,
       designDevelopmentCost: order.designDevelopmentCost ?? 0,
+      isUrgent: order.isUrgent ?? false,
+      urgencyFee: order.urgencyFee ?? 0,
       note: order.note,
     });
     setEditing(true);
@@ -889,6 +909,12 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 label="Доставка"
                 value={`${(order.deliveryCost ?? 0).toLocaleString()} ₽`}
               />
+              {(order.urgencyFee ?? 0) > 0 && (
+                <InfoRow
+                  label="Срочность"
+                  value={`${(order.urgencyFee ?? 0).toLocaleString()} ₽`}
+                />
+              )}
               {(order.designDevelopmentCost ?? 0) > 0 && (
                 <InfoRow
                   label="Разработка дизайна"

@@ -129,8 +129,10 @@ export class OrderItemService {
       include: { items: true, tshirtItems: true },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
-    // Сумма заказа = все сохранённые pricePosition (фото + футболки) + доставка.
-    // pricePosition уже посчитан с учётом свободной цены каждой позиции.
+    // Сумма заказа = pricePosition (фото + футболки) + доставка + дизайн +
+    // срочность. pricePosition уже посчитан с учётом свободной цены позиции.
+    // Дизайн и срочность живут на заказе — без них правка позиции обнуляла бы
+    // эти суммы в чеке.
     const itemsTotal = order.items.reduce(
       (s, i) => s + (i.pricePosition ?? 0),
       0,
@@ -142,7 +144,14 @@ export class OrderItemService {
     const updated = await tx.orderPhoto.update({
       where: { id: orderId },
       include: { items: true, tshirtItems: true },
-      data: { totalOrder: itemsTotal + tshirtTotal + order.deliveryCost },
+      data: {
+        totalOrder:
+          itemsTotal +
+          tshirtTotal +
+          order.deliveryCost +
+          order.designDevelopmentCost +
+          order.urgencyFee,
+      },
     });
     // Невыплаченное начисление подгоняем под новую сумму заказа.
     await this.financialIntegrity.recalcPendingAccrual(

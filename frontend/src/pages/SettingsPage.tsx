@@ -147,6 +147,7 @@ interface FormState {
   blankTshirtCost: string;
   ratePercent: string;
   partnerName: string;
+  maxLinkTemplate: string;
 }
 
 function toForm(s: PartnerSettings): FormState {
@@ -155,6 +156,7 @@ function toForm(s: PartnerSettings): FormState {
     blankTshirtCost: String(s.blankTshirtCost),
     ratePercent: (s.partnerRateBasisPoints / 100).toString(),
     partnerName: s.partnerName,
+    maxLinkTemplate: s.maxLinkTemplate,
   };
 }
 
@@ -193,6 +195,10 @@ export default function SettingsPage() {
       toast.error('Ставка партнёра — от 0 до 100%');
       return;
     }
+    if (!form.maxLinkTemplate.includes('{phone}') && !form.maxLinkTemplate.includes('{phone_plus}')) {
+      toast.error('В шаблоне MAX нужен {phone} или {phone_plus}');
+      return;
+    }
     if (!form.partnerName.trim()) {
       toast.error('Укажите имя партнёра');
       return;
@@ -202,6 +208,7 @@ export default function SettingsPage() {
       blankTshirtCost: blank,
       partnerRateBasisPoints: Math.round(pct * 100),
       partnerName: form.partnerName.trim(),
+      maxLinkTemplate: form.maxLinkTemplate.trim(),
     });
   };
 
@@ -252,6 +259,19 @@ export default function SettingsPage() {
                   value={form.partnerName}
                   onChange={(e) => setForm({ ...form, partnerName: e.target.value })}
                 />
+              </label>
+              <label className="block sm:col-span-2">
+                <span className="text-sm font-medium text-gray-700">Ссылка на переписку в MAX</span>
+                <input
+                  type="text" className={`mt-1 ${field}`}
+                  value={form.maxLinkTemplate}
+                  onChange={(e) => setForm({ ...form, maxLinkTemplate: e.target.value })}
+                />
+                <span className="block text-xs text-gray-500 mt-1">
+                  Менеджер вводит телефон — CRM подставит его в шаблон.
+                  {' '}<code>{'{phone}'}</code> — цифры (79991234567),
+                  {' '}<code>{'{phone_plus}'}</code> — с плюсом.
+                </span>
               </label>
             </div>
 

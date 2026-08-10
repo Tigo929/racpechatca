@@ -92,6 +92,17 @@ export default class DtoCreateOrder {
   @IsOptional()
   isUrgent?: boolean;
 
+  /**
+   * Плата за срочность. Входит в чек клиента отдельной строкой, но НЕ входит
+   * в базу зарплаты — ни исполнителю, ни менеджеру. Учитывается только у
+   * срочных заказов (isUrgent).
+   */
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(0)
+  urgencyFee?: number;
+
   /** Модель футболки — производственные данные, передаются исполнителю-партнёру. */
   @IsOptional()
   @IsString()

@@ -8,15 +8,22 @@ export interface SalarySnapshot {
   status: EnumAccrualStatus;
 }
 
+/**
+ * Зарплата исполнителя за заказ: процент от чека без доставки и без платы
+ * за срочность. Срочность — плата клиента за скорость, а не за продукцию,
+ * поэтому в базу зарплаты она не входит (решение владельца).
+ */
 export function calculateSalarySnapshot(
   totalOrder: number,
   deliveryCost: number,
   rateBasisPoints: number | null,
+  urgencyFee = 0,
 ): SalarySnapshot {
-  const salaryBase = totalOrder - deliveryCost;
+  const urgency = Math.max(0, urgencyFee);
+  const salaryBase = totalOrder - deliveryCost - urgency;
   if (salaryBase < 0) {
     throw new BadRequestException(
-      'Стоимость доставки не может превышать общий чек заказа',
+      'Доставка и срочность не могут превышать общий чек заказа',
     );
   }
 
@@ -35,7 +42,7 @@ export function calculateSalarySnapshot(
 }
 
 export interface ManagerSalarySnapshot {
-  /** База базовой ставки = чек − доставка − дизайн (без ухода в минус). */
+  /** База базовой ставки = чек − доставка − дизайн − срочность (не в минус). */
   salaryBase: number;
   rateBasisPoints: number;
   /** База премии за дизайн = стоимость «разработка дизайна». */
@@ -63,14 +70,17 @@ export function calculateManagerSalarySnapshot(
   designDevelopmentCost: number,
   rateBasisPoints: number | null,
   designRateBasisPoints: number | null,
+  urgencyFee = 0,
 ): ManagerSalarySnapshot {
   const design = Math.max(0, designDevelopmentCost);
+  const urgency = Math.max(0, urgencyFee);
   const baseRate = rateBasisPoints ?? 0;
   const designRate = designRateBasisPoints ?? 0;
 
-  // База базовой ставки — чек без доставки и без дизайна: дизайн оплачивается по
-  // своей (обычно более высокой) ставке премии, поэтому из базы его вычитаем.
-  const salaryBase = Math.max(0, totalOrder - deliveryCost - design);
+  // База базовой ставки — чек без доставки, дизайна и срочности: дизайн
+  // оплачивается по своей (обычно более высокой) ставке премии, а срочность —
+  // плата за скорость, она целиком остаётся владельцу.
+  const salaryBase = Math.max(0, totalOrder - deliveryCost - design - urgency);
 
   const basePart = Math.round((salaryBase * baseRate) / 10_000);
   const designPart = Math.round((design * designRate) / 10_000);

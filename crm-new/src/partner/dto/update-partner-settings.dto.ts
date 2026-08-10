@@ -24,4 +24,10 @@ export class DtoUpdatePartnerSettings {
   @IsString()
   @MaxLength(60)
   partnerName?: string;
+
+  /** Шаблон ссылки на переписку в MAX: {phone} / {phone_plus}. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  maxLinkTemplate?: string;
 }

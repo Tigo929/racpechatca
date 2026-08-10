@@ -58,3 +58,35 @@ describe('calculateManagerSalarySnapshot', () => {
     expect(executor.salaryBase - manager.salaryBase).toBe(1000);
   });
 });
+
+describe('плата за срочность не попадает в зарплату', () => {
+  it('исполнителю: база = чек − доставка − срочность', () => {
+    // Чек 3000 = продукция 2500 + доставка 0 + срочность 500.
+    const withUrgency = calculateSalarySnapshot(3000, 0, 1000, 500);
+    expect(withUrgency.salaryBase).toBe(2500);
+    expect(withUrgency.salaryAmount).toBe(250);
+
+    // Без срочности тот же заказ на 2500 даёт ровно столько же.
+    const without = calculateSalarySnapshot(2500, 0, 1000);
+    expect(without.salaryAmount).toBe(withUrgency.salaryAmount);
+  });
+
+  it('менеджеру: срочность не входит ни в базу, ни в премию за дизайн', () => {
+    // Чек 4000 = продукция 2500 + дизайн 1000 + срочность 500.
+    const snap = calculateManagerSalarySnapshot(4000, 0, 1000, 1000, 4000, 500);
+    expect(snap.salaryBase).toBe(2500); // без дизайна и без срочности
+    expect(snap.designBase).toBe(1000);
+    expect(snap.salaryAmount).toBe(250 + 400);
+  });
+
+  it('срочность вместе с доставкой не может съесть весь чек', () => {
+    expect(() => calculateSalarySnapshot(1000, 600, 1000, 500)).toThrow(
+      /не могут превышать/,
+    );
+  });
+
+  it('база менеджера не уходит в минус из-за срочности', () => {
+    const snap = calculateManagerSalarySnapshot(500, 0, 0, 1000, 4000, 5000);
+    expect(snap.salaryBase).toBe(0);
+  });
+});

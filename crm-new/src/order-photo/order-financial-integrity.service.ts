@@ -51,12 +51,14 @@ export class OrderFinancialIntegrityService {
     });
     if (accruals.length === 0) return;
 
-    // Стоимость дизайна нужна для базы/премии менеджера — берём из заказа.
+    // Дизайн нужен для базы/премии менеджера, срочность — чтобы она не попала
+    // в зарплату ни исполнителю, ни менеджеру. Берём актуальные из заказа.
     const order = await client.orderPhoto.findUnique({
       where: { id: orderId },
-      select: { designDevelopmentCost: true },
+      select: { designDevelopmentCost: true, urgencyFee: true },
     });
     const designDevelopmentCost = order?.designDevelopmentCost ?? 0;
+    const urgencyFee = order?.urgencyFee ?? 0;
 
     for (const accrual of accruals) {
       // Считаем «неломающимся» способом: база не уходит в минус, ошибок не
@@ -68,6 +70,7 @@ export class OrderFinancialIntegrityService {
           designDevelopmentCost,
           accrual.rateBasisPoints,
           accrual.designRateBasisPoints,
+          urgencyFee,
         );
         await client.salaryAccrual.update({
           where: { id: accrual.id },
@@ -79,7 +82,7 @@ export class OrderFinancialIntegrityService {
           },
         });
       } else {
-        const salaryBase = Math.max(0, totalOrder - deliveryCost);
+        const salaryBase = Math.max(0, totalOrder - deliveryCost - urgencyFee);
         const salaryAmount = Math.round(
           (salaryBase * accrual.rateBasisPoints) / 10_000,
         );

@@ -155,7 +155,7 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
           inline_keyboard: [
             [
               {
-                text: '✅ Отправил клиенту',
+                text: '✅ Отправил — отметить отзыв',
                 callback_data: `review:${order.id}:sent`,
               },
             ],

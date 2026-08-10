@@ -218,18 +218,25 @@ export class TelegramWebhookController {
     try {
       const order = await this.prisma.orderPhoto.findUnique({
         where: { id: orderId },
-        select: { id: true, reviewRequestSentAt: true },
+        select: { id: true, clientReviewLeft: true, reviewRequestSentAt: true },
       });
       if (!order) {
         await this.telegram.answerCallbackQuery(callback.id, 'Заказ не найден');
         return;
       }
 
-      // Идемпотентно: первое нажатие проставляет отметку, повторные — нет.
-      if (!order.reviewRequestSentAt) {
+      // Одно нажатие закрывает вопрос: заказ переходит в «Отзыв оставлен»,
+      // руками в CRM больше ничего менять не нужно. Отдельно сохраняем, кто и
+      // когда нажал — по этой паре видно историю, если понадобится разобраться.
+      // Идемпотентно: повторные нажатия ничего не переписывают.
+      if (!order.clientReviewLeft) {
         await this.prisma.orderPhoto.update({
           where: { id: orderId },
-          data: { reviewRequestSentAt: new Date(), reviewRequestSentBy: who },
+          data: {
+            clientReviewLeft: true,
+            reviewRequestSentAt: order.reviewRequestSentAt ?? new Date(),
+            reviewRequestSentBy: who,
+          },
         });
       }
 
@@ -240,7 +247,12 @@ export class TelegramWebhookController {
           callback.message.message_id,
           {
             inline_keyboard: [
-              [{ text: `✅ Отправлено — ${who}`, callback_data: 'review:noop' }],
+              [
+                {
+                  text: `✅ Отзыв отмечен — ${who}`,
+                  callback_data: 'review:noop',
+                },
+              ],
             ],
           },
         );
@@ -248,7 +260,7 @@ export class TelegramWebhookController {
 
       await this.telegram.answerCallbackQuery(
         callback.id,
-        'Отмечено: запрос отзыва отправлен',
+        'Готово: отзыв отмечен как оставленный',
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

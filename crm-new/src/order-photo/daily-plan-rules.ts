@@ -129,19 +129,31 @@ function inWorkTail(order: PlanOrder, now: Date): string {
   return order.isUrgent ? `<b>СРОЧНО</b>, ${label}` : label;
 }
 
-/** Строка готового заказа: 🚚 отгрузить · <способ> либо 📦 самовывоз. */
+/** Разделитель между блоками — чтобы сообщение не читалось сплошным текстом. */
+const DIVIDER = '━━━━━━━━━━━━━━━━━━';
+
+/**
+ * Расшифровка значков. Внизу сообщения: читающему не нужно держать в голове,
+ * что означает каждый кружок.
+ */
+export const LEGEND = [
+  'ℹ️ <b>Что означают значки</b>',
+  '🔥 срочный · 🔴 просрочен · 🟠 сегодня · 🟡 завтра · 🟢 есть время',
+  '📦 самовывоз — клиент заберёт сам · 🚚 отгрузить в ПВЗ',
+].join('\n');
+
+/**
+ * Готовый к выдаче заказ (самовывоз). Способ доставки не пишем — значок 📦
+ * и заголовок блока уже говорят это, а лишний текст ломает читаемость.
+ */
 function readyLine(order: ReadyOrder): string {
-  const ship = needsShipping(order.deliveryMethod);
-  const marker = ship ? '🚚' : '📦';
-  const label = DELIVERY_LABEL[order.deliveryMethod] ?? order.deliveryMethod;
-  const action = ship ? `отгрузить · ${escapeHtml(label)}` : 'самовывоз';
-  return `${marker} #<code>${escapeHtml(order.numberOrder)}</code> · ${summarizeItems(order.items)} — ${action}`;
+  return `📦 <code>${escapeHtml(order.numberOrder)}</code> · ${summarizeItems(order.items)}`;
 }
 
-/** Строка заказа в блоке отгрузок: 🚚 #номер · состав — способ доставки. */
+/** Строка заказа в блоке отгрузок: 🚚 номер · состав — куда везти. */
 function shipmentLine(order: ReadyOrder): string {
   const label = DELIVERY_LABEL[order.deliveryMethod] ?? order.deliveryMethod;
-  return `🚚 #<code>${escapeHtml(order.numberOrder)}</code> · ${summarizeItems(order.items)} — ${escapeHtml(label)}`;
+  return `🚚 <code>${escapeHtml(order.numberOrder)}</code> · ${summarizeItems(order.items)} — ${escapeHtml(label)}`;
 }
 
 /**
@@ -160,11 +172,17 @@ export function buildShipmentBlock(
   if (orders.length === 0) return null;
 
   const head = lead
-    ? `📦 <b>Отгрузки</b> — старший ${mentionFor(lead)} (${orders.length})`
-    : `📦 <b>Отгрузки</b> (${orders.length}) — ⚠️ старший дня не назначен (Настройки)`;
-  const tail = 'Оформи поставки и проконтролируй отгрузку. После отправки — переведи заказ в «Отправлен».';
+    ? `🚚 <b>ОТГРУЗКИ (${orders.length})</b> · старший дня: ${mentionFor(lead)}`
+    : `🚚 <b>ОТГРУЗКИ (${orders.length})</b>\n⚠️ Старший дня не назначен — назначьте в Настройках.`;
 
-  return [head, ...orders.map(shipmentLine), '', tail].join('\n');
+  return [
+    head,
+    '',
+    ...orders.map(shipmentLine),
+    '',
+    '👉 Оформи поставки и проконтролируй отгрузку.',
+    'После отправки переведи заказ в «Отправлен».',
+  ].join('\n');
 }
 
 function dayMonth(now: Date): string {
@@ -224,21 +242,23 @@ export function buildDailyPlanMessage(
       // Показывать нечего — исполнителя в плане не упоминаем.
       if (group.inWork.length === 0 && readyForPickup.length === 0) return '';
 
+      // Пустая строка после имени и между подсекциями — иначе блок исполнителя
+      // читается сплошной простынёй.
       const lines: string[] = [`👤 <b>${mentionFor(group.executor)}</b>`];
 
       if (group.inWork.length > 0) {
-        lines.push(`🔧 В работе (${group.inWork.length}):`);
+        lines.push('', `🔧 <b>В работе (${group.inWork.length})</b>`);
         for (const order of group.inWork
           .slice()
           .sort((a, b) => priorityKey(a, now) - priorityKey(b, now))) {
           lines.push(
-            `${orderMarker(order, now)} #<code>${escapeHtml(order.numberOrder)}</code> · ${summarizeItems(order.items)} — ${inWorkTail(order, now)}`,
+            `${orderMarker(order, now)} <code>${escapeHtml(order.numberOrder)}</code> · ${summarizeItems(order.items)} — ${inWorkTail(order, now)}`,
           );
         }
       }
 
       if (readyForPickup.length > 0) {
-        lines.push(`✅ Готовы к выдаче (${readyForPickup.length}):`);
+        lines.push('', `✅ <b>Готовы к выдаче (${readyForPickup.length})</b>`);
         for (const order of readyForPickup) {
           lines.push(readyLine(order));
         }
@@ -249,21 +269,22 @@ export function buildDailyPlanMessage(
     .filter(Boolean);
 
   const header = options.manual
-    ? `🔎 <b>Проверка по заказам</b> — ${dayMonth(now)}, ${moscowHm(now)}`
-    : `🌅 <b>План на ${dayMonth(now)}</b> — доброе утро!`;
+    ? `🔎 <b>ПРОВЕРКА ПО ЗАКАЗАМ</b>\n${dayMonth(now)}, ${moscowHm(now)}`
+    : `🌅 <b>ПЛАН НА ${dayMonth(now)}</b>\nДоброе утро!`;
   const shipmentBlock = buildShipmentBlock(groups, shipmentLead);
-  const footer =
+  const unassigned =
     unassignedCount > 0
-      ? `\n⚠️ Без исполнителя в работе: <b>${unassignedCount}</b> ${orderWord(unassignedCount)} — назначьте исполнителя.`
+      ? `⚠️ <b>Без исполнителя: ${unassignedCount} ${orderWord(unassignedCount)}</b>\nНазначьте исполнителя, иначе заказ не попадёт ни к кому в план.`
       : '';
 
-  return [
-    header,
-    '',
-    blocks.join('\n\n'),
-    ...(shipmentBlock ? ['', shipmentBlock] : []),
-    footer,
-  ]
-    .filter(Boolean)
-    .join('\n');
+  // Каждый смысловой блок отделён линией и пустыми строками — так сообщение
+  // читается по частям, а не одним потоком.
+  const sections = [
+    ...blocks,
+    ...(shipmentBlock ? [shipmentBlock] : []),
+    ...(unassigned ? [unassigned] : []),
+    LEGEND,
+  ];
+
+  return [header, ...sections.flatMap((s) => [DIVIDER, s])].join('\n\n');
 }

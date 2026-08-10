@@ -93,7 +93,7 @@ describe('buildDailyPlanMessage', () => {
 
   it('содержит заголовок дня, упоминания и маркеры', () => {
     const msg = buildDailyPlanMessage([maksim, lesha], NOW, 0);
-    expect(msg).toContain('План на 24.07');
+    expect(msg).toContain('ПЛАН НА 24.07');
     expect(msg).toContain('@maksim_tg'); // ник → упоминание с @
     expect(msg).toContain('lesha'); // без ника — по имени
     expect(msg).toContain('🔥');
@@ -105,8 +105,7 @@ describe('buildDailyPlanMessage', () => {
     // У maksim готовы 2 заказа, но отгрузочный ушёл в блок «Отгрузки».
     expect(msg).toContain('Готовы к выдаче (1)');
     expect(msg).toContain('📦');
-    expect(msg).toContain('самовывоз');
-    const executorPart = msg.slice(0, msg.indexOf('📦 <b>Отгрузки</b>'));
+    const executorPart = msg.slice(0, msg.indexOf('ОТГРУЗКИ'));
     expect(executorPart).not.toContain('R-SHIP');
     // Отгрузочный заказ упомянут ровно один раз — в блоке отгрузок.
     expect(msg.split('R-SHIP').length - 1).toBe(1);
@@ -137,13 +136,13 @@ describe('buildDailyPlanMessage', () => {
 
   it('ручной вызов: нейтральный заголовок со временем вместо «доброе утро»', () => {
     const manual = buildDailyPlanMessage([maksim], NOW, 0, null, { manual: true });
-    expect(manual).toContain('Проверка по заказам');
+    expect(manual).toContain('ПРОВЕРКА ПО ЗАКАЗАМ');
     expect(manual).toContain('24.07, 12:00'); // NOW = 12:00 по Москве
-    expect(manual).not.toContain('доброе утро');
+    expect(manual).not.toContain('Доброе утро');
 
     const scheduled = buildDailyPlanMessage([maksim], NOW, 0);
-    expect(scheduled).toContain('доброе утро');
-    expect(scheduled).not.toContain('Проверка по заказам');
+    expect(scheduled).toContain('Доброе утро');
+    expect(scheduled).not.toContain('ПРОВЕРКА ПО ЗАКАЗАМ');
   });
 
   it('показывает предупреждение о заказах без исполнителя', () => {
@@ -157,17 +156,17 @@ describe('buildDailyPlanMessage', () => {
 
     it('тегает старшего и перечисляет только заказы с отгрузкой (без самовывоза)', () => {
       const msg = buildDailyPlanMessage([maksim], NOW, 0, lead);
-      expect(msg).toContain('Отгрузки');
+      expect(msg).toContain('ОТГРУЗКИ');
       expect(msg).toContain('@boss_tg');
       expect(msg).toContain('R-SHIP'); // Яндекс ПВЗ — нужна поставка
       // Самовывоз (R-PICKUP) в блок отгрузок не попадает
-      const shipmentPart = msg.slice(msg.indexOf('Отгрузки'));
+      const shipmentPart = msg.slice(msg.indexOf('ОТГРУЗКИ'));
       expect(shipmentPart).not.toContain('R-PICKUP');
     });
 
     it('без старшего, но при наличии отгрузок — предупреждение «не назначен»', () => {
       const msg = buildDailyPlanMessage([maksim], NOW, 0, null);
-      expect(msg).toContain('Отгрузки');
+      expect(msg).toContain('ОТГРУЗКИ');
       expect(msg).toContain('не назначен');
     });
 
@@ -178,7 +177,7 @@ describe('buildDailyPlanMessage', () => {
         ready: [{ numberOrder: 'R-PU', deliveryMethod: 'PICKUP', items: [] }],
       };
       const msg = buildDailyPlanMessage([pickupOnly], NOW, 0, lead);
-      expect(msg).not.toContain('📦 <b>Отгрузки</b>');
+      expect(msg).not.toContain('ОТГРУЗКИ');
     });
   });
 });

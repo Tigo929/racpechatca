@@ -104,6 +104,40 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, pro
         </div>
       )}
 
+      {/* Срочность и плата за неё. Плата входит в чек клиента, но не в базу
+          зарплаты — ни исполнителю, ни менеджеру. */}
+      <div className="rounded-xl border border-red-200 bg-red-50/50 p-3 space-y-2">
+        <label className="flex items-center gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.isUrgent ?? false}
+            onChange={e => {
+              const on = e.target.checked;
+              // Сняли срочность — снимается и плата за неё.
+              set({ isUrgent: on, urgencyFee: on ? (form.urgencyFee ?? 0) : 0 });
+            }}
+            className="w-4 h-4 accent-red-600"
+          />
+          <span className="text-sm font-medium text-gray-800">Срочный заказ</span>
+        </label>
+        {form.isUrgent && (
+          <div>
+            <p className={labelCls}>Стоимость срочности, ₽</p>
+            <input
+              type="number"
+              min={0}
+              className={inputCls}
+              placeholder="500"
+              value={form.urgencyFee ?? 0}
+              onChange={e => set({ urgencyFee: Number(e.target.value) })}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Входит в чек клиента отдельной строкой. В зарплату исполнителя и менеджера не входит.
+            </p>
+          </div>
+        )}
+      </div>
+
       <div>
         <p className={labelCls}>Примечание</p>
         <textarea rows={2} className={inputCls + ' resize-none'} value={form.note ?? ''}

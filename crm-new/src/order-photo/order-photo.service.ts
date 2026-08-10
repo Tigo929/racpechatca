@@ -9,6 +9,10 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import DtoCreateOrder from './dto/create-order.dto';
 import { calcItemPricePosition } from './order-pricing';
+import {
+  buildCommunicationUrl,
+  validateCommunicationValue,
+} from './communication-url';
 import fullDate from 'src/utils/full-date';
 import DtoAllOrdersforQuery from './dto/all-oreders-for-query.dto';
 import UpdateStatus from './dto/update-status.dto';
@@ -33,15 +37,8 @@ import { hasTechSpecFiles } from 'src/partner/tech-spec-paths';
 import { GulianOutboxService } from 'src/gulian/gulian-outbox.service';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 
-function buildCommunicationUrl(
-  platform: EnumCommunication,
-  raw: string,
-): string {
-  if (platform === EnumCommunication.TELEGRAM) {
-    return `https://t.me/${raw.slice(1)}`;
-  }
-  return raw;
-}
+// Сборка ссылки на переписку живёт в communication-url.ts — там же тесты
+// на нормализацию телефона для MAX.
 
 const RU_MONTHS = [
   'января',
@@ -226,18 +223,29 @@ export class OrderPhotoService {
 
       // «Разработка дизайна» — отдельная свободная сумма, входит в чек клиента
       // и служит базой премии менеджера по оформлению (не привязана к позициям).
-      const designDevelopmentCost = Math.max(0, dto.designDevelopmentCost ?? 0);
+      const contactError = validateCommunicationValue(
+        dto.communicationPlatform,
+        dto.urlCommunication,
+      );
+      if (contactError) throw new BadRequestException(contactError);
 
-      // Сумма заказа = все позиции (фото + футболки) + доставка + дизайн.
-      // customTotal — ручной итог по позициям; дизайн добавляется поверх него,
-      // чтобы база премии менеджера (чек − доставка − дизайн) считалась чисто.
+      const designDevelopmentCost = Math.max(0, dto.designDevelopmentCost ?? 0);
+      // Плата за срочность имеет смысл только у срочного заказа.
+      const isUrgent = dto.isUrgent ?? false;
+      const urgencyFee = isUrgent ? Math.max(0, dto.urgencyFee ?? 0) : 0;
+
+      // Сумма заказа = позиции (фото + футболки) + доставка + дизайн + срочность.
+      // customTotal — ручной итог по позициям; дизайн и срочность добавляются
+      // поверх него, чтобы базы зарплат (чек без них) считались чисто.
       const positionsTotal =
         photoCreate.reduce((s, i) => s + i.pricePosition, 0) +
         tshirtCreate.reduce((s, i) => s + i.pricePosition, 0);
       const totalOrder =
         (dto.customTotal != null
           ? dto.customTotal
-          : positionsTotal + dto.deliveryCost) + designDevelopmentCost;
+          : positionsTotal + dto.deliveryCost) +
+        designDevelopmentCost +
+        urgencyFee;
 
       const created = await tx.orderPhoto.create({
         data: {
@@ -257,12 +265,14 @@ export class OrderPhotoService {
           urlCommunication: buildCommunicationUrl(
             dto.communicationPlatform,
             dto.urlCommunication,
+            (await this.partnerSettings.get(tx)).maxLinkTemplate,
           ),
           deliveryMethod: dto.deliveryMethod,
           deliveryCost: dto.deliveryCost,
           designDevelopmentCost,
+          urgencyFee,
           note: dto.note,
-          isUrgent: dto.isUrgent ?? false,
+          isUrgent,
           tshirtModel: dto.tshirtModel,
           productCategory,
           executorId: dto.executorId ?? undefined,
@@ -696,6 +706,7 @@ export class OrderPhotoService {
             order.totalOrder,
             order.deliveryCost,
             executor.rateBasisPoints,
+            order.urgencyFee,
           );
           await tx.salaryAccrual.create({
             data: { orderId, executorId: dto.executorId!, ...snapshot },
@@ -965,6 +976,7 @@ export class OrderPhotoService {
               lockedOrder.totalOrder,
               lockedOrder.deliveryCost,
               executor.rateBasisPoints,
+              lockedOrder.urgencyFee,
             );
 
             await tx.salaryAccrual.create({
@@ -1002,6 +1014,7 @@ export class OrderPhotoService {
               lockedOrder.designDevelopmentCost,
               manager.rateBasisPoints,
               manager.designRateBasisPoints,
+              lockedOrder.urgencyFee,
             );
 
             // Нулевое начисление не создаём (ставки не заданы или суммы нулевые).
@@ -1172,8 +1185,10 @@ export class OrderPhotoService {
     const order = await this.getOrderById(idOrder, '', EnumRole.ADMIN);
     const deliveryChanged = dto.deliveryCost !== undefined;
     const designChanged = dto.designDevelopmentCost !== undefined;
-    // И доставка, и стоимость дизайна влияют на сумму заказа и на начисления.
-    const financialChanged = deliveryChanged || designChanged;
+    const urgencyChanged =
+      dto.urgencyFee !== undefined || dto.isUrgent !== undefined;
+    // Доставка, дизайн и срочность влияют на сумму заказа и на начисления.
+    const financialChanged = deliveryChanged || designChanged || urgencyChanged;
     if (financialChanged) {
       await this.financialIntegrity.assertOrderFinanciallyEditable(idOrder);
     }
@@ -1181,6 +1196,22 @@ export class OrderPhotoService {
     const designDevelopmentCost = designChanged
       ? Math.max(0, dto.designDevelopmentCost!)
       : order.designDevelopmentCost;
+    // Сняли срочность — снимается и плата за неё, иначе она осталась бы в чеке
+    // строкой, которой в заказе больше нет.
+    const isUrgent = dto.isUrgent !== undefined ? dto.isUrgent : order.isUrgent;
+    const urgencyFee = !isUrgent
+      ? 0
+      : dto.urgencyFee !== undefined
+        ? Math.max(0, dto.urgencyFee)
+        : order.urgencyFee;
+    if (dto.urlCommunication) {
+      const contactError = validateCommunicationValue(
+        dto.communicationPlatform ?? order.communicationPlatform,
+        dto.urlCommunication,
+      );
+      if (contactError) throw new BadRequestException(contactError);
+    }
+    const maxLinkTemplate = (await this.partnerSettings.get()).maxLinkTemplate;
     const updated = await this.prisma.orderPhoto.update({
       where: { id: idOrder },
       include: {
@@ -1196,19 +1227,22 @@ export class OrderPhotoService {
           ? buildCommunicationUrl(
               dto.communicationPlatform ?? order.communicationPlatform,
               dto.urlCommunication,
+              maxLinkTemplate,
             )
           : order.urlCommunication,
         deliveryMethod: dto.deliveryMethod ?? order.deliveryMethod,
         deliveryCost,
         designDevelopmentCost,
-        // Сумма = все pricePosition (фото + футболки) + доставка + дизайн.
+        urgencyFee,
+        // Сумма = pricePosition (фото + футболки) + доставка + дизайн + срочность.
         totalOrder:
           order.items.reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
           order.tshirtItems.reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
           deliveryCost +
-          designDevelopmentCost,
+          designDevelopmentCost +
+          urgencyFee,
         note: dto.note ?? order.note,
-        isUrgent: dto.isUrgent !== undefined ? dto.isUrgent : order.isUrgent,
+        isUrgent,
         tshirtModel: dto.tshirtModel ?? order.tshirtModel,
       },
     });

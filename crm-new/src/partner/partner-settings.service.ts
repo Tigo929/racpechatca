@@ -15,6 +15,7 @@ export interface UpdatePartnerSettingsDto {
   blankTshirtCost?: number;
   partnerRateBasisPoints?: number;
   partnerName?: string;
+  maxLinkTemplate?: string;
 }
 
 type TshirtItemForSettlement = {
@@ -51,6 +52,7 @@ export class PartnerSettingsService {
         blankTshirtCost: dto.blankTshirtCost,
         partnerRateBasisPoints: dto.partnerRateBasisPoints,
         partnerName: dto.partnerName?.trim() || undefined,
+        maxLinkTemplate: dto.maxLinkTemplate?.trim() || undefined,
       },
     });
   }

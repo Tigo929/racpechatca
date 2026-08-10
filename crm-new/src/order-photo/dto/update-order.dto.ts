@@ -62,6 +62,13 @@ export class DtoUpdateOrder {
   @IsOptional()
   isUrgent?: boolean;
 
+  /** Плата за срочность: в чек клиента входит, в базу зарплаты — нет. */
+  @IsInt()
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  urgencyFee?: number;
+
   @IsString()
   @IsOptional()
   @MaxLength(255)

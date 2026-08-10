@@ -47,6 +47,15 @@ const freeItemSchema = z.object({
   clientItem: z.boolean().optional(),
 });
 
+/** Российский номер в любом привычном виде: +7…, 8…, 10 цифр. */
+function isRussianPhone(value: string): boolean {
+  const digits = value.replace(/\D/g, '');
+  return (
+    digits.length === 10 ||
+    (digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8')))
+  );
+}
+
 const baseSchema = z.object({
   productCategory: z.enum(['PHOTO', 'TSHIRT']),
   sourceOrder: z.enum(['AVITO', 'OZON', 'WB', 'LOCAL']),
@@ -56,6 +65,8 @@ const baseSchema = z.object({
   deliveryCost: z.coerce.number().int().min(0),
   note: z.string().optional(),
   isUrgent: z.boolean().optional(),
+  // Плата за срочность: входит в чек клиента, но не в базу зарплаты.
+  urgencyFee: z.coerce.number().int().min(0).optional(),
   executorId: z.string().optional(),
   freePrice: z.boolean().optional(),
   // «Требуется разработать дизайн» (только футболки): свободная сумма, входит
@@ -73,8 +84,21 @@ const baseSchema = z.object({
       path: ['urlCommunication'],
     });
   }
+  // MAX: менеджер вводит телефон — ссылку на переписку соберёт сервер.
   if (
-    (data.communicationPlatform === 'AVITO' || data.communicationPlatform === 'OZON' || data.communicationPlatform === 'MAX') &&
+    data.communicationPlatform === 'MAX' &&
+    data.urlCommunication.length > 0 &&
+    !data.urlCommunication.startsWith('http') &&
+    !isRussianPhone(data.urlCommunication)
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Для MAX укажите номер телефона, например +7 999 123-45-67',
+      path: ['urlCommunication'],
+    });
+  }
+  if (
+    (data.communicationPlatform === 'AVITO' || data.communicationPlatform === 'OZON') &&
     data.urlCommunication.length > 0 &&
     !data.urlCommunication.startsWith('http')
   ) {
@@ -138,6 +162,7 @@ export function CreateOrderForm({ onClose }: Props) {
       deliveryMethod: 'PICKUP',
       deliveryCost: 0,
       isUrgent: false,
+      urgencyFee: 0,
       executorId: '',
       freePrice: false,
       needsDesign: false,
@@ -233,6 +258,7 @@ export function CreateOrderForm({ onClose }: Props) {
         deliveryCost: data.deliveryCost,
         note: data.note,
         isUrgent: data.isUrgent ?? false,
+        urgencyFee: data.isUrgent ? (data.urgencyFee ?? 0) : 0,
         executorId: data.executorId || undefined,
         productCategory: data.productCategory,
         freePrice: true,
@@ -255,6 +281,7 @@ export function CreateOrderForm({ onClose }: Props) {
       deliveryCost: data.deliveryCost,
       note: data.note,
       isUrgent: data.isUrgent ?? false,
+      urgencyFee: data.isUrgent ? (data.urgencyFee ?? 0) : 0,
       executorId: data.executorId || undefined,
     };
 
@@ -321,6 +348,7 @@ export function CreateOrderForm({ onClose }: Props) {
       deliveryCost: data.deliveryCost ?? 0,
       note: data.note,
       isUrgent: data.isUrgent ?? false,
+      urgencyFee: data.isUrgent ? (data.urgencyFee ?? 0) : 0,
       productCategory: data.productCategory ?? 'PHOTO',
       status: 'LEAD',
       // У футболок исполнителя нет — печатает партнёр.
@@ -396,15 +424,44 @@ export function CreateOrderForm({ onClose }: Props) {
             Срочный
           </button>
         </div>
+        {/* Плата за срочность: входит в чек клиента отдельной строкой, но в
+            базу зарплаты (ни исполнителю, ни менеджеру) не попадает. */}
+        {isUrgent && (
+          <div className="mt-3 rounded-xl border border-red-200 bg-red-50/50 p-3">
+            <label className={labelCls}>Стоимость срочности, ₽</label>
+            <input type="number" min={0} className={inputCls} placeholder="500"
+              {...register('urgencyFee')} />
+            <p className="text-xs text-gray-500 mt-1">
+              Добавится к чеку клиента отдельной строкой. В зарплату исполнителя и
+              менеджера не входит.
+            </p>
+          </div>
+        )}
       </div>
 
       <div>
         <label className={labelCls}>
-          {communicationPlatform === 'TELEGRAM' ? 'Username в Telegram' : 'Ссылка на переписку'}
+          {communicationPlatform === 'TELEGRAM'
+            ? 'Username в Telegram'
+            : communicationPlatform === 'MAX'
+              ? 'Номер телефона в MAX'
+              : 'Ссылка на переписку'}
         </label>
         <input className={inputCls}
-          placeholder={communicationPlatform === 'TELEGRAM' ? '@username' : 'https://www.avito.ru/...'}
+          inputMode={communicationPlatform === 'MAX' ? 'tel' : 'text'}
+          placeholder={
+            communicationPlatform === 'TELEGRAM'
+              ? '@username'
+              : communicationPlatform === 'MAX'
+                ? '+7 999 123-45-67'
+                : 'https://www.avito.ru/...'
+          }
           {...register('urlCommunication')} />
+        {communicationPlatform === 'MAX' && (
+          <p className="text-xs text-gray-400 mt-1">
+            Введите телефон — CRM сама соберёт ссылку на переписку в MAX.
+          </p>
+        )}
         {errors.urlCommunication && <p className={errorCls}>{errors.urlCommunication.message}</p>}
       </div>
 

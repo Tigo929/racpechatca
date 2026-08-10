@@ -75,6 +75,8 @@ export interface OrderPhoto {
   deliveryCost: number;
   /** Стоимость «разработка дизайна» — входит в totalOrder (чек клиента). */
   designDevelopmentCost?: number;
+  /** Плата за срочность: входит в чек клиента, но не в базу зарплаты. */
+  urgencyFee?: number;
   totalOrder: number;
   status: EnumStatus;
   note?: string;
@@ -189,6 +191,8 @@ export interface CreateOrderDto {
   freePrice?: boolean;
   /** Стоимость «разработка дизайна» — входит в чек, база премии менеджера. */
   designDevelopmentCost?: number;
+  /** Плата за срочность: входит в чек, но не в базу зарплаты. */
+  urgencyFee?: number;
   /** Ручной итог заказа (если задан) — вместо расчёта из позиций. */
   customTotal?: number;
   isUrgent?: boolean;
@@ -206,6 +210,8 @@ export interface UpdateOrderDto {
   deliveryCost?: number;
   /** Стоимость «разработка дизайна» — входит в чек, база премии менеджера. */
   designDevelopmentCost?: number;
+  /** Плата за срочность: входит в чек, но не в базу зарплаты. */
+  urgencyFee?: number;
   note?: string;
   isUrgent?: boolean;
   tshirtModel?: string;
@@ -569,6 +575,8 @@ export interface PartnerSettings {
   blankTshirtCost: number;
   partnerRateBasisPoints: number;
   partnerName: string;
+  /** Шаблон ссылки на переписку в MAX: {phone} / {phone_plus}. */
+  maxLinkTemplate: string;
 }
 
 export interface OrderSettlement {
