@@ -199,6 +199,21 @@ export const ordersApi = {
     return data;
   },
 
+  /**
+   * Разовая пересылка напоминаний об отзыве по ВСЕМ заказам без отметки отзыва.
+   * dry=true — только посчитать, ничего не отправляя.
+   */
+  resendReviewReminders: async (opts: { limit?: number; dry?: boolean } = {}) => {
+    const params = new URLSearchParams();
+    if (opts.limit) params.set('limit', String(opts.limit));
+    if (opts.dry) params.set('dry', 'true');
+    const qs = params.toString();
+    const { data } = await api.post<{ total: number; dryRun: boolean }>(
+      `/order-photo/review-reminders/resend-all${qs ? `?${qs}` : ''}`,
+    );
+    return data;
+  },
+
   retryGulianSync: async (orderId: string): Promise<{ retried: number }> => {
     const { data } = await api.post<{ retried: number }>(`/order-photo/${orderId}/retry-gulian`);
     return data;

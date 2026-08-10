@@ -142,6 +142,82 @@ function DailyPlanCard() {
   );
 }
 
+/**
+ * Разовая пересылка напоминаний об отзыве по всем заказам без отметки —
+ * чтобы проверить вид сообщения и работу кнопки. Сначала считаем, сколько
+ * уйдёт, и только после подтверждения отправляем: в чат летят десятки
+ * сообщений, случайный клик обойдётся дорого.
+ */
+function ResendRemindersCard() {
+  const [limit, setLimit] = useState('');
+
+  const send = useMutation({
+    mutationFn: async () => {
+      const parsed = Number(limit);
+      const take = Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+
+      const preview = await ordersApi.resendReviewReminders({
+        limit: take,
+        dry: true,
+      });
+      if (preview.total === 0) {
+        return { skipped: true as const, total: 0 };
+      }
+      const minutes = Math.ceil((preview.total * 3.5) / 60);
+      const ok = window.confirm(
+        `В чат уйдёт ${preview.total} сообщений (примерно ${minutes} мин).\n` +
+          `Статусы заказов не изменятся. Продолжить?`,
+      );
+      if (!ok) return { cancelled: true as const, total: preview.total };
+      const res = await ordersApi.resendReviewReminders({ limit: take });
+      return { started: true as const, total: res.total };
+    },
+    onSuccess: (res) => {
+      if ('skipped' in res) toast('Заказов без отзыва нет', { icon: 'ℹ️' });
+      else if ('cancelled' in res) toast('Отменено');
+      else toast.success(`Отправка запущена: ${res.total} сообщений`);
+    },
+    onError: (e) => toast.error(getErrorMessage(e, 'Не удалось отправить')),
+  });
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
+      <div className="flex items-center gap-2">
+        <Send size={16} className="text-amber-500" aria-hidden="true" />
+        <h2 className="text-sm font-semibold text-gray-900">
+          Напоминания об отзыве — переслать заново
+        </h2>
+      </div>
+      <p className="text-xs text-gray-500">
+        Шлёт в чат напоминание с кнопкой по каждому заказу со статусом «Без
+        отзыва» — без фильтров по дате и статусу. Статусы заказов не меняются.
+        Операция ручная: сама по себе больше не повторится.
+      </p>
+      <label className="block">
+        <span className="text-sm font-medium text-gray-700">
+          Сколько отправить <span className="text-gray-400">(пусто — все)</span>
+        </span>
+        <input
+          type="number"
+          min={1}
+          className={`mt-1 ${field}`}
+          placeholder="например 3 — для проверки"
+          value={limit}
+          onChange={(e) => setLimit(e.target.value)}
+        />
+      </label>
+      <button
+        onClick={() => send.mutate()}
+        disabled={send.isPending}
+        className="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+      >
+        <Send size={14} aria-hidden="true" />
+        {send.isPending ? 'Отправка…' : 'Переслать напоминания'}
+      </button>
+    </div>
+  );
+}
+
 interface FormState {
   thermalTransferCost: string;
   blankTshirtCost: string;
@@ -216,6 +292,7 @@ export default function SettingsPage() {
     <AppShell title="Настройки" subtitle="Отгрузки и расчёт с партнёром" width="narrow" onRefresh={() => void refetch()}>
       <div className="max-w-xl space-y-5">
         <DailyPlanCard />
+        <ResendRemindersCard />
         <ShipmentLeadCard />
         {isLoading || !form ? (
           <p className="py-16 text-center text-gray-400">Загрузка настроек партнёра…</p>
