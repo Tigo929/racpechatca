@@ -23,6 +23,7 @@ import { OrderItemService } from './order-item.service';
 import { TshirtItemService } from './tshirt-item.service';
 import { StickerService } from './sticker.service';
 import { DailyPlanService } from './daily-plan.service';
+import { ReviewReminderService } from './review-reminder.service';
 import { ShipmentLeadService } from './shipment-lead.service';
 import { DtoSetShipmentLead } from './dto/set-shipment-lead.dto';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
@@ -53,6 +54,7 @@ export class OrderPhotoController {
     private readonly tshirtItemService: TshirtItemService,
     private readonly stickerService: StickerService,
     private readonly dailyPlanService: DailyPlanService,
+    private readonly reviewReminderService: ReviewReminderService,
     private readonly tshirtPartnerTelegram: TshirtPartnerTelegramService,
     private readonly shipmentLeadService: ShipmentLeadService,
   ) {}
@@ -64,6 +66,23 @@ export class OrderPhotoController {
   @Roles(EnumRole.ADMIN)
   runDailyPlan(@Query('dry') dry?: string) {
     return this.dailyPlanService.runNow(new Date(), { dryRun: dry === 'true' });
+  }
+
+  // ── Admin: разовая пересылка напоминаний по всем заказам без отзыва ────────
+  // Только ручной вызов (планировщик её не трогает) — нужна для проверки вида
+  // сообщения и работы кнопки. Заказы при этом не меняются.
+  // ?limit=N — сколько взять (без него все), ?dry=true — только посчитать.
+  @Post('review-reminders/resend-all')
+  @Roles(EnumRole.ADMIN)
+  resendReviewReminders(
+    @Query('limit') limit?: string,
+    @Query('dry') dry?: string,
+  ) {
+    const parsed = Number(limit);
+    return this.reviewReminderService.resendAllWithoutReview({
+      limit: Number.isFinite(parsed) && parsed > 0 ? parsed : undefined,
+      dryRun: dry === 'true',
+    });
   }
 
   // ── Admin: «старший дня» по отгрузкам (кого тегать в плане дня) ─────────────

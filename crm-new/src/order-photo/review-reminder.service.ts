@@ -19,6 +19,8 @@ import {
 } from './review-reminder-rules';
 
 const REVIEW_REMINDER_SCAN_MS = 60 * 60 * 1000;
+/** Пауза между сообщениями ручной пересылки: Telegram даёт ~20/мин в чат. */
+const RESEND_DELAY_MS = 3500;
 const REVIEW_REMINDER_LIMIT = 20;
 const AVITO_REVIEW_URL =
   'https://www.avito.ru/user/review?fid=2_dJdTVNpmTbcI6Hkpz9w4CujowHx4ZBZ87DElF8B0nlyL6RdaaYzvyPSWRjp4ZyNE';
@@ -108,6 +110,71 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
   onModuleDestroy() {
     if (this.timer) clearInterval(this.timer);
     if (this.startupTimer) clearTimeout(this.startupTimer);
+  }
+
+  /**
+   * РАЗОВАЯ админская операция: переслать в чат напоминания по ВСЕМ заказам без
+   * отметки отзыва — чтобы проверить вид сообщения и работу кнопки. Ничего в
+   * заказах не меняет (в том числе reviewReminderNotifiedAt), поэтому обычная
+   * ежечасная рассылка продолжает работать по своим правилам.
+   *
+   * Дублей «сама по себе» операция не создаёт: она запускается только вручную,
+   * планировщик её не вызывает.
+   *
+   * Telegram не принимает больше ~20 сообщений в минуту в один чат, поэтому
+   * шлём с паузой и в фоне: HTTP-ответ отдаём сразу, прогресс — в логах.
+   */
+  async resendAllWithoutReview(opts: {
+    limit?: number;
+    dryRun?: boolean;
+  } = {}): Promise<{ total: number; dryRun: boolean }> {
+    const orders = await this.prisma.orderPhoto.findMany({
+      where: { clientReviewLeft: false },
+      orderBy: { createdAt: 'desc' },
+      ...(opts.limit ? { take: opts.limit } : {}),
+      select: {
+        id: true,
+        numberOrder: true,
+        productCategory: true,
+        sentAt: true,
+        communicationPlatform: true,
+        urlCommunication: true,
+      },
+    });
+
+    if (opts.dryRun) {
+      return { total: orders.length, dryRun: true };
+    }
+
+    void (async () => {
+      let sent = 0;
+      for (const order of orders) {
+        const replyMarkup = {
+          inline_keyboard: [
+            [
+              {
+                text: '✅ Отправил — отметить отзыв',
+                callback_data: `review:${order.id}:sent`,
+              },
+            ],
+          ],
+        };
+        const ok = await this.telegram.sendReviewReminder(
+          this.buildGroupNotification(order),
+          replyMarkup,
+        );
+        if (ok) sent += 1;
+        // Пауза между сообщениями — иначе Telegram начнёт отвечать 429.
+        await new Promise((r) => setTimeout(r, RESEND_DELAY_MS));
+      }
+      this.logger.log(
+        `Ручная пересылка напоминаний: отправлено ${sent} из ${orders.length}`,
+      );
+    })().catch((err: unknown) => {
+      this.logger.error('Ручная пересылка напоминаний упала', err);
+    });
+
+    return { total: orders.length, dryRun: false };
   }
 
   async scanAndNotify() {
