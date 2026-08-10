@@ -131,9 +131,6 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, pro
               value={form.urgencyFee ?? 0}
               onChange={e => set({ urgencyFee: Number(e.target.value) })}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Входит в чек клиента отдельной строкой. В зарплату исполнителя и менеджера не входит.
-            </p>
           </div>
         )}
       </div>

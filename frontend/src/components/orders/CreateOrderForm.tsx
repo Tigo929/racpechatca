@@ -431,10 +431,6 @@ export function CreateOrderForm({ onClose }: Props) {
             <label className={labelCls}>Стоимость срочности, ₽</label>
             <input type="number" min={0} className={inputCls} placeholder="500"
               {...register('urgencyFee')} />
-            <p className="text-xs text-gray-500 mt-1">
-              Добавится к чеку клиента отдельной строкой. В зарплату исполнителя и
-              менеджера не входит.
-            </p>
           </div>
         )}
       </div>
