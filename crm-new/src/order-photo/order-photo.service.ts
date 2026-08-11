@@ -9,6 +9,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import DtoCreateOrder from './dto/create-order.dto';
 import { calcItemPricePosition } from './order-pricing';
+import { LeadMoneyError, resolveLeadMoney } from './lead-pricing';
 import {
   buildCommunicationUrl,
   validateCommunicationValue,
@@ -369,7 +370,24 @@ export class OrderPhotoService {
         dto.delivery === 'yandex_pvz'
           ? EnumDeliveryMethod.YANDEX_PVZ
           : EnumDeliveryMethod.PICKUP;
-      const total = Math.max(0, dto.total ?? 0);
+      // Цену считает сайт (в его форме поля цены нет — клиент её не задаёт),
+      // но CRM не принимает числа на веру: сверяем «цена × тираж = итог» и
+      // сумму позиции считаем сами. Расхождение — отказ, потому что дальше по
+      // этой сумме считается зарплата и расчёт с партнёром.
+      let money;
+      try {
+        money = resolveLeadMoney({
+          quantity: dto.quantity,
+          unitPrice: dto.unitPrice,
+          total: dto.total,
+        });
+      } catch (err) {
+        if (err instanceof LeadMoneyError) {
+          throw new BadRequestException(err.message);
+        }
+        throw err;
+      }
+      const total = money.pricePosition;
       const noteLines = [
         `🆕 Заявка с сайта`,
         dto.leadId ? `ID заявки: ${dto.leadId}` : null,
@@ -382,7 +400,7 @@ export class OrderPhotoService {
         dto.productSlug ? `Slug: ${dto.productSlug}` : null,
         dto.quantity ? `Тираж: ${dto.quantity} шт` : null,
         dto.unitPrice ? `Цена за шт: ${dto.unitPrice} ₽` : null,
-        dto.total ? `Итого: ${dto.total} ₽` : null,
+        money.pricePosition ? `Итого: ${money.pricePosition} ₽` : null,
         dto.delivery ? `Получение: ${dto.delivery === 'yandex_pvz' ? 'Яндекс ПВЗ' : 'Самовывоз'}` : null,
         dto.photosArchiveUrl ? `Архив фото: ${dto.photosArchiveUrl}` : null,
         dto.photosCount != null ? `Фото: ${dto.photosCount} шт` : null,
@@ -409,7 +427,28 @@ export class OrderPhotoService {
           totalOrder: total,
           productCategory: dto.productCategory ?? EnumProductCategory.PHOTO,
           note: noteLines.join('\n'),
+          // Позицию заводим сразу: иначе администратору пришлось бы переносить
+          // товар и тираж из примечания руками — это ошибки и потеря времени.
+          ...(money.quantity > 0
+            ? {
+                items: {
+                  create: [
+                    {
+                      formatPaper:
+                        dto.productName?.trim() ||
+                        dto.productSlug?.trim() ||
+                        'Заявка с сайта',
+                      typePaper: 'GLOSS' as const,
+                      quantity: money.quantity,
+                      price: money.unitPrice,
+                      pricePosition: money.pricePosition,
+                    },
+                  ],
+                },
+              }
+            : {}),
         },
+        include: { items: true },
       });
     });
   }

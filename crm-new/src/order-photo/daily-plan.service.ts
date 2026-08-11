@@ -227,7 +227,8 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
     // группа создаётся здесь — иначе задача потерялась бы.
     for (const task of openTasks) {
       if (!task.assignee) continue;
-      ensureGroup(task.assigneeId, task.assignee).tasks.push({
+      const group = ensureGroup(task.assigneeId, task.assignee);
+      (group.tasks ??= []).push({
         title: task.title,
         deadline: task.deadline,
         rewardAmount: task.rewardAmount,

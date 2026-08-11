@@ -28,6 +28,9 @@ services:
       DATABASE_URL: postgresql://crm_user:${DB_PASSWORD}@postgres:5432/crm
       JWT_SECRET: ${JWT_SECRET}
       CRM_LEAD_TOKEN: ${CRM_LEAD_TOKEN}
+      # Подпись заявок с сайта: секрет и жёсткий режим (см. .env.example).
+      CRM_LEAD_SIGNING_SECRET: ${CRM_LEAD_SIGNING_SECRET:-}
+      CRM_LEAD_REQUIRE_SIGNATURE: ${CRM_LEAD_REQUIRE_SIGNATURE:-false}
       JWT_EXPIRES_IN: 7d
       PORT: 3000
       # Бизнес живёт по Москве: без TZ отчёты режут месяцы/недели по UTC,

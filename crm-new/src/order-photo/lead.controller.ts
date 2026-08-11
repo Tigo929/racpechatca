@@ -15,8 +15,13 @@ import { SiteLeadTokenGuard } from './site-lead-token.guard';
 /**
  * Публичный контроллер для заявок с лендинга.
  * НЕ защищён JWT — сюда шлёт сервер сайта без пользовательской авторизации.
- * Машинный Bearer-токен обязателен, иначе любой сможет создавать мусорные лиды.
- * Rate limit: 5 запросов / 60 сек с одного IP — дополнительная защита от спама.
+ * Защита: машинный токен + подпись тела (см. SiteLeadTokenGuard).
+ *
+ * Лимит намеренно щедрый. Заявки идут с ОДНОГО IP — сервера сайта, поэтому
+ * лимит по IP не отсекает спамера (его отсекает токен), зато при пяти запросах
+ * в минуту резал бы настоящие заказы в час пик: ретраи сайта укладываются в
+ * пару секунд и такой отказ не переживут — заявка потеряется. Оставляем потолок
+ * как страховку на случай утечки токена.
  */
 @Controller('order-photo')
 @UseGuards(SiteLeadTokenGuard, ThrottlerGuard)
@@ -28,7 +33,7 @@ import { SiteLeadTokenGuard } from './site-lead-token.guard';
     transformOptions: { enableImplicitConversion: true },
   }),
 )
-@Throttle({ default: { ttl: 60_000, limit: 5 } })
+@Throttle({ default: { ttl: 60_000, limit: 60 } })
 export class LeadController {
   constructor(private readonly orderPhotoService: OrderPhotoService) {}
 
