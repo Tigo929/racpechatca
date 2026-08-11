@@ -389,8 +389,12 @@ export class OrderPhotoService {
         throw err;
       }
       const total = money.pricePosition;
+      // Пожелания клиента — вверху: их читают в первую очередь, а не ищут
+      // среди технических строк вроде yclid и ссылок на архив.
+      const clientComment = dto.comment?.trim() || dto.description?.trim() || '';
       const noteLines = [
         `🆕 Заявка с сайта`,
+        clientComment ? `💬 Клиент просит: ${clientComment}` : null,
         dto.leadId ? `ID заявки: ${dto.leadId}` : null,
         `Имя: ${dto.name}`,
         `Телефон: ${dto.phone}`,
@@ -410,7 +414,6 @@ export class OrderPhotoService {
         dto.yclid ? `yclid: ${dto.yclid}` : null,
         dto.pageUrl ? `Страница: ${dto.pageUrl}` : null,
         dto.submittedAt ? `Отправлено на сайте: ${dto.submittedAt}` : null,
-        dto.description ? `Описание: ${dto.description}` : null,
       ].filter(Boolean);
 
       return tx.orderPhoto.create({

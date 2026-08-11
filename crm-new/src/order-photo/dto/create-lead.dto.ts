@@ -119,6 +119,16 @@ export class DtoCreateLead {
   @MaxLength(2000)
   description?: string;
 
+  /**
+   * Комментарий клиента с формы сайта. Сайт шлёт именно `comment`, и пока
+   * этого поля тут не было, ValidationPipe с whitelist молча его выбрасывал —
+   * пожелания клиента («нужно к пятнице») до CRM не доходили.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  comment?: string;
+
   @IsOptional()
   @IsEnum(EnumProductCategory)
   productCategory?: EnumProductCategory;

@@ -1,5 +1,13 @@
-import { Body, Controller, Headers, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Headers,
+  Post,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { timingSafeEqual } from 'node:crypto';
 import { TelegramUpdateService } from './telegram-update.service';
 import type { TgUpdate } from './telegram-update.service';
 
@@ -28,8 +36,24 @@ export class TelegramWebhookController {
     @Body() update: TgUpdate,
     @Headers('x-telegram-bot-api-secret-token') secret?: string,
   ) {
-    if (this.secret && secret !== this.secret) return { ok: true };
+    // Без секрета эндпоинт закрыт. Раньше проверка при пустом секрете просто
+    // пропускалась, и любой запрос снаружи мог двигать статусы заказов,
+    // отмечать отзывы и ставить события выплат в очередь партнёру.
+    if (!this.secret) {
+      throw new ServiceUnavailableException('Вебхук Telegram не настроен');
+    }
+    if (!constantTimeEqual(secret ?? '', this.secret)) {
+      throw new UnauthorizedException('Неверный секрет вебхука');
+    }
     await this.updates.handleUpdate(update);
     return { ok: true };
   }
+}
+
+/** Сравнение секретов за постоянное время — длина сверяется отдельно. */
+function constantTimeEqual(given: string, expected: string): boolean {
+  const a = Buffer.from(given);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }
