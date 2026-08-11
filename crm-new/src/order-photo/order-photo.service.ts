@@ -21,6 +21,7 @@ import { DtoCreateLead } from './dto/create-lead.dto';
 import { DtoAssignExecutor } from './dto/assign-executor.dto';
 import {
   EnumCommunication,
+  EnumDeliveryMethod,
   EnumProductCategory,
   EnumRole,
   EnumStatus,
@@ -324,6 +325,13 @@ export class OrderPhotoService {
 
   async createLead(dto: DtoCreateLead) {
     return this.prisma.$transaction(async (tx) => {
+      if (dto.leadId) {
+        const existing = await tx.orderPhoto.findUnique({
+          where: { externalRequestId: dto.leadId },
+        });
+        if (existing) return existing;
+      }
+
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(1001)`;
 
       const now = new Date();
@@ -337,27 +345,69 @@ export class OrderPhotoService {
       const lastSeq = Number(seqResult[0]?.max ?? 0);
       const lengthOrder = String(lastSeq + 1).padStart(3, '0');
 
-      const tgRaw = (dto.telegram ?? '').trim().replace(/^@/, '');
+      const tgRaw = ((dto.telegram ?? '') || (dto.contactMethod === 'telegram' ? dto.contactValue ?? '' : ''))
+        .trim()
+        .replace(/^@/, '');
+      const contactMethod = dto.contactMethod ?? (tgRaw ? 'telegram' : 'max');
+      const communicationPlatform =
+        contactMethod === 'telegram'
+          ? EnumCommunication.TELEGRAM
+          : EnumCommunication.MAX;
+      const maxLinkTemplate = (await this.partnerSettings.get(tx)).maxLinkTemplate;
+      const communicationValue =
+        contactMethod === 'telegram'
+          ? `@${tgRaw}`
+          : contactMethod === 'max'
+            ? (dto.contactValue ?? dto.phone)
+            : dto.phone;
+      const urlCommunication = buildCommunicationUrl(
+        communicationPlatform,
+        communicationValue,
+        maxLinkTemplate,
+      );
+      const deliveryMethod =
+        dto.delivery === 'yandex_pvz'
+          ? EnumDeliveryMethod.YANDEX_PVZ
+          : EnumDeliveryMethod.PICKUP;
+      const total = Math.max(0, dto.total ?? 0);
       const noteLines = [
         `🆕 Заявка с сайта`,
+        dto.leadId ? `ID заявки: ${dto.leadId}` : null,
         `Имя: ${dto.name}`,
         `Телефон: ${dto.phone}`,
-        tgRaw ? `Telegram: @${tgRaw}` : null,
+        contactMethod === 'telegram' && tgRaw ? `Telegram: @${tgRaw}` : null,
+        contactMethod === 'max' && dto.contactValue ? `MAX: ${dto.contactValue}` : null,
+        contactMethod === 'email' && dto.contactValue ? `Email: ${dto.contactValue}` : null,
+        dto.productName ? `Товар: ${dto.productName}` : null,
+        dto.productSlug ? `Slug: ${dto.productSlug}` : null,
+        dto.quantity ? `Тираж: ${dto.quantity} шт` : null,
+        dto.unitPrice ? `Цена за шт: ${dto.unitPrice} ₽` : null,
+        dto.total ? `Итого: ${dto.total} ₽` : null,
+        dto.delivery ? `Получение: ${dto.delivery === 'yandex_pvz' ? 'Яндекс ПВЗ' : 'Самовывоз'}` : null,
+        dto.photosArchiveUrl ? `Архив фото: ${dto.photosArchiveUrl}` : null,
+        dto.photosCount != null ? `Фото: ${dto.photosCount} шт` : null,
+        dto.photosFailed ? 'Фото загружались, но архив не сохранился' : null,
+        dto.cloudLink ? `Ссылка на облако: ${dto.cloudLink}` : null,
+        dto.yclid ? `yclid: ${dto.yclid}` : null,
+        dto.pageUrl ? `Страница: ${dto.pageUrl}` : null,
+        dto.submittedAt ? `Отправлено на сайте: ${dto.submittedAt}` : null,
         dto.description ? `Описание: ${dto.description}` : null,
       ].filter(Boolean);
 
       return tx.orderPhoto.create({
         data: {
           numberOrder: fullDate(lengthOrder),
+          externalRequestId: dto.leadId,
 
           status: EnumStatus.LEAD,
+          statusChangedAt: new Date(),
           sourceOrder: 'LOCAL',
-          communicationPlatform: tgRaw ? 'TELEGRAM' : 'MAX',
-          urlCommunication: tgRaw ? `https://t.me/${tgRaw}` : dto.phone,
-          deliveryMethod: 'PICKUP',
+          communicationPlatform,
+          urlCommunication,
+          deliveryMethod,
           deliveryCost: 0,
-          totalOrder: 0,
-          productCategory: dto.productCategory ?? 'TSHIRT',
+          totalOrder: total,
+          productCategory: dto.productCategory ?? EnumProductCategory.PHOTO,
           note: noteLines.join('\n'),
         },
       });

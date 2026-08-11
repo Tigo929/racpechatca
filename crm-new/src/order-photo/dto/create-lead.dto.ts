@@ -1,9 +1,16 @@
 import {
+  IsBoolean,
   IsEnum,
+  IsIn,
+  IsInt,
+  IsISO8601,
   IsOptional,
   IsString,
+  IsUrl,
   MaxLength,
+  Max,
   MinLength,
+  Min,
 } from 'class-validator';
 import { EnumProductCategory } from 'src/generated/prisma/enums';
 
@@ -12,6 +19,11 @@ import { EnumProductCategory } from 'src/generated/prisma/enums';
  * Превращается в заказ со статусом LEAD, который видит администратор в CRM.
  */
 export class DtoCreateLead {
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  leadId?: string;
+
   @IsString()
   @MinLength(2, { message: 'Укажите имя' })
   @MaxLength(120)
@@ -26,6 +38,81 @@ export class DtoCreateLead {
   @IsString()
   @MaxLength(120)
   telegram?: string;
+
+  @IsOptional()
+  @IsIn(['telegram', 'max', 'email'])
+  contactMethod?: 'telegram' | 'max' | 'email';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  contactValue?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  productSlug?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  productName?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100000)
+  quantity?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1000000)
+  unitPrice?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100000000)
+  total?: number;
+
+  @IsOptional()
+  @IsIn(['yandex_pvz', 'pickup'])
+  delivery?: 'yandex_pvz' | 'pickup';
+
+  @IsOptional()
+  @IsUrl({ require_protocol: true })
+  @MaxLength(600)
+  photosArchiveUrl?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1000)
+  photosCount?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  photosFailed?: boolean;
+
+  @IsOptional()
+  @IsUrl({ require_protocol: true })
+  @MaxLength(600)
+  cloudLink?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  yclid?: string;
+
+  @IsOptional()
+  @IsUrl({ require_protocol: true })
+  @MaxLength(600)
+  pageUrl?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  submittedAt?: string;
 
   @IsOptional()
   @IsString()

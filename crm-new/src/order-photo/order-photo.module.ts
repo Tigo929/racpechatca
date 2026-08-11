@@ -13,6 +13,7 @@ import { DailyPlanService } from './daily-plan.service';
 import { ShipmentLeadService } from './shipment-lead.service';
 import { PartnerSettingsModule } from 'src/partner/partner-settings.module';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
+import { SiteLeadTokenGuard } from './site-lead-token.guard';
 
 @Module({
   imports: [TelegramModule, StickerModule, PartnerSettingsModule, GulianModule],
@@ -26,6 +27,7 @@ import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service'
     DailyPlanService,
     ShipmentLeadService,
     TshirtPartnerTelegramService,
+    SiteLeadTokenGuard,
   ],
 })
 export class OrderPhotoModule {}
