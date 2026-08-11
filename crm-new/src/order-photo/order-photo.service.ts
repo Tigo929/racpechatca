@@ -32,6 +32,7 @@ import { OrderFinancialIntegrityService } from './order-financial-integrity.serv
 import {
   calculateSalarySnapshot,
   calculateManagerSalarySnapshot,
+  earnsStaffSalary,
 } from 'src/salary/salary-calculation';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
@@ -1046,7 +1047,11 @@ export class OrderPhotoService {
       // При переводе в SENT создаём начисление зарплаты исполнителю.
       // Это должно работать и для админа, и для назначенного исполнителя:
       // пользователь двигает статус, а финансовая целостность остаётся серверной.
-      if (newStatus === EnumStatus.SENT && lockedOrder.executorId) {
+      if (
+        newStatus === EnumStatus.SENT &&
+        lockedOrder.executorId &&
+        earnsStaffSalary(lockedOrder.productCategory)
+      ) {
         const executor = await tx.user.findUnique({
           where: { id: lockedOrder.executorId },
         });
@@ -1082,7 +1087,11 @@ export class OrderPhotoService {
 
       // При переводе в SENT начисляем зарплату менеджеру по оформлению:
       // базовая ставка (чек − доставка − дизайн) + премия за дизайн.
-      if (newStatus === EnumStatus.SENT && lockedOrder.processedById) {
+      if (
+        newStatus === EnumStatus.SENT &&
+        lockedOrder.processedById &&
+        earnsStaffSalary(lockedOrder.productCategory)
+      ) {
         const manager = await tx.user.findUnique({
           where: { id: lockedOrder.processedById },
         });

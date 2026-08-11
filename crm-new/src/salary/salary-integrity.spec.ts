@@ -12,7 +12,7 @@ import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 import { TshirtPartnerTelegramService } from 'src/order-photo/tshirt-partner-telegram.service';
 import { GulianOutboxService } from 'src/gulian/gulian-outbox.service';
 import { SalaryService } from './salary.service';
-import { calculateSalarySnapshot } from './salary-calculation';
+import { calculateSalarySnapshot, earnsStaffSalary } from './salary-calculation';
 
 type AsyncMock = jest.Mock<Promise<unknown>, unknown[]>;
 
@@ -172,6 +172,88 @@ function setupCompletion(productCategory: 'PHOTO' | 'TSHIRT' = 'PHOTO') {
   return { stub, service: createOrderService(stub) };
 }
 
+/**
+ * Стенд с менеджером по оформлению. У футболок исполнителя нет (назначить его
+ * на них запрещено), у фото он обязателен — без него заказ не отправить.
+ */
+function setupWithManager(productCategory: 'PHOTO' | 'TSHIRT') {
+  const stub = createPrismaStub();
+  const isTshirt = productCategory === 'TSHIRT';
+  const order = {
+    ...makeOrder(productCategory),
+    executorId: isTshirt ? null : 'executor-1',
+    executor: isTshirt ? null : { id: 'executor-1', username: 'Иван' },
+    processedById: 'manager-1',
+    designDevelopmentCost: 0,
+  };
+  stub.orderPhoto.findUnique.mockResolvedValue(order);
+  stub.user.findUnique.mockImplementation((args: unknown) => {
+    const { where } = args as { where: { id: string } };
+    return Promise.resolve(
+      where.id === 'manager-1'
+        ? {
+            id: 'manager-1',
+            role: EnumRole.ORDER_MANAGER,
+            rateBasisPoints: 1000,
+            designRateBasisPoints: 4000,
+          }
+        : { id: 'executor-1', rateBasisPoints: 3000 },
+    );
+  });
+  stub.salaryAccrual.findFirst.mockResolvedValue(null);
+  stub.salaryAccrual.create.mockResolvedValue({ id: 'accrual-1' });
+  stub.statusHistory.create.mockResolvedValue({ id: 'history-1' });
+  stub.orderPhoto.update.mockResolvedValue({
+    ...order,
+    status: EnumStatus.SENT,
+  });
+  return { stub, service: createOrderService(stub) };
+}
+
+describe('зарплата по категориям товара', () => {
+  it('фото — начисляем, футболки — нет', () => {
+    expect(earnsStaffSalary('PHOTO')).toBe(true);
+    expect(earnsStaffSalary('TSHIRT')).toBe(false);
+  });
+
+  it('менеджеру за фотозаказ начисление создаётся', async () => {
+    const { stub, service } = setupWithManager('PHOTO');
+
+    await service.updateStatusOrder(
+      'order-1',
+      { status: EnumStatus.SENT },
+      'admin-1',
+      EnumRole.ADMIN,
+    );
+
+    // По фотозаказу платят обоим: исполнителю за работу, менеджеру за оформление.
+    const calls = stub.salaryAccrual.create.mock.calls.map(
+      (c) => (c[0] as { data: { kind?: string; salaryAmount: number } }).data,
+    );
+    expect(calls.map((d) => d.kind)).toEqual(
+      expect.arrayContaining(['EXECUTOR', 'MANAGER']),
+    );
+    const manager = calls.find((d) => d.kind === 'MANAGER');
+    // (5000 − 500 доставка − 0 дизайн) × 10% = 450
+    expect(manager?.salaryAmount).toBe(450);
+  });
+
+  // Та самая дыра: менеджер на футболочном заказе получал бы 450 ₽ сверх
+  // вознаграждения партнёру за ту же работу.
+  it('менеджеру за футболки не начисляем — за них платим партнёру', async () => {
+    const { stub, service } = setupWithManager('TSHIRT');
+
+    await service.updateStatusOrder(
+      'order-1',
+      { status: EnumStatus.SENT },
+      'admin-1',
+      EnumRole.ADMIN,
+    );
+
+    expect(stub.salaryAccrual.create).not.toHaveBeenCalled();
+  });
+});
+
 describe('salary accrual integrity', () => {
   it('calculates 5000 - 500 at 30% as 1350', () => {
     expect(calculateSalarySnapshot(5000, 500, 3000)).toEqual({
@@ -250,24 +332,36 @@ describe('salary accrual integrity', () => {
     expect(stub.salaryAccrual.create).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['PHOTO', 'TSHIRT'] as const)(
-    'creates salary for a %s order on send',
-    async (productCategory) => {
-      const { stub, service } = setupCompletion(productCategory);
+  it('creates salary for a PHOTO order on send', async () => {
+    const { stub, service } = setupCompletion('PHOTO');
 
-      await service.updateStatusOrder(
-        'order-1',
-        { status: EnumStatus.SENT },
-        'admin-1',
-        EnumRole.ADMIN,
-      );
+    await service.updateStatusOrder(
+      'order-1',
+      { status: EnumStatus.SENT },
+      'admin-1',
+      EnumRole.ADMIN,
+    );
 
-      const createArg = stub.salaryAccrual.create.mock.calls[0]?.[0] as {
-        data: { salaryAmount: number };
-      };
-      expect(createArg.data.salaryAmount).toBe(1350);
-    },
-  );
+    const createArg = stub.salaryAccrual.create.mock.calls[0]?.[0] as {
+      data: { salaryAmount: number };
+    };
+    expect(createArg.data.salaryAmount).toBe(1350);
+  });
+
+  // Футболки печатает партнёр и получает за них вознаграждение. Начислить
+  // сверху процент своему сотруднику — заплатить за одну работу дважды.
+  it('не начисляет зарплату сотрудникам за заказ на футболки', async () => {
+    const { stub, service } = setupCompletion('TSHIRT');
+
+    await service.updateStatusOrder(
+      'order-1',
+      { status: EnumStatus.SENT },
+      'admin-1',
+      EnumRole.ADMIN,
+    );
+
+    expect(stub.salaryAccrual.create).not.toHaveBeenCalled();
+  });
 
   it('lets an assigned executor send an order and still creates salary', async () => {
     const { stub, service } = setupCompletion();

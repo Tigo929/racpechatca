@@ -1,5 +1,25 @@
 import { BadRequestException } from '@nestjs/common';
-import type { EnumAccrualStatus } from 'src/generated/prisma/enums';
+import type {
+  EnumAccrualStatus,
+  EnumProductCategory,
+} from 'src/generated/prisma/enums';
+
+/**
+ * Начисляется ли зарплата своим сотрудникам по заказу этой категории.
+ *
+ * Футболки печатает партнёр-подрядчик и получает за них вознаграждение
+ * (расход PARTNER_REWARD: его доля + возврат материалов). Начислить сверху
+ * процент своему сотруднику — заплатить за одну работу дважды, поэтому по
+ * футболочным заказам зарплата не начисляется (решение владельца).
+ *
+ * Назначение исполнителя на такой заказ запрещено отдельно, но менеджер по
+ * оформлению на футболках бывает — поэтому проверка нужна именно здесь.
+ */
+export function earnsStaffSalary(
+  productCategory: EnumProductCategory,
+): boolean {
+  return productCategory !== 'TSHIRT';
+}
 
 export interface SalarySnapshot {
   salaryBase: number;
