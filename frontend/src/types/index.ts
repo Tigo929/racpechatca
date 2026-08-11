@@ -284,12 +284,16 @@ export interface OrdersQuery {
 
 // ── Salary types ──────────────────────────────────────────────────────────────
 
-export type EnumAccrualKind = 'EXECUTOR' | 'MANAGER';
+export type EnumAccrualKind = 'EXECUTOR' | 'MANAGER' | 'BONUS';
 
 export interface AccrualBrief {
   id: string;
-  orderNumber: string;
+  /** Пусто у премий: они начисляются вне заказа. */
+  orderNumber: string | null;
   completedAt: string | null;
+  /** За что начислено — заполняется у премий. */
+  note?: string | null;
+  createdAt?: string;
   urlCommunication?: string | null;
   communicationPlatform?: EnumCommunication | null;
   /** Тип начисления: исполнителю за производство или менеджеру за оформление. */
@@ -307,8 +311,11 @@ export interface AccrualBrief {
 
 export interface ClosedAccrualBrief {
   id: string;
-  orderNumber: string;
+  orderNumber: string | null;
   completedAt: string | null;
+  kind?: EnumAccrualKind;
+  note?: string | null;
+  createdAt?: string;
   salaryAmount: number;
   paidAmount: number;
   status: EnumAccrualStatus;
@@ -360,7 +367,10 @@ export interface PaymentByAccrualsResult {
   totalAmount: number;
   accruals: Array<{
     id: string;
-    orderNumber: string;
+    /** Пусто у премий — они начисляются вне заказа. */
+    orderNumber: string | null;
+    kind?: EnumAccrualKind;
+    note?: string | null;
     orderDate: string;
     totalOrder: number;
     deliveryCost: number;

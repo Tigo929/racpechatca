@@ -413,6 +413,9 @@ enum EnumAccrualStatus {
 enum EnumAccrualKind {
   EXECUTOR
   MANAGER
+  /// Ручная премия от администратора: к заказу не привязана, поэтому orderId
+  /// пустой, база и ставка нулевые, а salaryAmount — назначенная сумма.
+  BONUS
 }
 
 model SalaryAccrual {
@@ -420,13 +423,21 @@ model SalaryAccrual {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  orderId String
-  order   OrderPhoto @relation(fields: [orderId], references: [id])
+  // Пусто у премий (kind=BONUS): они начисляются вне заказа.
+  orderId String?
+  order   OrderPhoto? @relation(fields: [orderId], references: [id])
 
   executorId String
   executor   User   @relation(fields: [executorId], references: [id])
 
   kind EnumAccrualKind @default(EXECUTOR)
+
+  /// За что начислено. Обязательно заполняется у премий — иначе через месяц
+  /// никто не вспомнит, за какую работу заплатили.
+  note String?
+
+  /// Кто начислил премию (администратор). У начислений по заказам пусто.
+  createdById String?
 
   salaryBase      Int
   rateBasisPoints Int

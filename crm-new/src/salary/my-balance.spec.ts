@@ -66,7 +66,7 @@ describe('SalaryService.getMyBalance', () => {
     await service.getMyBalance('ex-42');
 
     const accrualArgs = prisma.salaryAccrual.findMany.mock.calls[0][0] as {
-      where: { executorId: string; status: unknown; order: unknown };
+      where: { executorId: string; status: unknown; OR: unknown };
     };
     const paymentArgs = prisma.salaryPayment.findMany.mock.calls[0][0] as {
       where: { executorId: string };
@@ -76,7 +76,11 @@ describe('SalaryService.getMyBalance', () => {
     expect(paymentArgs.where.executorId).toBe('ex-42');
     // REVERSED — снятые начисления, в личном балансе им не место.
     expect(accrualArgs.where.status).toEqual({ not: 'REVERSED' });
-    expect(accrualArgs.where.order).toEqual({ status: EnumStatus.SENT });
+    // Долг по заказам — с момента отгрузки, премии — сразу после начисления.
+    expect(accrualArgs.where.OR).toEqual([
+      { order: { status: EnumStatus.SENT } },
+      { kind: 'BONUS' },
+    ]);
   });
 
   it('не раскрывает чеки заказов: в выборке нет полей заказа', async () => {

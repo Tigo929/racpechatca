@@ -88,7 +88,16 @@ function AccrualRow({
       </td>
       <td className="py-2.5 px-3 font-mono text-sm font-medium">
         <div className="flex items-center gap-1.5">
-          <span>{accrual.orderNumber}</span>
+          {accrual.kind === 'BONUS' ? (
+            <span className="inline-flex items-center gap-1 font-sans">
+              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-xs font-semibold">
+                Премия
+              </span>
+              <span className="text-gray-600 font-normal">{accrual.note}</span>
+            </span>
+          ) : (
+            <span>{accrual.orderNumber}</span>
+          )}
           {accrual.urlCommunication && (
             <a
               href={accrual.urlCommunication}
@@ -135,6 +144,110 @@ function AccrualRow({
 
 // ── Detail panel ──────────────────────────────────────────────────────────────
 
+/**
+ * Ручная премия сотруднику. Это обычное начисление вне заказа: попадает в долг
+ * и закрывается выплатами по общим правилам. Описание обязательно — через
+ * месяц по сумме уже не вспомнить, за что платили.
+ */
+function BonusForm({
+  executorId,
+  onDone,
+}: {
+  executorId: string;
+  onDone: () => void;
+}) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [error, setError] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      salaryApi.createBonus({
+        executorId,
+        amount: Math.round(Number(amount)),
+        note: note.trim(),
+      }),
+    onSuccess: () => {
+      setAmount('');
+      setNote('');
+      setError('');
+      setOpen(false);
+      void qc.invalidateQueries({ queryKey: ['salary-summary'] });
+      onDone();
+    },
+    onError: (e) => setError(getErrorMessage(e)),
+  });
+
+  const submit = () => {
+    const sum = Math.round(Number(amount));
+    if (!Number.isFinite(sum) || sum <= 0) {
+      setError('Укажите сумму премии больше нуля');
+      return;
+    }
+    if (note.trim().length < 3) {
+      setError('Опишите, за что премия');
+      return;
+    }
+    setError('');
+    mutation.mutate();
+  };
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="text-sm px-3 py-1.5 rounded-lg border border-dashed border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors"
+      >
+        + Начислить премию
+      </button>
+    );
+  }
+
+  return (
+    <div className="border border-amber-200 bg-amber-50/50 rounded-xl p-3 space-y-2">
+      <p className="text-sm font-semibold text-gray-900">Премия сотруднику</p>
+      <div className="grid sm:grid-cols-[140px_1fr] gap-2">
+        <input
+          type="number"
+          min={1}
+          placeholder="Сумма, ₽"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+        />
+        <input
+          type="text"
+          placeholder="За что: переработка, срочный заказ, помощь…"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+        />
+      </div>
+      {error && <p className="text-red-600 text-sm">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          onClick={() => { setOpen(false); setError(''); }}
+          className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
+        >
+          Отмена
+        </button>
+        <button
+          onClick={submit}
+          disabled={mutation.isPending}
+          className="px-3 py-1.5 text-sm font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-60"
+        >
+          {mutation.isPending ? 'Начисление…' : 'Начислить'}
+        </button>
+      </div>
+      <p className="text-xs text-gray-500">
+        Премия сразу попадёт в долг сотруднику и будет видна ему в «Моей зарплате».
+      </p>
+    </div>
+  );
+}
+
 function ExecutorDetail({
   executor,
   onPaymentDone,
@@ -150,7 +263,10 @@ function ExecutorDetail({
   const [error, setError] = useState('');
 
   const pending = executor.pendingAccruals;
-  const allRows = [...pending].sort((a, b) => a.orderNumber.localeCompare(b.orderNumber));
+  // У премий номера заказа нет — сортируем их отдельно, вниз списка.
+  const allRows = [...pending].sort((a, b) =>
+    (a.orderNumber ?? '￿').localeCompare(b.orderNumber ?? '￿'),
+  );
 
   const selectedTotal = useMemo(
     () => pending.filter((a) => selected.has(a.id)).reduce((s, a) => s + a.debt, 0),
@@ -206,11 +322,14 @@ function ExecutorDetail({
             {' · '}оплачено ранее: <strong className="text-green-600">{executor.closedAccruals.length}</strong>
           </p>
         </div>
-        {pending.length > 0 && (
-          <button onClick={toggleAll} className="text-sm text-blue-600 hover:underline">
-            {selected.size === pending.length ? 'Снять все' : 'Выбрать все'}
-          </button>
-        )}
+        <div className="flex flex-col items-end gap-2">
+          {pending.length > 0 && (
+            <button onClick={toggleAll} className="text-sm text-blue-600 hover:underline">
+              {selected.size === pending.length ? 'Снять все' : 'Выбрать все'}
+            </button>
+          )}
+          <BonusForm executorId={executor.id} onDone={onPaymentDone} />
+        </div>
       </div>
 
       {/* Table */}

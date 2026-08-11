@@ -48,11 +48,14 @@ function buildReceiptHtml(
   result: PaymentByAccrualsResult,
 ): string {
   const title = buildReceiptTitle(executor, result);
+  // У премии номера заказа нет — в расписке пишем, за что она начислена.
+  const rowLabel = (a: PaymentByAccrualsResult['accruals'][number]): string =>
+    a.orderNumber ?? `Премия${a.note ? `: ${a.note}` : ''}`;
   const rows = [...result.accruals]
-    .sort((a, b) => a.orderNumber.localeCompare(b.orderNumber))
+    .sort((a, b) => rowLabel(a).localeCompare(rowLabel(b)))
     .map(
       (a) => `<tr>
-        <td>${escapeHtml(a.orderNumber)}</td>
+        <td>${escapeHtml(rowLabel(a))}</td>
         <td>${formatDate(a.orderDate)}</td>
         <td class="num">${formatCurrency(a.totalOrder)}</td>
         <td class="num">${formatCurrency(a.deliveryCost)}</td>

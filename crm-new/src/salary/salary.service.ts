@@ -8,6 +8,7 @@ import { EnumStatus } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DtoCreatePayment } from './dto/create-payment.dto';
 import { DtoCreatePaymentByAccruals } from './dto/create-payment-by-accruals.dto';
+import { DtoCreateBonus } from './dto/create-bonus.dto';
 
 @Injectable()
 export class SalaryService {
@@ -48,7 +49,8 @@ export class SalaryService {
     return executors.map((ex) => {
       const pending = ex.salaryAccruals.filter(
         (a) =>
-          a.order.status === EnumStatus.SENT &&
+          // Премия к заказу не привязана — она в долге с момента начисления.
+          (a.kind === 'BONUS' || a.order?.status === EnumStatus.SENT) &&
           (a.status === 'PENDING' || a.status === 'PARTIALLY_PAID') &&
           a.paidAmount < a.salaryAmount,
       );
@@ -80,11 +82,14 @@ export class SalaryService {
         totalPaid,
         pendingAccruals: pending.map((a) => ({
           id: a.id,
-          orderNumber: a.order.numberOrder,
-          completedAt: a.order.completedAt,
-          urlCommunication: a.order.urlCommunication,
-          communicationPlatform: a.order.communicationPlatform,
+          orderNumber: a.order?.numberOrder ?? null,
+          completedAt: a.order?.completedAt ?? null,
+          urlCommunication: a.order?.urlCommunication ?? null,
+          communicationPlatform: a.order?.communicationPlatform ?? null,
           kind: a.kind,
+          // За что премия — показываем в списке начислений.
+          note: a.note,
+          createdAt: a.createdAt,
           salaryBase: a.salaryBase,
           rateBasisPoints: a.rateBasisPoints,
           designBase: a.designBase,
@@ -96,8 +101,11 @@ export class SalaryService {
         })),
         closedAccruals: closed.map((a) => ({
           id: a.id,
-          orderNumber: a.order.numberOrder,
-          completedAt: a.order.completedAt,
+          orderNumber: a.order?.numberOrder ?? null,
+          completedAt: a.order?.completedAt ?? null,
+          kind: a.kind,
+          note: a.note,
+          createdAt: a.createdAt,
           salaryAmount: a.salaryAmount,
           paidAmount: a.paidAmount,
           status: a.status,
@@ -121,7 +129,9 @@ export class SalaryService {
         where: {
           executorId,
           status: { not: 'REVERSED' },
-          order: { status: EnumStatus.SENT },
+          // Долг по заказам считаем с момента отгрузки. Премии к заказу не
+          // привязаны — они попадают в долг сразу, как только начислены.
+          OR: [{ order: { status: EnumStatus.SENT } }, { kind: 'BONUS' }],
         },
         select: { salaryAmount: true, paidAmount: true, status: true },
       }),
@@ -192,10 +202,12 @@ export class SalaryService {
       const lockedRows = await tx.$queryRaw<{ id: string }[]>`
         SELECT "SalaryAccrual"."id"
         FROM "SalaryAccrual"
-        JOIN "OrderPhoto" ON "OrderPhoto"."id" = "SalaryAccrual"."orderId"
+        LEFT JOIN "OrderPhoto" ON "OrderPhoto"."id" = "SalaryAccrual"."orderId"
         WHERE "SalaryAccrual"."executorId" = ${dto.executorId}
           AND "SalaryAccrual"."status" IN ('PENDING', 'PARTIALLY_PAID')
-          AND "OrderPhoto"."status" = ${EnumStatus.SENT}
+          -- Премия без заказа тоже подлежит выплате наравне с начислениями.
+          AND ("OrderPhoto"."status" = ${EnumStatus.SENT}
+               OR "SalaryAccrual"."kind" = 'BONUS')
         ORDER BY "SalaryAccrual"."createdAt" ASC, "SalaryAccrual"."id" ASC
         FOR UPDATE OF "SalaryAccrual"
       `;
@@ -358,8 +370,9 @@ export class SalaryService {
         await tx.paymentAccrualLink.create({
           data: { paymentId: payment.id, accrualId: accrual.id, amount },
         });
-        // Переводим заказ в PAID только если он ещё не PAID (идемпотентно)
-        if (accrual.order.status !== 'PAID') {
+        // Премия к заказу не привязана — двигать нечего.
+        // Заказ переводим в PAID только если он ещё не PAID (идемпотентно).
+        if (accrual.orderId && accrual.order && accrual.order.status !== 'PAID') {
           await tx.orderPhoto.update({
             where: { id: accrual.orderId },
             data: { status: 'PAID' },
@@ -381,15 +394,70 @@ export class SalaryService {
         totalAmount,
         accruals: accruals.map((a) => ({
           id: a.id,
-          orderNumber: a.order.numberOrder,
-          orderDate: a.order.createdAt,
-          totalOrder: a.order.totalOrder,
-          deliveryCost: a.order.deliveryCost,
+          orderNumber: a.order?.numberOrder ?? null,
+          orderDate: a.order?.createdAt ?? a.createdAt,
+          totalOrder: a.order?.totalOrder ?? 0,
+          deliveryCost: a.order?.deliveryCost ?? 0,
+          kind: a.kind,
+          note: a.note,
           salaryBase: a.salaryBase,
           rateBasisPoints: a.rateBasisPoints,
           salaryAmount: a.salaryAmount - a.paidAmount,
         })),
       };
     });
+  }
+
+  /**
+   * Ручная премия сотруднику от администратора. Это обычное начисление
+   * (kind=BONUS), просто вне заказа: поэтому оно само собой попадает в долг,
+   * закрывается выплатами по тем же правилам и видно сотруднику в «Моей
+   * зарплате» — отдельной ветки учёта для премий не заводим.
+   *
+   * База и ставка нулевые: сумма назначена вручную, процент считать не от чего.
+   */
+  async createBonus(dto: DtoCreateBonus, createdById: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: dto.executorId },
+      select: { id: true, isActive: true, role: true },
+    });
+    if (!user) throw new NotFoundException('Сотрудник не найден');
+    if (!user.isActive) {
+      throw new BadRequestException('Нельзя начислить премию уволенному сотруднику');
+    }
+
+    return this.prisma.salaryAccrual.create({
+      data: {
+        executorId: dto.executorId,
+        kind: 'BONUS',
+        note: dto.note.trim(),
+        createdById,
+        salaryBase: 0,
+        rateBasisPoints: 0,
+        salaryAmount: dto.amount,
+        status: 'PENDING',
+      },
+    });
+  }
+
+  /** Удалить ошибочно начисленную премию. Выплаченную — уже нельзя. */
+  async deleteBonus(id: string) {
+    const accrual = await this.prisma.salaryAccrual.findUnique({
+      where: { id },
+      select: { id: true, kind: true, paidAmount: true, status: true },
+    });
+    if (!accrual) throw new NotFoundException('Начисление не найдено');
+    if (accrual.kind !== 'BONUS') {
+      throw new BadRequestException(
+        'Удалять можно только премии: начисления по заказам пересчитываются автоматически',
+      );
+    }
+    if (accrual.paidAmount > 0 || accrual.status === 'PAID') {
+      throw new BadRequestException(
+        'Премия уже выплачена — удалить нельзя, иначе разойдётся история выплат',
+      );
+    }
+    await this.prisma.salaryAccrual.delete({ where: { id } });
+    return { ok: true };
   }
 }

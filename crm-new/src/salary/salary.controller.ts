@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { EnumRole } from 'src/generated/prisma/enums';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -6,6 +6,7 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { SalaryService } from './salary.service';
 import { DtoCreatePayment } from './dto/create-payment.dto';
 import { DtoCreatePaymentByAccruals } from './dto/create-payment-by-accruals.dto';
+import { DtoCreateBonus } from './dto/create-bonus.dto';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 
 interface RequestUser {
@@ -44,6 +45,17 @@ export class SalaryController {
   @Get('payments/:executorId')
   getPayments(@Param('executorId') executorId: string) {
     return this.salaryService.getPayments(executorId);
+  }
+
+  // Ручная премия: начисляет только администратор, обязательно с описанием.
+  @Post('bonus')
+  createBonus(@Body() dto: DtoCreateBonus, @CurrentUser() me: RequestUser) {
+    return this.salaryService.createBonus(dto, me.id);
+  }
+
+  @Delete('bonus/:id')
+  deleteBonus(@Param('id') id: string) {
+    return this.salaryService.deleteBonus(id);
   }
 
   @Post('payments')

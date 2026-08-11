@@ -46,6 +46,21 @@ export const salaryApi = {
     return data;
   },
 
+  /** Ручная премия сотруднику: обычное начисление вне заказа. */
+  createBonus: async (dto: {
+    executorId: string;
+    amount: number;
+    note: string;
+  }) => {
+    const { data } = await api.post('/salary/bonus', dto);
+    return data;
+  },
+
+  /** Удалить ошибочно начисленную премию (невыплаченную). */
+  deleteBonus: async (id: string) => {
+    await api.delete(`/salary/bonus/${id}`);
+  },
+
   createPaymentByAccruals: async (
     dto: CreatePaymentByAccrualsDto,
   ): Promise<PaymentByAccrualsResult> => {
