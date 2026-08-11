@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { OrderPhotoModule } from './order-photo/order-photo.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -20,8 +21,14 @@ import { HealthController } from './health.controller';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
-    // 5 запросов на /lead с одного IP за 60 секунд
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 5 }]),
+    /**
+     * Общий потолок на адрес. Раньше стояло 5 запросов в минуту, но охранник
+     * висел только на приёме заявок — остальное, включая вход по паролю, не
+     * ограничивалось ничем. Теперь охранник глобальный, поэтому потолок
+     * поднят до рабочего: страница заказов тянет несколько запросов сразу.
+     * Строгие лимиты задаются точечно через @Throttle (вход, приём заявок).
+     */
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 300 }]),
     AuthModule,
     UsersModule,
     OrderPhotoModule,
@@ -36,6 +43,6 @@ import { HealthController } from './health.controller';
     GulianModule,
   ],
   controllers: [HealthController],
-  providers: [],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

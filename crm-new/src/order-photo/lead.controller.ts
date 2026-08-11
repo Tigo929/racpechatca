@@ -7,7 +7,7 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { OrderPhotoService } from './order-photo.service';
 import { DtoCreateLead } from './dto/create-lead.dto';
 import { SiteLeadTokenGuard } from './site-lead-token.guard';
@@ -23,8 +23,10 @@ import { SiteLeadTokenGuard } from './site-lead-token.guard';
  * пару секунд и такой отказ не переживут — заявка потеряется. Оставляем потолок
  * как страховку на случай утечки токена.
  */
+// ThrottlerGuard здесь не указан: он подключён глобально в AppModule, а
+// повторное указание считало бы один запрос дважды.
 @Controller('order-photo')
-@UseGuards(SiteLeadTokenGuard, ThrottlerGuard)
+@UseGuards(SiteLeadTokenGuard)
 @UsePipes(
   new ValidationPipe({
     whitelist: true,
