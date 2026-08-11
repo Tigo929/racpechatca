@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EnumRole, EnumTaskStatus } from 'src/generated/prisma/enums';
+import type { Prisma } from 'src/generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DtoCreateTask } from './dto/create-task.dto';
 import { DtoUpdateTask } from './dto/update-task.dto';
@@ -46,6 +47,7 @@ export class TasksService {
         createdById: authorId,
         deadline: dto.deadline ? new Date(dto.deadline) : null,
         orderId: dto.orderId ?? null,
+        rewardAmount: dto.rewardAmount ?? 0,
       },
       include: TASK_INCLUDE,
     });
@@ -97,9 +99,16 @@ export class TasksService {
     if (dto.assigneeId) await this.assertAssigneeExists(dto.assigneeId);
 
     const statusChanged = dto.status && dto.status !== task.status;
-    return this.prisma.task.update({
+    // Статус можно поменять и здесь (форма редактирования у админа), поэтому
+    // начисление синхронизируем той же логикой, что и в updateStatus.
+    return this.prisma.$transaction(async (tx) => {
+    const rewardAccrualId = statusChanged
+      ? await this.syncReward(tx, task, dto.status!)
+      : undefined;
+    return tx.task.update({
       where: { id },
       data: {
+        ...(rewardAccrualId !== undefined ? { rewardAccrualId } : {}),
         title: dto.title?.trim(),
         description:
           dto.description === undefined
@@ -109,10 +118,12 @@ export class TasksService {
         deadline:
           dto.deadline === undefined ? undefined : new Date(dto.deadline),
         orderId: dto.orderId,
+        rewardAmount: dto.rewardAmount,
         status: dto.status,
         ...(statusChanged ? this.statusSideEffects(dto.status!) : {}),
       },
       include: TASK_INCLUDE,
+    });
     });
   }
 
@@ -139,11 +150,84 @@ export class TasksService {
         throw new ForbiddenException('Отменить задачу может администратор.');
       }
     }
-    return this.prisma.task.update({
-      where: { id },
-      data: { status, ...this.statusSideEffects(status) },
-      include: TASK_INCLUDE,
+    // Начисление за задачу и смена статуса — одной транзакцией: иначе можно
+    // получить закрытую задачу без денег или деньги без закрытой задачи.
+    return this.prisma.$transaction(async (tx) => {
+      const full = await tx.task.findUnique({
+        where: { id },
+        select: {
+          title: true,
+          assigneeId: true,
+          rewardAmount: true,
+          rewardAccrualId: true,
+          createdById: true,
+        },
+      });
+      if (!full) throw new NotFoundException('Задача не найдена.');
+
+      const rewardAccrualId = await this.syncReward(tx, full, status);
+
+      return tx.task.update({
+        where: { id },
+        data: { status, ...this.statusSideEffects(status), rewardAccrualId },
+        include: TASK_INCLUDE,
+      });
     });
+  }
+
+  /**
+   * Держит начисление за задачу в согласии с её статусом.
+   *  - переходим в «Выполнена» и задача платная → создаём начисление;
+   *  - уходим из «Выполнена» → снимаем, но только если деньги ещё не выданы;
+   *  - повторное закрытие ничего не дублирует (смотрим rewardAccrualId).
+   * Возвращает id начисления, который нужно записать в задачу.
+   */
+  private async syncReward(
+    tx: Prisma.TransactionClient,
+    task: {
+      title: string;
+      assigneeId: string;
+      rewardAmount: number;
+      rewardAccrualId: string | null;
+      createdById: string;
+    },
+    status: EnumTaskStatus,
+  ): Promise<string | null> {
+    const isDone = status === EnumTaskStatus.DONE;
+    let rewardAccrualId = task.rewardAccrualId;
+
+    if (isDone && task.rewardAmount > 0 && !rewardAccrualId) {
+      // Оплата задачи — обычное начисление вне заказа (kind=BONUS): попадает
+      // в долг сотруднику и закрывается выплатами по общим правилам.
+      const accrual = await tx.salaryAccrual.create({
+        data: {
+          executorId: task.assigneeId,
+          kind: 'BONUS',
+          note: `Задача: ${task.title}`,
+          createdById: task.createdById,
+          salaryBase: 0,
+          rateBasisPoints: 0,
+          salaryAmount: task.rewardAmount,
+          status: 'PENDING',
+        },
+      });
+      return accrual.id;
+    }
+
+    if (!isDone && rewardAccrualId) {
+      // Задачу переоткрыли — снимаем начисление, если деньги ещё не выданы.
+      // Выплаченное не трогаем: иначе разойдётся история выплат.
+      const accrual = await tx.salaryAccrual.findUnique({
+        where: { id: rewardAccrualId },
+        select: { paidAmount: true, status: true },
+      });
+      if (accrual && accrual.paidAmount === 0 && accrual.status !== 'PAID') {
+        await tx.salaryAccrual.delete({ where: { id: rewardAccrualId } });
+        rewardAccrualId = null;
+      }
+    }
+
+    return rewardAccrualId;
   }
 
   /**

@@ -78,9 +78,17 @@ interface FormState {
   description: string;
   assigneeId: string;
   deadline: string;
+  /** Оплата за выполнение. Пусто или 0 — задача без оплаты. */
+  rewardAmount: string;
 }
 
-const EMPTY_FORM: FormState = { title: '', description: '', assigneeId: '', deadline: '' };
+const EMPTY_FORM: FormState = {
+  title: '',
+  description: '',
+  assigneeId: '',
+  deadline: '',
+  rewardAmount: '',
+};
 
 export default function TasksPage() {
   const { user } = useAuth();
@@ -165,6 +173,7 @@ export default function TasksPage() {
       assigneeId: task.assigneeId,
       // <input type="date"> понимает только YYYY-MM-DD.
       deadline: task.deadline ? task.deadline.slice(0, 10) : '',
+      rewardAmount: task.rewardAmount ? String(task.rewardAmount) : '',
     });
     setFormOpen(true);
   };
@@ -185,6 +194,7 @@ export default function TasksPage() {
       // Срок ставим на конец дня: задача со сроком «сегодня» не должна
       // считаться просроченной с самого утра.
       deadline: form.deadline ? `${form.deadline}T23:59:00` : undefined,
+      rewardAmount: Math.max(0, Math.round(Number(form.rewardAmount)) || 0),
     });
   };
 
@@ -417,6 +427,24 @@ export default function TasksPage() {
               Со сроком бот напомнит в рабочем чате в 10:00 — за 3 дня до даты
               и каждый день, пока задача не закрыта. Без срока задача просто
               лежит в списке и чат не трогает.
+            </span>
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">
+              Оплата за выполнение, ₽ <span className="text-gray-400">— необязательно</span>
+            </span>
+            <input
+              type="number"
+              min={0}
+              placeholder="0"
+              value={form.rewardAmount}
+              onChange={(e) => setForm({ ...form, rewardAmount: e.target.value })}
+              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+            <span className="mt-1 block text-xs text-gray-500">
+              Когда сотрудник отметит задачу выполненной, сумма начислится ему
+              в зарплату и попадёт в долг. Пусто или 0 — задача без оплаты.
             </span>
           </label>
 

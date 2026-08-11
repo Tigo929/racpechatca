@@ -504,6 +504,10 @@ export interface Task {
   createdBy: { id: string; username: string };
   orderId: string | null;
   order: { id: string; numberOrder: string } | null;
+  /** Сколько стоит выполнение. 0 — задача без оплаты. */
+  rewardAmount?: number;
+  /** Начисление, созданное при выполнении (если задача платная). */
+  rewardAccrualId?: string | null;
 }
 
 export interface CreateTaskDto {
@@ -512,6 +516,8 @@ export interface CreateTaskDto {
   assigneeId: string;
   deadline?: string;
   orderId?: string;
+  /** Оплата за выполнение задачи. Начислится сотруднику при закрытии. */
+  rewardAmount?: number;
 }
 
 export interface TaskCountResponse {

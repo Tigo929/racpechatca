@@ -1,11 +1,14 @@
 import {
   IsDateString,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
   MaxLength,
+  Min,
   MinLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class DtoCreateTask {
   @IsString()
@@ -29,4 +32,12 @@ export class DtoCreateTask {
   @IsOptional()
   @IsUUID()
   orderId?: string;
+
+  /** Сколько стоит выполнение задачи. 0 — без оплаты. */
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(0)
+  rewardAmount?: number;
+
 }

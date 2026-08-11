@@ -7,7 +7,7 @@ import {
 import { EnumProductCategory } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TelegramService } from 'src/telegram/telegram.service';
-import { moscowDateKey } from 'src/tasks/task-reminder-rules';
+import { moscowDateKey, OPEN_TASK_STATUSES } from 'src/tasks/task-reminder-rules';
 import {
   PLAN_IN_WORK_STATUSES,
   PLAN_READY_STATUSES,
@@ -129,7 +129,7 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
     now: Date,
     manual = false,
   ): Promise<Omit<PlanResult, 'sent'>> {
-    const [inWorkOrders, readyOrders, unassignedCount, appState] =
+    const [inWorkOrders, readyOrders, unassignedCount, appState, openTasks] =
       await Promise.all([
       this.prisma.orderPhoto.findMany({
         where: {
@@ -177,6 +177,18 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
           },
         },
       }),
+      // Незакрытые задачи: пока висят на сотруднике, напоминаем о них в плане.
+      this.prisma.task.findMany({
+        where: { status: { in: OPEN_TASK_STATUSES } },
+        orderBy: [{ deadline: 'asc' }, { createdAt: 'asc' }],
+        select: {
+          title: true,
+          deadline: true,
+          rewardAmount: true,
+          assigneeId: true,
+          assignee: { select: { username: true, telegramUsername: true } },
+        },
+      }),
     ]);
 
     const byExecutor = new Map<string, PlanGroup>();
@@ -186,7 +198,7 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
     ): PlanGroup => {
       let group = byExecutor.get(executorId);
       if (!group) {
-        group = { executor, inWork: [], ready: [] };
+        group = { executor, inWork: [], ready: [], tasks: [] };
         byExecutor.set(executorId, group);
       }
       return group;
@@ -211,8 +223,19 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
       });
     }
 
+    // Задачи попадают в блок своего сотрудника. Если у него нет заказов,
+    // группа создаётся здесь — иначе задача потерялась бы.
+    for (const task of openTasks) {
+      if (!task.assignee) continue;
+      ensureGroup(task.assigneeId, task.assignee).tasks.push({
+        title: task.title,
+        deadline: task.deadline,
+        rewardAmount: task.rewardAmount,
+      });
+    }
+
     const groups = [...byExecutor.values()];
-    if (groups.length === 0 && unassignedCount === 0) {
+    if (groups.length === 0 && unassignedCount === 0 && openTasks.length === 0) {
       return { empty: true, orderCount: 0, message: null };
     }
 
@@ -225,7 +248,7 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
     );
     return {
       empty: false,
-      orderCount: inWorkOrders.length + readyOrders.length,
+      orderCount: inWorkOrders.length + readyOrders.length + openTasks.length,
       message,
     };
   }
