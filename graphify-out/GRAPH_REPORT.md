@@ -1,16 +1,16 @@
-# Graph Report - racpechatca  (2026-07-24)
+# Graph Report - raspechatka  (2026-08-11)
 
 ## Corpus Check
-- 212 files · ~80,316 words
+- 257 files · ~103,168 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1673 nodes · 2837 edges · 141 communities (92 shown, 49 thin omitted)
-- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 10 edges (avg confidence: 0.77)
+- 1972 nodes · 3773 edges · 140 communities (89 shown, 51 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 111 edges (avg confidence: 0.79)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `cea48473`
+- Built from commit: `b52c83ea`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -18,19 +18,19 @@
 - ReportsPage.tsx
 - TasksService
 - dependencies
-- DtoUpdateUser
+- users.controller.ts
+- telegram.module.ts
+- jest
+- tshirt-partner-telegram.service.ts
 - index.ts
-- scripts
-- task-reminder-rules.ts
-- Roles
-- TshirtItemsTable.tsx
-- order-photo.controller.ts
-- System Map
-- DtoCreateExpense
-- reports.service.ts
 - OrdersPage.tsx
-- review-reminder.service.ts
+- Roles
+- System Map
+- expenses.controller.ts
+- reports.service.ts
 - OrderDetail.tsx
+- daily-plan-rules.ts
+- AvitoService
 - Брендбук — Распечатка PRO
 - OrderFinancialIntegrityService
 - compilerOptions
@@ -40,221 +40,226 @@
 - AppShell.tsx
 - dependencies
 - sticker.service.ts
-- salary-integrity.spec.ts
-- CreateOrderForm.tsx
+- App.tsx
+- tasks.controller.ts
 - compilerOptions
 - DtoCreateOrder
 - partner-api.controller.ts
 - app.module.ts
-- OrderPhotoService
-- TechSpecStorageService
+- review-reminder.service.ts
+- PartnerAdminController
 - devDependencies
-- UsersPage.tsx
+- SettingsPage.tsx
 - DtoCreateLead
-- App.tsx
-- SalaryService
+- telegram-update.service.ts
+- salary.controller.ts
 - Интеграция с исполнителем-партнёром (печать футболок)
-- PartnerSettingsService
-- DtoCreatePaymentByAccruals
-- partner.module.ts
+- DtoUpdatePartnerSettings
+- CRM «Распечатка» — как всё устроено
+- partner-admin.controller.ts
 - auth.controller.ts
-- PrismaService
+- OrderPhotoService
 - partner-settings.service.ts
-- DtoCreatePayment
+- lead.controller.ts
 - DtoAllOrdersforQuery
-- DtoUpdateOrder
-- StockService
-- DtoCreateItemOrder
+- order-photo.service.ts
+- salary-integrity.spec.ts
+- AvitoController
 - DtoUpdateItemOrder
 - Исправленные проблемы
 - crm-new/README.md
-- current-user.decorator.ts
+- TelegramService
 - PartnerApiController
-- DtoSetStock
+- scripts
 - frontend/package.json
 - Architecture
 - Architecture
-- DtoUpdatePartnerSettings
+- order-photo.module.ts
 - package.json
-- DtoCreateTshirtItem
-- DtoUpdateTshirtItem
+- order-photo.controller.ts
+- current-user.decorator.ts
 - exclude
 - Аудит финансов, кода и продакшена — 2026-07-09
 - devDependencies
-- AuthController
+- AvitoPage.tsx
 - nest-cli.json
-- JwtStrategy
+- globals
 - PartnerTokenGuard
-- StockController
+- GulianService
 - seed.js
-- .login
-- my-balance.spec.ts
+- DtoUpdateOrder
+- scenario.controller.ts
 - React + TypeScript + Vite
 - backup-db.sh
-- PrismaModule
-- PaymentPrismaHarness
+- source-map-support
+- ts-loader
 - frontend/tsconfig.json
-- @eslint/eslintrc
+- ReportsController
 - @eslint/js
-- eslint-plugin-prettier
-- globals
-- jest
+- partner-telegram-format.ts
+- .createOrder
+- TechSpecStorageService
 - @nestjs/cli
 - @nestjs/schematics
 - @nestjs/testing
 - prettier
-- source-map-support
+- PartnerSettingsService
 - supertest
 - ts-jest
-- ts-loader
+- PartnerSettingsService
 - ts-node
 - tsconfig-paths
-- @types/jest
-- @types/multer
+- TelegramPollingService
+- .webhook
 - @types/node
-- @types/passport-jwt
-- @types/pdfkit
+- crm-new/package.json
+- GulianOutboxProcessorService
 - @types/supertest
-- typescript
+- lead-pricing.ts
 - typescript-eslint
+- .constructor
 - eslint-plugin-react-refresh
 - @eslint/js
 - tailwindcss
 - typescript-eslint
 - vite
-- 20260716000000_add_partner_sync/migration.sql
-- 20260716120000_add_partner_contract_fields/migration.sql
-- 20260718130000_partner_outbound_rework/migration.sql
-- 20260719160000_add_status_changed_at/migration.sql
-- 20260720170000_add_tasks/migration.sql
+- DtoSetShipmentLead
+- bwip-js
+- class-validator
+- @nestjs/core
+- @nestjs/jwt
+- @nestjs/mapped-types
+- @nestjs/throttler
+- passport
+- pdf-lib
+- pg
 - @types/jest
 - @types/multer
 - @types/passport-jwt
 - @types/pdfkit
 - typescript
-- eslint-config-prettier
-- scenario.types.ts
-- scenario.mapping.ts
+- @prisma/adapter-pg
+- @prisma/client
+- reflect-metadata
 - CurrentUser
 - PrismaService
-- scenario.registry.ts
-- scenario.engine.ts
+- roboto-fontface
+- eslint
 - DtoCreateItemOrder
-- current-user.decorator.ts
-- SettingsPage.tsx
-- DtoQueryTasks
-- salary-calculation.ts
-- .createPaymentByAccruals
+- roles.guard.ts
+- eslint-config-prettier
+- order-financial-integrity.service.ts
+- prisma
 - @eslint/eslintrc
 
 ## God Nodes (most connected - your core abstractions)
-1. `Roles()` - 34 edges
-2. `PrismaService` - 29 edges
-3. `OrderPhotoController` - 26 edges
-4. `useAuth()` - 25 edges
-5. `CurrentUser` - 23 edges
-6. `compilerOptions` - 22 edges
-7. `DtoCreateOrder` - 21 edges
-8. `OrderPhotoService` - 21 edges
-9. `getErrorMessage()` - 20 edges
-10. `DtoAllOrdersforQuery` - 18 edges
+1. `PrismaService` - 69 edges
+2. `Roles()` - 53 edges
+3. `CurrentUser` - 33 edges
+4. `OrderPhotoController` - 30 edges
+5. `TelegramService` - 27 edges
+6. `getErrorMessage()` - 26 edges
+7. `useAuth()` - 25 edges
+8. `AvitoService` - 23 edges
+9. `OrderPhotoService` - 23 edges
+10. `PartnerSettingsService` - 23 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `OrdersPage()` --indirect_call--> `order()`  [INFERRED]
-  frontend/src/pages/OrdersPage.tsx → crm-new/src/order-photo/daily-plan-rules.spec.ts
-- `bootstrap()` --indirect_call--> `AppModule`  [INFERRED]
-  crm-new/src/main.ts → crm-new/src/app.module.ts
+- `BonusForm()` --calls--> `getErrorMessage()`  [EXTRACTED]
+  frontend/src/pages/SalaryPage.tsx → frontend/src/utils/get-error-message.ts
 - `AvitoController` --references--> `Roles()`  [EXTRACTED]
   crm-new/src/avito/avito.controller.ts → crm-new/src/auth/decorators/roles.decorator.ts
 - `ExpensesController` --references--> `Roles()`  [EXTRACTED]
   crm-new/src/expenses/expenses.controller.ts → crm-new/src/auth/decorators/roles.decorator.ts
 - `PartnerAdminController` --references--> `Roles()`  [EXTRACTED]
   crm-new/src/partner/partner-admin.controller.ts → crm-new/src/auth/decorators/roles.decorator.ts
+- `PartnerSettingsController` --references--> `Roles()`  [EXTRACTED]
+  crm-new/src/partner/partner-settings.controller.ts → crm-new/src/auth/decorators/roles.decorator.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (141 total, 49 thin omitted)
+## Communities (140 total, 51 thin omitted)
 
 ### Community 0 - "ReportsPage.tsx"
-Cohesion: 0.14
-Nodes (17): MySalaryBalance, salaryApi, buildReceiptHtml(), escapeHtml(), printReceipt(), money(), MySalaryPage(), orderWord() (+9 more)
+Cohesion: 0.07
+Nodes (43): expensesApi, MySalaryBalance, salaryApi, MySalaryPage, ReportsPage, SalaryPage, buildReceiptHtml(), buildReceiptTitle() (+35 more)
 
 ### Community 1 - "TasksService"
-Cohesion: 0.13
-Nodes (11): TasksController, Body, Controller, Delete, Get, Param, Patch, Post (+3 more)
+Cohesion: 0.11
+Nodes (12): TasksController, Body, Controller, Delete, Get, Param, Patch, Post (+4 more)
 
 ### Community 2 - "dependencies"
-Cohesion: 0.04
-Nodes (47): bcryptjs, bwip-js, class-transformer, class-validator, dependencies, bcryptjs, bwip-js, class-transformer (+39 more)
+Cohesion: 0.09
+Nodes (23): bcryptjs, class-transformer, dependencies, bcryptjs, class-transformer, @nestjs/common, @nestjs/config, @nestjs/passport (+15 more)
 
-### Community 3 - "DtoUpdateUser"
+### Community 3 - "users.controller.ts"
 Cohesion: 0.07
-Nodes (28): DtoCreateUser, IsEnum, IsString, MinLength, DtoUpdateUser, IsBoolean, IsInt, IsOptional (+20 more)
+Nodes (29): DtoCreateUser, IsEnum, IsString, MinLength, DtoUpdateUser, IsBoolean, IsInt, IsOptional (+21 more)
 
-### Community 4 - "index.ts"
-Cohesion: 0.10
-Nodes (16): api, expensesApi, reportsApi, money(), MONTH_LABELS_FULL, MONTH_LABELS_SHORT, MonthSummary(), PnlRow() (+8 more)
+### Community 4 - "telegram.module.ts"
+Cohesion: 0.14
+Nodes (10): TelegramModule, Module, TelegramStickerController, Controller, Get, Param, Query, Res (+2 more)
 
-### Community 5 - "scripts"
-Cohesion: 0.05
-Nodes (36): author, description, jest, collectCoverageFrom, coverageDirectory, moduleFileExtensions, moduleNameMapper, rootDir (+28 more)
-
-### Community 6 - "task-reminder-rules.ts"
+### Community 5 - "jest"
 Cohesion: 0.12
-Nodes (27): buildDigestMessage(), daysUntilDeadline(), deadlineMarker(), DigestGroup, DigestTask, escapeHtml(), formatDeadlineLabel(), isTaskDueForReminder() (+19 more)
+Nodes (16): jest, collectCoverageFrom, coverageDirectory, moduleFileExtensions, moduleNameMapper, rootDir, testEnvironment, testRegex (+8 more)
 
-### Community 7 - "Roles"
-Cohesion: 0.10
-Nodes (26): OrderEditForm(), Props, ClosedAccrualBrief, CreateItemDto, CreateTshirtItemDto, EnumAccrualKind, EnumAccrualStatus, EnumCommunication (+18 more)
+### Community 6 - "tshirt-partner-telegram.service.ts"
+Cohesion: 0.15
+Nodes (10): buildPartnerButtons(), escapeHtml(), EXT_CONTENT_TYPE, money(), PRINT_LOCATION_LABELS, PRINT_TYPE_LABELS, TechSpecAttachment, Injectable (+2 more)
 
-### Community 8 - "TshirtItemsTable.tsx"
-Cohesion: 0.07
-Nodes (27): baseSchema, CreateOrderForm(), FormValues, freeItemSchema, fullSchema, photoItemSchema, Props, tshirtItemSchema (+19 more)
+### Community 7 - "index.ts"
+Cohesion: 0.12
+Nodes (23): AvitoLinkedOrder, ClosedAccrualBrief, CreateItemDto, CreateTshirtItemDto, EnumAccrualKind, EnumAccrualStatus, EnumAvitoMessageDirection, EnumPartnerSyncStatus (+15 more)
 
-### Community 9 - "order-photo.controller.ts"
-Cohesion: 0.24
+### Community 8 - "OrdersPage.tsx"
+Cohesion: 0.06
+Nodes (51): ordersApi, baseSchema, CreateOrderForm(), FormValues, freeItemSchema, fullSchema, isRussianPhone(), photoItemSchema (+43 more)
+
+### Community 9 - "Roles"
+Cohesion: 0.21
 Nodes (10): Roles(), OrderPhotoController, Body, Controller, Delete, Param, Patch, Post (+2 more)
 
 ### Community 10 - "System Map"
 Cohesion: 0.06
 Nodes (30): 2026-07-08, 2026-07-09, 2026-07-11, Access Rules, App Modules, Assignment Rules, Backend API Map, Backend Map (+22 more)
 
-### Community 11 - "DtoCreateExpense"
+### Community 11 - "expenses.controller.ts"
 Cohesion: 0.09
-Nodes (20): DtoCreateExpense, IsEnum, IsInt, IsOptional, IsString, Min, ExpensesController, RequestUser (+12 more)
+Nodes (19): DtoCreateExpense, IsEnum, IsInt, IsOptional, IsString, Min, ExpensesController, RequestUser (+11 more)
 
 ### Community 12 - "reports.service.ts"
-Cohesion: 0.11
-Nodes (19): ReportsController, Controller, Get, Query, UseGuards, ReportsModule, Module, addExpense() (+11 more)
+Cohesion: 0.22
+Nodes (12): addExpense(), addOrder(), emptyBucket(), ExpenseRow, finalize(), MONTH_LABELS, OrderRow, PnlRaw (+4 more)
 
-### Community 13 - "OrdersPage.tsx"
-Cohesion: 0.09
-Nodes (39): ordersApi, formatPhotoItemLine(), generateConfirmationText(), generateReadyText(), isFreeFormPhotoItem(), OrderDetail(), PhotoOrderItem, Props (+31 more)
-
-### Community 14 - "review-reminder.service.ts"
-Cohesion: 0.06
-Nodes (41): buildDailyPlanMessage(), dayMonth(), DELIVERY_LABEL, effectiveDeadline(), executorKey(), inWorkTail(), isWithinPlanWindow(), needsShipping() (+33 more)
-
-### Community 15 - "OrderDetail.tsx"
+### Community 13 - "OrderDetail.tsx"
 Cohesion: 0.08
-Nodes (17): AvitoController, Controller, Get, Query, UseGuards, AvitoModule, Module, AvitoAccount (+9 more)
+Nodes (32): DispatchToExecutorModal(), PayoutInfo, Props, rub(), GulianSyncBlock(), Props, STATUS_LABELS, formatPhotoItemLine() (+24 more)
+
+### Community 14 - "daily-plan-rules.ts"
+Cohesion: 0.05
+Nodes (66): buildDailyPlanMessage(), buildShipmentBlock(), dayMonth(), DELIVERY_LABEL, effectiveDeadline(), executorKey(), inWorkTail(), isWithinPlanWindow() (+58 more)
+
+### Community 15 - "AvitoService"
+Cohesion: 0.06
+Nodes (29): AvitoMessengerService, Injectable, AvitoModule, Module, AvitoAccount, AvitoChat, AvitoChatUser, AvitoMessage (+21 more)
 
 ### Community 16 - "Брендбук — Распечатка PRO"
 Cohesion: 0.08
 Nodes (24): 1. Анализ конкурентов, 2. Психология цвета, 3. Цветовая палитра, 4. Типографика, 5. Логотип и иконка, 6. Правила применения, 7. Tone of Voice, 8. Применение на сайте (будущее) (+16 more)
 
 ### Community 17 - "OrderFinancialIntegrityService"
-Cohesion: 0.14
-Nodes (10): FinancialClient, OrderFinancialIntegrityService, Injectable, OrderItemService, Injectable, calcItemPricePosition(), calcOrderTotal(), PricedItem (+2 more)
+Cohesion: 0.15
+Nodes (9): OrderFinancialIntegrityService, Injectable, OrderItemService, Injectable, calcItemPricePosition(), calcOrderTotal(), PricedItem, Injectable (+1 more)
 
 ### Community 18 - "compilerOptions"
 Cohesion: 0.09
 Nodes (22): compilerOptions, allowSyntheticDefaultImports, baseUrl, declaration, emitDecoratorMetadata, esModuleInterop, experimentalDecorators, forceConsistentCasingInFileNames (+14 more)
 
 ### Community 19 - "TasksPage.tsx"
-Cohesion: 0.13
-Nodes (19): tasksApi, TasksQuery, FilterChip(), Props, Modal(), Props, daysUntil(), DeadlineChip() (+11 more)
+Cohesion: 0.11
+Nodes (21): tasksApi, TasksQuery, usersApi, TasksPage, FilterChip(), Props, Modal(), Props (+13 more)
 
 ### Community 20 - "compilerOptions"
 Cohesion: 0.09
@@ -266,23 +271,23 @@ Nodes (21): 10.1 Почему PDF «не формировался» и долг�
 
 ### Community 22 - "AppShell.tsx"
 Cohesion: 0.12
-Nodes (14): AppShell(), NavProps, Props, AD_MGR, ADMIN, ALL, BadgeKey, NAV_GROUPS (+6 more)
+Nodes (15): AppShell(), NavProps, Props, AD_MGR, ADMIN, ALL, BadgeKey, MOBILE_BAR_LIMIT (+7 more)
 
 ### Community 23 - "dependencies"
 Cohesion: 0.10
 Nodes (21): axios, dependencies, axios, @hookform/resolvers, lucide-react, react, react-dom, react-hook-form (+13 more)
 
 ### Community 24 - "sticker.service.ts"
-Cohesion: 0.14
-Nodes (14): StickerModule, Module, buildPhotoItemLines(), drawInstagramIcon(), drawTelegramIcon(), FONT_DIR, formatRub(), PRINT_LOCATION_LABELS (+6 more)
+Cohesion: 0.16
+Nodes (13): buildPhotoItemLines(), buildTshirtItemLines(), drawInstagramIcon(), drawTelegramIcon(), FONT_DIR, formatRub(), PRINT_LOCATION_LABELS, req (+5 more)
 
-### Community 25 - "salary-integrity.spec.ts"
-Cohesion: 0.10
-Nodes (23): authApi, AdminRoute(), App(), AppRoutes(), CrmGate(), LoginPage, MySalaryPage, OrdersPage (+15 more)
+### Community 25 - "App.tsx"
+Cohesion: 0.12
+Nodes (19): authApi, AdminRoute(), App(), AppRoutes(), CrmGate(), LoginPage, OrdersPage, OrderStaffRoute() (+11 more)
 
-### Community 26 - "CreateOrderForm.tsx"
-Cohesion: 0.18
-Nodes (13): DtoCreateTask, IsOptional, IsString, IsUUID, MaxLength, MinLength, DtoUpdateTask, DtoUpdateTaskStatus (+5 more)
+### Community 26 - "tasks.controller.ts"
+Cohesion: 0.12
+Nodes (20): DtoCreateTask, IsInt, IsOptional, IsString, IsUUID, MaxLength, Min, MinLength (+12 more)
 
 ### Community 27 - "compilerOptions"
 Cohesion: 0.10
@@ -294,83 +299,83 @@ Nodes (15): DtoCreateOrder, IsArray, IsBoolean, IsEnum, IsIn, IsInt, IsOptional,
 
 ### Community 29 - "partner-api.controller.ts"
 Cohesion: 0.13
-Nodes (14): Body, Patch, FLOW_RANK, FROM_PARTNER, fromPartnerStatus(), mapPartnerStage(), PARTNER_SETTABLE_STATUSES, PARTNER_STAGE_MAP (+6 more)
+Nodes (13): DtoPartnerStatus, IsString, FLOW_RANK, FROM_PARTNER, fromPartnerStatus(), mapPartnerStage(), PARTNER_SETTABLE_STATUSES, PARTNER_STAGE_MAP (+5 more)
 
 ### Community 30 - "app.module.ts"
 Cohesion: 0.12
-Nodes (16): AppModule, Module, bootstrap(), OrderPhotoModule, Module, PartnerModule, Module, PartnerSettingsModule (+8 more)
+Nodes (15): AppModule, Module, ExpensesModule, Module, PrismaModule, Module, ReportsModule, Module (+7 more)
 
-### Community 31 - "OrderPhotoService"
-Cohesion: 0.24
-Nodes (7): ArrayMinSize, DtoCreatePaymentByAccruals, IsArray, IsOptional, IsString, IsUUID, RequestUser
+### Community 31 - "review-reminder.service.ts"
+Cohesion: 0.17
+Nodes (12): isReviewReminderEligible(), REVIEW_REMINDER_CATEGORIES, REVIEW_REMINDER_DELAY_MS, REVIEW_REMINDER_PICKUP_DELAY_MS, REVIEW_REMINDER_STATUSES, reviewReminderDelayMs(), buildReviewRequestText(), categoryLabel() (+4 more)
 
-### Community 32 - "TechSpecStorageService"
-Cohesion: 0.14
-Nodes (11): PartnerAdminController, Controller, Get, Param, Post, Res, UseGuards, UseInterceptors (+3 more)
+### Community 32 - "PartnerAdminController"
+Cohesion: 0.21
+Nodes (9): PartnerAdminController, Controller, Get, Param, Post, Res, UseGuards, UseInterceptors (+1 more)
 
 ### Community 33 - "devDependencies"
 Cohesion: 0.11
 Nodes (19): eslint-plugin-react-hooks, devDependencies, eslint, eslint-plugin-react-hooks, globals, @tailwindcss/vite, @types/node, @types/react (+11 more)
 
-### Community 34 - "UsersPage.tsx"
-Cohesion: 0.17
-Nodes (18): usersApi, AssignPanel(), AddExpenseModal(), bpToPercent(), DesignRateEditor(), loadBadgeColor(), percentToBp(), RateEditor() (+10 more)
+### Community 34 - "SettingsPage.tsx"
+Cohesion: 0.08
+Nodes (36): api, partnerSettingsApi, reportsApi, shipmentLeadApi, SettingsPage, UsersPage, AssignPanel(), AddExpenseModal() (+28 more)
 
 ### Community 35 - "DtoCreateLead"
-Cohesion: 0.13
-Nodes (13): DtoCreateLead, IsEnum, IsOptional, IsString, MaxLength, MinLength, LeadController, Body (+5 more)
+Cohesion: 0.10
+Nodes (17): DtoCreateLead, IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, Max (+9 more)
 
-### Community 36 - "App.tsx"
-Cohesion: 0.22
-Nodes (8): DtoUpdateTshirtItem, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Min, Type
+### Community 36 - "telegram-update.service.ts"
+Cohesion: 0.15
+Nodes (10): GulianOutboxService, OrderForOutbox, Injectable, calcGulianPayout(), Item, PayoutResult, toGulianStatus(), ACTION_STATUS (+2 more)
 
-### Community 37 - "SalaryService"
-Cohesion: 0.17
-Nodes (7): SalaryController, Controller, Get, Param, UseGuards, SalaryService, Injectable
+### Community 37 - "salary.controller.ts"
+Cohesion: 0.06
+Nodes (34): ArrayMinSize, DtoCreateBonus, IsInt, IsString, IsUUID, MaxLength, Min, MinLength (+26 more)
 
 ### Community 38 - "Интеграция с исполнителем-партнёром (печать футболок)"
 Cohesion: 0.12
 Nodes (15): 1. Модель взаимодействия, 2. Аутентификация, 3. Webhook, который мы отправляем партнёру, 4.1 Данные заказа, 4.2 ТЗ-фото (макет), 4.3 Стикер (PDF, 58×40 мм), 4.4 Смена статуса заказа (партнёр → нам), 4. Эндпоинты, откуда партнёр забирает данные (pull) (+7 more)
 
-### Community 39 - "PartnerSettingsService"
-Cohesion: 0.17
-Nodes (8): PartnerSettingsController, Body, Controller, Get, Patch, UseGuards, PartnerSettingsService, Injectable
+### Community 39 - "DtoUpdatePartnerSettings"
+Cohesion: 0.12
+Nodes (13): DtoUpdatePartnerSettings, IsInt, IsOptional, IsString, Max, MaxLength, Min, PartnerSettingsController (+5 more)
 
-### Community 41 - "partner.module.ts"
-Cohesion: 0.21
-Nodes (7): PartnerOutboundService, Injectable, buildPartnerOrderPayload(), PartnerOrderForPayload, PartnerOrderPayload, PRINT_LOCATION_LABELS, PRINT_TYPE_LABELS
+### Community 40 - "CRM «Распечатка» — как всё устроено"
+Cohesion: 0.11
+Nodes (18): 10. Слабые места, 11. Что дальше, 1. Что это, 2. Из чего собрано, 3. Продукты и статусы, 4. Деньги, 5. Роли, 6. Сценарии оформления (+10 more)
+
+### Community 41 - "partner-admin.controller.ts"
+Cohesion: 0.18
+Nodes (10): PartnerOutboundService, Injectable, getTechSpecPathAt(), getTechSpecPaths(), hasTechSpecFiles(), TechSpecPathSource, ALLOWED, EXT_CONTENT_TYPE (+2 more)
 
 ### Community 42 - "auth.controller.ts"
-Cohesion: 0.09
-Nodes (19): AuthController, Body, Controller, Get, Post, UseGuards, AuthModule, Module (+11 more)
-
-### Community 43 - "PrismaService"
-Cohesion: 0.24
-Nodes (5): buildCommunicationUrl(), escapeHtml(), formatRuDate(), OrderPhotoService, Injectable
+Cohesion: 0.14
+Nodes (13): AuthController, Body, Controller, Get, Post, UseGuards, AuthModule, Module (+5 more)
 
 ### Community 44 - "partner-settings.service.ts"
-Cohesion: 0.28
-Nodes (10): Db, TshirtItemForSettlement, UpdatePartnerSettingsDto, OrderSettlement, positionMaterials(), PositionSettlement, SettlementPosition, settleOrder() (+2 more)
+Cohesion: 0.13
+Nodes (20): buildPartnerOrderPayload(), PartnerOrderForPayload, PartnerOrderPayload, PRINT_LOCATION_LABELS, PRINT_TYPE_LABELS, Db, TshirtItemForSettlement, UpdatePartnerSettingsDto (+12 more)
 
-### Community 45 - "DtoCreatePayment"
-Cohesion: 0.20
-Nodes (9): DtoCreatePayment, IsInt, IsOptional, IsString, IsUUID, Min, Type, Body (+1 more)
+### Community 45 - "lead.controller.ts"
+Cohesion: 0.17
+Nodes (12): LeadController, Controller, UseGuards, constantTimeEqual(), readBearerToken(), readHeader(), SignedRequest, SiteLeadTokenGuard (+4 more)
 
 ### Community 46 - "DtoAllOrdersforQuery"
-Cohesion: 0.15
+Cohesion: 0.17
 Nodes (11): DtoAllOrdersforQuery, IsEnum, IsIn, IsInt, IsOptional, IsString, Max, MaxLength (+3 more)
 
-### Community 47 - "DtoUpdateOrder"
-Cohesion: 0.09
-Nodes (21): DtoAssignExecutor, IsOptional, IsString, IsUUID, DtoUpdateOrder, IsBoolean, IsEnum, IsInt (+13 more)
+### Community 47 - "order-photo.service.ts"
+Cohesion: 0.13
+Nodes (14): DtoAssignExecutor, IsOptional, IsString, IsUUID, CLOSED_STATUSES, CONTROL_CLOSED_STATUSES, DEFAULT_LIST_HIDDEN_STATUSES, escapeHtml() (+6 more)
 
-### Community 48 - "StockService"
+### Community 48 - "salary-integrity.spec.ts"
 Cohesion: 0.13
 Nodes (12): AccrualByIdRow, AsyncMock, createOrderService(), CreatePaymentArgs, createPrismaStub(), HarnessAccrual, makeOrder(), PaymentByAccrualsHarness (+4 more)
 
-### Community 49 - "DtoCreateItemOrder"
-Cohesion: 0.21
-Nodes (9): DraftState, ScenarioDraftService, Injectable, FakeOrder, READY_PHOTO, READY_TSHIRT, findProduct(), Answers (+1 more)
+### Community 49 - "AvitoController"
+Cohesion: 0.18
+Nodes (8): AvitoController, Body, Controller, Get, Param, Post, Query, UseGuards
 
 ### Community 50 - "DtoUpdateItemOrder"
 Cohesion: 0.17
@@ -384,13 +389,17 @@ Nodes (10): CRITICAL, CRM Audit Report — 2026-06-14, HIGH, HIGH, LOW, MEDIUM, 
 Cohesion: 0.20
 Nodes (9): Compile and run the project, Deployment, Description, License, Project setup, Resources, Run tests, Stay in touch (+1 more)
 
-### Community 53 - "current-user.decorator.ts"
-Cohesion: 0.44
-Nodes (8): "OrderAssignment", "OrderPhoto", "PaymentAccrualLink", "SalaryAccrual", "SalaryPayment", "StatusHistory", "User", "UserRateHistory"
+### Community 53 - "TelegramService"
+Cohesion: 0.18
+Nodes (4): TelegramService, Injectable, TelegramUpdateService, Injectable
 
 ### Community 54 - "PartnerApiController"
-Cohesion: 0.31
-Nodes (6): PartnerApiController, Controller, Get, Param, Res, UseGuards
+Cohesion: 0.26
+Nodes (8): PartnerApiController, Body, Controller, Get, Param, Patch, Res, UseGuards
+
+### Community 55 - "scripts"
+Cohesion: 0.14
+Nodes (14): scripts, build, db:push:dev, format, lint, start, start:debug, start:dev (+6 more)
 
 ### Community 56 - "frontend/package.json"
 Cohesion: 0.20
@@ -404,21 +413,21 @@ Nodes (7): API routes (prefix: `/order-photo`), Architecture, Commands, Data mod
 Cohesion: 0.20
 Nodes (8): API routes (prefix: `/order-photo`), Architecture, Commands, Data model, Environment, Key behaviors, Module structure, Граф знаний (graphify)
 
-### Community 59 - "DtoUpdatePartnerSettings"
-Cohesion: 0.25
-Nodes (7): DtoUpdatePartnerSettings, IsInt, IsOptional, IsString, Max, MaxLength, Min
+### Community 59 - "order-photo.module.ts"
+Cohesion: 0.20
+Nodes (10): GulianModule, Module, OrderPhotoModule, Module, StickerModule, Module, PartnerModule, Module (+2 more)
 
 ### Community 60 - "package.json"
 Cohesion: 0.25
 Nodes (7): concurrently, devDependencies, concurrently, name, private, scripts, dev
 
-### Community 61 - "DtoCreateTshirtItem"
-Cohesion: 0.14
-Nodes (13): DtoCreateTshirtItem, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Min, Type (+5 more)
+### Community 61 - "order-photo.controller.ts"
+Cohesion: 0.10
+Nodes (21): DtoCreateTshirtItem, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Min, Type (+13 more)
 
-### Community 62 - "DtoUpdateTshirtItem"
-Cohesion: 0.47
-Nodes (4): PRICE_FIELDS, strip(), StripPricesInterceptor, Injectable
+### Community 62 - "current-user.decorator.ts"
+Cohesion: 0.29
+Nodes (6): AuthenticatedRequest, AuthenticatedUser, PRICE_FIELDS, strip(), StripPricesInterceptor, Injectable
 
 ### Community 63 - "exclude"
 Cohesion: 0.25
@@ -430,99 +439,107 @@ Nodes (6): Аудит финансов, кода и продакшена — 202
 
 ### Community 65 - "devDependencies"
 Cohesion: 0.29
-Nodes (7): devDependencies, eslint, eslint-config-prettier, @types/express, eslint, eslint-config-prettier, @types/express
+Nodes (7): devDependencies, eslint-plugin-prettier, jest, @types/express, eslint-plugin-prettier, jest, @types/express
 
-### Community 66 - "AuthController"
-Cohesion: 0.50
-Nodes (3): "ExpenseOrder", "ItemTshirt", "PartnerSettings"
+### Community 66 - "AvitoPage.tsx"
+Cohesion: 0.22
+Nodes (11): avitoApi, AvitoChatQuery, AvitoPage, AvitoPage(), clientInitial(), messagePreview(), messageText(), timeLabel() (+3 more)
 
 ### Community 67 - "nest-cli.json"
 Cohesion: 0.33
 Nodes (5): collection, compilerOptions, deleteOutDir, $schema, sourceRoot
 
-### Community 69 - "PartnerTokenGuard"
-Cohesion: 0.20
-Nodes (6): DtoPartnerStatus, IsString, PartnerTokenGuard, Injectable, ALLOWED, EXT_CONTENT_TYPE
+### Community 70 - "GulianService"
+Cohesion: 0.26
+Nodes (5): RETRY_DELAYS_SECONDS, GulianOrderPayload, GulianResponse, GulianService, Injectable
 
 ### Community 71 - "seed.js"
-Cohesion: 0.50
-Nodes (4): bcrypt, { Client }, main(), { randomUUID }
+Cohesion: 0.40
+Nodes (3): bcrypt, { Client }, { randomUUID }
 
-### Community 73 - "my-balance.spec.ts"
-Cohesion: 0.14
-Nodes (13): DtoDetectProduct, IsString, MaxLength, DtoSaveDraft, IsObject, IsOptional, IsString, MaxLength (+5 more)
+### Community 72 - "DtoUpdateOrder"
+Cohesion: 0.17
+Nodes (11): DtoUpdateOrder, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Matches, MaxLength (+3 more)
+
+### Community 73 - "scenario.controller.ts"
+Cohesion: 0.05
+Nodes (69): DtoDetectProduct, IsString, MaxLength, DtoSaveDraft, IsObject, IsOptional, IsString, MaxLength (+61 more)
 
 ### Community 74 - "React + TypeScript + Vite"
 Cohesion: 0.50
 Nodes (3): Expanding the ESLint configuration, React Compiler, React + TypeScript + Vite
 
-### Community 127 - "eslint-config-prettier"
-Cohesion: 0.20
-Nodes (9): ScenarioController, Body, Controller, Get, Param, Patch, Post, UseGuards (+1 more)
+### Community 79 - "ReportsController"
+Cohesion: 0.24
+Nodes (5): ReportsController, Controller, Get, Query, UseGuards
 
-### Community 128 - "scenario.types.ts"
-Cohesion: 0.23
-Nodes (12): DELIVERY_STEPS, NOTE_STEP, OPTIONAL, AnswerValue, Condition, FieldKind, FieldOption, FieldSpec (+4 more)
+### Community 81 - "partner-telegram-format.ts"
+Cohesion: 0.27
+Nodes (9): buildPartnerCaption(), calcSettlement(), esc(), PartnerOrderData, PartnerOrderItem, PRINT_LOCATION_LABELS, PRINT_TYPE_LABELS, rub() (+1 more)
 
-### Community 129 - "scenario.mapping.ts"
-Cohesion: 0.35
-Nodes (12): PAPER_LABEL, photoToOrder(), tshirtToOrder(), bool(), date(), deliveryOf(), noteOf(), num() (+4 more)
+### Community 82 - ".createOrder"
+Cohesion: 0.44
+Nodes (6): buildCommunicationUrl(), buildMaxUrl(), DEFAULT_MAX_LINK_TEMPLATE, formatPhoneForDisplay(), normalizePhone(), validateCommunicationValue()
+
+### Community 94 - "TelegramPollingService"
+Cohesion: 0.28
+Nodes (3): TelegramPollingService, TgUpdateWithId, Injectable
+
+### Community 95 - ".webhook"
+Cohesion: 0.25
+Nodes (6): TgUpdate, TelegramWebhookController, Body, Controller, Post, Headers
+
+### Community 97 - "crm-new/package.json"
+Cohesion: 0.29
+Nodes (6): author, description, license, name, private, version
+
+### Community 100 - "lead-pricing.ts"
+Cohesion: 0.38
+Nodes (5): LeadMoneyError, LeadMoneyInput, LeadMoneyResult, MAX_POSITION_TOTAL, resolveLeadMoney()
+
+### Community 112 - "DtoSetShipmentLead"
+Cohesion: 0.40
+Nodes (4): DtoSetShipmentLead, IsOptional, IsString, ValidateIf
 
 ### Community 130 - "CurrentUser"
 Cohesion: 0.24
 Nodes (4): CurrentUser, Get, Query, Res
 
 ### Community 131 - "PrismaService"
-Cohesion: 0.21
-Nodes (5): HealthController, Controller, Get, PrismaService, Injectable
-
-### Community 132 - "scenario.registry.ts"
-Cohesion: 0.23
-Nodes (9): PHOTO_SCENARIO, TSHIRT_SCENARIO, ScenarioModule, Module, ProductDefinition, PRODUCTS, SCENARIOS, validateAllScenarios() (+1 more)
-
-### Community 133 - "scenario.engine.ts"
-Cohesion: 0.41
-Nodes (10): detectProduct(), evaluateCondition(), evaluateScenario(), isFilled(), isStepRequired(), isStepVisible(), normalize(), pickRelevantAnswers() (+2 more)
+Cohesion: 0.08
+Nodes (13): JwtPayload, JwtStrategy, Injectable, HealthController, Controller, Get, ELIGIBLE_ROLES, ShipmentLeadView (+5 more)
 
 ### Community 134 - "DtoCreateItemOrder"
 Cohesion: 0.18
 Nodes (11): DtoCreateItemOrder, IsBoolean, IsEnum, IsInt, IsOptional, IsString, MaxLength, Min (+3 more)
 
-### Community 135 - "current-user.decorator.ts"
+### Community 135 - "roles.guard.ts"
+Cohesion: 0.29
+Nodes (5): ROLES_KEY, JwtAuthGuard, Injectable, RolesGuard, Injectable
+
+### Community 138 - "order-financial-integrity.service.ts"
 Cohesion: 0.27
-Nodes (4): AuthenticatedRequest, AuthenticatedUser, RolesGuard, Injectable
-
-### Community 136 - "SettingsPage.tsx"
-Cohesion: 0.33
-Nodes (7): partnerSettingsApi, Example(), FormState, money(), SettingsPage(), toForm(), PartnerSettings
-
-### Community 137 - "DtoQueryTasks"
-Cohesion: 0.33
-Nodes (5): DtoQueryTasks, IsEnum, IsOptional, IsUUID, Query
-
-### Community 138 - "salary-calculation.ts"
-Cohesion: 0.47
-Nodes (4): calculateManagerSalarySnapshot(), calculateSalarySnapshot(), ManagerSalarySnapshot, SalarySnapshot
+Nodes (5): FinancialClient, calculateManagerSalarySnapshot(), calculateSalarySnapshot(), ManagerSalarySnapshot, SalarySnapshot
 
 ## Knowledge Gaps
-- **459 isolated node(s):** `$schema`, `collection`, `sourceRoot`, `deleteOutDir`, `name` (+454 more)
+- **502 isolated node(s):** `$schema`, `collection`, `sourceRoot`, `deleteOutDir`, `name` (+497 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **49 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **51 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `PrismaService` connect `PrismaService` to `TasksService`, `DtoCreateLead`, `DtoUpdateUser`, `PrismaService`, `.createPaymentByAccruals`, `DtoCreatePayment`, `DtoAllOrdersforQuery`, `DtoUpdateOrder`, `OrderFinancialIntegrityService`, `DtoCreateItemOrder`, `partner-api.controller.ts`, `app.module.ts`?**
-  _High betweenness centrality (0.181) - this node is a cross-community bridge._
-- **Why does `EnumStatus` connect `OrdersPage.tsx` to `Roles`, `DtoUpdateOrder`?**
-  _High betweenness centrality (0.145) - this node is a cross-community bridge._
-- **Why does `devDependencies` connect `devDependencies` to `scripts`, `.createPaymentByAccruals`, `@eslint/eslintrc`, `DtoSetStock`, `JwtStrategy`, `PrismaModule`, `PaymentPrismaHarness`, `@eslint/js`, `jest`, `@nestjs/cli`, `@nestjs/schematics`, `@nestjs/testing`, `prettier`, `supertest`, `ts-jest`, `ts-node`, `tsconfig-paths`, `@types/node`, `@types/supertest`, `typescript-eslint`, `@types/jest`, `@types/multer`, `@types/passport-jwt`, `@types/pdfkit`, `typescript`?**
-  _High betweenness centrality (0.121) - this node is a cross-community bridge._
+- **Why does `PrismaService` connect `PrismaService` to `TasksService`, `users.controller.ts`, `tshirt-partner-telegram.service.ts`, `order-financial-integrity.service.ts`, `expenses.controller.ts`, `reports.service.ts`, `daily-plan-rules.ts`, `AvitoService`, `OrderFinancialIntegrityService`, `sticker.service.ts`, `tasks.controller.ts`, `partner-api.controller.ts`, `app.module.ts`, `review-reminder.service.ts`, `telegram-update.service.ts`, `salary.controller.ts`, `partner-admin.controller.ts`, `auth.controller.ts`, `partner-settings.service.ts`, `order-photo.service.ts`, `salary-integrity.spec.ts`, `TelegramService`, `order-photo.controller.ts`, `GulianService`, `scenario.controller.ts`, `TechSpecStorageService`, `PartnerSettingsService`, `PartnerSettingsService`, `GulianOutboxProcessorService`, `.constructor`?**
+  _High betweenness centrality (0.077) - this node is a cross-community bridge._
+- **Why does `Roles()` connect `Roles` to `PartnerAdminController`, `TasksService`, `CurrentUser`, `users.controller.ts`, `salary.controller.ts`, `roles.guard.ts`, `DtoUpdatePartnerSettings`, `partner-admin.controller.ts`, `scenario.controller.ts`, `expenses.controller.ts`, `AvitoService`, `ReportsController`, `AvitoController`, `tasks.controller.ts`, `order-photo.controller.ts`?**
+  _High betweenness centrality (0.058) - this node is a cross-community bridge._
+- **Why does `CurrentUser` connect `CurrentUser` to `TasksService`, `users.controller.ts`, `salary.controller.ts`, `Roles`, `auth.controller.ts`, `expenses.controller.ts`, `scenario.controller.ts`, `AvitoService`, `AvitoController`, `tasks.controller.ts`, `order-photo.controller.ts`, `current-user.decorator.ts`?**
+  _High betweenness centrality (0.026) - this node is a cross-community bridge._
 - **What connects `$schema`, `collection`, `sourceRoot` to the rest of the system?**
-  _459 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _502 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `ReportsPage.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.14333333333333334 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06599326599326599 - nodes in this community are weakly interconnected._
 - **Should `TasksService` be split into smaller, more focused modules?**
-  _Cohesion score 0.12535612535612536 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.11397849462365592 - nodes in this community are weakly interconnected._
 - **Should `dependencies` be split into smaller, more focused modules?**
-  _Cohesion score 0.0425531914893617 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08695652173913043 - nodes in this community are weakly interconnected._
