@@ -10,9 +10,12 @@ import helmet from 'helmet';
  * смог бы дёргать CRM из браузера пользователя, уже вошедшего в систему.
  */
 function allowedOrigins(): string[] {
+  // Именно ||, а не ??: docker-compose передаёт незаданную переменную пустой
+  // строкой, и с ?? список источников оказался бы пустым — CORS закрылся бы
+  // для всех, включая саму панель.
   const raw =
-    process.env.ALLOWED_ORIGINS ??
-    process.env.FRONTEND_URL ??
+    process.env.ALLOWED_ORIGINS ||
+    process.env.FRONTEND_URL ||
     'http://localhost:5173';
   return raw
     .split(',')
