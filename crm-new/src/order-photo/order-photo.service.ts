@@ -1176,6 +1176,9 @@ export class OrderPhotoService {
           items: lockedOrder.tshirtItems,
           isPaid: newStatus === EnumStatus.PAID,
           actingUserId: userId,
+          // Тот же принцип, что в отчётах: выручка признаётся по дате отправки,
+          // иначе для старых заказов — по дате создания.
+          revenueDate: lockedOrder.sentAt ?? lockedOrder.createdAt,
         });
       }
 

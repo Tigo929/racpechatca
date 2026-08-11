@@ -83,6 +83,11 @@ export class PartnerSettingsService {
    * Синхронизирует авто-расход «Вознаграждение партнёру» с оплатой заказа.
    * Идемпотентно: на PAID создаёт один расход, при уходе из PAID — убирает.
    * Работает внутри транзакции смены статуса.
+   *
+   * Расход датируется периодом заказа (`revenueDate`), а не моментом оплаты:
+   * отчёты признают выручку по дате заказа, и если затрату поставить «сегодня»,
+   * июльский заказ, оплаченный в августе, покажет июлю прибыль без затрат,
+   * а августу — затраты без выручки.
    */
   async syncRewardExpense(
     tx: Prisma.TransactionClient,
@@ -92,6 +97,8 @@ export class PartnerSettingsService {
       items: TshirtItemForSettlement[];
       isPaid: boolean;
       actingUserId: string;
+      /** Дата признания выручки по заказу: sentAt, иначе createdAt. */
+      revenueDate: Date;
     },
   ): Promise<void> {
     const existing = await tx.expenseOrder.findFirst({
@@ -127,9 +134,10 @@ export class PartnerSettingsService {
 
     if (existing) {
       // Сумма могла измениться (правка позиций/ставки до оплаты) — обновляем.
+      // Дату тоже выравниваем: заказ могли перевести в другой период.
       await tx.expenseOrder.update({
         where: { id: existing.id },
-        data: { amount: settlement.reward, note },
+        data: { amount: settlement.reward, note, createdAt: params.revenueDate },
       });
       return;
     }
@@ -141,6 +149,7 @@ export class PartnerSettingsService {
         note,
         orderId: params.orderId,
         createdById: params.actingUserId ?? (await this.fallbackAuthor(tx)),
+        createdAt: params.revenueDate,
       },
     });
   }
