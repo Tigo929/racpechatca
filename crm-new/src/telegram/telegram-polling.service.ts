@@ -8,6 +8,15 @@ import { ConfigService } from '@nestjs/config';
 import { TelegramUpdateService, TgUpdate } from './telegram-update.service';
 
 /**
+ * Сколько Telegram держит соединение, если обновлений нет. Намеренно коротко:
+ * долгие соединения к api.telegram.org с этого сервера регулярно рвутся
+ * фильтрацией («fetch failed»), а короткие проходят стабильно.
+ */
+const LONG_POLL_SECONDS = 10;
+/** Свой таймаут — заметно больше серверного, чтобы не рвать нормальный ответ. */
+const REQUEST_TIMEOUT_MS = (LONG_POLL_SECONDS + 10) * 1000;
+
+/**
  * Получение нажатий на кнопки через long polling (getUpdates).
  *
  * Зачем не вебхук: Telegram не может достучаться до боевого сервера —
@@ -58,16 +67,27 @@ export class TelegramPollingService implements OnModuleInit, OnModuleDestroy {
     await this.call('deleteWebhook', { drop_pending_updates: false });
     this.logger.log('Telegram polling запущен');
 
+    let failuresInARow = 0;
+
     while (!this.stopped) {
       try {
         const res = await this.call<TgUpdateWithId[]>('getUpdates', {
           offset: this.offset || undefined,
-          timeout: 25,
+          timeout: LONG_POLL_SECONDS,
           allowed_updates: ['callback_query'],
         });
+        failuresInARow = 0;
 
         for (const update of res ?? []) {
           this.offset = update.update_id + 1;
+          // Логируем каждое нажатие: иначе «кнопка не сработала» невозможно
+          // отличить от «нажатие не дошло».
+          const data = update.callback_query?.data ?? '(без данных)';
+          const who =
+            update.callback_query?.from?.username ??
+            update.callback_query?.from?.first_name ??
+            'неизвестно';
+          this.logger.log(`Нажатие кнопки: ${data} от ${who}`);
           try {
             await this.updates.handleUpdate(update);
           } catch (err) {
@@ -76,9 +96,19 @@ export class TelegramPollingService implements OnModuleInit, OnModuleDestroy {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        this.logger.error(`Telegram getUpdates упал: ${message}`);
-        // Пауза, чтобы не долбить API в цикле при сетевых проблемах.
-        await new Promise((r) => setTimeout(r, 5000));
+        failuresInARow += 1;
+        // Обрывы long-poll здесь — норма (соединение режет фильтрация), поэтому
+        // одиночные пишем как warn. Только серия подряд — уже настоящая авария.
+        if (failuresInARow >= 5) {
+          this.logger.error(
+            `Telegram getUpdates падает ${failuresInARow} раз подряд: ${message}`,
+          );
+        } else {
+          this.logger.warn(`Telegram getUpdates: ${message} — повтор`);
+        }
+        // Растущая пауза, но не длиннее 30 с — иначе нажатия ждут слишком долго.
+        const backoff = Math.min(1000 * 2 ** (failuresInARow - 1), 30_000);
+        await new Promise((r) => setTimeout(r, backoff));
       }
     }
   }
@@ -93,8 +123,7 @@ export class TelegramPollingService implements OnModuleInit, OnModuleDestroy {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-        // Long poll: ждём дольше, чем timeout запроса к Telegram.
-        signal: AbortSignal.timeout(40_000),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       },
     );
     const json = (await res.json()) as { ok: boolean; result?: T; description?: string };
