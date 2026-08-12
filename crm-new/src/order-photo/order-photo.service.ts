@@ -115,6 +115,22 @@ const REVIEW_WAITING_STATUSES: EnumStatus[] = [
   EnumStatus.PAID,
 ];
 
+/**
+ * Нарушение уникального индекса по конкретному полю.
+ *
+ * Проверяем по форме ошибки, а не через instanceof: класс ошибки Prisma
+ * потянул бы рантайм-импорт сгенерированного клиента, а здесь достаточно
+ * кода P2002 и имени поля.
+ */
+function isUniqueViolation(error: unknown, field: string): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const known = error as { code?: unknown; meta?: { target?: unknown } };
+  if (known.code !== 'P2002') return false;
+  const target = known.meta?.target;
+  if (Array.isArray(target)) return target.includes(field);
+  return typeof target === 'string' && target.includes(field);
+}
+
 @Injectable()
 export class OrderPhotoService {
   private readonly logger = new Logger(OrderPhotoService.name);
@@ -326,15 +342,40 @@ export class OrderPhotoService {
   }
 
   async createLead(dto: DtoCreateLead) {
+    try {
+      return await this.createLeadTx(dto);
+    } catch (error) {
+      // Страховка на случай, если доставки пришли в разные процессы и
+      // разошлись мимо блокировки: повторная доставка заявки — это норма,
+      // а не ошибка. Отдаём уже созданный заказ, иначе сайт получит 500,
+      // сочтёт заказ непринятым и будет досылать его до «недоставленных».
+      if (dto.leadId && isUniqueViolation(error, 'externalRequestId')) {
+        const existing = await this.prisma.orderPhoto.findUnique({
+          where: { externalRequestId: dto.leadId },
+          include: { items: true },
+        });
+        if (existing) return existing;
+      }
+      throw error;
+    }
+  }
+
+  private async createLeadTx(dto: DtoCreateLead) {
     return this.prisma.$transaction(async (tx) => {
+      // Блокировку берём ДО проверки на повтор. Раньше было наоборот, и это
+      // ломалось на бою: две параллельные доставки одной заявки обе не
+      // находили заказ, сериализовались на блокировке, и вторая падала на
+      // уникальном индексе с 500 — притом что заказ уже был создан. Сайт
+      // считал это отказом и досылал заявку по кругу, пока она не уезжала
+      // в «недоставленные». Теперь вторая ждёт первую и видит готовый заказ.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(1001)`;
+
       if (dto.leadId) {
         const existing = await tx.orderPhoto.findUnique({
           where: { externalRequestId: dto.leadId },
         });
         if (existing) return existing;
       }
-
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(1001)`;
 
       const now = new Date();
       const monthPrefix = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
