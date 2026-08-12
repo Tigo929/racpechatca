@@ -94,6 +94,10 @@ services:
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /var/www/certbot:/var/www/certbot:ro
+      # Сайт photo.* обслуживается этим же nginx: он единственный вход на
+      # 80/443. Монтируем, а не пересобираем образ — сборка на этом сервере
+      # опасна по памяти, а правка конфига должна стоить один reload.
+      - ./frontend/nginx-photo.conf:/etc/nginx/conf.d/photo.conf:ro
     depends_on:
       backend:
         condition: service_healthy
