@@ -17,9 +17,10 @@ services:
       - internal
 
   backend:
-    build:
-      context: ./crm-new
-      dockerfile: Dockerfile.prebuilt
+    # Образ собирает GitHub Actions, сервер только скачивает: сборка здесь
+    # занимала больше двадцати минут на одном ядре, и всё это время сервер
+    # почти не отвечал. Обновление подхватывает deploy/auto-update.sh.
+    image: ghcr.io/tigo929/racpechatca-backend:latest
     restart: always
     depends_on:
       postgres:
@@ -84,9 +85,10 @@ services:
       sh -c "npx prisma migrate deploy && node dist/src/main"
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.prebuilt
+    # Собирается из исходников в CI. Раньше образ делался из готового dist,
+    # которого нет в git, — панель приходилось собирать локально и заливать
+    # на сервер отдельным скриптом.
+    image: ghcr.io/tigo929/racpechatca-frontend:latest
     restart: always
     ports:
       - "80:80"

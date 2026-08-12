@@ -1,0 +1,11 @@
+[Unit]
+Description=Автообновление CRM и сайта из реестра образов
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/deploy/auto-update.sh
+# Сборок на сервере нет, поэтому нагрузка небольшая; но если обновление
+# затянулось — прерываем, чтобы таймер не накладывался сам на себя.
+TimeoutStartSec=900
