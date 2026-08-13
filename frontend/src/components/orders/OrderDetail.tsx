@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+﻿import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
@@ -25,14 +25,27 @@ import { GulianSyncBlock } from './GulianSyncBlock';
 import { DispatchToExecutorModal } from './DispatchToExecutorModal';
 
 /**
- * Напоминание о ПВЗ выделено жирным курсивом: без пункта выдачи и телефона
- * заявку на доставку не оформить, а в длинном сообщении эта строка терялась.
+ * Напоминание о ПВЗ выделено: без пункта выдачи и телефона заявку на доставку
+ * не оформить, а в длинном сообщении эта строка терялась.
  *
- * Разметка Telegram: ** — жирный, __ — курсив. Клиент Telegram превращает её
- * в оформление при вставке в поле сообщения. Юникодные «жирные» буквы не
- * годятся: для кириллицы такого начертания в Юникоде просто нет.
+ * Подчёркивание делаем юникодной линией под каждым знаком, а не парой «__»
+ * по краям: парные значки показывались получателю буквально. Здесь подчёркнут
+ * сам текст, поэтому лишних символов в начале и в конце нет нигде.
+ *
+ * Жирный оставляем разметкой Telegram (**). Юникодного «жирного» начертания
+ * для кириллицы не существует — только для латиницы, поэтому иначе никак.
  */
-const pvzHighlight = (text: string): string => `**__${text}__**`;
+/** U+0332 — подчёркивающая линия под предыдущим знаком. Задаём кодом,
+ *  а не символом: сам знак невидим в редакторе, и его легко потерять. */
+const COMBINING_LOW_LINE = String.fromCharCode(0x0332);
+
+const underlineEveryChar = (text: string): string =>
+  // Раскладываем по символам, а не по кодовым единицам: иначе эмодзи и
+  // составные знаки распались бы на половинки.
+  [...text].map((char) => char + COMBINING_LOW_LINE).join('');
+
+const pvzHighlight = (text: string): string =>
+  `**${underlineEveryChar(text)}**`;
 
 function pvzReminder(deliveryMethod: string): string[] {
   if (deliveryMethod === "YANDEX_PVZ") {
