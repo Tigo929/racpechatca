@@ -453,6 +453,7 @@ export class OrderPhotoService {
         dto.photosFailed ? 'Фото загружались, но архив не сохранился' : null,
         dto.cloudLink ? `Ссылка на облако: ${dto.cloudLink}` : null,
         dto.yclid ? `yclid: ${dto.yclid}` : null,
+        dto.yandexClientId ? `Yandex ClientID: ${dto.yandexClientId}` : null,
         dto.pageUrl ? `Страница: ${dto.pageUrl}` : null,
         dto.submittedAt ? `Отправлено на сайте: ${dto.submittedAt}` : null,
       ].filter(Boolean);

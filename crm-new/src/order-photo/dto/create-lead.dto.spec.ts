@@ -46,6 +46,7 @@ describe('заявка с сайта: приём полей', () => {
       photosFailed: false,
       cloudLink: 'https://disk.yandex.ru/d/abc',
       yclid: 'yclid-12345',
+      yandexClientId: '1700000000000000000',
       pageUrl: 'https://example.ru/catalog/photo-10x15',
       submittedAt: '2026-08-12T09:00:00.000Z',
     });
@@ -56,6 +57,7 @@ describe('заявка с сайта: приём полей', () => {
     expect(dto.photosCount).toBe(12);
     expect(dto.cloudLink).toContain('disk.yandex.ru');
     expect(dto.yclid).toBe('yclid-12345');
+    expect(dto.yandexClientId).toBe('1700000000000000000');
     expect(dto.submittedAt).toBe('2026-08-12T09:00:00.000Z');
   });
 

@@ -106,6 +106,11 @@ export class DtoCreateLead {
   yclid?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  yandexClientId?: string;
+
+  @IsOptional()
   @IsUrl({ require_protocol: true })
   @MaxLength(600)
   pageUrl?: string;
