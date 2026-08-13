@@ -24,17 +24,27 @@ import { COMMUNICATION_LABELS, DELIVERY_LABELS } from "../../constants";
 import { GulianSyncBlock } from './GulianSyncBlock';
 import { DispatchToExecutorModal } from './DispatchToExecutorModal';
 
+/**
+ * Напоминание о ПВЗ выделено жирным курсивом: без пункта выдачи и телефона
+ * заявку на доставку не оформить, а в длинном сообщении эта строка терялась.
+ *
+ * Разметка Telegram: ** — жирный, __ — курсив. Клиент Telegram превращает её
+ * в оформление при вставке в поле сообщения. Юникодные «жирные» буквы не
+ * годятся: для кириллицы такого начертания в Юникоде просто нет.
+ */
+const pvzHighlight = (text: string): string => `**__${text}__**`;
+
 function pvzReminder(deliveryMethod: string): string[] {
   if (deliveryMethod === "YANDEX_PVZ") {
     return [
       "",
-      "📦 После оплаты пришлите чек и сообщите удобный Яндекс ПВЗ + номер телефона — оформим заявку на доставку.",
+      `📦 ${pvzHighlight("После оплаты пришлите чек и сообщите удобный Яндекс ПВЗ + номер телефона — оформим заявку на доставку.")}`,
     ];
   }
   if (deliveryMethod === "OZON_PVZ") {
     return [
       "",
-      "📦 После оплаты пришлите чек и сообщите удобный Ozon ПВЗ + номер телефона — оформим заявку на доставку.",
+      `📦 ${pvzHighlight("После оплаты пришлите чек и сообщите удобный Ozon ПВЗ + номер телефона — оформим заявку на доставку.")}`,
     ];
   }
   return [];
