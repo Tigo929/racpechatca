@@ -19,8 +19,13 @@ export function StatusStepper({ order }: Props) {
   const qc = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
+  const isOrderManager = user?.role === 'ORDER_MANAGER';
+  const canManageShipment = isAdmin || isOrderManager;
   const isTshirt = order.productCategory === 'TSHIRT';
-  const flow = isTshirt ? TSHIRT_STATUS_FLOW : STATUS_FLOW;
+  const needsShipment = !isTshirt && order.deliveryMethod !== 'PICKUP';
+  const flow = (isTshirt ? TSHIRT_STATUS_FLOW : STATUS_FLOW).filter(
+    (status) => status !== 'SHIPMENT_CREATED' || needsShipment,
+  );
   const labels = isTshirt ? TSHIRT_STATUS_LABELS : STATUS_LABELS;
   const currentIdx = flow.indexOf(order.status);
 
@@ -66,9 +71,23 @@ export function StatusStepper({ order }: Props) {
         // Исполнитель может переключаться в любую сторону по рабочему потоку,
         // но PAID остаётся админским финансовым закрытием.
         const adminOnly = status === 'PAID' || status === 'CANCELLED';
-        const canSetTarget = isAdmin || !adminOnly;
+        const shipmentOnly = status === 'SHIPMENT_CREATED';
+        const canSetTarget =
+          isAdmin || (!adminOnly && (!shipmentOnly || canManageShipment));
         const blockedNoExecutor = status === 'SENT' && needsExecutor;
-        const clickable = !isCurrent && canSetTarget && !blockedNoExecutor;
+        const blockedShipmentRole = shipmentOnly && !canManageShipment;
+        const blockedShipmentMissing =
+          needsShipment &&
+          (status === 'SENT' || status === 'PAID') &&
+          order.status !== 'SHIPMENT_CREATED' &&
+          order.status !== 'SENT' &&
+          order.status !== 'PAID';
+        const clickable =
+          !isCurrent &&
+          canSetTarget &&
+          !blockedNoExecutor &&
+          !blockedShipmentRole &&
+          !blockedShipmentMissing;
         const isPastClickable = idx < currentIdx && clickable;
         const isFutureClickable = idx > currentIdx && clickable;
 
@@ -82,6 +101,10 @@ export function StatusStepper({ order }: Props) {
               title={
                 blockedNoExecutor
                   ? 'Сначала назначьте исполнителя'
+                  : blockedShipmentRole
+                    ? 'Отгрузку создаёт администратор или менеджер'
+                  : blockedShipmentMissing
+                    ? 'Сначала создайте отгрузку'
                   : clickable
                     ? `Установить статус: ${labels[status] ?? status}`
                     : undefined

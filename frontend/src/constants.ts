@@ -14,12 +14,14 @@ export const STATUS_LABELS: Record<EnumStatus, string> = {
   IN_PROGRESS: 'В обработке',
   PRINTED: 'Печатается',
   READY: 'Готов',
+  SHIPMENT_CREATED: 'Отгрузка создана',
   DONE: 'Выполнен',
   SENT: 'Отправлен',
   PAID: 'Оплачен',
   READY_FOR_REVIEW: 'На проверке',
   COMPLETED: 'Завершён',
   CANCELLED: 'Отменён',
+  PROBLEM: 'Проблема',
 };
 
 // Поток статусов для фотографий (без нового executor-flow)
@@ -29,6 +31,7 @@ export const STATUS_FLOW: EnumStatus[] = [
   'FOLDER_STRUCTURE_CREATED',
   'IN_PROGRESS',
   'READY',
+  'SHIPMENT_CREATED',
   'SENT',
   'PAID',
 ];
@@ -50,6 +53,7 @@ export const TSHIRT_STATUS_LABELS: Record<EnumStatus, string> = {
   SENT: 'Отправлен',
   IN_PROGRESS: 'В работе',
   READY: 'Готов',
+  SHIPMENT_CREATED: 'Отгрузка создана',
   PAID: 'Оплачен',
   // Ниже — унаследованные статусы: в новом потоке их нет, но подписи нужны
   // на случай старых заказов и записей истории.
@@ -59,6 +63,7 @@ export const TSHIRT_STATUS_LABELS: Record<EnumStatus, string> = {
   READY_FOR_REVIEW: 'На проверке',
   COMPLETED: 'Завершён',
   CANCELLED: 'Отменён',
+  PROBLEM: 'Проблема',
 };
 
 export const COMMUNICATION_LABELS: Record<EnumCommunication, string> = {

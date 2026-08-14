@@ -3,7 +3,11 @@ import {
   ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
-import { EnumRole, EnumStatus } from 'src/generated/prisma/enums';
+import {
+  EnumDeliveryMethod,
+  EnumRole,
+  EnumStatus,
+} from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderFinancialIntegrityService } from 'src/order-photo/order-financial-integrity.service';
 import { OrderPhotoService } from 'src/order-photo/order-photo.service';
@@ -408,6 +412,88 @@ describe('salary accrual integrity', () => {
         { status: EnumStatus.SENT },
         'admin-1',
         EnumRole.ADMIN,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('allows creating shipment only after a delivery order is ready', async () => {
+    const stub = createPrismaStub();
+    const order = {
+      ...makeOrder('PHOTO'),
+      status: EnumStatus.READY,
+      deliveryMethod: EnumDeliveryMethod.YANDEX_PVZ,
+    };
+    stub.orderPhoto.findUnique.mockResolvedValue(order);
+    stub.statusHistory.create.mockResolvedValue({ id: 'history-1' });
+    stub.orderPhoto.update.mockResolvedValue({
+      ...order,
+      status: EnumStatus.SHIPMENT_CREATED,
+    });
+    const service = createOrderService(stub);
+
+    await expect(
+      service.updateStatusOrder(
+        'order-1',
+        { status: EnumStatus.SHIPMENT_CREATED },
+        'manager-1',
+        EnumRole.ORDER_MANAGER,
+      ),
+    ).resolves.toMatchObject({ status: EnumStatus.SHIPMENT_CREATED });
+  });
+
+  it('does not allow assigned executors to create shipments', async () => {
+    const stub = createPrismaStub();
+    stub.orderPhoto.findUnique.mockResolvedValue({
+      ...makeOrder('PHOTO'),
+      status: EnumStatus.READY,
+      deliveryMethod: EnumDeliveryMethod.YANDEX_PVZ,
+    });
+    const service = createOrderService(stub);
+
+    await expect(
+      service.updateStatusOrder(
+        'order-1',
+        { status: EnumStatus.SHIPMENT_CREATED },
+        'executor-1',
+        EnumRole.EXECUTOR,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('does not allow shipment-created status for pickup orders', async () => {
+    const stub = createPrismaStub();
+    stub.orderPhoto.findUnique.mockResolvedValue({
+      ...makeOrder('PHOTO'),
+      status: EnumStatus.READY,
+      deliveryMethod: EnumDeliveryMethod.PICKUP,
+    });
+    const service = createOrderService(stub);
+
+    await expect(
+      service.updateStatusOrder(
+        'order-1',
+        { status: EnumStatus.SHIPMENT_CREATED },
+        'manager-1',
+        EnumRole.ORDER_MANAGER,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('blocks sending delivery orders before shipment is created', async () => {
+    const stub = createPrismaStub();
+    stub.orderPhoto.findUnique.mockResolvedValue({
+      ...makeOrder('PHOTO'),
+      status: EnumStatus.READY,
+      deliveryMethod: EnumDeliveryMethod.OZON_PVZ,
+    });
+    const service = createOrderService(stub);
+
+    await expect(
+      service.updateStatusOrder(
+        'order-1',
+        { status: EnumStatus.SENT },
+        'manager-1',
+        EnumRole.ORDER_MANAGER,
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });

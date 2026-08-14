@@ -593,8 +593,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           )}
           {/* Клиентский стикер на пакет — печатают и админ, и исполнитель,
               как только заказ готов. */}
-          {order.productCategory === "PHOTO" &&
-            ["READY", "DONE", "SENT", "PAID", "COMPLETED"].includes(
+            {order.productCategory === "PHOTO" &&
+            ["READY", "SHIPMENT_CREATED", "DONE", "SENT", "PAID", "COMPLETED"].includes(
               order.status,
             ) && (
               <button

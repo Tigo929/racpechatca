@@ -6,6 +6,7 @@ export const STATUS_LABELS: Partial<Record<EnumStatus, string>> = {
   [EnumStatus.IN_PROGRESS]: '🔄 В работе',
   [EnumStatus.PRINTED]: '🖨️ Напечатано',
   [EnumStatus.READY]: '✅ Готово',
+  [EnumStatus.SHIPMENT_CREATED]: '🚚 Отгрузка создана',
   [EnumStatus.DONE]: '✅ Выполнено',
   [EnumStatus.SENT]: '📦 Отправлено',
   [EnumStatus.PAID]: '💰 Оплачено',

@@ -108,12 +108,41 @@ const NOT_ACTIVE_STATUSES: EnumStatus[] = [
   EnumStatus.CANCELLED,
 ];
 
-const READY_STATUSES: EnumStatus[] = [EnumStatus.READY, EnumStatus.DONE];
+const READY_STATUSES: EnumStatus[] = [
+  EnumStatus.READY,
+  EnumStatus.SHIPMENT_CREATED,
+  EnumStatus.DONE,
+];
 
 const REVIEW_WAITING_STATUSES: EnumStatus[] = [
   EnumStatus.SENT,
   EnumStatus.PAID,
 ];
+
+const SHIPMENT_REQUIRED_DELIVERY_METHODS: EnumDeliveryMethod[] = [
+  EnumDeliveryMethod.YANDEX_PVZ,
+  EnumDeliveryMethod.OZON_PVZ,
+  EnumDeliveryMethod.OZON_SELLER,
+  EnumDeliveryMethod.WB_SELLER,
+];
+
+const SHIPMENT_CREATABLE_FROM: EnumStatus[] = [
+  EnumStatus.READY,
+  EnumStatus.SHIPMENT_CREATED,
+  EnumStatus.DONE,
+  EnumStatus.READY_FOR_REVIEW,
+  EnumStatus.SENT,
+];
+
+function needsShipmentStatus(order: {
+  productCategory: EnumProductCategory;
+  deliveryMethod: EnumDeliveryMethod;
+}): boolean {
+  return (
+    order.productCategory !== EnumProductCategory.TSHIRT &&
+    SHIPMENT_REQUIRED_DELIVERY_METHODS.includes(order.deliveryMethod)
+  );
+}
 
 /**
  * Нарушение уникального индекса по конкретному полю.
@@ -983,6 +1012,42 @@ export class OrderPhotoService {
     const isManager = userRole === EnumRole.ORDER_MANAGER;
 
     const newStatus = dto.status;
+    const shipmentRequired = needsShipmentStatus(order);
+
+    if (newStatus === EnumStatus.SHIPMENT_CREATED) {
+      if (!shipmentRequired) {
+        throw new BadRequestException(
+          'Статус «Отгрузка создана» нужен только для заказов с доставкой.',
+        );
+      }
+      if (!SHIPMENT_CREATABLE_FROM.includes(order.status)) {
+        throw new BadRequestException(
+          'Сначала переведите заказ в «Готов», затем создавайте отгрузку.',
+        );
+      }
+    }
+
+    if (
+      shipmentRequired &&
+      newStatus === EnumStatus.SENT &&
+      order.status !== EnumStatus.SHIPMENT_CREATED &&
+      order.status !== EnumStatus.SENT
+    ) {
+      throw new BadRequestException(
+        'Сначала поставьте статус «Отгрузка создана», затем переводите заказ в «Отправлен».',
+      );
+    }
+
+    if (
+      shipmentRequired &&
+      newStatus === EnumStatus.PAID &&
+      order.status !== EnumStatus.SENT &&
+      order.status !== EnumStatus.PAID
+    ) {
+      throw new BadRequestException(
+        'Сначала переведите доставочный заказ в «Отправлен», затем в «Оплачен».',
+      );
+    }
 
     // Исполнитель может двигать рабочий поток в любом направлении до оплаты.
     // PAID закрывает деньги и остаётся админским действием; CANCELLED тоже
@@ -993,6 +1058,11 @@ export class OrderPhotoService {
       EnumStatus.CANCELLED,
     ];
     if (!isAdmin) {
+      if (newStatus === EnumStatus.SHIPMENT_CREATED && !isManager) {
+        throw new ForbiddenException(
+          'Создать отгрузку может только администратор или менеджер по оформлению.',
+        );
+      }
       if (!isManager && order.executorId !== userId) {
         throw new ForbiddenException(
           'Вы не назначены исполнителем этого заказа.',

@@ -14,12 +14,14 @@ const STATUS_STYLES: Record<EnumStatus, { bg: string; text: string; dot: string 
   IN_PROGRESS:              { bg: 'bg-sky-50',     text: 'text-sky-700',     dot: 'bg-sky-500' },
   PRINTED:                  { bg: 'bg-yellow-50',  text: 'text-yellow-700',  dot: 'bg-yellow-500' },
   READY:                    { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  SHIPMENT_CREATED:         { bg: 'bg-lime-50',    text: 'text-lime-700',    dot: 'bg-lime-500' },
   DONE:                     { bg: 'bg-cyan-50',    text: 'text-cyan-700',    dot: 'bg-cyan-500' },
   SENT:                     { bg: 'bg-orange-50',  text: 'text-orange-700',  dot: 'bg-orange-500' },
   PAID:                     { bg: 'bg-teal-50',    text: 'text-teal-700',    dot: 'bg-teal-500' },
   READY_FOR_REVIEW:         { bg: 'bg-violet-50',  text: 'text-violet-700',  dot: 'bg-violet-500' },
   COMPLETED:                { bg: 'bg-emerald-100',text: 'text-emerald-800', dot: 'bg-emerald-600' },
   CANCELLED:                { bg: 'bg-red-50',     text: 'text-red-700',     dot: 'bg-red-400' },
+  PROBLEM:                  { bg: 'bg-rose-50',    text: 'text-rose-700',    dot: 'bg-rose-500' },
 };
 
 export function StatusBadge({ status, productCategory, size = 'md' }: Props) {

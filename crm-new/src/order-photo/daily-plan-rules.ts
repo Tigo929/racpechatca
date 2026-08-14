@@ -31,6 +31,7 @@ export const PLAN_IN_WORK_STATUSES: EnumStatus[] = [
 /** Статусы «готов» — работа сдана, заказ ждёт отгрузки или выдачи. */
 export const PLAN_READY_STATUSES: EnumStatus[] = [
   EnumStatus.READY,
+  EnumStatus.SHIPMENT_CREATED,
   EnumStatus.DONE,
 ];
 

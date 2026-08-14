@@ -31,6 +31,7 @@ const IN_WORK_STATUSES: EnumStatus[] = [
  */
 const READY_STATUSES: EnumStatus[] = [
   EnumStatus.READY,
+  EnumStatus.SHIPMENT_CREATED,
   EnumStatus.DONE,
   EnumStatus.READY_FOR_REVIEW,
 ];

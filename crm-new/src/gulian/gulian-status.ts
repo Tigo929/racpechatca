@@ -9,6 +9,7 @@ export function toGulianStatus(status: EnumStatus, executorSentAt: Date | null):
     case EnumStatus.PRINTED:
       return 'in_progress';
     case EnumStatus.READY:
+    case EnumStatus.SHIPMENT_CREATED:
     case EnumStatus.DONE:
       return 'ready';
     default:
