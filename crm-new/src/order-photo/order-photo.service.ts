@@ -135,13 +135,9 @@ const SHIPMENT_CREATABLE_FROM: EnumStatus[] = [
 ];
 
 function needsShipmentStatus(order: {
-  productCategory: EnumProductCategory;
   deliveryMethod: EnumDeliveryMethod;
 }): boolean {
-  return (
-    order.productCategory !== EnumProductCategory.TSHIRT &&
-    SHIPMENT_REQUIRED_DELIVERY_METHODS.includes(order.deliveryMethod)
-  );
+  return SHIPMENT_REQUIRED_DELIVERY_METHODS.includes(order.deliveryMethod);
 }
 
 /**
@@ -1020,7 +1016,13 @@ export class OrderPhotoService {
           'Статус «Отгрузка создана» нужен только для заказов с доставкой.',
         );
       }
-      if (!SHIPMENT_CREATABLE_FROM.includes(order.status)) {
+      const canCreateShipment =
+        SHIPMENT_CREATABLE_FROM.includes(order.status) &&
+        !(
+          order.productCategory === EnumProductCategory.TSHIRT &&
+          order.status === EnumStatus.SENT
+        );
+      if (!canCreateShipment) {
         throw new BadRequestException(
           'Сначала переведите заказ в «Готов», затем создавайте отгрузку.',
         );
@@ -1029,6 +1031,7 @@ export class OrderPhotoService {
 
     if (
       shipmentRequired &&
+      order.productCategory !== EnumProductCategory.TSHIRT &&
       newStatus === EnumStatus.SENT &&
       order.status !== EnumStatus.SHIPMENT_CREATED &&
       order.status !== EnumStatus.SENT
@@ -1038,15 +1041,19 @@ export class OrderPhotoService {
       );
     }
 
-    if (
-      shipmentRequired &&
-      newStatus === EnumStatus.PAID &&
-      order.status !== EnumStatus.SENT &&
-      order.status !== EnumStatus.PAID
-    ) {
-      throw new BadRequestException(
-        'Сначала переведите доставочный заказ в «Отправлен», затем в «Оплачен».',
-      );
+    if (shipmentRequired && newStatus === EnumStatus.PAID) {
+      const readyForPayment =
+        order.status === EnumStatus.PAID ||
+        (order.productCategory === EnumProductCategory.TSHIRT
+          ? order.status === EnumStatus.SHIPMENT_CREATED
+          : order.status === EnumStatus.SENT);
+      if (!readyForPayment) {
+        throw new BadRequestException(
+          order.productCategory === EnumProductCategory.TSHIRT
+            ? 'Сначала поставьте статус «Отгрузка создана», затем переводите заказ в «Оплачен».'
+            : 'Сначала переведите доставочный заказ в «Отправлен», затем в «Оплачен».',
+        );
+      }
     }
 
     // Исполнитель может двигать рабочий поток в любом направлении до оплаты.

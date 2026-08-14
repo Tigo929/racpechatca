@@ -8,6 +8,7 @@ import { EnumStatus } from 'src/generated/prisma/enums';
  *   отправлен → SENT        (мы передали заказ партнёру)
  *   в работе  → IN_PROGRESS (партнёр печатает)
  *   готов     → READY       (партнёр закончил)
+ *   отгрузка  → SHIPMENT_CREATED (мы создали клиентскую отгрузку)
  *   оплачен   → PAID        (мы рассчитались с партнёром)
  */
 export const TSHIRT_STATUSES: EnumStatus[] = [
@@ -15,6 +16,7 @@ export const TSHIRT_STATUSES: EnumStatus[] = [
   EnumStatus.SENT,
   EnumStatus.IN_PROGRESS,
   EnumStatus.READY,
+  EnumStatus.SHIPMENT_CREATED,
   EnumStatus.PAID,
 ];
 
@@ -23,6 +25,7 @@ const TO_PARTNER: Partial<Record<EnumStatus, string>> = {
   [EnumStatus.SENT]: 'sent',
   [EnumStatus.IN_PROGRESS]: 'in_progress',
   [EnumStatus.READY]: 'ready',
+  [EnumStatus.SHIPMENT_CREATED]: 'ready',
   [EnumStatus.PAID]: 'paid',
 };
 
@@ -84,7 +87,8 @@ const FLOW_RANK: Partial<Record<EnumStatus, number>> = {
   [EnumStatus.SENT]: 1,
   [EnumStatus.IN_PROGRESS]: 2,
   [EnumStatus.READY]: 3,
-  [EnumStatus.PAID]: 4,
+  [EnumStatus.SHIPMENT_CREATED]: 4,
+  [EnumStatus.PAID]: 5,
 };
 
 /** Двигаем статус к target только если это шаг ВПЕРЁД (и не из PAID). */

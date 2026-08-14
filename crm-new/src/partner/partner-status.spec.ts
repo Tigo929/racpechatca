@@ -9,6 +9,7 @@ import {
 describe('коды статусов ↔ партнёр', () => {
   it('туда-обратно по основным статусам', () => {
     expect(toPartnerStatus(EnumStatus.IN_PROGRESS)).toBe('in_progress');
+    expect(toPartnerStatus(EnumStatus.SHIPMENT_CREATED)).toBe('ready');
     expect(fromPartnerStatus('ready')).toBe(EnumStatus.READY);
     expect(fromPartnerStatus('ОПЛАЧЕН')).toBeNull();
   });
@@ -47,6 +48,7 @@ describe('движение только вперёд', () => {
   it('не двигает назад', () => {
     expect(shouldAdvanceTo(EnumStatus.READY, EnumStatus.IN_PROGRESS)).toBe(false);
     expect(shouldAdvanceTo(EnumStatus.IN_PROGRESS, EnumStatus.IN_PROGRESS)).toBe(false);
+    expect(shouldAdvanceTo(EnumStatus.SHIPMENT_CREATED, EnumStatus.READY)).toBe(false);
   });
 
   it('никогда не перебивает «Оплачен»', () => {

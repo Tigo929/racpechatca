@@ -22,7 +22,7 @@ export function StatusStepper({ order }: Props) {
   const isOrderManager = user?.role === 'ORDER_MANAGER';
   const canManageShipment = isAdmin || isOrderManager;
   const isTshirt = order.productCategory === 'TSHIRT';
-  const needsShipment = !isTshirt && order.deliveryMethod !== 'PICKUP';
+  const needsShipment = order.deliveryMethod !== 'PICKUP';
   const flow = (isTshirt ? TSHIRT_STATUS_FLOW : STATUS_FLOW).filter(
     (status) => status !== 'SHIPMENT_CREATED' || needsShipment,
   );
@@ -76,12 +76,25 @@ export function StatusStepper({ order }: Props) {
           isAdmin || (!adminOnly && (!shipmentOnly || canManageShipment));
         const blockedNoExecutor = status === 'SENT' && needsExecutor;
         const blockedShipmentRole = shipmentOnly && !canManageShipment;
-        const blockedShipmentMissing =
-          needsShipment &&
-          (status === 'SENT' || status === 'PAID') &&
+        const blockedTshirtPayment =
+          isTshirt &&
+          status === 'PAID' &&
+          order.status !== 'SHIPMENT_CREATED' &&
+          order.status !== 'PAID';
+        const blockedPhotoSent =
+          !isTshirt &&
+          status === 'SENT' &&
           order.status !== 'SHIPMENT_CREATED' &&
           order.status !== 'SENT' &&
           order.status !== 'PAID';
+        const blockedPhotoPayment =
+          !isTshirt &&
+          status === 'PAID' &&
+          order.status !== 'SENT' &&
+          order.status !== 'PAID';
+        const blockedShipmentMissing =
+          needsShipment &&
+          (blockedTshirtPayment || blockedPhotoSent || blockedPhotoPayment);
         const clickable =
           !isCurrent &&
           canSetTarget &&
@@ -103,6 +116,8 @@ export function StatusStepper({ order }: Props) {
                   ? 'Сначала назначьте исполнителя'
                   : blockedShipmentRole
                     ? 'Отгрузку создаёт администратор или менеджер'
+                  : blockedShipmentMissing && blockedPhotoPayment
+                    ? 'Сначала переведите заказ в «Отправлен»'
                   : blockedShipmentMissing
                     ? 'Сначала создайте отгрузку'
                   : clickable

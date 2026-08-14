@@ -441,6 +441,33 @@ describe('salary accrual integrity', () => {
     ).resolves.toMatchObject({ status: EnumStatus.SHIPMENT_CREATED });
   });
 
+  it('allows creating shipment for ready tshirt delivery orders', async () => {
+    const stub = createPrismaStub();
+    const order = {
+      ...makeOrder('TSHIRT'),
+      status: EnumStatus.READY,
+      deliveryMethod: EnumDeliveryMethod.OZON_PVZ,
+      executorId: null,
+      executor: null,
+    };
+    stub.orderPhoto.findUnique.mockResolvedValue(order);
+    stub.statusHistory.create.mockResolvedValue({ id: 'history-1' });
+    stub.orderPhoto.update.mockResolvedValue({
+      ...order,
+      status: EnumStatus.SHIPMENT_CREATED,
+    });
+    const service = createOrderService(stub);
+
+    await expect(
+      service.updateStatusOrder(
+        'order-1',
+        { status: EnumStatus.SHIPMENT_CREATED },
+        'admin-1',
+        EnumRole.ADMIN,
+      ),
+    ).resolves.toMatchObject({ status: EnumStatus.SHIPMENT_CREATED });
+  });
+
   it('does not allow assigned executors to create shipments', async () => {
     const stub = createPrismaStub();
     stub.orderPhoto.findUnique.mockResolvedValue({
@@ -498,10 +525,60 @@ describe('salary accrual integrity', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('blocks payment for tshirt delivery orders before shipment is created', async () => {
+    const stub = createPrismaStub();
+    stub.orderPhoto.findUnique.mockResolvedValue({
+      ...makeOrder('TSHIRT'),
+      status: EnumStatus.READY,
+      deliveryMethod: EnumDeliveryMethod.YANDEX_PVZ,
+      executorId: null,
+      executor: null,
+    });
+    const service = createOrderService(stub);
+
+    await expect(
+      service.updateStatusOrder(
+        'order-1',
+        { status: EnumStatus.PAID },
+        'admin-1',
+        EnumRole.ADMIN,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('allows payment for tshirt delivery orders after shipment is created', async () => {
+    const stub = createPrismaStub();
+    const order = {
+      ...makeOrder('TSHIRT'),
+      status: EnumStatus.SHIPMENT_CREATED,
+      deliveryMethod: EnumDeliveryMethod.YANDEX_PVZ,
+      executorId: null,
+      executor: null,
+    };
+    stub.orderPhoto.findUnique.mockResolvedValue(order);
+    stub.salaryAccrual.findMany.mockResolvedValue([]);
+    stub.statusHistory.create.mockResolvedValue({ id: 'history-1' });
+    stub.orderPhoto.update.mockResolvedValue({
+      ...order,
+      status: EnumStatus.PAID,
+    });
+    const service = createOrderService(stub);
+
+    await expect(
+      service.updateStatusOrder(
+        'order-1',
+        { status: EnumStatus.PAID },
+        'admin-1',
+        EnumRole.ADMIN,
+      ),
+    ).resolves.toMatchObject({ status: EnumStatus.PAID });
+  });
+
   it('allows a tshirt order to reach SENT without an executor (partner-run)', async () => {
     const { stub, service } = setupCompletion('TSHIRT');
     stub.orderPhoto.findUnique.mockResolvedValue({
       ...makeOrder('TSHIRT'),
+      deliveryMethod: EnumDeliveryMethod.YANDEX_PVZ,
       executorId: null,
       executor: null,
     });
