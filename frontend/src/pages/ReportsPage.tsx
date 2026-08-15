@@ -14,8 +14,12 @@ const MONTH_LABELS_FULL = ['Январь', 'Февраль', 'Март', 'Апр
 
 /** Деньги, но «—» вместо «0 ₽» — чтобы пустые ячейки не шумели. */
 const money = (n: number): string => (n !== 0 ? fmt(n) : '—');
-/** Все расходы периода: расходные ордера + выплаченная зарплата. */
-const spent = (m: PnlMetrics): number => m.totalExpenses + m.salaryPaid;
+/**
+ * Все расходы периода: себестоимость заказов, операционные расходы и
+ * НАЧИСЛЕННАЯ зарплата. Именно начисленная: месяц без выплат иначе выглядит
+ * сверхприбыльным, хотя работа сделана и долг перед сотрудниками вырос.
+ */
+const spent = (m: PnlMetrics): number => m.totalExpenses + m.salaryAccrued;
 
 // ── Таблица «период × продукты» ──────────────────────────────────────────────
 
@@ -23,12 +27,19 @@ function Cell({ value, dim, highlight, neg }: { value: string; dim?: boolean; hi
   return <td className={`py-2.5 px-3 text-right tabular-nums ${dim ? 'text-gray-400' : ''} ${highlight ? 'font-bold text-green-700' : ''} ${neg ? 'text-red-600' : ''}`}>{value}</td>;
 }
 
-function ProductCell({ count, revenue }: { count: number; revenue: number }) {
+/**
+ * Ячейка категории: оборот бледным, заработок — крупно.
+ *
+ * Раньше здесь стоял только оборот, и холсты показывали 6 828 ₽ при
+ * реальном заработке 1 276 ₽. Главной должна быть та цифра, которая
+ * остаётся владельцу, а оборот — справкой рядом.
+ */
+function ProductCell({ count, revenue, profit }: { count: number; revenue: number; profit: number }) {
   if (count === 0 && revenue === 0) return <td className="py-2.5 px-3 text-right text-gray-300">—</td>;
   return (
     <td className="py-2.5 px-3 text-right whitespace-nowrap">
-      <span className="font-medium tabular-nums">{count} шт</span>
-      <span className="text-gray-400 tabular-nums"> · {fmt(revenue)}</span>
+      <div className="text-gray-400 text-xs tabular-nums">{count} шт · {fmt(revenue)}</div>
+      <div className={`font-semibold tabular-nums ${profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>{fmt(profit)}</div>
     </td>
   );
 }
@@ -39,9 +50,9 @@ function PnlRow({ label, m, isTotal, onClick, selected }: { label: string; m: Pn
   return (
     <tr className={`${base} text-sm`} onClick={onClick}>
       <td className={`py-2.5 px-4 ${isTotal ? 'font-bold' : 'text-gray-700'}`}>{label}</td>
-      <ProductCell count={m.photoCount} revenue={m.photoRevenue} />
-      <ProductCell count={m.tshirtCount} revenue={m.tshirtRevenue} />
-      <ProductCell count={m.canvasCount} revenue={m.canvasRevenue} />
+      <ProductCell count={m.photoCount} revenue={m.photoRevenue} profit={m.photoProfit} />
+      <ProductCell count={m.tshirtCount} revenue={m.tshirtRevenue} profit={m.tshirtProfit} />
+      <ProductCell count={m.canvasCount} revenue={m.canvasRevenue} profit={m.canvasProfit} />
       <Cell value={money(m.totalRevenue)} />
       <Cell value={money(spent(m))} neg={spent(m) > 0} dim={spent(m) === 0} />
       <Cell value={active ? fmt(m.netProfit) : '—'} highlight={active && m.netProfit > 0} neg={m.netProfit < 0} />
@@ -116,7 +127,7 @@ function ExpenseStructure({ m, periodLabel }: { m: PnlMetrics; periodLabel: stri
       color: 'bg-teal-400',
     },
     { label: 'Прочее', value: m.other, color: 'bg-gray-400' },
-    { label: 'Зарплата', value: m.salaryPaid, color: 'bg-rose-500' },
+    { label: 'Зарплата (начислено)', value: m.salaryAccrued, color: 'bg-rose-500' },
   ]
     .filter((i) => i.value > 0)
     .sort((a, b) => b.value - a.value);
@@ -458,7 +469,7 @@ export function ReportsPage() {
                 onRowClick={(key) => setMonth(Number(key))}
                 selectedKey={String(month)}
               />
-              <p className="text-xs text-gray-400 px-5 py-3">Прибыль = выручка − доставка (транзит) − расходные ордера − зарплата. Доставка в прибыль не входит. Учитываются завершённые заказы (отправлено / оплачено).</p>
+              <p className="text-xs text-gray-400 px-5 py-3">Заработок = выручка за товар − себестоимость (бумага, подрядчики) − начисленная зарплата − расходы бизнеса + заработок на доставке. Себестоимость считается по самим заказам, поэтому закупки материалов в расход второй раз не идут. Заказ попадает в период по дате оплаты клиентом.</p>
             </div>
 
             {/* Детализация выбранного месяца */}

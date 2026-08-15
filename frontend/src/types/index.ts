@@ -443,9 +443,20 @@ export interface PnlMetrics {
   operatingExpenses: number; // сумма всех операционных
   totalExpenses: number; // cogs + operatingExpenses (все расходные ордера)
   // Зарплата и итог
-  salaryPaid: number;
-  netProfit: number; // grossProfit − operatingExpenses − salaryPaid
+  salaryPaid: number; // выплачено за период — справочно, в прибыль не идёт
+  salaryAccrued: number; // начислено за заказы периода — вычитается из прибыли
+  netProfit: number; // заработок за вычетом всего
   margin: number; // netProfit / totalRevenue, %
+  // Себестоимость, посчитанная по самим заказам
+  photoMaterialCost: number; // бумага по формату позиций
+  tshirtContractorCost: number; // вознаграждение партнёру
+  // Доставка: взяли с клиента (deliveryCost) минус отдали перевозчику
+  deliveryPaid: number;
+  deliveryProfit: number;
+  // Заработок по категориям — то, ради чего отчёт переделывался
+  photoProfit: number;
+  tshirtProfit: number;
+  canvasProfit: number;
 }
 
 export interface MonthData extends PnlMetrics {
