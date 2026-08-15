@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { telegramFetch } from './telegram-fetch';
 
 @Injectable()
 export class TelegramService {
@@ -35,7 +36,7 @@ export class TelegramService {
     }
     const url = `https://api.telegram.org/bot${this.token}/sendMessage`;
     try {
-      const res = await fetch(url, {
+      const res = await telegramFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -103,7 +104,7 @@ export class TelegramService {
   ): Promise<boolean> {
     if (!this.token) return false;
     try {
-      const res = await fetch(
+      const res = await telegramFetch(
         `https://api.telegram.org/bot${this.token}/answerCallbackQuery`,
         {
           method: 'POST',
@@ -160,7 +161,7 @@ export class TelegramService {
   ): Promise<boolean> {
     if (!this.token) return false;
     try {
-      const res = await fetch(
+      const res = await telegramFetch(
         `https://api.telegram.org/bot${this.token}/editMessageReplyMarkup`,
         {
           method: 'POST',
@@ -216,7 +217,7 @@ export class TelegramService {
     );
 
     try {
-      const res = await fetch(
+      const res = await telegramFetch(
         `https://api.telegram.org/bot${this.token}/${method}`,
         {
           method: 'POST',
@@ -243,7 +244,7 @@ export class TelegramService {
   ): Promise<boolean> {
     if (!this.token) return false;
     try {
-      const res = await fetch(
+      const res = await telegramFetch(
         `https://api.telegram.org/bot${this.token}/editMessageCaption`,
         {
           method: 'POST',

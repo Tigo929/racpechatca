@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TelegramUpdateService, TgUpdate } from './telegram-update.service';
+import { telegramFetch } from './telegram-fetch';
 
 /**
  * Сколько Telegram держит соединение, если обновлений нет. Намеренно коротко:
@@ -117,7 +118,7 @@ export class TelegramPollingService implements OnModuleInit, OnModuleDestroy {
     method: string,
     body: Record<string, unknown>,
   ): Promise<T | null> {
-    const res = await fetch(
+    const res = await telegramFetch(
       `https://api.telegram.org/bot${this.token}/${method}`,
       {
         method: 'POST',

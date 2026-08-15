@@ -42,6 +42,11 @@ services:
       # Бизнес живёт по Москве: без TZ отчёты режут месяцы/недели по UTC,
       # и заказ, отправленный 1-го числа ночью, попадал в прошлый месяц.
       TZ: Europe/Moscow
+      # Прокси только для Telegram: с этого сервера api.telegram.org
+      # недоступен (443-й порт не открывается ни по одному адресу Telegram,
+      # при этом Авито и Яндекс отвечают). Пусто — ходим напрямую.
+      # Формат: http://user:pass@host:port
+      TELEGRAM_PROXY_URL: ${TELEGRAM_PROXY_URL:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_GROUP_CHAT_ID: ${TELEGRAM_GROUP_CHAT_ID}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
