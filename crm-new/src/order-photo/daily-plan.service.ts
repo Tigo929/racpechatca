@@ -4,7 +4,10 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
-import { EnumProductCategory } from 'src/generated/prisma/enums';
+import {
+  EnumDeliveryMethod,
+  EnumProductCategory,
+} from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { moscowDateKey, OPEN_TASK_STATUSES } from 'src/tasks/task-reminder-rules';
@@ -129,7 +132,14 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
     now: Date,
     manual = false,
   ): Promise<Omit<PlanResult, 'sent'>> {
-    const [inWorkOrders, readyOrders, unassignedCount, appState, openTasks] =
+    const [
+      inWorkOrders,
+      readyOrders,
+      externalShipmentOrders,
+      unassignedCount,
+      appState,
+      openTasks,
+    ] =
       await Promise.all([
       this.prisma.orderPhoto.findMany({
         where: {
@@ -159,6 +169,26 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
           executorId: true,
           executor: { select: { username: true, telegramUsername: true } },
           items: { select: { formatPaper: true, quantity: true } },
+        },
+      }),
+      this.prisma.orderPhoto.findMany({
+        where: {
+          productCategory: {
+            in: [EnumProductCategory.TSHIRT, EnumProductCategory.CANVAS],
+          },
+          deliveryMethod: { not: EnumDeliveryMethod.PICKUP },
+          status: { in: PLAN_READY_STATUSES },
+        },
+        select: {
+          numberOrder: true,
+          deliveryMethod: true,
+          items: { select: { formatPaper: true, quantity: true } },
+          tshirtItems: {
+            select: { color: true, size: true, quantity: true },
+          },
+          canvasItems: {
+            select: { formatCanvas: true, quantity: true },
+          },
         },
       }),
       this.prisma.orderPhoto.count({
@@ -223,6 +253,29 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
       });
     }
 
+    if (externalShipmentOrders.length > 0) {
+      byExecutor.set('__external_shipments__', {
+        executor: { username: 'Отгрузки', telegramUsername: null },
+        inWork: [],
+        ready: externalShipmentOrders.map((order) => ({
+          numberOrder: order.numberOrder,
+          deliveryMethod: order.deliveryMethod,
+          items: [
+            ...order.items,
+            ...order.tshirtItems.map((i) => ({
+              formatPaper: `Футболка ${i.color}, ${i.size}`,
+              quantity: i.quantity,
+            })),
+            ...order.canvasItems.map((i) => ({
+              formatPaper: `Холст ${i.formatCanvas}`,
+              quantity: i.quantity,
+            })),
+          ],
+        })),
+        tasks: [],
+      });
+    }
+
     // Задачи попадают в блок своего сотрудника. Если у него нет заказов,
     // группа создаётся здесь — иначе задача потерялась бы.
     for (const task of openTasks) {
@@ -249,7 +302,11 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
     );
     return {
       empty: false,
-      orderCount: inWorkOrders.length + readyOrders.length + openTasks.length,
+      orderCount:
+        inWorkOrders.length +
+        readyOrders.length +
+        externalShipmentOrders.length +
+        openTasks.length,
       message,
     };
   }

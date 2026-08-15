@@ -71,6 +71,7 @@ function AppRoutes() {
             из одного раздела в другой. */}
         <Route path="/crm/photo" element={<CrmGate><PrivateRoute><OrdersPage key="photo" section="PHOTO" /></PrivateRoute></CrmGate>} />
         <Route path="/crm/tshirt" element={<CrmGate><OrderStaffRoute><OrdersPage key="tshirt" section="TSHIRT" /></OrderStaffRoute></CrmGate>} />
+        <Route path="/crm/canvas" element={<CrmGate><OrderStaffRoute><OrdersPage key="canvas" section="CANVAS" /></OrderStaffRoute></CrmGate>} />
         <Route path="/crm/leads" element={<CrmGate><OrderStaffRoute><OrdersPage key="leads" section="LEADS" /></OrderStaffRoute></CrmGate>} />
         <Route path="/crm/avito" element={<CrmGate><OrderStaffRoute><AvitoPage /></OrderStaffRoute></CrmGate>} />
         {/* Задачи видят все: администратор ставит, исполнитель ведёт свои */}

@@ -66,6 +66,26 @@ export const TSHIRT_STATUS_LABELS: Record<EnumStatus, string> = {
   PROBLEM: 'Проблема',
 };
 
+// Поток для холстов: SENT означает «передан подрядчику», клиентская отгрузка
+// создаётся уже после READY.
+export const CANVAS_STATUS_FLOW: EnumStatus[] = [
+  'NEW',
+  'SENT',
+  'IN_PROGRESS',
+  'READY',
+  'SHIPMENT_CREATED',
+  'PAID',
+];
+
+export const CANVAS_STATUS_LABELS: Record<EnumStatus, string> = {
+  ...TSHIRT_STATUS_LABELS,
+  SENT: 'У подрядчика',
+  IN_PROGRESS: 'В работе',
+  READY: 'Готов',
+  SHIPMENT_CREATED: 'Отгрузка создана',
+  PAID: 'Оплачен',
+};
+
 export const COMMUNICATION_LABELS: Record<EnumCommunication, string> = {
   AVITO: 'Авито',
   TELEGRAM: 'Telegram',

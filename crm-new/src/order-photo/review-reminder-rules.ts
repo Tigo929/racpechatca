@@ -13,6 +13,7 @@ export const REVIEW_REMINDER_PICKUP_DELAY_MS = 24 * 60 * 60 * 1000; // 1 day
 export const REVIEW_REMINDER_CATEGORIES: EnumProductCategory[] = [
   EnumProductCategory.PHOTO,
   EnumProductCategory.TSHIRT,
+  EnumProductCategory.CANVAS,
 ];
 
 export const REVIEW_REMINDER_STATUSES: EnumStatus[] = [
@@ -41,6 +42,14 @@ export function isReviewReminderEligible(
 ): boolean {
   if (!REVIEW_REMINDER_CATEGORIES.includes(order.productCategory)) return false;
   if (!REVIEW_REMINDER_STATUSES.includes(order.status)) return false;
+  // У холстов SENT = передали подрядчику, а не клиенту. Просим отзыв только
+  // после закрытия заказа.
+  if (
+    order.productCategory === EnumProductCategory.CANVAS &&
+    order.status === EnumStatus.SENT
+  ) {
+    return false;
+  }
   if (order.clientReviewLeft) return false;
   if (order.reviewReminderNotifiedAt) return false;
   if (!order.sentAt) return false;

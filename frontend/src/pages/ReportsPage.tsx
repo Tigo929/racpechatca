@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AppShell } from '../components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Camera, Shirt, ChevronDown, ChevronRight, Handshake } from 'lucide-react';
+import { Camera, Shirt, Image, ChevronDown, ChevronRight, Handshake } from 'lucide-react';
 import { reportsApi } from '../api/reports';
 import { expensesApi } from '../api/expenses';
 import type { PnlMetrics, MonthData, ExpenseOrder, CreateExpenseDto, EnumExpenseCategory, WeeklyReport } from '../types/index';
@@ -41,6 +41,7 @@ function PnlRow({ label, m, isTotal, onClick, selected }: { label: string; m: Pn
       <td className={`py-2.5 px-4 ${isTotal ? 'font-bold' : 'text-gray-700'}`}>{label}</td>
       <ProductCell count={m.photoCount} revenue={m.photoRevenue} />
       <ProductCell count={m.tshirtCount} revenue={m.tshirtRevenue} />
+      <ProductCell count={m.canvasCount} revenue={m.canvasRevenue} />
       <Cell value={money(m.totalRevenue)} />
       <Cell value={money(spent(m))} neg={spent(m) > 0} dim={spent(m) === 0} />
       <Cell value={active ? fmt(m.netProfit) : '—'} highlight={active && m.netProfit > 0} neg={m.netProfit < 0} />
@@ -63,6 +64,11 @@ function PnlTable({ firstCol, rows, total, onRowClick, selectedKey }: { firstCol
             <th className="py-3 px-3 text-right">
               <span className="inline-flex items-center gap-1 justify-end">
                 <Shirt size={12} /> Футболки
+              </span>
+            </th>
+            <th className="py-3 px-3 text-right">
+              <span className="inline-flex items-center gap-1 justify-end">
+                <Image size={12} /> Холсты
               </span>
             </th>
             <th className="py-3 px-3 text-right">Выручка</th>
@@ -90,6 +96,11 @@ function ExpenseStructure({ m, periodLabel }: { m: PnlMetrics; periodLabel: stri
       label: 'Футболки / печать',
       value: m.materialsTshirt,
       color: 'bg-violet-400',
+    },
+    {
+      label: 'Подрядчик — холсты',
+      value: m.canvasContractorCost,
+      color: 'bg-cyan-400',
     },
     {
       label: 'Упаковка / доставка',
@@ -169,7 +180,7 @@ function MonthSummary({ m, monthLabel }: { m: PnlMetrics; monthLabel: string }) 
         <p className={`text-xs mt-0.5 ${positive ? 'text-green-600/80' : 'text-red-600/80'}`}>маржа {m.margin}%</p>
       </div>
       <StatCard label="Выручка" value={fmt(m.totalRevenue)} hint="оборот за месяц" />
-      <StatCard label="Заказов" value={String(m.orderCount)} hint={`Фото ${m.photoCount} · Футболки ${m.tshirtCount}`} />
+      <StatCard label="Заказов" value={String(m.orderCount)} hint={`Фото ${m.photoCount} · Футболки ${m.tshirtCount} · Холсты ${m.canvasCount}`} />
       <StatCard label="Расходы" value={fmt(spent(m))} hint="ордера + зарплата" tone="neg" />
     </div>
   );

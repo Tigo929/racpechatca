@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Search, ChevronLeft, ChevronRight, Flame, Clock, Camera, Shirt, Star, AlarmClock, Plus } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Flame, Clock, Camera, Shirt, Image, Star, AlarmClock, Plus } from 'lucide-react';
 import { getDeadlineInfo } from '../utils/deadline';
 import { getStalledDays } from '../utils/stalled';
 import { ordersApi } from '../api/orders';
@@ -11,7 +11,14 @@ import { CreateOrderForm } from '../components/orders/CreateOrderForm';
 import { OrderDetail } from '../components/orders/OrderDetail';
 import { FilterChip } from '../components/ui/FilterChip';
 import { DeliveryBadge } from '../components/ui/DeliveryBadge';
-import { STATUS_FLOW, TSHIRT_STATUS_FLOW, STATUS_LABELS, TSHIRT_STATUS_LABELS } from '../constants';
+import {
+  CANVAS_STATUS_FLOW,
+  CANVAS_STATUS_LABELS,
+  STATUS_FLOW,
+  TSHIRT_STATUS_FLOW,
+  STATUS_LABELS,
+  TSHIRT_STATUS_LABELS,
+} from '../constants';
 import { AppShell } from '../components/layout/AppShell';
 import { useAuth } from '../context/useAuth';
 import type { EnumStatus, EnumProductCategory, OrdersQuery } from '../types/index';
@@ -19,13 +26,48 @@ import type { EnumStatus, EnumProductCategory, OrdersQuery } from '../types/inde
 const PAGE_SIZE = 10;
 
 /** Раздел: продукт со своим процессом либо общая воронка обращений. */
-export type OrdersSection = 'PHOTO' | 'TSHIRT' | 'LEADS';
+export type OrdersSection = 'PHOTO' | 'TSHIRT' | 'CANVAS' | 'LEADS';
 
 const SECTION_TITLE: Record<OrdersSection, string> = {
   PHOTO: 'Фотопечать',
   TSHIRT: 'Футболки',
+  CANVAS: 'Холсты',
   LEADS: 'Обращения',
 };
+
+function orderPositionsCount(order: {
+  items?: unknown[];
+  tshirtItems?: unknown[];
+  canvasItems?: unknown[];
+}): number {
+  return (
+    (order.items?.length ?? 0) +
+    (order.tshirtItems?.length ?? 0) +
+    (order.canvasItems?.length ?? 0)
+  );
+}
+
+function ProductBadge({ productCategory }: { productCategory: EnumProductCategory }) {
+  if (productCategory === 'TSHIRT') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-violet-100 text-violet-700">
+        <Shirt size={11} aria-hidden="true" /> Футболка
+      </span>
+    );
+  }
+  if (productCategory === 'CANVAS') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-100 text-cyan-700">
+        <Image size={11} aria-hidden="true" /> Холст
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-100 text-amber-700">
+      <Camera size={11} aria-hidden="true" /> Фото
+    </span>
+  );
+}
 
 interface Props {
   section: OrdersSection;
@@ -85,9 +127,19 @@ export function OrdersPage({ section }: Props) {
   // У футболок свой путь заказа — показываем только его статусы. Раньше здесь
   // всегда были фото-статусы, поэтому «Выполнен» и «На стадии дизайна» у
   // футболок нельзя было выбрать вообще.
-  const statusFlow = (section === 'TSHIRT' ? TSHIRT_STATUS_FLOW : STATUS_FLOW)
-    .filter(s => s !== 'LEAD');
-  const statusLabels = section === 'TSHIRT' ? TSHIRT_STATUS_LABELS : STATUS_LABELS;
+  const statusFlow = (
+    section === 'TSHIRT'
+      ? TSHIRT_STATUS_FLOW
+      : section === 'CANVAS'
+        ? CANVAS_STATUS_FLOW
+        : STATUS_FLOW
+  ).filter(s => s !== 'LEAD');
+  const statusLabels =
+    section === 'TSHIRT'
+      ? TSHIRT_STATUS_LABELS
+      : section === 'CANVAS'
+        ? CANVAS_STATUS_LABELS
+        : STATUS_LABELS;
 
   const reviewMutation = useMutation({
     mutationFn: ({ id, reviewLeft }: { id: string; reviewLeft: boolean }) =>
@@ -100,9 +152,11 @@ export function OrdersPage({ section }: Props) {
   });
 
   const sectionHint = isLeads
-    ? 'Входящие обращения по обоим направлениям'
+    ? 'Входящие обращения по всем направлениям'
     : section === 'TSHIRT'
       ? 'Печать у партнёра-исполнителя'
+      : section === 'CANVAS'
+        ? 'Печать у подрядчика с расчетом маржи'
       : 'Печать своими силами';
 
   return (
@@ -150,6 +204,9 @@ export function OrdersPage({ section }: Props) {
                 </FilterChip>
                 <FilterChip active={query.productCategory === 'TSHIRT'} onClick={() => setProductCategory('TSHIRT')}>
                   <Shirt size={11} aria-hidden="true" className="inline mr-1" />Футболки
+                </FilterChip>
+                <FilterChip active={query.productCategory === 'CANVAS'} onClick={() => setProductCategory('CANVAS')}>
+                  <Image size={11} aria-hidden="true" className="inline mr-1" />Холсты
                 </FilterChip>
               </div>
             </div>
@@ -240,15 +297,7 @@ export function OrdersPage({ section }: Props) {
                       <StatusBadge status={order.status} productCategory={order.productCategory} size="sm" />
                     </div>
                     <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500">
-                      {order.productCategory === 'TSHIRT' ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold bg-violet-100 text-violet-700">
-                          <Shirt size={10} aria-hidden="true" /> Футболка
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold bg-amber-100 text-amber-700">
-                          <Camera size={10} aria-hidden="true" /> Фото
-                        </span>
-                      )}
+                      <ProductBadge productCategory={order.productCategory} />
                       <DeliveryBadge method={order.deliveryMethod} />
                       <span className="tabular-nums">
                         {new Date(order.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
@@ -267,7 +316,7 @@ export function OrdersPage({ section }: Props) {
                           </span>
                         )}
                         <span className="text-gray-400 tabular-nums">
-                          {(order.items?.length ?? 0) + (order.tshirtItems?.length ?? 0)} поз.
+                          {orderPositionsCount(order)} поз.
                         </span>
                         {isAdmin && order.clientReviewLeft && (
                           <span className="inline-flex items-center gap-0.5 text-emerald-600 font-medium">
@@ -357,15 +406,7 @@ export function OrdersPage({ section }: Props) {
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
-                        {order.productCategory === 'TSHIRT' ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-violet-100 text-violet-700">
-                            <Shirt size={11} aria-hidden="true" /> Футболка
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-100 text-amber-700">
-                            <Camera size={11} aria-hidden="true" /> Фото
-                          </span>
-                        )}
+                        <ProductBadge productCategory={order.productCategory} />
                       </td>
                       <td className="px-5 py-3.5 text-sm text-gray-500 tabular-nums">
                         {new Date(order.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
@@ -393,7 +434,7 @@ export function OrdersPage({ section }: Props) {
                       <td className="px-5 py-3.5"><DeliveryBadge method={order.deliveryMethod} /></td>
                       <td className="px-5 py-3.5">
                         <span className="text-sm font-medium text-gray-700 tabular-nums">
-                          {(order.items?.length ?? 0) + (order.tshirtItems?.length ?? 0)} шт.
+                          {orderPositionsCount(order)} шт.
                         </span>
                       </td>
                       {isAdmin && (

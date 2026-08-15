@@ -22,6 +22,7 @@ import {
   EnumStatus,
 } from 'src/generated/prisma/enums';
 import DtoCreateItemOrder from './create-item-order.dto';
+import { DtoCreateCanvasItem } from './create-canvas-item.dto';
 import { DtoCreateTshirtItem } from './create-tshirt-item.dto';
 
 export default class DtoCreateOrder {
@@ -124,4 +125,10 @@ export default class DtoCreateOrder {
   @Type(() => DtoCreateTshirtItem)
   @ValidateNested({ each: true })
   tshirtItems?: DtoCreateTshirtItem[];
+
+  @IsOptional()
+  @IsArray()
+  @Type(() => DtoCreateCanvasItem)
+  @ValidateNested({ each: true })
+  canvasItems?: DtoCreateCanvasItem[];
 }

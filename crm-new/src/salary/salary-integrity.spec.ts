@@ -215,9 +215,10 @@ function setupWithManager(productCategory: 'PHOTO' | 'TSHIRT') {
 }
 
 describe('зарплата по категориям товара', () => {
-  it('фото — начисляем, футболки — нет', () => {
+  it('фото — начисляем, внешние продукты — нет', () => {
     expect(earnsStaffSalary('PHOTO')).toBe(true);
     expect(earnsStaffSalary('TSHIRT')).toBe(false);
+    expect(earnsStaffSalary('CANVAS')).toBe(false);
   });
 
   it('менеджеру за фотозаказ начисление создаётся', async () => {

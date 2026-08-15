@@ -21,6 +21,7 @@ import { StripPricesInterceptor } from 'src/interceptors/strip-prices.intercepto
 import { OrderPhotoService } from './order-photo.service';
 import { OrderItemService } from './order-item.service';
 import { TshirtItemService } from './tshirt-item.service';
+import { CanvasItemService } from './canvas-item.service';
 import { StickerService } from './sticker.service';
 import { DailyPlanService } from './daily-plan.service';
 import { ReviewReminderService } from './review-reminder.service';
@@ -35,6 +36,8 @@ import DtoUpdateItemOrder from './dto/update-item.dto';
 import DtoCreateItemOrder from './dto/create-item-order.dto';
 import { DtoCreateTshirtItem } from './dto/create-tshirt-item.dto';
 import { DtoUpdateTshirtItem } from './dto/update-tshirt-item.dto';
+import { DtoCreateCanvasItem } from './dto/create-canvas-item.dto';
+import { DtoUpdateCanvasItem } from './dto/update-canvas-item.dto';
 import { DtoAssignExecutor } from './dto/assign-executor.dto';
 import { DtoSetReview } from './dto/set-review.dto';
 
@@ -52,6 +55,7 @@ export class OrderPhotoController {
     private readonly orderPhotoService: OrderPhotoService,
     private readonly orderItemService: OrderItemService,
     private readonly tshirtItemService: TshirtItemService,
+    private readonly canvasItemService: CanvasItemService,
     private readonly stickerService: StickerService,
     private readonly dailyPlanService: DailyPlanService,
     private readonly reviewReminderService: ReviewReminderService,
@@ -220,6 +224,30 @@ export class OrderPhotoController {
     return this.tshirtItemService.deleteTshirtItem(idItem);
   }
 
+  @Post(':idOrder/canvas-items')
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  addCanvasItem(
+    @Param('idOrder') idOrder: string,
+    @Body() dto: DtoCreateCanvasItem,
+  ) {
+    return this.canvasItemService.addCanvasItem(idOrder, dto);
+  }
+
+  @Patch('canvas-items/:idItem')
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  updateCanvasItem(
+    @Param('idItem') idItem: string,
+    @Body() dto: DtoUpdateCanvasItem,
+  ) {
+    return this.canvasItemService.updateCanvasItem(idItem, dto);
+  }
+
+  @Delete('canvas-items/:idItem')
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  deleteCanvasItem(@Param('idItem') idItem: string) {
+    return this.canvasItemService.deleteCanvasItem(idItem);
+  }
+
   // ── Both roles: read orders + items, update status ─────────────────────────
 
   @Get()
@@ -249,6 +277,14 @@ export class OrderPhotoController {
     @CurrentUser() me: RequestUser,
   ) {
     return this.tshirtItemService.getTshirtItem(idItem, me.id, me.role);
+  }
+
+  @Get('canvas-items/:idItem')
+  getCanvasItem(
+    @Param('idItem') idItem: string,
+    @CurrentUser() me: RequestUser,
+  ) {
+    return this.canvasItemService.getCanvasItem(idItem, me.id, me.role);
   }
 
   @Get(':idOrder')

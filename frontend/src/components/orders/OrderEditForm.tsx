@@ -9,7 +9,7 @@ interface Props {
   onCancel: () => void;
   isPending: boolean;
   /** Дизайн — свободная сумма только для футболок. У фото секцию не показываем. */
-  productCategory: 'PHOTO' | 'TSHIRT';
+  productCategory: 'PHOTO' | 'TSHIRT' | 'CANVAS';
 }
 
 const inputCls = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent';

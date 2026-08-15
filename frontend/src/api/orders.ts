@@ -9,8 +9,11 @@ import type {
   CreateItemDto,
   OrdersQuery,
   ItemTshirt,
+  ItemCanvas,
   CreateTshirtItemDto,
   UpdateTshirtItemDto,
+  CreateCanvasItemDto,
+  UpdateCanvasItemDto,
 } from '../types/index';
 import { api } from './client';
 
@@ -175,6 +178,26 @@ export const ordersApi = {
 
   deleteTshirtItem: async (itemId: string): Promise<OrderPhoto> => {
     const { data } = await api.delete<OrderPhoto>(`/order-photo/tshirt-items/${itemId}`);
+    return data;
+  },
+
+  getCanvasItem: async (itemId: string): Promise<ItemCanvas> => {
+    const { data } = await api.get<ItemCanvas>(`/order-photo/canvas-items/${itemId}`);
+    return data;
+  },
+
+  addCanvasItem: async (orderId: string, dto: CreateCanvasItemDto): Promise<OrderPhoto> => {
+    const { data } = await api.post<OrderPhoto>(`/order-photo/${orderId}/canvas-items`, dto);
+    return data;
+  },
+
+  updateCanvasItem: async (itemId: string, dto: UpdateCanvasItemDto): Promise<OrderPhoto> => {
+    const { data } = await api.patch<OrderPhoto>(`/order-photo/canvas-items/${itemId}`, dto);
+    return data;
+  },
+
+  deleteCanvasItem: async (itemId: string): Promise<OrderPhoto> => {
+    const { data } = await api.delete<OrderPhoto>(`/order-photo/canvas-items/${itemId}`);
     return data;
   },
 

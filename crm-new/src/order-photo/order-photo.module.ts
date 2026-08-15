@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { OrderPhotoService } from './order-photo.service';
 import { OrderItemService } from './order-item.service';
 import { TshirtItemService } from './tshirt-item.service';
+import { CanvasItemService } from './canvas-item.service';
 import { StickerModule } from './sticker.module';
 import { OrderPhotoController } from './order-photo.controller';
 import { LeadController } from './lead.controller';
@@ -22,6 +23,7 @@ import { SiteLeadTokenGuard } from './site-lead-token.guard';
     OrderPhotoService,
     OrderItemService,
     TshirtItemService,
+    CanvasItemService,
     OrderFinancialIntegrityService,
     ReviewReminderService,
     DailyPlanService,

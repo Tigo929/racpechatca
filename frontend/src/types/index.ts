@@ -1,4 +1,4 @@
-export type EnumProductCategory = 'PHOTO' | 'TSHIRT';
+export type EnumProductCategory = 'PHOTO' | 'TSHIRT' | 'CANVAS';
 
 export type EnumTshirtSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
 export type EnumPrintLocation = 'FRONT' | 'BACK' | 'FRONT_BACK' | 'SLEEVE_LEFT' | 'SLEEVE_RIGHT' | 'FULL' | 'BY_TZ';
@@ -35,6 +35,20 @@ export interface ItemTshirt {
   designUrl?: string | null;
   designNote?: string | null;
   clientItem: boolean;
+}
+
+export interface ItemCanvas {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  orderId: string;
+  formatCanvas: string;
+  quantity: number;
+  clientPrice: number;
+  contractorPrice: number;
+  pricePosition: number;
+  contractorCostPosition: number;
+  profitPosition: number;
 }
 
 export interface ItemPhoto {
@@ -111,6 +125,7 @@ export interface OrderPhoto {
   partnerSyncAt?: string | null;
   items: ItemPhoto[];
   tshirtItems: ItemTshirt[];
+  canvasItems: ItemCanvas[];
   accruals?: OrderAccrualBrief[];
 }
 
@@ -165,6 +180,20 @@ export interface CreateTshirtItemDto {
   clientItem?: boolean;
 }
 
+export interface CreateCanvasItemDto {
+  formatCanvas: string;
+  quantity: number;
+  clientPrice: number;
+  contractorPrice: number;
+}
+
+export interface UpdateCanvasItemDto {
+  formatCanvas?: string;
+  quantity?: number;
+  clientPrice?: number;
+  contractorPrice?: number;
+}
+
 export interface UpdateTshirtItemDto {
   color?: string;
   size?: EnumTshirtSize;
@@ -200,6 +229,7 @@ export interface CreateOrderDto {
   tshirtModel?: string;
   items?: CreateItemDto[];
   tshirtItems?: CreateTshirtItemDto[];
+  canvasItems?: CreateCanvasItemDto[];
 }
 
 export interface UpdateOrderDto {
@@ -388,17 +418,20 @@ export interface PnlMetrics {
   orderCount: number;
   photoCount: number;
   tshirtCount: number;
+  canvasCount: number;
   avgCheck: number;
   // Выручка
   totalRevenue: number; // оборот (брутто)
   photoRevenue: number;
   tshirtRevenue: number;
+  canvasRevenue: number;
   deliveryCost: number; // транзитная доставка
   netRevenue: number; // оборот − доставка
   // Себестоимость (материалы)
   materialsPhoto: number;
   materialsTshirt: number;
-  cogs: number; // materialsPhoto + materialsTshirt
+  canvasContractorCost: number;
+  cogs: number; // materialsPhoto + materialsTshirt + canvasContractorCost
   grossProfit: number; // netRevenue − cogs
   // Операционные расходы
   deliverySupplies: number;
@@ -442,7 +475,7 @@ export interface WeeklyReport {
 
 // ── Expense Order types ───────────────────────────────────────────────────────
 
-export type EnumExpenseCategory = 'MATERIALS_PHOTO' | 'MATERIALS_TSHIRT' | 'DELIVERY_SUPPLIES' | 'EQUIPMENT' | 'MARKETING' | 'PARTNER_SHARE' | 'PARTNER_REWARD' | 'OTHER';
+export type EnumExpenseCategory = 'MATERIALS_PHOTO' | 'MATERIALS_TSHIRT' | 'DELIVERY_SUPPLIES' | 'EQUIPMENT' | 'MARKETING' | 'PARTNER_SHARE' | 'PARTNER_REWARD' | 'CANVAS_CONTRACTOR' | 'OTHER';
 
 export const EXPENSE_CATEGORY_LABELS: Record<EnumExpenseCategory, string> = {
   MATERIALS_PHOTO: 'Материалы — Фото',
@@ -452,6 +485,7 @@ export const EXPENSE_CATEGORY_LABELS: Record<EnumExpenseCategory, string> = {
   MARKETING: 'Реклама',
   PARTNER_SHARE: 'Доля Гриши',
   PARTNER_REWARD: 'Вознаграждение партнёру',
+  CANVAS_CONTRACTOR: 'Подрядчик — Холсты',
   OTHER: 'Прочее',
 };
 

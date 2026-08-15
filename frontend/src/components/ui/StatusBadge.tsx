@@ -1,4 +1,8 @@
-import { STATUS_LABELS, TSHIRT_STATUS_LABELS } from '../../constants';
+import {
+  CANVAS_STATUS_LABELS,
+  STATUS_LABELS,
+  TSHIRT_STATUS_LABELS,
+} from '../../constants';
 import type { EnumProductCategory, EnumStatus } from '../../types/index';
 
 interface Props {
@@ -25,7 +29,12 @@ const STATUS_STYLES: Record<EnumStatus, { bg: string; text: string; dot: string 
 };
 
 export function StatusBadge({ status, productCategory, size = 'md' }: Props) {
-  const labels = productCategory === 'TSHIRT' ? TSHIRT_STATUS_LABELS : STATUS_LABELS;
+  const labels =
+    productCategory === 'TSHIRT'
+      ? TSHIRT_STATUS_LABELS
+      : productCategory === 'CANVAS'
+        ? CANVAS_STATUS_LABELS
+        : STATUS_LABELS;
   const s = STATUS_STYLES[status] ?? { bg: 'bg-gray-50', text: 'text-gray-600', dot: 'bg-gray-400' };
   const base = size === 'sm' ? 'px-2 py-0.5 text-xs gap-1.5' : 'px-2.5 py-1 text-xs gap-1.5';
   return (

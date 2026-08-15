@@ -81,6 +81,7 @@ function formatPhotoItemLine(order: OrderPhoto, item: PhotoOrderItem): string {
 function generateConfirmationText(order: OrderPhoto): string {
   const items = order.items ?? [];
   const tshirtItems = order.tshirtItems ?? [];
+  const canvasItems = order.canvasItems ?? [];
   const delivery = order.deliveryCost ?? 0;
   const total = order.totalOrder ?? 0;
   const prepay = Math.ceil(total * 0.5);
@@ -93,6 +94,11 @@ function generateConfirmationText(order: OrderPhoto): string {
   tshirtItems.forEach((i) => {
     lines.push(
       `• Футболка ${i.color}, р-р ${i.size} × ${i.quantity} шт — ${i.pricePosition.toLocaleString("ru-RU")} ₽`,
+    );
+  });
+  canvasItems.forEach((i) => {
+    lines.push(
+      `• Холст ${i.formatCanvas} × ${i.quantity} шт — ${i.pricePosition.toLocaleString("ru-RU")} ₽`,
     );
   });
   // Разработка дизайна — такая же позиция состава: она входит в итог заказа,
@@ -113,7 +119,7 @@ function generateConfirmationText(order: OrderPhoto): string {
   }
 
   const itemsTotal =
-    [...items, ...tshirtItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
+    [...items, ...tshirtItems, ...canvasItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
     designCost +
     urgencyFee;
   const separator = "─────────────────";
@@ -159,6 +165,7 @@ function generateConfirmationText(order: OrderPhoto): string {
 function generateReadyText(order: OrderPhoto): string {
   const items = order.items ?? [];
   const tshirtItems = order.tshirtItems ?? [];
+  const canvasItems = order.canvasItems ?? [];
   const delivery = order.deliveryCost ?? 0;
   const total = order.totalOrder ?? 0;
   const prepay = Math.ceil(total * 0.5);
@@ -171,6 +178,11 @@ function generateReadyText(order: OrderPhoto): string {
   tshirtItems.forEach((i) => {
     lines.push(
       `• Футболка ${i.color}, р-р ${i.size} × ${i.quantity} шт — ${i.pricePosition.toLocaleString("ru-RU")} ₽`,
+    );
+  });
+  canvasItems.forEach((i) => {
+    lines.push(
+      `• Холст ${i.formatCanvas} × ${i.quantity} шт — ${i.pricePosition.toLocaleString("ru-RU")} ₽`,
     );
   });
   // Разработка дизайна — такая же позиция состава: она входит в итог заказа,
@@ -191,7 +203,7 @@ function generateReadyText(order: OrderPhoto): string {
   }
 
   const itemsTotal =
-    [...items, ...tshirtItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
+    [...items, ...tshirtItems, ...canvasItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
     designCost +
     urgencyFee;
   const separator = "─────────────────";
@@ -241,6 +253,7 @@ import { StatusBadge } from "../ui/StatusBadge";
 import { InfoRow } from "../ui/InfoRow";
 import { OrderEditForm } from "./OrderEditForm";
 import { TshirtItemsTable } from "./TshirtItemsTable";
+import { CanvasItemsTable } from "./CanvasItemsTable";
 import { useAuth } from "../../context/useAuth";
 import type { AppUser, UpdateOrderDto, OrderPhoto } from "../../types/index";
 import { getErrorMessage } from "../../utils/get-error-message";
@@ -689,8 +702,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       <div className="bg-gray-50 rounded-xl p-4 space-y-3">
         <p className="text-xs font-medium text-gray-500">Прогресс статуса</p>
         <StatusStepper order={order} />
-        {/* Футболки печатает партнёр — своего исполнителя на них не назначаем. */}
-        {isAdmin && order.productCategory !== "TSHIRT" && (
+        {/* Внешние продукты печатает подрядчик — своего исполнителя на них не назначаем. */}
+        {isAdmin && order.productCategory === "PHOTO" && (
           <AssignPanel
             order={order}
             onAssigned={(updated) => {
@@ -951,6 +964,41 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   className="sm:col-span-2"
                 />
               )}
+              {order.productCategory === "CANVAS" && (
+                <div className="sm:col-span-2 rounded-xl border border-cyan-100 bg-cyan-50/50 p-3 grid grid-cols-3 gap-3 text-sm">
+                  {(() => {
+                    const totals = (order.canvasItems ?? []).reduce(
+                      (acc, item) => {
+                        acc.revenue += item.pricePosition ?? 0;
+                        acc.cost += item.contractorCostPosition ?? 0;
+                        acc.profit += item.profitPosition ?? 0;
+                        return acc;
+                      },
+                      { revenue: 0, cost: 0, profit: 0 },
+                    );
+                    const money = (value: number) =>
+                      `${value.toLocaleString("ru-RU")} ₽`;
+                    return (
+                      <>
+                        <div>
+                          <p className="text-xs text-gray-500">Холсты клиенту</p>
+                          <p className="font-semibold text-gray-900">{money(totals.revenue)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Подрядчик</p>
+                          <p className="font-semibold text-gray-900">{money(totals.cost)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Маржа</p>
+                          <p className={`font-semibold ${totals.profit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                            {money(totals.profit)}
+                          </p>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
               <div className="sm:col-span-2 pt-2 border-t border-gray-100 flex justify-end">
                 <div className="text-right">
                   <p className="text-xs text-gray-500">Сумма заказа</p>
@@ -978,6 +1026,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
         ) : (
           <TshirtItemsTable order={order} />
         )
+      ) : order.productCategory === "CANVAS" && isAdmin ? (
+        <CanvasItemsTable order={order} />
       ) : order.productCategory === "PHOTO" ? (
         <ItemsTable order={order} />
       ) : null}

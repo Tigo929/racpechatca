@@ -3,6 +3,7 @@ import {
   Bell,
   Camera,
   CheckSquare,
+  Image,
   // MessageCircle — вернуть вместе с пунктом Avito ниже.
   Settings,
   Shirt,
@@ -61,6 +62,13 @@ export const NAV_GROUPS: NavGroup[] = [
         to: '/crm/tshirt',
         label: 'Футболки',
         icon: Shirt,
+        roles: AD_MGR,
+        primary: true,
+      },
+      {
+        to: '/crm/canvas',
+        label: 'Холсты',
+        icon: Image,
         roles: AD_MGR,
         primary: true,
       },

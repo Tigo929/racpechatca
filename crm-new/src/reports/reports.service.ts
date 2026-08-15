@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { EnumStatus } from 'src/generated/prisma/enums';
+import {
+  EnumProductCategory,
+  EnumStatus,
+} from 'src/generated/prisma/enums';
 
 const MONTH_LABELS = [
   'Январь',
@@ -33,12 +36,15 @@ interface PnlRaw {
   orderCount: number;
   photoCount: number;
   tshirtCount: number;
+  canvasCount: number;
   totalRevenue: number; // оборот (сумма заказов, брутто)
   photoRevenue: number;
   tshirtRevenue: number;
+  canvasRevenue: number;
   deliveryCost: number; // транзитная доставка
   materialsPhoto: number; // себестоимость — фотоматериалы
   materialsTshirt: number; // себестоимость — футболки/печать
+  canvasContractorCost: number; // себестоимость — подрядчик по холстам
   deliverySupplies: number; // операц. — упаковка/доставка
   equipment: number; // операц. — оборудование
   marketing: number; // операц. — реклама
@@ -63,12 +69,15 @@ function emptyBucket(): PnlRaw {
     orderCount: 0,
     photoCount: 0,
     tshirtCount: 0,
+    canvasCount: 0,
     totalRevenue: 0,
     photoRevenue: 0,
     tshirtRevenue: 0,
+    canvasRevenue: 0,
     deliveryCost: 0,
     materialsPhoto: 0,
     materialsTshirt: 0,
+    canvasContractorCost: 0,
     deliverySupplies: 0,
     equipment: 0,
     marketing: 0,
@@ -87,9 +96,12 @@ function addOrder(b: PnlRaw, order: OrderRow): void {
   if (order.productCategory === 'PHOTO') {
     b.photoCount += 1;
     b.photoRevenue += total;
-  } else {
+  } else if (order.productCategory === 'TSHIRT') {
     b.tshirtCount += 1;
     b.tshirtRevenue += total;
+  } else if (order.productCategory === 'CANVAS') {
+    b.canvasCount += 1;
+    b.canvasRevenue += total;
   }
 }
 
@@ -116,6 +128,9 @@ function addExpense(b: PnlRaw, e: ExpenseRow): void {
     case 'PARTNER_REWARD':
       b.partnerReward += e.amount;
       break;
+    case 'CANVAS_CONTRACTOR':
+      b.canvasContractorCost += e.amount;
+      break;
     default:
       b.other += e.amount;
       break;
@@ -134,7 +149,7 @@ function sumBuckets(buckets: PnlRaw[]): PnlRaw {
 /** Добавляет производные метрики (чистая выручка, прибыль, маржа, средний чек). */
 function finalize(b: PnlRaw) {
   const netRevenue = b.totalRevenue - b.deliveryCost;
-  const cogs = b.materialsPhoto + b.materialsTshirt;
+  const cogs = b.materialsPhoto + b.materialsTshirt + b.canvasContractorCost;
   const grossProfit = netRevenue - cogs;
   const operatingExpenses =
     b.deliverySupplies +
@@ -170,14 +185,24 @@ export class ReportsService {
 
   /** Тянет завершённые заказы (по дате отправки), расходы и зарплаты за период. */
   private async fetchPeriod(start: Date, endExclusive: Date) {
+    const periodWhere = [
+      { sentAt: { gte: start, lt: endExclusive } },
+      { sentAt: null, createdAt: { gte: start, lt: endExclusive } },
+    ];
     const [orders, expenses, salaryPayments] = await Promise.all([
       this.prisma.orderPhoto.findMany({
         where: {
           OR: [
-            { sentAt: { gte: start, lt: endExclusive } },
-            { sentAt: null, createdAt: { gte: start, lt: endExclusive } },
+            {
+              status: EnumStatus.SENT,
+              productCategory: { not: EnumProductCategory.CANVAS },
+              OR: periodWhere,
+            },
+            {
+              status: EnumStatus.PAID,
+              OR: periodWhere,
+            },
           ],
-          status: { in: [EnumStatus.SENT, EnumStatus.PAID] },
         },
         select: {
           sentAt: true,

@@ -2,7 +2,7 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, Camera, Shirt, Flame, Clock } from 'lucide-react';
+import { Plus, Trash2, Camera, Shirt, Image, Flame, Clock } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { ordersApi } from '../../api/orders';
@@ -38,6 +38,13 @@ const tshirtItemSchema = z.object({
   blankCost: z.coerce.number().int().min(0).optional(),
 });
 
+const canvasItemSchema = z.object({
+  formatCanvas: z.string().min(1, 'Укажите формат'),
+  quantity: z.coerce.number().int().positive(),
+  clientPrice: z.coerce.number().int().min(0),
+  contractorPrice: z.coerce.number().int().min(0),
+});
+
 // Свободная позиция: произвольное название + цена. Имя не валидируем строго здесь
 // (скрытые строки не должны рушить форму) — проверяем в superRefine при freePrice.
 const freeItemSchema = z.object({
@@ -57,7 +64,7 @@ function isRussianPhone(value: string): boolean {
 }
 
 const baseSchema = z.object({
-  productCategory: z.enum(['PHOTO', 'TSHIRT']),
+  productCategory: z.enum(['PHOTO', 'TSHIRT', 'CANVAS']),
   sourceOrder: z.enum(['AVITO', 'OZON', 'WB', 'LOCAL']),
   communicationPlatform: z.enum(['AVITO', 'TELEGRAM', 'MAX', 'OZON']),
   urlCommunication: z.string().min(1, 'Укажите ссылку или @username'),
@@ -76,6 +83,7 @@ const baseSchema = z.object({
   freeItems: z.array(freeItemSchema).optional(),
   items: z.array(photoItemSchema).optional(),
   tshirtItems: z.array(tshirtItemSchema).optional(),
+  canvasItems: z.array(canvasItemSchema).optional(),
 }).superRefine((data, ctx) => {
   if (data.communicationPlatform === 'TELEGRAM' && !data.urlCommunication.startsWith('@')) {
     ctx.addIssue({
@@ -140,6 +148,9 @@ const fullSchema = baseSchema.superRefine((data, ctx) => {
       });
     }
   }
+  if (data.productCategory === 'CANVAS' && (!data.canvasItems || data.canvasItems.length === 0)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Добавьте хотя бы одну позицию', path: ['canvasItems'] });
+  }
 });
 
 type FormValues = z.infer<typeof baseSchema>;
@@ -174,6 +185,12 @@ export function CreateOrderForm({ onClose }: Props) {
         color: 'Белый', size: 'M', printLocation: 'FRONT',
         quantity: 1, price: 500, clientItem: false,
       }],
+      canvasItems: [{
+        formatCanvas: '30×40',
+        quantity: 1,
+        clientPrice: 1500,
+        contractorPrice: 900,
+      }],
     },
   });
 
@@ -184,6 +201,7 @@ export function CreateOrderForm({ onClose }: Props) {
   const needsDesign = useWatch({ control, name: 'needsDesign' });
   const photoItemsWatch = useWatch({ control, name: 'items' });
   const tshirtItemsWatch = useWatch({ control, name: 'tshirtItems' });
+  const canvasItemsWatch = useWatch({ control, name: 'canvasItems' });
 
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
@@ -204,19 +222,21 @@ export function CreateOrderForm({ onClose }: Props) {
   // Чистим/восстанавливаем позиции, чтобы Zod не падал на скрытых полях:
   // при свободной цене позиций нет вовсе; иначе — одна позиция активной категории.
   useEffect(() => {
-    // Для футболок свободная цена назначается по-позиционно (чекбокс на позиции),
-    // а не на весь заказ — поэтому order-level freePrice здесь выключаем.
-    if (productCategory === 'TSHIRT' && freePrice) {
+    // Для внешних продуктов свободная цена назначается отдельными позициями,
+    // поэтому order-level freePrice здесь выключаем.
+    if ((productCategory === 'TSHIRT' || productCategory === 'CANVAS') && freePrice) {
       setValue('freePrice', false);
       return;
     }
     if (freePrice) {
       setValue('items', []);
       setValue('tshirtItems', []);
+      setValue('canvasItems', []);
       return;
     }
     if (productCategory === 'TSHIRT') {
       setValue('items', []);
+      setValue('canvasItems', []);
       if ((getValues('tshirtItems')?.length ?? 0) === 0) {
         setValue('tshirtItems', [{
           freePrice: false, name: '',
@@ -224,8 +244,20 @@ export function CreateOrderForm({ onClose }: Props) {
           quantity: 1, price: 500, clientItem: false,
         }]);
       }
+    } else if (productCategory === 'CANVAS') {
+      setValue('items', []);
+      setValue('tshirtItems', []);
+      if ((getValues('canvasItems')?.length ?? 0) === 0) {
+        setValue('canvasItems', [{
+          formatCanvas: '30×40',
+          quantity: 1,
+          clientPrice: 1500,
+          contractorPrice: 900,
+        }]);
+      }
     } else {
       setValue('tshirtItems', []);
+      setValue('canvasItems', []);
       if ((getValues('items')?.length ?? 0) === 0) {
         setValue('items', [{ isFreePrice: false, formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }]);
       }
@@ -234,6 +266,7 @@ export function CreateOrderForm({ onClose }: Props) {
 
   const photoFields = useFieldArray({ control, name: 'items' });
   const tshirtFields = useFieldArray({ control, name: 'tshirtItems' });
+  const canvasFields = useFieldArray({ control, name: 'canvasItems' });
   const freeFields = useFieldArray({ control, name: 'freeItems' });
 
   const mutation = useMutation({
@@ -320,6 +353,22 @@ export function CreateOrderForm({ onClose }: Props) {
       return;
     }
 
+    if (data.productCategory === 'CANVAS') {
+      const canvasItems = (data.canvasItems ?? []).map((r) => ({
+        formatCanvas: r.formatCanvas,
+        quantity: r.quantity,
+        clientPrice: r.clientPrice,
+        contractorPrice: r.contractorPrice,
+      }));
+      mutation.mutate({
+        ...base,
+        productCategory: 'CANVAS',
+        executorId: undefined,
+        canvasItems,
+      });
+      return;
+    }
+
     mutation.mutate({ ...base, productCategory: 'PHOTO', items: data.items });
   };
 
@@ -351,11 +400,12 @@ export function CreateOrderForm({ onClose }: Props) {
       urgencyFee: data.isUrgent ? (data.urgencyFee ?? 0) : 0,
       productCategory: data.productCategory ?? 'PHOTO',
       status: 'LEAD',
-      // У футболок исполнителя нет — печатает партнёр.
+      // У внешних продуктов исполнителя нет — печатает подрядчик.
       executorId:
-        data.productCategory === 'TSHIRT' ? undefined : data.executorId || undefined,
+        data.productCategory === 'PHOTO' ? data.executorId || undefined : undefined,
       items: undefined,
       tshirtItems: undefined,
+      canvasItems: undefined,
     };
     mutation.mutate(lead);
   };
@@ -366,8 +416,12 @@ export function CreateOrderForm({ onClose }: Props) {
       {/* Категория товара */}
       <div>
         <label className={labelCls}>Категория товара</label>
-        <div className="grid grid-cols-2 gap-3">
-          {([['PHOTO', 'Фотопечать', Camera], ['TSHIRT', 'Футболка с принтом', Shirt]] as const).map(([val, label, Icon]) => (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {([
+            ['PHOTO', 'Фотопечать', Camera],
+            ['TSHIRT', 'Футболка с принтом', Shirt],
+            ['CANVAS', 'Печать на холсте', Image],
+          ] as const).map(([val, label, Icon]) => (
             <label key={val} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${
               productCategory === val
                 ? 'border-amber-500 bg-amber-50'
@@ -479,8 +533,8 @@ export function CreateOrderForm({ onClose }: Props) {
         </div>
       </div>
 
-      {/* Футболки печатает партнёр — своего исполнителя на них не назначаем. */}
-      {productCategory !== 'TSHIRT' && (
+      {/* Внешние продукты печатает подрядчик — своего исполнителя на них не назначаем. */}
+      {productCategory === 'PHOTO' && (
         <div>
           <label className={labelCls}>Исполнитель</label>
           <select className={selectCls} {...register('executorId')}>
@@ -730,6 +784,89 @@ export function CreateOrderForm({ onClose }: Props) {
                   </>
                 )}
               </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Позиции холстов ── */}
+      {productCategory === 'CANVAS' && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900">Позиции — холсты</h3>
+            <button type="button"
+              onClick={() => canvasFields.append({
+                formatCanvas: '30×40',
+                quantity: 1,
+                clientPrice: 1500,
+                contractorPrice: 900,
+              })}
+              className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
+              <Plus size={14} /> Добавить
+            </button>
+          </div>
+          {errors.canvasItems && typeof errors.canvasItems.message === 'string' && (
+            <p className={errorCls}>{errors.canvasItems.message}</p>
+          )}
+          <div className="space-y-4">
+            {canvasFields.fields.map((field, idx) => {
+              const row = canvasItemsWatch?.[idx];
+              const qty = Number(row?.quantity ?? 0) || 0;
+              const client = Number(row?.clientPrice ?? 0) || 0;
+              const contractor = Number(row?.contractorPrice ?? 0) || 0;
+              const revenue = client * qty;
+              const cost = contractor * qty;
+              const profit = revenue - cost;
+              return (
+                <div key={field.id} className="border border-cyan-100 rounded-xl p-4 space-y-3 bg-cyan-50/30">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-semibold text-cyan-700">Холст #{idx + 1}</span>
+                    <button type="button" onClick={() => canvasFields.remove(idx)}
+                      disabled={canvasFields.fields.length === 1}
+                      className="text-gray-400 hover:text-red-500 disabled:opacity-30">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  <div className="grid sm:grid-cols-[1fr_80px_120px_120px] gap-3">
+                    <div>
+                      <label className={labelCls}>Формат / описание</label>
+                      <input className={inputCls} placeholder="30×40, 40×60, модульный…"
+                        {...register(`canvasItems.${idx}.formatCanvas`)} />
+                      {errors.canvasItems?.[idx]?.formatCanvas && (
+                        <p className={errorCls}>{errors.canvasItems[idx]?.formatCanvas?.message}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className={labelCls}>Кол-во</label>
+                      <input type="number" min={1} className={inputCls} {...register(`canvasItems.${idx}.quantity`)} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Клиент ₽/шт</label>
+                      <input type="number" min={0} className={inputCls} {...register(`canvasItems.${idx}.clientPrice`)} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Подрядчик ₽/шт</label>
+                      <input type="number" min={0} className={inputCls} {...register(`canvasItems.${idx}.contractorPrice`)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="rounded-lg bg-white border border-cyan-100 px-3 py-2">
+                      <p className="text-gray-400">Выручка</p>
+                      <p className="font-semibold text-gray-800 tabular-nums">{revenue.toLocaleString('ru-RU')} ₽</p>
+                    </div>
+                    <div className="rounded-lg bg-white border border-cyan-100 px-3 py-2">
+                      <p className="text-gray-400">Подрядчик</p>
+                      <p className="font-semibold text-gray-800 tabular-nums">{cost.toLocaleString('ru-RU')} ₽</p>
+                    </div>
+                    <div className={`rounded-lg bg-white border px-3 py-2 ${profit >= 0 ? 'border-emerald-100' : 'border-red-100'}`}>
+                      <p className="text-gray-400">Маржа</p>
+                      <p className={`font-semibold tabular-nums ${profit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                        {profit.toLocaleString('ru-RU')} ₽
+                      </p>
+                    </div>
+                  </div>
+                </div>
               );
             })}
           </div>

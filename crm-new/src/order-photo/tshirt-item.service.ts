@@ -123,10 +123,10 @@ export class TshirtItemService {
   private async recalcAndReturn(tx: Prisma.TransactionClient, orderId: string) {
     const order = await tx.orderPhoto.findUnique({
       where: { id: orderId },
-      include: { items: true, tshirtItems: true },
+      include: { items: true, tshirtItems: true, canvasItems: true },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
-    // Сумма заказа = pricePosition (футболки + фото) + доставка + дизайн +
+    // Сумма заказа = pricePosition (футболки + фото + холсты) + доставка + дизайн +
     // срочность. Дизайн и срочность живут на заказе — без них правка позиции
     // обнуляла бы эти суммы в чеке.
     const tshirtTotal = order.tshirtItems.reduce(
@@ -137,13 +137,18 @@ export class TshirtItemService {
       (s, i) => s + (i.pricePosition ?? 0),
       0,
     );
+    const canvasTotal = order.canvasItems.reduce(
+      (s, i) => s + (i.pricePosition ?? 0),
+      0,
+    );
     const updated = await tx.orderPhoto.update({
       where: { id: orderId },
-      include: { items: true, tshirtItems: true },
+      include: { items: true, tshirtItems: true, canvasItems: true },
       data: {
         totalOrder:
           tshirtTotal +
           itemsTotal +
+          canvasTotal +
           order.deliveryCost +
           order.designDevelopmentCost +
           order.urgencyFee,

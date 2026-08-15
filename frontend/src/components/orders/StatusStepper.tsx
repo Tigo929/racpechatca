@@ -4,6 +4,8 @@ import { ordersApi } from '../../api/orders';
 import {
   STATUS_FLOW,
   STATUS_LABELS,
+  CANVAS_STATUS_FLOW,
+  CANVAS_STATUS_LABELS,
   TSHIRT_STATUS_FLOW,
   TSHIRT_STATUS_LABELS,
   TERMINAL_STATUSES,
@@ -22,19 +24,30 @@ export function StatusStepper({ order }: Props) {
   const isOrderManager = user?.role === 'ORDER_MANAGER';
   const canManageShipment = isAdmin || isOrderManager;
   const isTshirt = order.productCategory === 'TSHIRT';
+  const isCanvas = order.productCategory === 'CANVAS';
+  const isExternalProduction = isTshirt || isCanvas;
   const needsShipment = order.deliveryMethod !== 'PICKUP';
-  const flow = (isTshirt ? TSHIRT_STATUS_FLOW : STATUS_FLOW).filter(
+  const baseFlow = isTshirt
+    ? TSHIRT_STATUS_FLOW
+    : isCanvas
+      ? CANVAS_STATUS_FLOW
+      : STATUS_FLOW;
+  const flow = baseFlow.filter(
     (status) => status !== 'SHIPMENT_CREATED' || needsShipment,
   );
-  const labels = isTshirt ? TSHIRT_STATUS_LABELS : STATUS_LABELS;
+  const labels = isTshirt
+    ? TSHIRT_STATUS_LABELS
+    : isCanvas
+      ? CANVAS_STATUS_LABELS
+      : STATUS_LABELS;
   const currentIdx = flow.indexOf(order.status);
 
   const isTerminal = TERMINAL_STATUSES.includes(order.status);
 
   // У фото зарплата начисляется при «Отправлен» — без исполнителя начислять
-  // некому, поэтому этот шаг блокируем (сервер тоже не пропустит). У футболок
-  // исполнителя нет — их не трогаем.
-  const needsExecutor = !isTshirt && !order.executorId;
+  // некому, поэтому этот шаг блокируем (сервер тоже не пропустит). У внешних
+  // продуктов исполнителя нет — их не трогаем.
+  const needsExecutor = !isExternalProduction && !order.executorId;
 
   const mutation = useMutation({
     mutationFn: (status: EnumStatus) => ordersApi.updateStatus(order.id, { status }),
@@ -76,25 +89,25 @@ export function StatusStepper({ order }: Props) {
           isAdmin || (!adminOnly && (!shipmentOnly || canManageShipment));
         const blockedNoExecutor = status === 'SENT' && needsExecutor;
         const blockedShipmentRole = shipmentOnly && !canManageShipment;
-        const blockedTshirtPayment =
-          isTshirt &&
+        const blockedExternalPayment =
+          isExternalProduction &&
           status === 'PAID' &&
           order.status !== 'SHIPMENT_CREATED' &&
           order.status !== 'PAID';
         const blockedPhotoSent =
-          !isTshirt &&
+          !isExternalProduction &&
           status === 'SENT' &&
           order.status !== 'SHIPMENT_CREATED' &&
           order.status !== 'SENT' &&
           order.status !== 'PAID';
         const blockedPhotoPayment =
-          !isTshirt &&
+          !isExternalProduction &&
           status === 'PAID' &&
           order.status !== 'SENT' &&
           order.status !== 'PAID';
         const blockedShipmentMissing =
           needsShipment &&
-          (blockedTshirtPayment || blockedPhotoSent || blockedPhotoPayment);
+          (blockedExternalPayment || blockedPhotoSent || blockedPhotoPayment);
         const clickable =
           !isCurrent &&
           canSetTarget &&

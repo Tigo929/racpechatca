@@ -141,6 +141,7 @@ model OrderPhoto {
 
   items          ItemPhoto[]
   tshirtItems    ItemTshirt[]
+  canvasItems    ItemCanvas[]
   accruals       SalaryAccrual[]
   statusHistory  StatusHistory[]
   assignments    OrderAssignment[]
@@ -253,6 +254,7 @@ model StockMovement {
 enum EnumProductCategory {
   PHOTO
   TSHIRT
+  CANVAS
 }
 
 /// Статус отправки заказа партнёру CoolABC.
@@ -272,6 +274,9 @@ enum EnumExpenseCategory {
   // Вознаграждение партнёру-исполнителю за печать футболок. Создаётся
   // автоматически, когда заказ переходит в «Оплачен».
   PARTNER_REWARD
+  // Себестоимость подрядчика по печати на холсте. Создаётся автоматически,
+  // когда заказ-холст переходит в «Оплачен».
+  CANVAS_CONTRACTOR
   OTHER
 }
 
@@ -362,6 +367,31 @@ model ItemTshirt {
   designUrl     String?
   designNote    String?
   clientItem    Boolean           @default(false)
+}
+
+model ItemCanvas {
+  id        String   @id() @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order   OrderPhoto @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId String
+
+  // Размер/описание холста: 30x40, 40x60, модульный холст и т.п.
+  formatCanvas           String
+  quantity               Int
+  // Цена, которую назвали клиенту, за одну штуку.
+  clientPrice            Int
+  // Фиксированная цена подрядчика за одну штуку.
+  contractorPrice        Int
+  // Выручка строки: clientPrice × quantity.
+  pricePosition          Int
+  // Себестоимость строки: contractorPrice × quantity.
+  contractorCostPosition Int
+  // Маржа строки до доставки и прочих расходов.
+  profitPosition         Int
+
+  @@index([orderId])
 }
 
 enum EnumTshirtSize {

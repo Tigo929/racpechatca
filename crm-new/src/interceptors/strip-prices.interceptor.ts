@@ -12,7 +12,11 @@ const PRICE_FIELDS = [
   'totalOrder',
   'deliveryCost',
   'price',
+  'clientPrice',
+  'contractorPrice',
   'pricePosition',
+  'contractorCostPosition',
+  'profitPosition',
   'designCost',
 ];
 

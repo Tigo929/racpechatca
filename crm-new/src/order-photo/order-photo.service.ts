@@ -23,6 +23,7 @@ import { DtoAssignExecutor } from './dto/assign-executor.dto';
 import {
   EnumCommunication,
   EnumDeliveryMethod,
+  EnumExpenseCategory,
   EnumProductCategory,
   EnumRole,
   EnumStatus,
@@ -140,6 +141,29 @@ function needsShipmentStatus(order: {
   return SHIPMENT_REQUIRED_DELIVERY_METHODS.includes(order.deliveryMethod);
 }
 
+function isExternalProductionCategory(
+  productCategory: EnumProductCategory,
+): boolean {
+  return (
+    productCategory === EnumProductCategory.TSHIRT ||
+    productCategory === EnumProductCategory.CANVAS
+  );
+}
+
+function calcCanvasMoney(
+  quantity: number,
+  clientPrice: number,
+  contractorPrice: number,
+) {
+  const pricePosition = clientPrice * quantity;
+  const contractorCostPosition = contractorPrice * quantity;
+  return {
+    pricePosition,
+    contractorCostPosition,
+    profitPosition: pricePosition - contractorCostPosition,
+  };
+}
+
 /**
  * Нарушение уникального индекса по конкретному полю.
  *
@@ -187,10 +211,10 @@ export class OrderPhotoService {
       const freePrice = dto.freePrice ?? false;
       const productCategory = dto.productCategory ?? EnumProductCategory.PHOTO;
 
-      // Футболки печатает партнёр, а не наш исполнитель — назначать некого.
-      if (dto.executorId && productCategory === EnumProductCategory.TSHIRT) {
+      // Внешние продукты делает подрядчик, а не наш исполнитель — назначать некого.
+      if (dto.executorId && isExternalProductionCategory(productCategory)) {
         throw new BadRequestException(
-          'Для заказов с футболками исполнитель не назначается — работу выполняет партнёр',
+          'Для заказов этого типа исполнитель не назначается — работу выполняет подрядчик',
         );
       }
 
@@ -264,6 +288,13 @@ export class OrderPhotoService {
           clientItem: e.clientItem ?? false,
         };
       });
+      const canvasCreate = (dto.canvasItems ?? []).map((e) => ({
+        formatCanvas: e.formatCanvas,
+        quantity: e.quantity,
+        clientPrice: e.clientPrice,
+        contractorPrice: e.contractorPrice,
+        ...calcCanvasMoney(e.quantity, e.clientPrice, e.contractorPrice),
+      }));
 
       // «Разработка дизайна» — отдельная свободная сумма, входит в чек клиента
       // и служит базой премии менеджера по оформлению (не привязана к позициям).
@@ -278,12 +309,13 @@ export class OrderPhotoService {
       const isUrgent = dto.isUrgent ?? false;
       const urgencyFee = isUrgent ? Math.max(0, dto.urgencyFee ?? 0) : 0;
 
-      // Сумма заказа = позиции (фото + футболки) + доставка + дизайн + срочность.
+      // Сумма заказа = позиции (фото + футболки + холсты) + доставка + дизайн + срочность.
       // customTotal — ручной итог по позициям; дизайн и срочность добавляются
       // поверх него, чтобы базы зарплат (чек без них) считались чисто.
       const positionsTotal =
         photoCreate.reduce((s, i) => s + i.pricePosition, 0) +
-        tshirtCreate.reduce((s, i) => s + i.pricePosition, 0);
+        tshirtCreate.reduce((s, i) => s + i.pricePosition, 0) +
+        canvasCreate.reduce((s, i) => s + i.pricePosition, 0);
       const totalOrder =
         (dto.customTotal != null
           ? dto.customTotal
@@ -327,10 +359,14 @@ export class OrderPhotoService {
           tshirtItems: tshirtCreate.length
             ? { create: tshirtCreate }
             : undefined,
+          canvasItems: canvasCreate.length
+            ? { create: canvasCreate }
+            : undefined,
         },
         include: {
           items: true,
           tshirtItems: true,
+          canvasItems: true,
           executor: {
             select: {
               id: true,
@@ -377,7 +413,7 @@ export class OrderPhotoService {
       if (dto.leadId && isUniqueViolation(error, 'externalRequestId')) {
         const existing = await this.prisma.orderPhoto.findUnique({
           where: { externalRequestId: dto.leadId },
-          include: { items: true },
+          include: { items: true, tshirtItems: true, canvasItems: true },
         });
         if (existing) return existing;
       }
@@ -519,7 +555,7 @@ export class OrderPhotoService {
               }
             : {}),
         },
-        include: { items: true },
+        include: { items: true, tshirtItems: true, canvasItems: true },
       });
     });
   }
@@ -550,6 +586,7 @@ export class OrderPhotoService {
         include: {
           items: true,
           tshirtItems: true,
+          canvasItems: true,
           executor: { select: { id: true, username: true } },
         },
       }),
@@ -610,10 +647,10 @@ export class OrderPhotoService {
       (acc, status) => ({ ...acc, [status]: 0 }),
       {} as Record<EnumStatus, number>,
     );
-    const byProduct: Record<'PHOTO' | 'TSHIRT', number> = {
-      PHOTO: 0,
-      TSHIRT: 0,
-    };
+    const byProduct = Object.values(EnumProductCategory).reduce(
+      (acc, category) => ({ ...acc, [category]: 0 }),
+      {} as Record<EnumProductCategory, number>,
+    );
 
     let activeCount = 0;
     let overdueCount = 0;
@@ -640,8 +677,14 @@ export class OrderPhotoService {
         sentUnpaidAmount += order.totalOrder ?? 0;
       }
 
-      if (
+      const waitsForReview =
         REVIEW_WAITING_STATUSES.includes(order.status) &&
+        !(
+          order.productCategory === EnumProductCategory.CANVAS &&
+          order.status === EnumStatus.SENT
+        );
+      if (
+        waitsForReview &&
         !order.clientReviewLeft
       ) {
         reviewPendingCount += 1;
@@ -707,7 +750,8 @@ export class OrderPhotoService {
     // Strip leading @ so "@username" matches "https://t.me/username".
     const searchTerm = query.search?.replace(/^@/, '').trim() || undefined;
     const defaultHiddenStatuses =
-      query.productCategory === EnumProductCategory.TSHIRT
+      query.productCategory &&
+      isExternalProductionCategory(query.productCategory)
         ? TSHIRT_LIST_HIDDEN_STATUSES
         : DEFAULT_LIST_HIDDEN_STATUSES;
 
@@ -733,8 +777,8 @@ export class OrderPhotoService {
       ...(query.reviewLeft !== undefined
         ? { clientReviewLeft: query.reviewLeft === 'true' }
         : {}),
-      // Исполнитель видит только свои заказы и только фотопечать: футболки
-      // ведёт партнёр, исполнителям там делать нечего. productCategory
+      // Исполнитель видит только свои заказы и только фотопечать: внешние
+      // продукты ведут подрядчики, исполнителям там делать нечего. productCategory
       // задаётся здесь жёстко и перекрывает параметр запроса — иначе
       // ?productCategory=TSHIRT открыл бы чужой продукт.
       ...(currentUserRole === EnumRole.EXECUTOR
@@ -779,6 +823,7 @@ export class OrderPhotoService {
       include: {
         items: true,
         tshirtItems: true,
+        canvasItems: true,
         executor: { select: { id: true, username: true } },
         accruals: {
           select: {
@@ -793,8 +838,10 @@ export class OrderPhotoService {
     });
     if (!order) throw new NotFoundException('Заказ не найден');
     if (currentUserRole === EnumRole.EXECUTOR) {
-      if (order.productCategory === EnumProductCategory.TSHIRT) {
-        throw new ForbiddenException('Заказы на футболки ведёт администратор.');
+      if (order.productCategory !== EnumProductCategory.PHOTO) {
+        throw new ForbiddenException(
+          'Этот тип заказа ведёт администратор или менеджер.',
+        );
       }
       if (order.executorId !== currentUserId) {
         throw new ForbiddenException('Нет доступа к чужому заказу.');
@@ -815,11 +862,11 @@ export class OrderPhotoService {
 
     const isUnassign = !dto.executorId;
 
-    // Футболки уходят партнёру — своего исполнителя на них не назначаем.
+    // Внешние продукты уходят подрядчику — своего исполнителя на них не назначаем.
     // Снятие оставляем разрешённым: это аварийный выход для старых заказов.
-    if (!isUnassign && order.productCategory === EnumProductCategory.TSHIRT) {
+    if (!isUnassign && isExternalProductionCategory(order.productCategory)) {
       throw new BadRequestException(
-        'Для заказов с футболками исполнитель не назначается — работу выполняет партнёр',
+        'Для заказов этого типа исполнитель не назначается — работу выполняет подрядчик',
       );
     }
 
@@ -895,6 +942,7 @@ export class OrderPhotoService {
         include: {
           items: true,
           tshirtItems: true,
+          canvasItems: true,
           executor: { select: { id: true, username: true } },
           accruals: {
             select: {
@@ -941,6 +989,10 @@ export class OrderPhotoService {
         isFreePrice?: boolean | null;
       }[];
       tshirtItems: { color: string; size: string; quantity: number }[];
+      canvasItems?: {
+        formatCanvas: string;
+        quantity: number;
+      }[];
     },
     username: string,
   ): string {
@@ -962,13 +1014,22 @@ export class OrderPhotoService {
         `• Футболка ${escapeHtml(i.color)}, р-р ${i.size} × ${i.quantity} шт`,
       );
     }
+    for (const i of order.canvasItems ?? []) {
+      lines.push(
+        `• Холст ${escapeHtml(i.formatCanvas)} × ${i.quantity} шт`,
+      );
+    }
     if (lines.length === 0) lines.push('• (позиции не добавлены)');
 
     const deadlineStr = order.deadline
       ? `до ${formatRuDate(order.deadline)}`
       : 'не указан';
     const category =
-      order.productCategory === 'TSHIRT' ? 'Футболки' : 'Фотопечать';
+      order.productCategory === 'TSHIRT'
+        ? 'Футболки'
+        : order.productCategory === 'CANVAS'
+          ? 'Печать на холсте'
+          : 'Фотопечать';
     const deadlineLine =
       order.productCategory === 'TSHIRT' ? [] : [`⏳ Срок: ${deadlineStr}`];
 
@@ -1009,6 +1070,9 @@ export class OrderPhotoService {
 
     const newStatus = dto.status;
     const shipmentRequired = needsShipmentStatus(order);
+    const externalProduction = isExternalProductionCategory(
+      order.productCategory,
+    );
 
     if (newStatus === EnumStatus.SHIPMENT_CREATED) {
       if (!shipmentRequired) {
@@ -1018,10 +1082,7 @@ export class OrderPhotoService {
       }
       const canCreateShipment =
         SHIPMENT_CREATABLE_FROM.includes(order.status) &&
-        !(
-          order.productCategory === EnumProductCategory.TSHIRT &&
-          order.status === EnumStatus.SENT
-        );
+        !(externalProduction && order.status === EnumStatus.SENT);
       if (!canCreateShipment) {
         throw new BadRequestException(
           'Сначала переведите заказ в «Готов», затем создавайте отгрузку.',
@@ -1031,7 +1092,7 @@ export class OrderPhotoService {
 
     if (
       shipmentRequired &&
-      order.productCategory !== EnumProductCategory.TSHIRT &&
+      !externalProduction &&
       newStatus === EnumStatus.SENT &&
       order.status !== EnumStatus.SHIPMENT_CREATED &&
       order.status !== EnumStatus.SENT
@@ -1044,12 +1105,12 @@ export class OrderPhotoService {
     if (shipmentRequired && newStatus === EnumStatus.PAID) {
       const readyForPayment =
         order.status === EnumStatus.PAID ||
-        (order.productCategory === EnumProductCategory.TSHIRT
+        (externalProduction
           ? order.status === EnumStatus.SHIPMENT_CREATED
           : order.status === EnumStatus.SENT);
       if (!readyForPayment) {
         throw new BadRequestException(
-          order.productCategory === EnumProductCategory.TSHIRT
+          externalProduction
             ? 'Сначала поставьте статус «Отгрузка создана», затем переводите заказ в «Оплачен».'
             : 'Сначала переведите доставочный заказ в «Отправлен», затем в «Оплачен».',
         );
@@ -1084,10 +1145,10 @@ export class OrderPhotoService {
 
     // Защита от «отправлен без исполнителя»: у фото при переходе в SENT
     // начисляется зарплата, а начислять некому — значит исполнитель просто
-    // забыт. У футболок исполнителя нет (их ведёт партнёр), их не трогаем.
+    // забыт. У внешних продуктов исполнителя нет (их ведёт подрядчик), их не трогаем.
     if (
       newStatus === EnumStatus.SENT &&
-      order.productCategory !== EnumProductCategory.TSHIRT &&
+      earnsStaffSalary(order.productCategory) &&
       !order.executorId
     ) {
       throw new BadRequestException(
@@ -1122,6 +1183,7 @@ export class OrderPhotoService {
         include: {
           items: true,
           tshirtItems: true,
+          canvasItems: true,
           executor: { select: { id: true, username: true } },
         },
       });
@@ -1304,6 +1366,17 @@ export class OrderPhotoService {
         });
       }
 
+      if (lockedOrder.productCategory === EnumProductCategory.CANVAS) {
+        await this.syncCanvasContractorExpense(tx, {
+          orderId: id,
+          orderNumber: lockedOrder.numberOrder,
+          items: lockedOrder.canvasItems,
+          isPaid: newStatus === EnumStatus.PAID,
+          actingUserId: userId,
+          revenueDate: lockedOrder.sentAt ?? lockedOrder.createdAt,
+        });
+      }
+
       const updated = await tx.orderPhoto.update({
         where: { id },
         data: {
@@ -1312,8 +1385,9 @@ export class OrderPhotoService {
           statusChangedAt: new Date(),
           // sentAt ставим и при прямом переводе в PAID (минуя SENT — типично
           // для самовывоза): иначе заказ выпадает из напоминаний об отзыве.
-          ...((newStatus === EnumStatus.SENT ||
-            newStatus === EnumStatus.PAID) &&
+          ...((newStatus === EnumStatus.PAID ||
+            (newStatus === EnumStatus.SENT &&
+              lockedOrder.productCategory !== EnumProductCategory.CANVAS)) &&
           !lockedOrder.sentAt
             ? { sentAt: new Date() }
             : {}),
@@ -1329,6 +1403,7 @@ export class OrderPhotoService {
         include: {
           items: true,
           tshirtItems: true,
+          canvasItems: true,
           executor: { select: { id: true, username: true } },
         },
       });
@@ -1337,6 +1412,75 @@ export class OrderPhotoService {
     });
 
     return result;
+  }
+
+  /**
+   * Холсты: цена подрядчика — авто-расход на «Оплачен».
+   * Датируем расход периодом заказа, чтобы выручка и себестоимость попадали
+   * в один месяц отчёта.
+   */
+  private async syncCanvasContractorExpense(
+    tx: Prisma.TransactionClient,
+    params: {
+      orderId: string;
+      orderNumber: string;
+      items: {
+        contractorCostPosition: number;
+        profitPosition: number;
+      }[];
+      isPaid: boolean;
+      actingUserId: string;
+      revenueDate: Date;
+    },
+  ): Promise<void> {
+    const existing = await tx.expenseOrder.findFirst({
+      where: {
+        orderId: params.orderId,
+        category: EnumExpenseCategory.CANVAS_CONTRACTOR,
+      },
+    });
+
+    if (!params.isPaid) {
+      if (existing) {
+        await tx.expenseOrder.delete({ where: { id: existing.id } });
+      }
+      return;
+    }
+
+    const contractorCost = params.items.reduce(
+      (s, i) => s + (i.contractorCostPosition ?? 0),
+      0,
+    );
+    const profit = params.items.reduce(
+      (s, i) => s + (i.profitPosition ?? 0),
+      0,
+    );
+
+    if (contractorCost <= 0) {
+      if (existing) await tx.expenseOrder.delete({ where: { id: existing.id } });
+      return;
+    }
+
+    const note = `Подрядчик по холстам: заказ ${params.orderNumber} (маржа ${profit} ₽)`;
+
+    if (existing) {
+      await tx.expenseOrder.update({
+        where: { id: existing.id },
+        data: { amount: contractorCost, note, createdAt: params.revenueDate },
+      });
+      return;
+    }
+
+    await tx.expenseOrder.create({
+      data: {
+        category: EnumExpenseCategory.CANVAS_CONTRACTOR,
+        amount: contractorCost,
+        note,
+        orderId: params.orderId,
+        createdById: params.actingUserId,
+        createdAt: params.revenueDate,
+      },
+    });
   }
 
   async dispatchTshirtToPartner(id: string, userId: string, userRole: string) {
@@ -1440,6 +1584,7 @@ export class OrderPhotoService {
       include: {
         items: true,
         tshirtItems: true,
+        canvasItems: true,
         executor: { select: { id: true, username: true } },
       },
       data: {
@@ -1457,10 +1602,11 @@ export class OrderPhotoService {
         deliveryCost,
         designDevelopmentCost,
         urgencyFee,
-        // Сумма = pricePosition (фото + футболки) + доставка + дизайн + срочность.
+        // Сумма = pricePosition (фото + футболки + холсты) + доставка + дизайн + срочность.
         totalOrder:
           order.items.reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
           order.tshirtItems.reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
+          order.canvasItems.reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
           deliveryCost +
           designDevelopmentCost +
           urgencyFee,
@@ -1489,6 +1635,7 @@ export class OrderPhotoService {
       include: {
         items: true,
         tshirtItems: true,
+        canvasItems: true,
         executor: { select: { id: true, username: true } },
       },
     });
@@ -1513,7 +1660,7 @@ export class OrderPhotoService {
 
       const deleted = await tx.orderPhoto.delete({
         where: { id: idOrder },
-        include: { items: true, tshirtItems: true },
+        include: { items: true, tshirtItems: true, canvasItems: true },
       });
 
       return { message: 'Заказ удалён успешно', data: deleted };
