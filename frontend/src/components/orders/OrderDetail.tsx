@@ -247,6 +247,7 @@ import { getStalledDays } from "../../utils/stalled";
 import { ordersApi } from "../../api/orders";
 import { partnerSettingsApi } from "../../api/partnerSettings";
 import { computeSettlement } from "../../utils/settlement";
+import { computePaperUsage } from "../../utils/photo-material";
 import { StatusStepper } from "./StatusStepper";
 import { ItemsTable } from "./ItemsTable";
 import { StatusBadge } from "../ui/StatusBadge";
@@ -715,6 +716,99 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       </div>
 
       {/* ТЗ исполнителю-партнёру — только TSHIRT-заказы, только админ */}
+      {/* Заработок по фотозаказу — то же, что по футболкам и холстам:
+          оборот сам по себе ничего не говорит, пока из него не вычтены
+          бумага и зарплата исполнителя. */}
+      {isAdmin &&
+        order.productCategory === "PHOTO" &&
+        partnerSettings &&
+        (order.items?.length ?? 0) > 0 && (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+            <p className="text-xs font-medium text-gray-500">
+              Себестоимость и заработок
+            </p>
+            {(() => {
+              const paper = computePaperUsage(
+                order.items ?? [],
+                partnerSettings.photoBoxCost,
+                partnerSettings.photoSheetsPerBox,
+              );
+              const photoRevenue = (order.items ?? []).reduce(
+                (sum, i) => sum + (i.pricePosition ?? 0),
+                0,
+              );
+              const designRub = order.designDevelopmentCost ?? 0;
+              const salary = (order.accruals ?? []).reduce(
+                (sum, a) => sum + (a.salaryAmount ?? 0),
+                0,
+              );
+              // Доставка не транзит: клиенту называем одно, перевозчику платим
+              // меньше — разница тоже заработок.
+              const charged = order.deliveryCost ?? 0;
+              const carrier =
+                charged > 0
+                  ? order.deliveryMethod === "YANDEX_PVZ"
+                    ? partnerSettings.deliveryCostYandexPvz
+                    : order.deliveryMethod === "OZON_PVZ"
+                      ? partnerSettings.deliveryCostOzonPvz
+                      : 0
+                  : 0;
+              const deliveryProfit = charged - carrier;
+              const profit =
+                photoRevenue + designRub - paper.cost - salary + deliveryProfit;
+              const money = (v: number) => `${v.toLocaleString("ru-RU")} ₽`;
+              const Row = ({
+                l,
+                v,
+                strong,
+              }: {
+                l: string;
+                v: string;
+                strong?: boolean;
+              }) => (
+                <div
+                  className={`flex justify-between ${strong ? "font-semibold text-gray-900" : "text-gray-500"}`}
+                >
+                  <span>{l}</span>
+                  <span className="tabular-nums">{v}</span>
+                </div>
+              );
+              return (
+                <div className="rounded-lg bg-white border border-gray-200 p-3 text-sm space-y-1">
+                  <Row l="Сумма фото" v={money(photoRevenue)} />
+                  {designRub > 0 && (
+                    <Row l="+ Разработка дизайна" v={money(designRub)} />
+                  )}
+                  <Row
+                    l={`Бумага (${paper.sheets} ${paper.sheets === 1 ? "лист" : "листов"})`}
+                    v={`− ${money(paper.cost)}`}
+                  />
+                  {salary > 0 ? (
+                    <Row l="Зарплата исполнителя" v={`− ${money(salary)}`} />
+                  ) : (
+                    <Row l="Зарплата исполнителя" v="начислится при отправке" />
+                  )}
+                  {charged > 0 && (
+                    <Row
+                      l={`Доставка (взял ${money(charged)}, отдал ${money(carrier)})`}
+                      v={`+ ${money(deliveryProfit)}`}
+                    />
+                  )}
+                  <div className="pt-1.5 mt-1 border-t border-gray-100">
+                    <Row l="Моя прибыль" v={money(profit)} strong />
+                  </div>
+                  <p className="text-[11px] text-gray-400 pt-1">
+                    Бумага считается по формату: 10×15 — лист, Polaroid, Instax
+                    и 7,5×10 — половина, 4×4 — шестая часть. Цена листа — из
+                    настроек ({partnerSettings.photoBoxCost} ₽ за{" "}
+                    {partnerSettings.photoSheetsPerBox} шт).
+                  </p>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
       {isAdmin && order.productCategory === "TSHIRT" && (
         <div
           className={`rounded-xl border p-4 space-y-3 ${

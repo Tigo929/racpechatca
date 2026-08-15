@@ -638,6 +638,12 @@ export interface PartnerSettings {
   partnerName: string;
   /** Шаблон ссылки на переписку в MAX: {phone} / {phone_plus}. */
   maxLinkTemplate: string;
+  /** Себестоимость фотопечати: коробка бумаги и сколько в ней листов. */
+  photoBoxCost: number;
+  photoSheetsPerBox: number;
+  /** Сколько платим перевозчику — клиенту называем больше, разница наш заработок. */
+  deliveryCostYandexPvz: number;
+  deliveryCostOzonPvz: number;
 }
 
 export interface OrderSettlement {
