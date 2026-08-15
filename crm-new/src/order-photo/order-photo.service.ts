@@ -40,6 +40,10 @@ import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 import { hasTechSpecFiles } from 'src/partner/tech-spec-paths';
 import { GulianOutboxService } from 'src/gulian/gulian-outbox.service';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
+import {
+  buildLeadNotification,
+  pickLeadResponders,
+} from './lead-notification';
 
 // Сборка ссылки на переписку живёт в communication-url.ts — там же тесты
 // на нормализацию телефона для MAX.
@@ -404,7 +408,11 @@ export class OrderPhotoService {
 
   async createLead(dto: DtoCreateLead) {
     try {
-      return await this.createLeadTx(dto);
+      const created = await this.createLeadTx(dto);
+      // Уведомление вне транзакции и без await на ошибку: Telegram может
+      // молчать (блокировки, прокси), но заявка от этого пропасть не должна.
+      void this.notifyLead(created, dto);
+      return created;
     } catch (error) {
       // Страховка на случай, если доставки пришли в разные процессы и
       // разошлись мимо блокировки: повторная доставка заявки — это норма,
@@ -418,6 +426,47 @@ export class OrderPhotoService {
         if (existing) return existing;
       }
       throw error;
+    }
+  }
+
+  /**
+   * Сообщает в общий чат о заявке с сайта и тегает того, кто должен ответить.
+   *
+   * Без этого заявка лежит в разделе обращений молча, пока кто-нибудь не
+   * заглянет туда сам, — а клиент в это время ждёт. Упоминание в Telegram
+   * даёт push даже при заглушенном чате.
+   */
+  private async notifyLead(
+    created: { numberOrder: string },
+    dto: DtoCreateLead,
+  ): Promise<void> {
+    try {
+      const users = await this.prisma.user.findMany({
+        where: { isActive: true },
+        select: {
+          username: true,
+          telegramUsername: true,
+          role: true,
+          isActive: true,
+        },
+      });
+      const text = buildLeadNotification(
+        {
+          numberOrder: created.numberOrder,
+          name: dto.name,
+          productName: dto.productName,
+          quantity: dto.quantity,
+          total: dto.total,
+          comment: dto.comment ?? dto.description,
+        },
+        pickLeadResponders(users),
+      );
+      await this.telegram.sendToGroup(text);
+    } catch (error) {
+      // Заявка уже принята и лежит в CRM — молчание бота её не отменяет.
+      this.logger.warn(
+        `Не удалось уведомить о заявке ${created.numberOrder}: ${String(error)}`,
+      );
     }
   }
 
