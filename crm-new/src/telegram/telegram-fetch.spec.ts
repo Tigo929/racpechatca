@@ -7,7 +7,7 @@ import { resetTelegramProxyCache, telegramFetch } from './telegram-fetch';
  */
 describe('telegramFetch: прокси только когда он задан', () => {
   const realFetch = global.fetch;
-  let lastInit: RequestInit | undefined;
+  let lastInit: (RequestInit & { dispatcher?: unknown }) | undefined;
 
   beforeEach(() => {
     resetTelegramProxyCache();
