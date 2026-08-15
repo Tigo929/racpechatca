@@ -15,6 +15,15 @@ export const businessConfig = {
   pickupAddress: 'Измайловский проезд, 6, корп. 1, подъезд 3',
   /** Адрес самовывоза — футболки (другое здание) */
   tshirtPickupAddress: 'ул. Верхняя Первомайская, 47, корп. 11, подъезд 2, 1 этаж, кабинет 116',
+  /**
+   * Холсты печатает подрядчик, и забирают их у него же — в Балашихе, а не
+   * в Москве. Свой график: будни 10:00–19:00, выходные закрыто.
+   */
+  canvasPickup: {
+    address: 'Балашиха, улица Поповка, 7',
+    hours: 'будни 10:00–19:00, выходные — выходной',
+    leadTime: '1–2 дня',
+  },
   /** Срок изготовления по умолчанию, если дедлайн не задан */
   defaultLeadTime: '3 рабочих дня',
 } as const;
@@ -72,11 +81,23 @@ function normalizeUsername(username: string): string {
   return username.trim().toLowerCase().replace(/[\s_\-.]+/g, ' ').trim();
 }
 
-/** Адрес самовывоза для заказа: адрес исполнителя (если задан) или общий. */
+/**
+ * Адрес самовывоза для заказа.
+ *
+ * Возвращает null, когда адрес называть рано: по фотозаказам забирают
+ * у исполнителя, а пока он не назначен — неизвестно, у какого именно.
+ * Раньше в таком случае подставлялся общий адрес, клиент ехал не туда,
+ * и разбираться приходилось уже на месте.
+ *
+ * Холсты забирают у подрядчика в Балашихе — там адрес известен всегда.
+ */
 export function resolvePickupAddress(order: {
   productCategory?: string;
   executor?: { username: string } | null;
-}): string {
+}): string | null {
+  if (order.productCategory === 'CANVAS') {
+    return businessConfig.canvasPickup.address;
+  }
   const executorName = normalizeUsername(order.executor?.username ?? '');
   if (executorName) {
     const matched = izmailovskySevenExecutors.some((parts) =>
@@ -89,7 +110,9 @@ export function resolvePickupAddress(order: {
       return executorPickupAddresses[executorName];
     }
   }
-  return order.productCategory === 'TSHIRT'
-    ? businessConfig.tshirtPickupAddress
-    : businessConfig.pickupAddress;
+  if (order.productCategory === 'TSHIRT') {
+    return businessConfig.tshirtPickupAddress;
+  }
+  // Фото без исполнителя: адреса ещё нет, и выдумывать его нельзя.
+  return null;
 }

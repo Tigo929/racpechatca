@@ -150,7 +150,19 @@ function generateConfirmationText(order: OrderPhoto): string {
     "💳 Для подтверждения заказа:",
     `👉 Предоплата 50% — ${prepay.toLocaleString("ru-RU")} ₽ (сейчас)`,
     restLabel,
-    ...(isPickup ? ["", `📍 Самовывоз: ${pickupAddr}`] : []),
+    ...(isPickup && pickupAddr ? ["", `📍 Самовывоз: ${pickupAddr}`] : []),
+    // Холсты забирают у подрядчика: свой график и своё условие выдачи —
+    // сначала показываем клиенту фото готовой работы, потом отдаём.
+    ...(isPickup && order.productCategory === "CANVAS"
+      ? [
+          `🕘 Часы работы: ${businessConfig.canvasPickup.hours}`,
+          `⏱ Готовность в среднем ${businessConfig.canvasPickup.leadTime}`,
+          "📸 Забрать можно после того, как пришлём фото готовой работы",
+        ]
+      : []),
+    ...(isPickup && !pickupAddr
+      ? ["", "📍 Самовывоз: адрес пришлём, когда заказ возьмут в работу"]
+      : []),
     "",
     `📲 Реквизиты для перевода (${businessConfig.payment.label}):`,
     `   ${businessConfig.payment.phone}`,
@@ -230,7 +242,19 @@ function generateReadyText(order: OrderPhoto): string {
     "💳 Остаток к оплате:",
     `👉 Предоплата 50% — ${prepay.toLocaleString("ru-RU")} ₽ (уже внесена)`,
     `👉 Остаток — ${rest.toLocaleString("ru-RU")} ₽`,
-    ...(isPickup ? ["", `📍 Самовывоз: ${pickupAddr}`] : []),
+    ...(isPickup && pickupAddr ? ["", `📍 Самовывоз: ${pickupAddr}`] : []),
+    // Холсты забирают у подрядчика: свой график и своё условие выдачи —
+    // сначала показываем клиенту фото готовой работы, потом отдаём.
+    ...(isPickup && order.productCategory === "CANVAS"
+      ? [
+          `🕘 Часы работы: ${businessConfig.canvasPickup.hours}`,
+          `⏱ Готовность в среднем ${businessConfig.canvasPickup.leadTime}`,
+          "📸 Забрать можно после того, как пришлём фото готовой работы",
+        ]
+      : []),
+    ...(isPickup && !pickupAddr
+      ? ["", "📍 Самовывоз: адрес пришлём, когда заказ возьмут в работу"]
+      : []),
     "",
     `📲 Реквизиты для перевода (${businessConfig.payment.label}):`,
     `   ${businessConfig.payment.phone}`,
