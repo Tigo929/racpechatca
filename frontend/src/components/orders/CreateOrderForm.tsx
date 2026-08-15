@@ -6,6 +6,8 @@ import { Plus, Trash2, Camera, Shirt, Image, Flame, Clock } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { ordersApi } from '../../api/orders';
+import { PHOTO_FORMATS, sheetHint } from '../../config/photo-formats';
+import { printsPerSheet } from '../../utils/photo-material';
 import { usersApi } from '../../api/users';
 import { partnerSettingsApi } from '../../api/partnerSettings';
 import {
@@ -164,7 +166,7 @@ const errorCls = 'text-red-500 text-xs mt-1';
 
 export function CreateOrderForm({ onClose }: Props) {
   const qc = useQueryClient();
-  const { register, control, handleSubmit, getValues, setValue, formState: { errors } } = useForm<FormValues>({
+  const { register, control, handleSubmit, getValues, setValue, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(fullSchema),
     defaultValues: {
       productCategory: 'PHOTO',
@@ -615,6 +617,14 @@ export function CreateOrderForm({ onClose }: Props) {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-900">Позиции — фотографии</h3>
+            {/* Подсказки форматов — общий список для всех позиций.
+                Составлен по статистике заказов, редкие форматы вписываются
+                руками: поле остаётся свободным. */}
+            <datalist id="photo-formats">
+              {PHOTO_FORMATS.map((f) => (
+                <option key={f.value} value={f.value}>{sheetHint(f.perSheet)}</option>
+              ))}
+            </datalist>
             <button type="button"
               onClick={() => photoFields.append({ isFreePrice: false, formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 })}
               className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
@@ -643,7 +653,28 @@ export function CreateOrderForm({ onClose }: Props) {
                 <div className={`grid gap-2 items-end ${itemFree ? 'grid-cols-[1fr_80px_110px]' : 'grid-cols-[1fr_1fr_80px_80px]'}`}>
                   <div>
                     <label className={labelCls}>{itemFree ? 'Название' : 'Формат'}</label>
-                    <input className={inputCls} placeholder={itemFree ? 'Фотоальбом, рамка, доп. услуга…' : '10×15, Polaroid…'} {...register(`items.${idx}.formatPaper`)} />
+                    {/* Список подсказок, но поле остаётся свободным: редкие
+                        форматы вписываются руками, расход по ним считается
+                        геометрией. Без единых написаний бумагу не посчитать. */}
+                    <input
+                      className={inputCls}
+                      list={itemFree ? undefined : 'photo-formats'}
+                      placeholder={itemFree ? 'Фотоальбом, рамка, доп. услуга…' : 'Выберите или впишите свой'}
+                      {...register(`items.${idx}.formatPaper`)}
+                    />
+                    {!itemFree && (() => {
+                      const chosen = watch(`items.${idx}.formatPaper`) ?? '';
+                      if (!chosen.trim()) return null;
+                      const perSheet = printsPerSheet(chosen);
+                      const qty = Number(watch(`items.${idx}.quantity`)) || 0;
+                      const sheets = Math.ceil(Math.max(0, qty) / perSheet);
+                      return (
+                        <p className="mt-1 text-[11px] text-gray-400">
+                          {sheetHint(perSheet)}
+                          {sheets > 0 ? ` · уйдёт ${sheets} ${sheets === 1 ? 'лист' : 'листов'}` : ''}
+                        </p>
+                      );
+                    })()}
                   </div>
                   {!itemFree && (
                     <div>
