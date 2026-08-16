@@ -32,11 +32,24 @@ function escape(text: string): string {
   return text.replace(/([_*`[\]])/g, '\\$1');
 }
 
+/** Приводим к виду @username: собаку и лишние пробелы владелец вводит как придётся. */
+function toMention(raw: string): string {
+  return `@${raw.trim().replace(/^@+/, '')}`;
+}
+
 /**
  * Кого упомянуть. Тег работает только если у человека задан telegramUsername:
  * по внутреннему логину CRM Telegram никого не найдёт.
+ *
+ * `always` — список из настроек: этих тегаем в любом случае, даже если они
+ * не менеджеры и вообще не заведены в CRM. Нужен, чтобы владелец видел
+ * заявки лично, не назначая себя менеджером по оформлению и не отбирая
+ * заявки у того, кто их ведёт.
  */
-export function pickLeadResponders(users: NotifiableUser[]): string[] {
+export function pickLeadResponders(
+  users: NotifiableUser[],
+  always: string = '',
+): string[] {
   const taggable = users.filter(
     (u) => u.isActive && u.telegramUsername && u.telegramUsername.trim(),
   );
@@ -44,7 +57,16 @@ export function pickLeadResponders(users: NotifiableUser[]): string[] {
   const chosen = managers.length
     ? managers
     : taggable.filter((u) => u.role === 'ADMIN');
-  return chosen.map((u) => `@${u.telegramUsername!.trim().replace(/^@/, '')}`);
+
+  const fromSettings = always
+    .split(/[,\s]+/)
+    .filter(Boolean)
+    .map(toMention);
+  const fromUsers = chosen.map((u) => toMention(u.telegramUsername!));
+
+  // Владелец идёт первым: его тег виден в превью уведомления даже когда
+  // менеджеров несколько. Повторы убираем — двойной тег выглядит ошибкой.
+  return [...new Set([...fromSettings, ...fromUsers])];
 }
 
 /** Текст сообщения в общий чат. */

@@ -86,3 +86,46 @@ describe('текст сообщения', () => {
     expect(text).toContain('Аня\\_\\*зайка\\*');
   });
 });
+
+/**
+ * Владелец должен видеть заявки лично. Менеджеры в приоритете над админами,
+ * поэтому без отдельного списка он в тег не попадал вообще — даже заполнив
+ * себе Telegram в профиле.
+ */
+describe('всегда упоминаемые из настроек', () => {
+  const alena = {
+    username: 'Archangel_Alena0555',
+    telegramUsername: 'Archangel_Alena0555',
+    role: 'ORDER_MANAGER',
+    isActive: true,
+  };
+
+  it('владелец идёт первым и не вытесняет менеджера', () => {
+    expect(pickLeadResponders([alena], 'gts224')).toEqual([
+      '@gts224',
+      '@Archangel_Alena0555',
+    ]);
+  });
+
+  it('собаку можно писать или не писать', () => {
+    expect(pickLeadResponders([], '@gts224')).toEqual(['@gts224']);
+  });
+
+  it('несколько через запятую или пробел', () => {
+    expect(pickLeadResponders([], 'gts224, second  third')).toEqual([
+      '@gts224',
+      '@second',
+      '@third',
+    ]);
+  });
+
+  it('повтор не даёт двойного тега', () => {
+    expect(pickLeadResponders([alena], 'Archangel_Alena0555')).toEqual([
+      '@Archangel_Alena0555',
+    ]);
+  });
+
+  it('пустая настройка ничего не меняет', () => {
+    expect(pickLeadResponders([alena], '')).toEqual(['@Archangel_Alena0555']);
+  });
+});

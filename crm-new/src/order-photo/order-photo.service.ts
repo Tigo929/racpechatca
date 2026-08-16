@@ -441,15 +441,21 @@ export class OrderPhotoService {
     dto: DtoCreateLead,
   ): Promise<void> {
     try {
-      const users = await this.prisma.user.findMany({
-        where: { isActive: true },
-        select: {
-          username: true,
-          telegramUsername: true,
-          role: true,
-          isActive: true,
-        },
-      });
+      const [users, settings] = await Promise.all([
+        this.prisma.user.findMany({
+          where: { isActive: true },
+          select: {
+            username: true,
+            telegramUsername: true,
+            role: true,
+            isActive: true,
+          },
+        }),
+        this.prisma.partnerSettings.findUnique({
+          where: { id: 'default' },
+          select: { leadMentionUsernames: true },
+        }),
+      ]);
       const text = buildLeadNotification(
         {
           numberOrder: created.numberOrder,
@@ -459,7 +465,7 @@ export class OrderPhotoService {
           total: dto.total,
           comment: dto.comment ?? dto.description,
         },
-        pickLeadResponders(users),
+        pickLeadResponders(users, settings?.leadMentionUsernames ?? ''),
       );
       await this.telegram.sendToGroup(text);
     } catch (error) {
