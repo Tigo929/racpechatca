@@ -644,6 +644,8 @@ export interface PartnerSettings {
   /** Сколько платим перевозчику — клиенту называем больше, разница наш заработок. */
   deliveryCostYandexPvz: number;
   deliveryCostOzonPvz: number;
+  /** Кого всегда тегать в общем чате при заявке с сайта (через запятую). */
+  leadMentionUsernames: string;
 }
 
 export interface OrderSettlement {

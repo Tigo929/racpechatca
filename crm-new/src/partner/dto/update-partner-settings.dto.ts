@@ -30,4 +30,14 @@ export class DtoUpdatePartnerSettings {
   @IsString()
   @MaxLength(200)
   maxLinkTemplate?: string;
+
+  /**
+   * Кого всегда упоминать в общем чате при заявке с сайта — через запятую.
+   * Дежурный менеджер тегается сам; это список сверх него, чтобы владелец
+   * видел заявки лично, не занимая роль менеджера по оформлению.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  leadMentionUsernames?: string;
 }

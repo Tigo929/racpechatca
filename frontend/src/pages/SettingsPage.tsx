@@ -224,6 +224,7 @@ interface FormState {
   ratePercent: string;
   partnerName: string;
   maxLinkTemplate: string;
+  leadMentionUsernames: string;
 }
 
 function toForm(s: PartnerSettings): FormState {
@@ -233,6 +234,7 @@ function toForm(s: PartnerSettings): FormState {
     ratePercent: (s.partnerRateBasisPoints / 100).toString(),
     partnerName: s.partnerName,
     maxLinkTemplate: s.maxLinkTemplate,
+    leadMentionUsernames: s.leadMentionUsernames ?? '',
   };
 }
 
@@ -285,6 +287,7 @@ export default function SettingsPage() {
       partnerRateBasisPoints: Math.round(pct * 100),
       partnerName: form.partnerName.trim(),
       maxLinkTemplate: form.maxLinkTemplate.trim(),
+      leadMentionUsernames: form.leadMentionUsernames.trim(),
     });
   };
 
@@ -336,6 +339,20 @@ export default function SettingsPage() {
                   value={form.partnerName}
                   onChange={(e) => setForm({ ...form, partnerName: e.target.value })}
                 />
+              </label>
+              <label className="block sm:col-span-2">
+                <span className="text-sm font-medium text-gray-700">Кого тегать в Telegram по заявкам с сайта</span>
+                <input
+                  type="text" className={`mt-1 ${field}`}
+                  placeholder="gts224"
+                  value={form.leadMentionUsernames}
+                  onChange={(e) => setForm({ ...form, leadMentionUsernames: e.target.value })}
+                />
+                <span className="block text-xs text-gray-500 mt-1">
+                  Эти люди упоминаются всегда — помимо дежурного менеджера, который
+                  тегается сам. Несколько — через запятую, собаку можно не писать.
+                  Пусто — тегается только менеджер.
+                </span>
               </label>
               <label className="block sm:col-span-2">
                 <span className="text-sm font-medium text-gray-700">Ссылка на переписку в MAX</span>
