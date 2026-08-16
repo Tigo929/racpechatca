@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { ProxyAgent, type Dispatcher } from 'undici';
+import { fetch as undiciFetch, ProxyAgent, type Dispatcher } from 'undici';
 
 /**
  * Запросы к Telegram — через прокси, если он задан.
@@ -50,17 +50,29 @@ function proxyDispatcher(): Dispatcher | undefined {
   }
 }
 
-/** fetch к api.telegram.org: тот же интерфейс, но с учётом прокси. */
+/**
+ * fetch к api.telegram.org: тот же интерфейс, но с учётом прокси.
+ *
+ * Через прокси зовём fetch из самого undici, а не встроенный в Node.
+ * Причина найдена на боевом сервере: агент создаётся установленным undici
+ * (8.x), а глобальный fetch собран на той версии, что вшита в Node — и
+ * интерфейс обработчика запроса у них разошёлся. Передача «чужого»
+ * dispatcher роняла каждый запрос с InvalidArgumentError: invalid
+ * onRequestStart method, то есть бот молчал так же, как при блокировке.
+ *
+ * Без прокси остаётся штатный fetch: незачем менять поведение там, где
+ * оно и так работает.
+ */
 export function telegramFetch(
   url: string,
   init: RequestInit = {},
 ): Promise<Response> {
   const dispatcher = proxyDispatcher();
-  // dispatcher — расширение undici поверх стандартного RequestInit, поэтому
-  // типов в lib.dom для него нет; без прокси ключ вообще не добавляется.
-  return dispatcher
-    ? fetch(url, { ...init, dispatcher } as RequestInit)
-    : fetch(url, init);
+  if (!dispatcher) return fetch(url, init);
+
+  // У undici свои типы Request/Response — по составу они совпадают с
+  // глобальными в той части, которой пользуется код бота (ok, json, text).
+  return undiciFetch(url, { ...init, dispatcher } as never) as unknown as Promise<Response>;
 }
 
 /** Только для тестов: сбросить запомненный прокси между случаями. */

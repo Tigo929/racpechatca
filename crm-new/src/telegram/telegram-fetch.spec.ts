@@ -1,20 +1,40 @@
+import { fetch as undiciFetch } from 'undici';
 import { resetTelegramProxyCache, telegramFetch } from './telegram-fetch';
 
 /**
  * Прокси для Telegram — единственный способ достучаться до бота с боевого
  * сервера, поэтому важно, чтобы он включался и выключался предсказуемо:
  * забытая переменная не должна ронять отправку, а кривая — уводить в молчание.
+ *
+ * Отдельно проверяем, каким именно fetch уходит запрос. Это не придирка:
+ * на проде агент из установленного undici, отданный встроенному в Node
+ * fetch, ронял каждый запрос с «invalid onRequestStart method» — версии
+ * библиотеки разошлись. Снаружи это выглядело как та же блокировка.
  */
+jest.mock('undici', () => {
+  const actual = jest.requireActual('undici');
+  return { ...actual, fetch: jest.fn() };
+});
+
 describe('telegramFetch: прокси только когда он задан', () => {
   const realFetch = global.fetch;
-  let lastInit: (RequestInit & { dispatcher?: unknown }) | undefined;
+  const mockedUndiciFetch = undiciFetch as unknown as jest.Mock;
+  /** init, ушедший во встроенный fetch (путь без прокси). */
+  let globalInit: (RequestInit & { dispatcher?: unknown }) | undefined;
+  /** init, ушедший в undici-fetch (путь через прокси). */
+  const proxyInit = () =>
+    mockedUndiciFetch.mock.calls.at(-1)?.[1] as
+      | (RequestInit & { dispatcher?: unknown })
+      | undefined;
 
   beforeEach(() => {
     resetTelegramProxyCache();
     delete process.env.TELEGRAM_PROXY_URL;
-    lastInit = undefined;
+    globalInit = undefined;
+    mockedUndiciFetch.mockReset();
+    mockedUndiciFetch.mockResolvedValue(new Response('{}'));
     global.fetch = jest.fn((_url: unknown, init?: RequestInit) => {
-      lastInit = init;
+      globalInit = init;
       return Promise.resolve(new Response('{}'));
     }) as unknown as typeof fetch;
   });
@@ -24,20 +44,23 @@ describe('telegramFetch: прокси только когда он задан', 
     delete process.env.TELEGRAM_PROXY_URL;
   });
 
-  it('без переменной идёт напрямую — ничего лишнего в запросе', async () => {
+  it('без переменной идёт напрямую встроенным fetch', async () => {
     await telegramFetch('https://api.telegram.org/botX/getMe', { method: 'POST' });
 
-    expect(lastInit).toEqual({ method: 'POST' });
-    expect(lastInit).not.toHaveProperty('dispatcher');
+    expect(globalInit).toEqual({ method: 'POST' });
+    expect(globalInit).not.toHaveProperty('dispatcher');
+    expect(mockedUndiciFetch).not.toHaveBeenCalled();
   });
 
-  it('с переменной подставляет dispatcher, не трогая остальной запрос', async () => {
+  it('с прокси запрос уходит через undici — иначе агент несовместим', async () => {
     process.env.TELEGRAM_PROXY_URL = 'http://user:pass@proxy.example:3128';
 
     await telegramFetch('https://api.telegram.org/botX/getMe', { method: 'POST' });
 
-    expect(lastInit).toHaveProperty('dispatcher');
-    expect(lastInit?.method).toBe('POST');
+    expect(mockedUndiciFetch).toHaveBeenCalledTimes(1);
+    expect(globalInit).toBeUndefined();
+    expect(proxyInit()).toHaveProperty('dispatcher');
+    expect(proxyInit()?.method).toBe('POST');
   });
 
   it('кривой адрес не роняет отправку — идём напрямую', async () => {
@@ -46,18 +69,19 @@ describe('telegramFetch: прокси только когда он задан', 
     await expect(
       telegramFetch('https://api.telegram.org/botX/getMe'),
     ).resolves.toBeDefined();
-    expect(lastInit).not.toHaveProperty('dispatcher');
+    expect(globalInit).not.toHaveProperty('dispatcher');
+    expect(mockedUndiciFetch).not.toHaveBeenCalled();
   });
 
   it('смена адреса подхватывается без перезапуска', async () => {
     process.env.TELEGRAM_PROXY_URL = 'http://first.example:3128';
     await telegramFetch('https://api.telegram.org/botX/getMe');
-    const first = lastInit?.dispatcher;
+    const first = proxyInit()?.dispatcher;
 
     process.env.TELEGRAM_PROXY_URL = 'http://second.example:3128';
     await telegramFetch('https://api.telegram.org/botX/getMe');
 
-    expect(lastInit?.dispatcher).toBeDefined();
-    expect(lastInit?.dispatcher).not.toBe(first);
+    expect(proxyInit()?.dispatcher).toBeDefined();
+    expect(proxyInit()?.dispatcher).not.toBe(first);
   });
 });
