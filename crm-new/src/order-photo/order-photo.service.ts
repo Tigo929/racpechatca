@@ -1438,6 +1438,11 @@ export class OrderPhotoService {
           status: dto.status,
           // Отсчёт «зависания» начинается заново с каждой сменой статуса.
           statusChangedAt: new Date(),
+          // Новая отгрузка — новый отсчёт 48 часов. Без сброса повторная
+          // поставка осталась бы вообще без напоминаний: счётчик уже полон.
+          ...(newStatus === EnumStatus.SHIPMENT_CREATED
+            ? { shipmentRemindersSent: 0 }
+            : {}),
           // sentAt ставим и при прямом переводе в PAID (минуя SENT — типично
           // для самовывоза): иначе заказ выпадает из напоминаний об отзыве.
           ...((newStatus === EnumStatus.PAID ||

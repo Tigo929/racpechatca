@@ -72,6 +72,9 @@ model OrderPhoto {
   // отзыва, и кто именно. Отдельно от clientReviewLeft (клиент оставил отзыв).
   reviewRequestSentAt      DateTime?
   reviewRequestSentBy      String?
+  // Сколько напоминаний об отгрузке уже отправлено (0..3). Сбрасывается
+  // при возврате в «Отгрузка создана»: новая поставка — новый отсчёт.
+  shipmentRemindersSent    Int                 @default(0)
   // Когда статус менялся в последний раз. По нему видно «зависшие» заказы:
   // updatedAt для этого не годится — он дёргается от любой правки заказа.
   statusChangedAt          DateTime?

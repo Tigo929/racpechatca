@@ -10,6 +10,7 @@ import { OrderFinancialIntegrityService } from './order-financial-integrity.serv
 import { GulianModule } from 'src/gulian/gulian.module';
 import { TelegramModule } from 'src/telegram/telegram.module';
 import { ReviewReminderService } from './review-reminder.service';
+import { ShipmentReminderService } from './shipment-reminder.service';
 import { DailyPlanService } from './daily-plan.service';
 import { ShipmentLeadService } from './shipment-lead.service';
 import { PartnerSettingsModule } from 'src/partner/partner-settings.module';
@@ -26,6 +27,7 @@ import { SiteLeadTokenGuard } from './site-lead-token.guard';
     CanvasItemService,
     OrderFinancialIntegrityService,
     ReviewReminderService,
+    ShipmentReminderService,
     DailyPlanService,
     ShipmentLeadService,
     TshirtPartnerTelegramService,
