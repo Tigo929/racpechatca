@@ -1,0 +1,240 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from 'src/generated/prisma/client';
+import { EnumTshirtGender, EnumTshirtSize } from 'src/generated/prisma/enums';
+import { PrismaService } from 'src/prisma/prisma.service';
+import {
+  buildOfferId,
+  generateUnionKey,
+  slugify,
+} from './ozon/ozon-attributes';
+
+/**
+ * Принты (карточки товара) и их варианты цвет×размер. Не знает про Ozon API —
+ * только заводит черновики и складывает их отношения; отправкой занимается
+ * OzonImportService.
+ */
+
+export interface ColorGroupInput {
+  colorLabel: string;
+  colorDictionaryValueId: number;
+  sizes: EnumTshirtSize[];
+}
+
+export interface CreatePrintInput {
+  slug?: string;
+  name: string;
+  description?: string;
+  hashtags?: string;
+  mainPhotoUrl: string;
+  extraPhotoUrls?: string[];
+  price: number;
+  oldPrice?: number;
+  gender?: EnumTshirtGender;
+  patternTags?: string[];
+  colorGroups: ColorGroupInput[];
+}
+
+const PRINT_INCLUDE = {
+  variants: { orderBy: [{ colorLabel: 'asc' }, { size: 'asc' }] },
+} satisfies Prisma.OzonPrintInclude;
+
+@Injectable()
+export class OzonPrintService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async list(marketplaceAccountId: string) {
+    return this.prisma.ozonPrint.findMany({
+      where: { marketplaceAccountId },
+      include: PRINT_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getOrFail(id: string) {
+    const print = await this.prisma.ozonPrint.findUnique({
+      where: { id },
+      include: PRINT_INCLUDE,
+    });
+    if (!print) throw new NotFoundException('Принт не найден');
+    return print;
+  }
+
+  /** Создаёт принт со всеми вариантами (цвет×размер) сразу — черновик. */
+  async create(marketplaceAccountId: string, input: CreatePrintInput) {
+    this.validateColorGroups(input.colorGroups);
+
+    const slug = slugify(input.slug || input.name);
+    if (!slug)
+      throw new BadRequestException(
+        'Не удалось построить артикул из названия — заполните поле «Слаг» вручную',
+      );
+
+    try {
+      return await this.prisma.ozonPrint.create({
+        data: {
+          marketplaceAccountId,
+          slug,
+          name: input.name.trim(),
+          description: input.description?.trim() || null,
+          hashtags: input.hashtags?.trim() || null,
+          mainPhotoUrl: input.mainPhotoUrl.trim(),
+          extraPhotoUrls:
+            input.extraPhotoUrls?.map((u) => u.trim()).filter(Boolean) ?? [],
+          price: input.price,
+          oldPrice: input.oldPrice ?? null,
+          gender: input.gender ?? EnumTshirtGender.UNISEX,
+          patternTags: input.patternTags ?? [],
+          unionKey: generateUnionKey(),
+          variants: {
+            create: this.flattenVariants(slug, input.colorGroups),
+          },
+        },
+        include: PRINT_INCLUDE,
+      });
+    } catch (e) {
+      throw this.translateUniqueError(e, slug);
+    }
+  }
+
+  /** Массовое создание за один запрос — та же валидация на каждый принт. */
+  async createBulk(marketplaceAccountId: string, inputs: CreatePrintInput[]) {
+    if (!inputs.length) throw new BadRequestException('Список принтов пуст');
+    const created: Awaited<ReturnType<typeof this.create>>[] = [];
+    // Последовательно, не в одной транзакции: один плохой принт не должен
+    // откатывать остальные — таблица массового создания показывает, что
+    // прошло, а что нет, построчно.
+    for (const input of inputs) {
+      created.push(await this.create(marketplaceAccountId, input));
+    }
+    return created;
+  }
+
+  /**
+   * Добавляет ещё одну цветовую партию в уже существующую карточку — это и
+   * есть «объединение в группу» из требования: тот же unionKey, новые
+   * варианты стартуют черновиком независимо от статуса самого принта.
+   */
+  async addColorGroup(printId: string, group: ColorGroupInput) {
+    const print = await this.getOrFail(printId);
+    this.validateColorGroups([group]);
+
+    try {
+      await this.prisma.ozonVariant.createMany({
+        data: this.flattenVariants(print.slug, [group]).map((v) => ({
+          ...v,
+          printId,
+        })),
+      });
+    } catch (e) {
+      throw this.translateUniqueError(e, print.slug);
+    }
+    return this.getOrFail(printId);
+  }
+
+  async update(
+    printId: string,
+    dto: Partial<
+      Pick<
+        CreatePrintInput,
+        | 'name'
+        | 'description'
+        | 'hashtags'
+        | 'mainPhotoUrl'
+        | 'extraPhotoUrls'
+        | 'price'
+        | 'oldPrice'
+        | 'gender'
+        | 'patternTags'
+      >
+    >,
+  ) {
+    await this.getOrFail(printId);
+    return this.prisma.ozonPrint.update({
+      where: { id: printId },
+      data: {
+        name: dto.name?.trim(),
+        description:
+          dto.description !== undefined
+            ? dto.description?.trim() || null
+            : undefined,
+        hashtags:
+          dto.hashtags !== undefined ? dto.hashtags?.trim() || null : undefined,
+        mainPhotoUrl: dto.mainPhotoUrl?.trim(),
+        extraPhotoUrls: dto.extraPhotoUrls
+          ?.map((u) => u.trim())
+          .filter(Boolean),
+        price: dto.price,
+        oldPrice: dto.oldPrice,
+        gender: dto.gender,
+        patternTags: dto.patternTags,
+      },
+      include: PRINT_INCLUDE,
+    });
+  }
+
+  /** Удаляет запись у нас. Если варианты уже ушли в Ozon — там карточка остаётся, здесь только теряем отслеживание. */
+  async remove(printId: string) {
+    await this.getOrFail(printId);
+    await this.prisma.ozonPrint.delete({ where: { id: printId } });
+    return { ok: true as const };
+  }
+
+  private validateColorGroups(groups: ColorGroupInput[]): void {
+    if (!groups.length) {
+      throw new BadRequestException('Нужен хотя бы один цвет с размерами');
+    }
+    for (const g of groups) {
+      if (!g.colorLabel?.trim())
+        throw new BadRequestException('У цветовой партии не указан цвет');
+      if (!g.colorDictionaryValueId)
+        throw new BadRequestException(
+          `Для цвета «${g.colorLabel}» не выбрано значение из справочника Ozon`,
+        );
+      if (!g.sizes.length)
+        throw new BadRequestException(
+          `Для цвета «${g.colorLabel}» не выбран ни один размер`,
+        );
+    }
+  }
+
+  private flattenVariants(
+    slug: string,
+    groups: ColorGroupInput[],
+  ): Prisma.OzonVariantCreateManyPrintInput[] {
+    return groups.flatMap((g) =>
+      g.sizes.map((size) => ({
+        colorLabel: g.colorLabel.trim(),
+        colorDictionaryValueId: g.colorDictionaryValueId,
+        size,
+        offerId: buildOfferId(slug, size),
+      })),
+    );
+  }
+
+  /** P2002 (уникальный артикул/unionKey уже существует) — в понятную ошибку. */
+  private translateUniqueError(e: unknown, slug: string): Error {
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === 'P2002'
+    ) {
+      const rawTarget = e.meta?.target;
+      const target = Array.isArray(rawTarget)
+        ? rawTarget.join(',')
+        : typeof rawTarget === 'string'
+          ? rawTarget
+          : '';
+      if (target.includes('offerId')) {
+        return new ConflictException(
+          `Артикул с принтом «${slug}» и таким размером уже существует — возможно, этот цвет/размер уже добавлены`,
+        );
+      }
+      return new ConflictException('Такая запись уже существует');
+    }
+    return e instanceof Error ? e : new Error(String(e));
+  }
+}

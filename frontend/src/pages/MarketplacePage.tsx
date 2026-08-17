@@ -12,6 +12,7 @@ import {
   type MarketplaceAccount,
 } from '../api/marketplace';
 import { getErrorMessage } from '../utils/get-error-message';
+import { ProductsTab } from '../components/marketplace/ProductsTab';
 
 /**
  * Раздел «Маркетплейсы»: кабинеты площадок и работа с ними по API.
@@ -46,13 +47,7 @@ const TABS: {
   soon?: string;
 }[] = [
   { key: 'connection', label: 'Подключение', icon: KeyRound, ready: true },
-  {
-    key: 'products',
-    label: 'Товары',
-    icon: Package,
-    ready: false,
-    soon: 'Карточки футболок с принтом: одиночное создание по шаблону, массовая загрузка (размеры и цвета — одной таблицей), группировка в один товар с вариантами и пакетное изменение полей.',
-  },
+  { key: 'products', label: 'Товары', icon: Package, ready: true },
   {
     key: 'prices',
     label: 'Цены и остатки',
@@ -450,6 +445,8 @@ export default function MarketplacePage() {
 
         {activeTab.key === 'connection' ? (
           <ConnectionTab marketplace={platform} />
+        ) : activeTab.key === 'products' ? (
+          <ProductsTab marketplace={platform} />
         ) : (
           <SoonTab text={activeTab.soon ?? ''} />
         )}
