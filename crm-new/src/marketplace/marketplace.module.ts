@@ -14,6 +14,9 @@ import { OzonPhotoController } from './ozon-photo.controller';
 import { OzonPhotoStorageService } from './ozon/ozon-photo-storage.service';
 import { OzonOrdersController } from './ozon-orders.controller';
 import { OzonOrdersService } from './ozon/ozon-orders.service';
+import { OzonProductCatalogController } from './ozon-product-catalog.controller';
+import { OzonProductCatalogService } from './ozon/ozon-product-catalog.service';
+import { OzonUnitEconomicsService } from './ozon-unit-economics.service';
 
 /**
  * Интеграции с маркетплейсами. Ozon — первая площадка; следующая добавляется
@@ -28,6 +31,7 @@ import { OzonOrdersService } from './ozon/ozon-orders.service';
     MarketplaceController,
     OzonPhotoController,
     OzonOrdersController,
+    OzonProductCatalogController,
     OzonCatalogController,
   ],
   providers: [
@@ -41,6 +45,8 @@ import { OzonOrdersService } from './ozon/ozon-orders.service';
     OzonImportPollService,
     OzonPhotoStorageService,
     OzonOrdersService,
+    OzonProductCatalogService,
+    OzonUnitEconomicsService,
   ],
   exports: [MarketplaceAccountService, OzonApiClient, OzonService],
 })

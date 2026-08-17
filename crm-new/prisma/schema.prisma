@@ -195,6 +195,7 @@ model MarketplaceAccount {
   lastCheckInfo  Json?
 
   ozonCatalogTemplate OzonCatalogTemplate?
+  ozonUnitEconomics   OzonUnitEconomics?
   ozonPrints          OzonPrint[]
 
   @@unique([marketplace, externalId])
@@ -259,6 +260,46 @@ model OzonCatalogTemplate {
   /// условия доставки и т.п.). Загружаются один раз и подставляются в каждый
   /// принт — от карточки к карточке меняется только главное фото.
   sharedPhotoUrls String[] @default([])
+}
+
+/// Себестоимость и расходы продавца для расчёта юнит-экономики. Одни на весь
+/// кабинет: у продавца один тип товара — футболка с принтом, — и стоимость
+/// заготовки с нанесением одинакова для всех карточек.
+///
+/// Тарифы площадки (комиссия, логистика, эквайринг) здесь НЕ хранятся: они
+/// свои у каждого товара и меняются на стороне Ozon, поэтому читаются из
+/// API при каждом открытии карточки.
+model OzonUnitEconomics {
+  id                   String   @id @default(uuid())
+  updatedAt            DateTime @updatedAt
+  marketplaceAccountId String   @unique
+  account              MarketplaceAccount @relation(fields: [marketplaceAccountId], references: [id], onDelete: Cascade)
+
+  /// Заготовка — сама футболка, ₽.
+  blankCost      Int @default(260)
+  /// Нанесение принта, ₽.
+  printCost      Int @default(70)
+  packagingCost  Int @default(0)
+  otherCost      Int @default(0)
+
+  /// Доля возвратов, сотые процента: 500 = 5%. Каждый возврат стоит
+  /// обратной логистики, поэтому она размазывается по всем продажам.
+  returnRateBasisPoints  Int @default(0)
+  /// Реклама, сотые процента от цены.
+  advertisingBasisPoints Int @default(0)
+  /// Ставка налога, сотые процента: 600 = 6%.
+  taxBasisPoints         Int @default(600)
+  /// База налога: income — УСН «доходы» (с выручки), profit — с прибыли.
+  taxBase                String @default("income")
+
+  /// Чем считать прямую логистику: Ozon отдаёт вилку min–max, и разница
+  /// между ними втрое. max — осторожная оценка, на неё и ориентируемся.
+  logisticsMode String @default("max")
+
+  /// Переопределение комиссии, сотые процента. Ozon по некоторым кабинетам
+  /// отдаёт процент, куда зашиты акции, и он расходится с отчётом —
+  /// тогда сюда вписывают своё значение. null — берём из API.
+  commissionOverrideBasisPoints Int?
 }
 
 /// Принт (дизайн) — то, что в интерфейсе Ozon называется карточкой товара:

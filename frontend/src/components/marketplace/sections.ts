@@ -1,5 +1,5 @@
 import {
-  KeyRound, Package, ShoppingCart, Tags, type LucideIcon,
+  Boxes, KeyRound, Package, ShoppingCart, Tags, type LucideIcon,
 } from 'lucide-react';
 import type { EnumMarketplace } from '../../api/marketplace';
 
@@ -26,7 +26,12 @@ export const PLATFORMS: PlatformDef[] = [
   { key: 'YANDEX', slug: 'yandex', label: 'Яндекс Маркет', ready: false },
 ];
 
-export type SectionKey = 'connection' | 'products' | 'orders' | 'prices';
+export type SectionKey =
+  | 'connection'
+  | 'catalog'
+  | 'products'
+  | 'orders'
+  | 'prices';
 
 export interface SectionDef {
   key: SectionKey;
@@ -50,12 +55,20 @@ export const SECTIONS: SectionDef[] = [
     subtitle: 'Доступы к кабинету и проверка связи',
   },
   {
+    key: 'catalog',
+    slug: 'catalog',
+    label: 'Мои товары',
+    icon: Boxes,
+    ready: true,
+    subtitle: 'Товары кабинета: цены, остатки, спрос и рентабельность',
+  },
+  {
     key: 'products',
     slug: 'products',
-    label: 'Товары',
+    label: 'Создание',
     icon: Package,
     ready: true,
-    subtitle: 'Карточки футболок: создание одиночно и массово',
+    subtitle: 'Новые карточки футболок: одиночно и массово',
   },
   {
     key: 'orders',

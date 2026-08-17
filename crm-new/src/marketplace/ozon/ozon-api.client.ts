@@ -80,16 +80,34 @@ export class OzonApiClient {
     path: string,
     body: unknown = {},
   ): Promise<T> {
+    return this.request<T>(creds, 'POST', path, body);
+  }
+
+  /**
+   * GET-запрос. Почти весь Seller API работает через POST, но отдельные
+   * методы — например список акций `/v1/actions` — только GET, и с телом
+   * запроса они отвечают ошибкой.
+   */
+  async get<T>(creds: OzonCredentials, path: string): Promise<T> {
+    return this.request<T>(creds, 'GET', path);
+  }
+
+  private async request<T>(
+    creds: OzonCredentials,
+    method: 'GET' | 'POST',
+    path: string,
+    body?: unknown,
+  ): Promise<T> {
     let res: Response;
     try {
       res = await fetch(`${OZON_API}${path}`, {
-        method: 'POST',
+        method,
         headers: {
           'Client-Id': creds.clientId,
           'Api-Key': creds.apiKey,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(body),
+        body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } catch (e) {

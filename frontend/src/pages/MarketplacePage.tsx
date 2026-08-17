@@ -7,6 +7,7 @@ import {
   PLATFORMS, SECTIONS, platformBySlug, sectionBySlug,
 } from '../components/marketplace/sections';
 import { ConnectionTab } from '../components/marketplace/ConnectionTab';
+import { CatalogTab } from '../components/marketplace/CatalogTab';
 import { ProductsTab } from '../components/marketplace/ProductsTab';
 import { OrdersTab } from '../components/marketplace/OrdersTab';
 import { SoonTab } from '../components/marketplace/SoonTab';
@@ -116,6 +117,8 @@ export default function MarketplacePage() {
           <ConnectionTab marketplace={platform.key} />
         ) : !accountId ? (
           <NoAccount />
+        ) : section.key === 'catalog' ? (
+          <CatalogTab accountId={accountId} />
         ) : section.key === 'products' ? (
           <ProductsTab accountId={accountId} />
         ) : (
