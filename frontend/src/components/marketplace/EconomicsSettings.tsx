@@ -100,14 +100,24 @@ export function EconomicsSettings({ accountId }: { accountId: string }) {
           ) : (
             <>
               <div className="grid gap-3 sm:grid-cols-4">
-                <NumField label="Заготовка (футболка)" suffix="₽" value={value.blankCost}
-                  onChange={(v) => set('blankCost', v)} />
-                <NumField label="Нанесение принта" suffix="₽" value={value.printCost}
-                  onChange={(v) => set('printCost', v)} />
+                <NumField label="Футболка с принтом" suffix="₽" value={value.blankCost}
+                  onChange={(v) => set('blankCost', v)}
+                  hint="готовое изделие" />
+                <NumField label="Нанесение отдельно" suffix="₽" value={value.printCost}
+                  onChange={(v) => set('printCost', v)}
+                  hint="0, если уже в цене изделия" />
                 <NumField label="Упаковка" suffix="₽" value={value.packagingCost}
                   onChange={(v) => set('packagingCost', v)} />
                 <NumField label="Прочее на единицу" suffix="₽" value={value.otherCost}
                   onChange={(v) => set('otherCost', v)} />
+              </div>
+
+              <div className="flex items-baseline justify-between gap-2 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
+                <span className="text-xs text-gray-600">Итого себестоимость единицы</span>
+                <span className="text-sm font-semibold tabular-nums text-gray-900">
+                  {(value.blankCost + value.printCost + value.packagingCost + value.otherCost)
+                    .toLocaleString('ru-RU')} ₽
+                </span>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-4">
@@ -117,7 +127,8 @@ export function EconomicsSettings({ accountId }: { accountId: string }) {
                 <NumField label="Реклама" suffix="% от цены" value={value.advertisingPercent}
                   onChange={(v) => set('advertisingPercent', v)} />
                 <NumField label="Налог" suffix="%" value={value.taxPercent}
-                  onChange={(v) => set('taxPercent', v)} />
+                  onChange={(v) => set('taxPercent', v)}
+                  hint="0 — пока не платите" />
                 <label className="block">
                   <span className="text-xs font-medium text-gray-600">База налога</span>
                   <select className={`mt-1 ${field}`} value={value.taxBase}
@@ -126,7 +137,9 @@ export function EconomicsSettings({ accountId }: { accountId: string }) {
                     <option value="profit">С прибыли</option>
                   </select>
                   <span className="mt-0.5 block text-[11px] text-gray-400">
-                    При «доходах» налог берётся со всей цены, а не с остатка.
+                    Налог берётся со всей цены, а не с остатка. У самозанятого
+                    (НПД) это 4% с продаж физлицам — поставьте, когда закончится
+                    налоговый вычет.
                   </span>
                 </label>
               </div>

@@ -25,6 +25,52 @@ const settings: UnitEconomicsSettings = {
   taxBase: 'income',
 };
 
+/** Реальный расклад продавца: изделие 380 ₽, самозанятый без налога. */
+const realSettings: UnitEconomicsSettings = {
+  blankCost: 380,
+  printCost: 0,
+  packagingCost: 0,
+  otherCost: 0,
+  returnRatePercent: 0,
+  advertisingPercent: 0,
+  taxPercent: 0,
+  taxBase: 'income',
+};
+
+describe('юнит-экономика: реальный расклад продавца', () => {
+  it('футболка за 3500 при себестоимости 380 и без налога', () => {
+    const r = calculateUnitEconomics(3500, tariffs, realSettings);
+
+    expect(r.payout).toBe(1304);
+    expect(r.costOfGoods).toBe(380);
+    expect(r.tax).toBe(0);
+    expect(r.profit).toBe(924);
+    expect(r.marginPercent).toBe(26.4);
+  });
+
+  it('при комиссии 25% вместо 54% прибыль почти вдвое выше', () => {
+    const asReported = calculateUnitEconomics(3500, tariffs, realSettings);
+    const asIndustry = calculateUnitEconomics(
+      3500,
+      { ...tariffs, commissionPercent: 25 },
+      realSettings,
+    );
+
+    expect(asReported.profit).toBe(924);
+    expect(asIndustry.profit).toBe(1939);
+  });
+
+  it('без налога точка безубыточности ниже', () => {
+    const withTax = calculateUnitEconomics(3500, tariffs, {
+      ...realSettings,
+      taxPercent: 6,
+    });
+    const withoutTax = calculateUnitEconomics(3500, tariffs, realSettings);
+
+    expect(withoutTax.breakEvenPrice).toBeLessThan(withTax.breakEvenPrice);
+  });
+});
+
 describe('юнит-экономика Ozon', () => {
   it('удержания площадки складываются в выплату', () => {
     const r = calculateUnitEconomics(3500, tariffs, settings);

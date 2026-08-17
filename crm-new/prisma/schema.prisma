@@ -275,10 +275,12 @@ model OzonUnitEconomics {
   marketplaceAccountId String   @unique
   account              MarketplaceAccount @relation(fields: [marketplaceAccountId], references: [id], onDelete: Cascade)
 
-  /// Заготовка — сама футболка, ₽.
-  blankCost      Int @default(260)
-  /// Нанесение принта, ₽.
-  printCost      Int @default(70)
+  /// Себестоимость готового изделия — футболка с уже нанесённым принтом, ₽.
+  /// Продавец считает её одной цифрой, поэтому это основное поле.
+  blankCost      Int @default(380)
+  /// Нанесение принта отдельной строкой — если печать считают не в составе
+  /// изделия, а отдельно. Обычно 0.
+  printCost      Int @default(0)
   packagingCost  Int @default(0)
   otherCost      Int @default(0)
 
@@ -287,8 +289,10 @@ model OzonUnitEconomics {
   returnRateBasisPoints  Int @default(0)
   /// Реклама, сотые процента от цены.
   advertisingBasisPoints Int @default(0)
-  /// Ставка налога, сотые процента: 600 = 6%.
-  taxBasisPoints         Int @default(600)
+  /// Ставка налога, сотые процента: 600 = 6%. По умолчанию 0 — продавец
+  /// самозанятый и налог сейчас не платит. При НПД ставка 4% с продаж
+  /// физлицам, так что поле пригодится, когда вычет закончится.
+  taxBasisPoints         Int @default(0)
   /// База налога: income — УСН «доходы» (с выручки), profit — с прибыли.
   taxBase                String @default("income")
 
