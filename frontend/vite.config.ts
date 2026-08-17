@@ -16,6 +16,7 @@ export default defineConfig({
       '/avito': { target: 'http://localhost:3000', changeOrigin: true },
       '/users': { target: 'http://localhost:3000', changeOrigin: true },
       '/salary': { target: 'http://localhost:3000', changeOrigin: true },
+      '/marketplace': { target: 'http://localhost:3000', changeOrigin: true },
     },
   },
 });

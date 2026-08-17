@@ -7,6 +7,7 @@ import {
   // MessageCircle — вернуть вместе с пунктом Avito ниже.
   Settings,
   Shirt,
+  Store,
   Users,
   Wallet,
   type LucideIcon,
@@ -104,6 +105,8 @@ export const NAV_GROUPS: NavGroup[] = [
     // Менеджер по оформлению сюда не заходит.
     title: 'Управление',
     items: [
+      // Маркетплейсы: доступы к кабинетам площадок и работа с ними по API.
+      { to: '/crm/marketplace', label: 'Маркетплейсы', icon: Store, roles: ADMIN },
       { to: '/crm/salary', label: 'Зарплата', icon: Wallet, roles: ADMIN },
       { to: '/crm/reports', label: 'Отчёты', icon: BarChart3, roles: ADMIN },
       { to: '/crm/users', label: 'Сотрудники', icon: Users, roles: ADMIN },
