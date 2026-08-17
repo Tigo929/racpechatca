@@ -9,7 +9,9 @@ import { EnumTshirtGender, EnumTshirtSize } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   buildOfferId,
+  colorCodeFor,
   generateUnionKey,
+  normalizeSlug,
   slugify,
 } from './ozon/ozon-attributes';
 
@@ -22,6 +24,8 @@ import {
 export interface ColorGroupInput {
   colorLabel: string;
   colorDictionaryValueId: number;
+  /** Латинский код цвета для артикула; пусто — выводим из подписи. */
+  colorCode?: string;
   sizes: EnumTshirtSize[];
 }
 
@@ -68,7 +72,11 @@ export class OzonPrintService {
   async create(marketplaceAccountId: string, input: CreatePrintInput) {
     this.validateColorGroups(input.colorGroups);
 
-    const slug = slugify(input.slug || input.name);
+    // Введённый вручную код принта («JDM-1-1») сохраняем как есть, включая
+    // регистр — он совпадает с именем папки макетов у продавца.
+    const slug = input.slug?.trim()
+      ? normalizeSlug(input.slug)
+      : slugify(input.name);
     if (!slug)
       throw new BadRequestException(
         'Не удалось построить артикул из названия — заполните поле «Слаг» вручную',
@@ -206,14 +214,16 @@ export class OzonPrintService {
     slug: string,
     groups: ColorGroupInput[],
   ): Prisma.OzonVariantCreateManyPrintInput[] {
-    return groups.flatMap((g) =>
-      g.sizes.map((size) => ({
+    return groups.flatMap((g) => {
+      const colorCode = g.colorCode?.trim() || colorCodeFor(g.colorLabel);
+      return g.sizes.map((size) => ({
         colorLabel: g.colorLabel.trim(),
         colorDictionaryValueId: g.colorDictionaryValueId,
+        colorCode,
         size,
-        offerId: buildOfferId(slug, size),
-      })),
-    );
+        offerId: buildOfferId(slug, colorCode, size),
+      }));
+    });
   }
 
   /** P2002 (уникальный артикул/unionKey уже существует) — в понятную ошибку. */

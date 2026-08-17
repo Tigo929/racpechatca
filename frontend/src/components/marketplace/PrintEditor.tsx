@@ -1,6 +1,9 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { AttributeAutocomplete } from './AttributeAutocomplete';
-import { ALL_SIZES, DEFAULT_SIZES, GENDER_LABELS, type ColorGroupDraft, type PrintDraft } from './printDraft';
+import {
+  ALL_SIZES, DEFAULT_SIZES, GENDER_LABELS, colorCodeFor, previewOfferId,
+  type ColorGroupDraft, type PrintDraft,
+} from './printDraft';
 import { TSHIRT_SIZE_LABELS } from '../../constants';
 import type { EnumTshirtGender } from '../../api/ozonCatalog';
 import type { EnumTshirtSize } from '../../types/index';
@@ -19,18 +22,22 @@ const field = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:
 const fieldSm = 'w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500';
 
 function ColorGroupRow({
-  group, onChange, onRemove, accountId, removable,
+  group, onChange, onRemove, accountId, removable, slug, name,
 }: {
   group: ColorGroupDraft;
   onChange: (g: ColorGroupDraft) => void;
   onRemove: () => void;
   accountId: string;
   removable: boolean;
+  slug: string;
+  name: string;
 }) {
   const toggleSize = (size: EnumTshirtSize) => {
     const has = group.sizes.includes(size);
     onChange({ ...group, sizes: has ? group.sizes.filter((s) => s !== size) : [...group.sizes, size] });
   };
+
+  const firstSize = group.sizes[0] ?? 'S';
 
   return (
     <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3 space-y-2">
@@ -42,7 +49,23 @@ function ColorGroupRow({
             placeholder="Начните вводить цвет — «чёрный», «белый»…"
             label={group.colorLabel}
             inputClassName={fieldSm}
-            onSelect={(o) => onChange({ ...group, colorLabel: o.value, colorDictionaryValueId: o.id })}
+            onSelect={(o) => onChange({
+              ...group,
+              colorLabel: o.value,
+              colorDictionaryValueId: o.id,
+              // Код подставляем автоматически, но оставляем правимым: у цвета
+              // может быть свой код в номенклатуре продавца.
+              colorCode: colorCodeFor(o.value),
+            })}
+          />
+        </div>
+        <div className="w-28 flex-shrink-0">
+          <input
+            className={fieldSm}
+            value={group.colorCode}
+            onChange={(e) => onChange({ ...group, colorCode: e.target.value })}
+            placeholder="black"
+            aria-label="Код цвета в артикуле"
           />
         </div>
         {removable && (
@@ -52,6 +75,10 @@ function ColorGroupRow({
           </button>
         )}
       </div>
+
+      <p className="text-[11px] text-gray-400 font-mono">
+        Артикул: {previewOfferId(slug, name, group.colorCode, firstSize)}
+      </p>
       <div className="flex flex-wrap gap-1.5">
         {ALL_SIZES.map((size) => (
           <button
@@ -88,7 +115,7 @@ export function PrintEditor({
     next[idx] = g;
     set('colorGroups', next);
   };
-  const addGroup = () => set('colorGroups', [...draft.colorGroups, { colorLabel: '', colorDictionaryValueId: 0, sizes: [...DEFAULT_SIZES] }]);
+  const addGroup = () => set('colorGroups', [...draft.colorGroups, { colorLabel: '', colorDictionaryValueId: 0, colorCode: '', sizes: [...DEFAULT_SIZES] }]);
   const removeGroup = (idx: number) => set('colorGroups', draft.colorGroups.filter((_, i) => i !== idx));
 
   return (
@@ -99,8 +126,11 @@ export function PrintEditor({
           <input className={`mt-1 ${field}`} value={draft.name} onChange={(e) => set('name', e.target.value)} placeholder="Футболка с принтом «…»" />
         </label>
         <label className="block">
-          <span className="text-xs font-medium text-gray-600">Слаг (артикул принта)</span>
-          <input className={`mt-1 ${field}`} value={draft.slug} onChange={(e) => set('slug', e.target.value)} placeholder="строится из названия, если пусто" />
+          <span className="text-xs font-medium text-gray-600">Код принта</span>
+          <input className={`mt-1 ${field}`} value={draft.slug} onChange={(e) => set('slug', e.target.value)} placeholder="JDM-1-1" />
+          <span className="mt-1 block text-[11px] text-gray-400">
+            Категория-подгруппа-пункт, как в папках макетов. Регистр сохраняется.
+          </span>
         </label>
         <label className="block">
           <span className="text-xs font-medium text-gray-600">Пол</span>
@@ -149,6 +179,8 @@ export function PrintEditor({
             key={idx}
             group={g}
             accountId={accountId}
+            slug={draft.slug}
+            name={draft.name}
             removable={draft.colorGroups.length > 1}
             onChange={(next) => updateGroup(idx, next)}
             onRemove={() => removeGroup(idx)}

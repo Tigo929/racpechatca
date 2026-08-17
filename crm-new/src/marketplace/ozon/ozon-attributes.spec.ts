@@ -2,7 +2,9 @@ import {
   buildImportItem,
   buildOfferId,
   chunk,
+  colorCodeFor,
   generateUnionKey,
+  normalizeSlug,
   OZON_ATTR,
   slugify,
   type CatalogTemplateForImport,
@@ -146,13 +148,35 @@ describe('ozon-attributes: сборка запроса на импорт', () =>
 });
 
 describe('ozon-attributes: слаг и артикул', () => {
-  it('слаг убирает пробелы, регистр и запрещённые символы', () => {
+  it('слаг из названия убирает пробелы, регистр и запрещённые символы', () => {
     expect(slugify('Лавров Надпись!')).toBe('лавров-надпись');
     expect(slugify('  Pantera 1 (чёрная) ')).toBe('pantera-1-чёрная');
   });
 
-  it('offer_id строится по схеме <принт>-<размер>', () => {
-    expect(buildOfferId('pantera-1', 'XXL')).toBe('pantera-1-XXL');
+  it('слаг, введённый вручную, сохраняет регистр — «JDM-1-1», а не «jdm-1-1»', () => {
+    expect(normalizeSlug('JDM-1-1')).toBe('JDM-1-1');
+    expect(normalizeSlug('  JDM-2-3 ')).toBe('JDM-2-3');
+  });
+
+  it('offer_id строится по схеме <принт>-<цвет>-<размер>', () => {
+    expect(buildOfferId('JDM-1-1', 'black', 'S')).toBe('JDM-1-1-black-S');
+    expect(buildOfferId('JDM-1-1', 'white', 'XXL')).toBe('JDM-1-1-white-XXL');
+  });
+
+  it('код цвета переводит русскую подпись словаря Ozon в латиницу', () => {
+    expect(colorCodeFor('черный')).toBe('black');
+    expect(colorCodeFor('Белый')).toBe('white');
+    expect(colorCodeFor('чёрный')).toBe('black');
+  });
+
+  it('незнакомый цвет транслитерируется, а не теряется', () => {
+    expect(colorCodeFor('лазурный')).toBe('lazurnyy');
+  });
+
+  it('два цвета одного принта не сталкиваются на одном размере', () => {
+    const black = buildOfferId('JDM-1-1', colorCodeFor('черный'), 'S');
+    const white = buildOfferId('JDM-1-1', colorCodeFor('белый'), 'S');
+    expect(black).not.toBe(white);
   });
 });
 

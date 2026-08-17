@@ -18,7 +18,48 @@ export const GENDER_LABELS: Record<EnumTshirtGender, string> = {
 export interface ColorGroupDraft {
   colorLabel: string;
   colorDictionaryValueId: number;
+  /** Латинский код цвета в артикуле: JDM-1-1-**black**-S. */
+  colorCode: string;
   sizes: EnumTshirtSize[];
+}
+
+/**
+ * Русская подпись цвета из словаря Ozon → латинский код для артикула.
+ * Тот же справочник, что и на бэкенде (ozon-attributes.ts): здесь он нужен,
+ * чтобы поле заполнялось сразу при выборе цвета, а не после сохранения.
+ */
+const COLOR_CODE_BY_LABEL: Record<string, string> = {
+  'черный': 'black', 'чёрный': 'black', 'белый': 'white', 'серый': 'gray',
+  'синий': 'blue', 'голубой': 'lightblue', 'красный': 'red',
+  'зеленый': 'green', 'зелёный': 'green', 'желтый': 'yellow', 'жёлтый': 'yellow',
+  'оранжевый': 'orange', 'розовый': 'pink', 'фиолетовый': 'purple',
+  'коричневый': 'brown', 'бежевый': 'beige', 'бордовый': 'burgundy', 'хаки': 'khaki',
+};
+
+const TRANSLIT: Record<string, string> = {
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z',
+  и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r',
+  с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'c', ч: 'ch', ш: 'sh', щ: 'sch',
+  ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
+};
+
+export function colorCodeFor(colorLabel: string): string {
+  const key = colorLabel.trim().toLowerCase();
+  const known = COLOR_CODE_BY_LABEL[key];
+  if (known) return known;
+  return [...key]
+    .map((ch) => TRANSLIT[ch] ?? ch)
+    .join('')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]+/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+/** Предпросмотр артикула — то же правило, что применит бэкенд. */
+export function previewOfferId(slug: string, name: string, colorCode: string, size: string): string {
+  const base = (slug.trim() || name.trim().toLowerCase().replace(/\s+/g, '-')).replace(/[^a-zA-Zа-яёА-ЯЁ0-9-]+/g, '');
+  return `${base || '…'}-${colorCode || '…'}-${size}`;
 }
 
 export interface PrintDraft {
@@ -40,7 +81,7 @@ export function emptyPrintDraft(): PrintDraft {
     name: '', slug: '', description: '', hashtags: '',
     mainPhotoUrl: '', extraPhotoUrls: '',
     price: '', oldPrice: '', gender: 'UNISEX', patternTags: '',
-    colorGroups: [{ colorLabel: '', colorDictionaryValueId: 0, sizes: [...DEFAULT_SIZES] }],
+    colorGroups: [{ colorLabel: '', colorDictionaryValueId: 0, colorCode: '', sizes: [...DEFAULT_SIZES] }],
   };
 }
 
@@ -60,7 +101,10 @@ export function draftToPayload(d: PrintDraft): CreateOzonPrintDto {
     colorGroups: d.colorGroups
       .filter((g) => g.colorLabel && g.colorDictionaryValueId && g.sizes.length)
       .map((g): OzonColorGroupInput => ({
-        colorLabel: g.colorLabel, colorDictionaryValueId: g.colorDictionaryValueId, sizes: g.sizes,
+        colorLabel: g.colorLabel,
+        colorDictionaryValueId: g.colorDictionaryValueId,
+        colorCode: g.colorCode.trim() || colorCodeFor(g.colorLabel),
+        sizes: g.sizes,
       })),
   };
 }

@@ -304,9 +304,13 @@ model OzonVariant {
 
   colorLabel             String
   colorDictionaryValueId Int
+  /// Латинский код цвета для артикула: «черный» → black. Хранится отдельно
+  /// от подписи, потому что участвует в offer_id и не должен «поехать»,
+  /// если человек позже переименует цвет.
+  colorCode              String @default("")
   size                   EnumTshirtSize
 
-  /// <slug>-<размер> по умолчанию, можно поправить вручную при конфликте.
+  /// <принт>-<цвет>-<размер>, схема продавца: JDM-1-1-black-S.
   offerId       String @unique
   priceOverride Int?
 

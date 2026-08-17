@@ -56,6 +56,7 @@ export interface OzonVariant {
   printId: string;
   colorLabel: string;
   colorDictionaryValueId: number;
+  colorCode: string;
   size: EnumTshirtSize;
   offerId: string;
   priceOverride: number | null;
@@ -88,6 +89,8 @@ export interface OzonPrint {
 export interface OzonColorGroupInput {
   colorLabel: string;
   colorDictionaryValueId: number;
+  /** Латинский код цвета в артикуле: JDM-1-1-black-S. */
+  colorCode?: string;
   sizes: EnumTshirtSize[];
 }
 

@@ -5,7 +5,9 @@ import {
   IsArray,
   IsEnum,
   IsInt,
+  IsOptional,
   IsString,
+  MaxLength,
   Min,
   MinLength,
 } from 'class-validator';
@@ -24,6 +26,12 @@ export class DtoOzonColorGroup {
   })
   @Type(() => Number)
   colorDictionaryValueId!: number;
+
+  /** Латинский код цвета в артикуле (black, white). Пусто — выведем из подписи. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  colorCode?: string;
 
   @IsArray()
   @ArrayNotEmpty({ message: 'Отметьте хотя бы один размер.' })

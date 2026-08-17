@@ -89,20 +89,111 @@ export const GENDER_TO_OZON_DICTIONARY_IDS: Record<EnumTshirtGender, number[]> =
 /** Символы, которые Ozon запрещает в названии файла и артикуле. а-я не включает ё. */
 const SLUG_UNSAFE = /[^a-zа-яё0-9-]+/gi;
 
-/** Слаг принта из названия: только то, что допустимо в offer_id. */
-export function slugify(input: string): string {
+function stripUnsafe(input: string): string {
   return input
     .trim()
-    .toLowerCase()
     .replace(/\s+/g, '-')
     .replace(SLUG_UNSAFE, '')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
 }
 
-/** offer_id по схеме продавца: <принт>-<размер>, латиница/цифры Ozon-safe. */
-export function buildOfferId(printSlug: string, size: EnumTshirtSize): string {
-  return `${printSlug}-${size}`;
+/** Слаг принта, выведенный из названия товара: приводим к нижнему регистру. */
+export function slugify(input: string): string {
+  return stripUnsafe(input.toLowerCase());
+}
+
+/**
+ * Слаг, введённый человеком вручную (например «JDM-1-1»), — регистр
+ * сохраняем. У продавца код принта заглавный и совпадает с именем папки
+ * макетов, а offer_id в Ozon регистрозависим: привести к нижнему регистру
+ * значило бы разойтись с его собственной номенклатурой.
+ */
+export function normalizeSlug(input: string): string {
+  return stripUnsafe(input);
+}
+
+/**
+ * Латинский код цвета для артикула. Цвет в карточке выбирается из словаря
+ * Ozon и приходит по-русски («черный»), а в артикуле у продавца стоит
+ * латиница — переводим по таблице, для незнакомого цвета транслитерируем.
+ */
+const COLOR_CODE_BY_LABEL: Record<string, string> = {
+  черный: 'black',
+  чёрный: 'black',
+  белый: 'white',
+  серый: 'gray',
+  синий: 'blue',
+  голубой: 'lightblue',
+  красный: 'red',
+  зеленый: 'green',
+  зелёный: 'green',
+  желтый: 'yellow',
+  жёлтый: 'yellow',
+  оранжевый: 'orange',
+  розовый: 'pink',
+  фиолетовый: 'purple',
+  коричневый: 'brown',
+  бежевый: 'beige',
+  бордовый: 'burgundy',
+  хаки: 'khaki',
+};
+
+const TRANSLIT: Record<string, string> = {
+  а: 'a',
+  б: 'b',
+  в: 'v',
+  г: 'g',
+  д: 'd',
+  е: 'e',
+  ё: 'e',
+  ж: 'zh',
+  з: 'z',
+  и: 'i',
+  й: 'y',
+  к: 'k',
+  л: 'l',
+  м: 'm',
+  н: 'n',
+  о: 'o',
+  п: 'p',
+  р: 'r',
+  с: 's',
+  т: 't',
+  у: 'u',
+  ф: 'f',
+  х: 'h',
+  ц: 'c',
+  ч: 'ch',
+  ш: 'sh',
+  щ: 'sch',
+  ъ: '',
+  ы: 'y',
+  ь: '',
+  э: 'e',
+  ю: 'yu',
+  я: 'ya',
+};
+
+export function colorCodeFor(colorLabel: string): string {
+  const key = colorLabel.trim().toLowerCase();
+  const known = COLOR_CODE_BY_LABEL[key];
+  if (known) return known;
+  return stripUnsafe([...key].map((ch) => TRANSLIT[ch] ?? ch).join(''));
+}
+
+/**
+ * offer_id по схеме продавца: `<принт>-<цвет>-<размер>` — например
+ * `JDM-1-1-black-S`, где JDM это категория темы, первая единица —
+ * подгруппа, вторая — пункт. Цвет обязателен в артикуле: без него два
+ * цвета одного принта столкнулись бы на одинаковом размере.
+ */
+export function buildOfferId(
+  printSlug: string,
+  colorCode: string,
+  size: EnumTshirtSize,
+): string {
+  return `${printSlug}-${colorCode}-${size}`;
 }
 
 /**
