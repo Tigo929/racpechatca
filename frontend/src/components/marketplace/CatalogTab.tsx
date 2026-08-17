@@ -3,11 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Boxes, Percent, RefreshCw, Search, Tag } from 'lucide-react';
 import {
-  ozonProductCatalogApi, printCodeOf, sizeOf, type OzonCatalogProduct,
+  ozonProductCatalogApi, printCodeOf, type OzonCatalogProduct,
 } from '../../api/ozonProductCatalog';
 import { getErrorMessage } from '../../utils/get-error-message';
 import { FilterChip } from '../ui/FilterChip';
 import { ProductDetailModal } from './ProductDetailModal';
+import { PrintCardModal } from './PrintCardModal';
 import { EconomicsSettings } from './EconomicsSettings';
 
 /**
@@ -111,46 +112,13 @@ function BulkPriceBar({
   );
 }
 
-function ProductRow({
-  product, checked, onToggle, onOpen,
-}: {
-  product: OzonCatalogProduct;
-  checked: boolean;
-  onToggle: () => void;
-  onOpen: () => void;
-}) {
-  const size = sizeOf(product.offerId) ?? '—';
-  return (
-    <div className={`flex items-center gap-2 px-3 py-2 border-t border-gray-50 ${product.archived ? 'opacity-60' : ''}`}>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onToggle}
-        className="w-4 h-4 accent-amber-600 flex-shrink-0"
-        aria-label={`Выбрать ${product.offerId}`}
-      />
-      <button onClick={onOpen} className="flex-1 min-w-0 flex items-center gap-3 text-left hover:bg-gray-50 rounded-lg px-1 py-0.5 -mx-1">
-        <span className="w-10 flex-shrink-0 text-xs font-semibold text-gray-700">{size}</span>
-        <span className="flex-1 min-w-0 truncate font-mono text-[11px] text-gray-400">{product.offerId}</span>
-        <span className="w-16 flex-shrink-0 text-right text-xs tabular-nums text-gray-600">
-          {product.stockPresent} шт.
-        </span>
-        <span className="w-20 flex-shrink-0 text-right text-xs tabular-nums text-gray-600">
-          {product.orderedUnits30d > 0 ? `${product.orderedUnits30d} зак.` : '—'}
-        </span>
-        <span className="w-20 flex-shrink-0 text-right text-sm font-semibold tabular-nums text-gray-900">
-          {money(product.price)}
-        </span>
-      </button>
-    </div>
-  );
-}
-
 export function CatalogTab({ accountId }: { accountId: string }) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [opened, setOpened] = useState<OzonCatalogProduct | null>(null);
+  // Открытая карточка принта: размеры показываем только внутри неё.
+  const [openedCard, setOpenedCard] = useState<string | null>(null);
 
   const { data: products = [], isLoading, isFetching, refetch } = useQuery({
     queryKey: ['ozon-catalog', accountId],
@@ -178,15 +146,6 @@ export function CatalogTab({ accountId }: { accountId: string }) {
     }
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [products, query, filter]);
-
-  const toggle = (offerId: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(offerId)) next.delete(offerId);
-      else next.add(offerId);
-      return next;
-    });
-  };
 
   const toggleGroup = (items: OzonCatalogProduct[]) => {
     const allSelected = items.every((i) => selected.has(i.offerId));
@@ -306,6 +265,12 @@ export function CatalogTab({ accountId }: { accountId: string }) {
                     className="w-4 h-4 accent-amber-600 flex-shrink-0"
                     aria-label={`Выбрать все размеры ${code}`}
                   />
+                  {/* Вся строка — кнопка: карточка открывается по клику,
+                      размеры внутри неё, а не в общем списке. */}
+                  <button
+                    onClick={() => setOpenedCard(code)}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  >
                   {first.primaryImage && (
                     <img src={first.primaryImage} alt="" className="w-12 h-12 rounded-lg object-cover bg-gray-100 flex-shrink-0" />
                   )}
@@ -314,23 +279,18 @@ export function CatalogTab({ accountId }: { accountId: string }) {
                     <p className="text-xs text-gray-500 truncate">{first.name}</p>
                   </div>
                   <div className="flex-shrink-0 text-right">
-                    <p className="text-xs text-gray-500">{items.length} размер(ов) · остаток {stock}</p>
+                    <p className="text-xs text-gray-500">
+                      {items.length} размер(ов) ·{' '}
+                      <span className={stock === 0 ? 'font-semibold text-red-600' : ''}>
+                        остаток {stock}
+                      </span>
+                    </p>
                     <p className="text-xs font-medium text-gray-700">
                       {ordered > 0 ? `заказали ${ordered} шт. за 30 дн.` : 'продаж за 30 дней нет'}
                     </p>
                   </div>
+                  </button>
                 </div>
-                {items
-                  .sort((a, b) => a.offerId.localeCompare(b.offerId))
-                  .map((p) => (
-                    <ProductRow
-                      key={p.offerId}
-                      product={p}
-                      checked={selected.has(p.offerId)}
-                      onToggle={() => toggle(p.offerId)}
-                      onOpen={() => setOpened(p)}
-                    />
-                  ))}
               </div>
             );
           })}
@@ -343,6 +303,19 @@ export function CatalogTab({ accountId }: { accountId: string }) {
           selected={selected}
           products={products}
           onDone={() => setSelected(new Set())}
+        />
+      )}
+
+      {openedCard && (
+        <PrintCardModal
+          accountId={accountId}
+          code={openedCard}
+          items={groups.find(([c]) => c === openedCard)?.[1] ?? []}
+          onClose={() => setOpenedCard(null)}
+          onOpenSize={(p) => {
+            setOpenedCard(null);
+            setOpened(p);
+          }}
         />
       )}
 
