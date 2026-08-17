@@ -85,8 +85,12 @@ function AppRoutes() {
         <Route path="/crm/my-salary" element={<CrmGate><PrivateRoute><MySalaryPage /></PrivateRoute></CrmGate>} />
         <Route path="/crm/reports" element={<CrmGate><AdminRoute><ReportsPage /></AdminRoute></CrmGate>} />
         <Route path="/crm/settings" element={<CrmGate><AdminRoute><SettingsPage /></AdminRoute></CrmGate>} />
-        {/* Доступы к кабинетам площадок — «ключи от кассы», поэтому только админ */}
-        <Route path="/crm/marketplace" element={<CrmGate><AdminRoute><MarketplacePage /></AdminRoute></CrmGate>} />
+        {/* Доступы к кабинетам площадок — «ключи от кассы», поэтому только админ.
+            Площадка и раздел живут в адресе: на них можно дать ссылку, работает
+            «назад», и обновление страницы не сбрасывает выбор. */}
+        <Route path="/crm/marketplace" element={<Navigate to="/crm/marketplace/ozon/connection" replace />} />
+        <Route path="/crm/marketplace/:platform" element={<Navigate to="connection" replace />} />
+        <Route path="/crm/marketplace/:platform/:section" element={<CrmGate><AdminRoute><MarketplacePage /></AdminRoute></CrmGate>} />
 
         {/* Корень и любой неизвестный путь ведут в CRM */}
         <Route path="*" element={<Navigate to="/crm" replace />} />

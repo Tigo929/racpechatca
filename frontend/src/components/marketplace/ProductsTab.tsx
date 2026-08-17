@@ -4,7 +4,6 @@ import toast from 'react-hot-toast';
 import {
   AlertTriangle, Boxes, Copy, Loader2, Plus, Rocket, Trash2,
 } from 'lucide-react';
-import { marketplaceApi, type EnumMarketplace } from '../../api/marketplace';
 import {
   ozonCatalogApi, type EnumOzonSyncStatus, type OzonPrint,
 } from '../../api/ozonCatalog';
@@ -36,17 +35,6 @@ function SyncBadge({ status }: { status: EnumOzonSyncStatus }) {
       {s.label}
     </span>
   );
-}
-
-/** Строка с выбором кабинета — раздел «Товары» работает с одним активным кабинетом за раз. */
-function useOzonAccount(marketplace: EnumMarketplace) {
-  const { data: accounts = [], isLoading } = useQuery({
-    queryKey: ['marketplace-accounts', marketplace],
-    queryFn: () => marketplaceApi.list(marketplace),
-  });
-  const [selected, setSelected] = useState('');
-  const accountId = selected || accounts.find((a) => a.isActive)?.id || accounts[0]?.id || '';
-  return { accounts, accountId, selected, setSelected, isLoading };
 }
 
 function PrintCard({ print, onPublish, onRemove, publishing }: {
@@ -312,39 +300,12 @@ function BulkCreateForm({ accountId }: { accountId: string }) {
   );
 }
 
-export function ProductsTab({ marketplace }: { marketplace: EnumMarketplace }) {
+/** Кабинет выбирается на уровне страницы и приходит сюда готовым. */
+export function ProductsTab({ accountId }: { accountId: string }) {
   const [mode, setMode] = useState<Mode>('single');
-  const { accounts, accountId, setSelected, isLoading } = useOzonAccount(marketplace);
-
-  if (isLoading) return <p className="text-sm text-gray-500">Загрузка…</p>;
-
-  if (accounts.length === 0) {
-    return (
-      <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-8 text-center">
-        <Boxes size={28} className="mx-auto text-gray-300" aria-hidden="true" />
-        <h3 className="mt-3 text-sm font-semibold text-gray-900">Сначала подключите кабинет</h3>
-        <p className="mt-1 text-xs text-gray-500">
-          Товары публикуются в конкретный кабинет Ozon — вернитесь на вкладку «Подключение».
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4">
-      {accounts.length > 1 && (
-        <label className="block max-w-xs">
-          <span className="text-xs font-medium text-gray-600">Кабинет</span>
-          <select
-            className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-            value={accountId}
-            onChange={(e) => setSelected(e.target.value)}
-          >
-            {accounts.map((a) => <option key={a.id} value={a.id}>{a.title}</option>)}
-          </select>
-        </label>
-      )}
-
       <TemplateSettings accountId={accountId} />
 
       <div className="flex gap-2">
