@@ -68,11 +68,13 @@ export class MarketplaceAccountService {
    * после деплоя, а не падала на первом сохранении ключа.
    */
   private get masterSecret(): string {
-    return (
-      this.config.get<string>('MARKETPLACE_SECRET') ??
-      this.config.get<string>('JWT_SECRET') ??
-      ''
-    );
+    // Именно «пустое считаем незаданным»: в docker-compose переменная
+    // объявлена как ${MARKETPLACE_SECRET:-}, то есть в контейнер она приходит
+    // пустой строкой. С проверкой на null такой секрет прошёл бы дальше и
+    // шифрование упало бы уже на сохранении ключа.
+    const own = this.config.get<string>('MARKETPLACE_SECRET')?.trim();
+    if (own) return own;
+    return this.config.get<string>('JWT_SECRET')?.trim() ?? '';
   }
 
   private toView(row: AccountRow): MarketplaceAccountView {

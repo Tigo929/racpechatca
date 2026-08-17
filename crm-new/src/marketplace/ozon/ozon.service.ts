@@ -20,11 +20,15 @@ interface OzonProductListResponse {
   };
 }
 
+/**
+ * Ответ /v2/warehouse/list. Первая версия метода (/v1/warehouse/list) отвечает
+ * «obsolete method cannot be used», и список лежит уже не в `result`,
+ * а в `warehouses` — проверено на живом кабинете 17.08.2026.
+ */
 interface OzonWarehouseListResponse {
-  result?: {
+  warehouses?: {
     warehouse_id?: number;
     name?: string;
-    is_rfbs?: boolean;
     status?: string;
   }[];
 }
@@ -75,9 +79,9 @@ export class OzonService {
     try {
       const res = await this.api.post<OzonWarehouseListResponse>(
         creds,
-        '/v1/warehouse/list',
+        '/v2/warehouse/list',
       );
-      const list = (res.result ?? [])
+      const list = (res.warehouses ?? [])
         .filter((w) => typeof w.warehouse_id === 'number')
         .map((w) => ({
           id: w.warehouse_id as number,
