@@ -181,6 +181,13 @@ export interface OzonImportItem {
   offer_id: string;
   name: string;
   description_category_id: number;
+  /**
+   * Тип товара отдельным полем — обязателен, несмотря на то что он же уходит
+   * атрибутом 8229. Без него Ozon отвечает 400 «invalid Request.Items.TypeId:
+   * value must be greater than 0»; проверено живой загрузкой 17.08.2026.
+   * Разборы API в интернете утверждают обратное — не верить, проверять.
+   */
+  type_id: number;
   price: string;
   old_price: string;
   vat: string;
@@ -286,6 +293,7 @@ export function buildImportItem(
     offer_id: variant.offerId,
     name: print.name,
     description_category_id: template.descriptionCategoryId,
+    type_id: template.typeId,
     price: String(price),
     old_price: String(oldPrice),
     vat: vatToApiValue(template.vatRate),

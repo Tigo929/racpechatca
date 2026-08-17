@@ -188,7 +188,10 @@ export class OzonImportService {
     let settledCount = 0;
     for (const item of items) {
       const hasError = Boolean(item.errors?.length);
-      const isDone = hasError || typeof item.product_id === 'number';
+      // Именно > 0, а не «есть число»: у ещё не обработанного товара Ozon
+      // отдаёт product_id = 0, и проверка на тип засчитала бы его готовым.
+      // Успешно созданный отвечает status "imported" с настоящим id.
+      const isDone = hasError || (item.product_id ?? 0) > 0;
       if (!isDone) continue;
       settledCount += 1;
 

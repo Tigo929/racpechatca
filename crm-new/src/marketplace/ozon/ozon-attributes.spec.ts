@@ -59,6 +59,10 @@ describe('ozon-attributes: сборка запроса на импорт', () =>
     const item = buildImportItem(template, print, variant);
 
     expect(item.offer_id).toBe('labrov-nadpis-M');
+    // Отдельное поле type_id обязательно: без него Ozon отвечает 400, даже
+    // когда тип продублирован атрибутом 8229 (проверено живой загрузкой).
+    expect(item.type_id).toBe(93244);
+    expect(item.description_category_id).toBe(200000933);
     expect(item.price).toBe('3500');
     expect(item.old_price).toBe('6000');
     expect(item.vat).toBe('0');
