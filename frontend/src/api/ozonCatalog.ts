@@ -45,6 +45,8 @@ export interface OzonCatalogTemplate {
   tnvedLabel: string | null;
   tnvedDictionaryValueId: number | null;
   sizeDimensions: Record<string, SizeDimensions>;
+  /** Общие доп. фото — одинаковые во всех карточках кабинета. */
+  sharedPhotoUrls: string[];
 }
 
 export type UpdateOzonCatalogTemplateDto = Partial<
@@ -119,6 +121,21 @@ export interface PublishResult {
 }
 
 export const ozonCatalogApi = {
+  /**
+   * Загружает фото на наш сервер и возвращает публичные ссылки. Ozon сам
+   * приходит за картинкой по такой ссылке, поэтому локальный файл сначала
+   * должен оказаться у нас.
+   */
+  uploadPhotos: async (files: File[]): Promise<string[]> => {
+    const form = new FormData();
+    for (const file of files) form.append('files', file);
+    const { data } = await api.post<{ urls: string[] }>(
+      '/marketplace/ozon/photos',
+      form,
+    );
+    return data.urls;
+  },
+
   getTemplate: async (accountId: string): Promise<OzonCatalogTemplate> => {
     const { data } = await api.get<OzonCatalogTemplate>(`/marketplace/ozon/${accountId}/template`);
     return data;

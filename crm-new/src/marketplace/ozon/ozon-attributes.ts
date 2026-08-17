@@ -243,7 +243,12 @@ export interface CatalogTemplateForImport {
   packageTypeDictionaryValueId: number | null;
   tnvedDictionaryValueId: number | null;
   sizeDimensions: Record<string, VariantDimensions>;
+  /** Общие доп. фото кабинета — одинаковые во всех карточках. */
+  sharedPhotoUrls: string[];
 }
+
+/** Ozon принимает не больше 14 дополнительных фото на карточку. */
+export const MAX_EXTRA_PHOTOS = 14;
 
 export interface PrintForImport {
   slug: string;
@@ -395,10 +400,33 @@ export function buildImportItem(
     depth: dims.lengthMm,
     dimension_unit: 'mm',
     weight_unit: 'g',
-    images: print.extraPhotoUrls,
+    images: buildExtraImages(template, print),
     primary_image: print.mainPhotoUrl,
     attributes,
   };
+}
+
+/**
+ * Дополнительные фото карточки: сначала свои у принта (если он чем-то
+ * отличается), затем общие из шаблона — размерная сетка, условия доставки и
+ * прочее, одинаковое во всех товарах. Дубли убираем: одна и та же ссылка
+ * дважды — это ошибка модерации, а не два разных изображения.
+ */
+export function buildExtraImages(
+  template: Pick<CatalogTemplateForImport, 'sharedPhotoUrls'>,
+  print: Pick<PrintForImport, 'extraPhotoUrls' | 'mainPhotoUrl'>,
+): string[] {
+  const all = [...print.extraPhotoUrls, ...template.sharedPhotoUrls];
+  const seen = new Set<string>([print.mainPhotoUrl]);
+  const result: string[] = [];
+  for (const url of all) {
+    const trimmed = url.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    result.push(trimmed);
+    if (result.length === MAX_EXTRA_PHOTOS) break;
+  }
+  return result;
 }
 
 /**

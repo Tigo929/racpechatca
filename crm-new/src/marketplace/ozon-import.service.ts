@@ -86,6 +86,7 @@ export class OzonImportService {
             packageTypeDictionaryValueId: template.packageTypeDictionaryValueId,
             tnvedDictionaryValueId: template.tnvedDictionaryValueId,
             sizeDimensions,
+            sharedPhotoUrls: template.sharedPhotoUrls,
           },
           {
             slug: print.slug,

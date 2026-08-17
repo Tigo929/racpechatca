@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { ChevronDown, ChevronUp, Settings2 } from 'lucide-react';
 import { AttributeAutocomplete } from './AttributeAutocomplete';
+import { PhotoUpload } from './PhotoUpload';
 import { ozonCatalogApi, type OzonCatalogTemplate } from '../../api/ozonCatalog';
 import { getErrorMessage } from '../../utils/get-error-message';
 
@@ -126,6 +127,16 @@ export function TemplateSettings({ accountId }: { accountId: string }) {
                   />
                   <span className="text-sm text-gray-700">Товар подлежит обязательной маркировке (Честный ЗНАК)</span>
                 </label>
+              </div>
+
+              <div className="pt-2 border-t border-gray-100">
+                <PhotoUpload
+                  label="Общие фото карточки"
+                  hint="Одни и те же во всех товарах: размерная сетка, условия доставки и т.п. Загружаются один раз — на принте вы добавляете только главное фото. Порядок фото такой же, как здесь."
+                  urls={effective.sharedPhotoUrls ?? []}
+                  multiple
+                  onChange={(urls) => setDraft((d) => ({ ...d, sharedPhotoUrls: urls }))}
+                />
               </div>
 
               <button

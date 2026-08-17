@@ -48,6 +48,7 @@ export interface UpdateOzonCatalogTemplateInput {
   tnvedLabel?: string | null;
   tnvedDictionaryValueId?: number | null;
   sizeDimensions?: Record<string, VariantDimensions>;
+  sharedPhotoUrls?: string[];
 }
 
 @Injectable()

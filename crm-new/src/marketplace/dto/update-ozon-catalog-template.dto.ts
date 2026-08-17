@@ -1,10 +1,13 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsInt,
   IsObject,
   IsOptional,
   IsString,
+  IsUrl,
   Min,
 } from 'class-validator';
 
@@ -119,4 +122,13 @@ export class DtoUpdateOzonCatalogTemplate {
     string,
     { weightG: number; widthMm: number; heightMm: number; lengthMm: number }
   >;
+
+  /** Общие доп. фото карточки — одинаковые во всех товарах кабинета. */
+  @IsOptional()
+  @IsArray()
+  @IsUrl({}, { each: true })
+  @ArrayMaxSize(14, {
+    message: 'Ozon принимает не больше 14 дополнительных фото.',
+  })
+  sharedPhotoUrls?: string[];
 }

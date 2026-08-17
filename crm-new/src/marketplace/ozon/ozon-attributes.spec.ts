@@ -1,4 +1,5 @@
 import {
+  buildExtraImages,
   buildImportItem,
   buildOfferId,
   chunk,
@@ -32,6 +33,10 @@ const template: CatalogTemplateForImport = {
     M: { weightG: 157, widthMm: 259, heightMm: 27, lengthMm: 274 },
     XXL: { weightG: 199, widthMm: 268, heightMm: 26, lengthMm: 277 },
   },
+  sharedPhotoUrls: [
+    'https://example.com/shared-1.jpg',
+    'https://example.com/shared-2.jpg',
+  ],
 };
 
 const print: PrintForImport = {
@@ -71,7 +76,11 @@ describe('ozon-attributes: сборка запроса на импорт', () =>
     expect(item.weight).toBe(157);
     expect(item.width).toBe(259);
     expect(item.primary_image).toBe(print.mainPhotoUrl);
-    expect(item.images).toEqual(print.extraPhotoUrls);
+    // Свои фото принта идут первыми, следом — общие из шаблона.
+    expect(item.images).toEqual([
+      ...print.extraPhotoUrls,
+      ...template.sharedPhotoUrls,
+    ]);
 
     const byId = (id: number) => item.attributes.find((a) => a.id === id);
     expect(byId(OZON_ATTR.UNION_KEY)?.values[0]).toEqual({ value: 'abc123' });
@@ -144,6 +153,47 @@ describe('ozon-attributes: сборка запроса на импорт', () =>
     });
     // В шаблоне теста только M и XXL — S отсутствует, берём первый попавшийся (M).
     expect(item.weight).toBe(157);
+  });
+});
+
+describe('ozon-attributes: фотографии карточки', () => {
+  it('общие фото шаблона подставляются в каждый принт', () => {
+    const bare = { ...print, extraPhotoUrls: [] };
+    expect(buildExtraImages(template, bare)).toEqual(template.sharedPhotoUrls);
+  });
+
+  it('не дублирует главное фото в дополнительных', () => {
+    const withMainDuplicated = {
+      ...print,
+      extraPhotoUrls: [print.mainPhotoUrl, 'https://example.com/other.jpg'],
+    };
+    const images = buildExtraImages(template, withMainDuplicated);
+    expect(images).not.toContain(print.mainPhotoUrl);
+    expect(images).toContain('https://example.com/other.jpg');
+  });
+
+  it('не повторяет одну и ту же ссылку дважды', () => {
+    const overlapping = {
+      ...print,
+      extraPhotoUrls: ['https://example.com/shared-1.jpg'],
+    };
+    const images = buildExtraImages(template, overlapping);
+    expect(
+      images.filter((u) => u === 'https://example.com/shared-1.jpg'),
+    ).toHaveLength(1);
+  });
+
+  it('обрезает список до 14 фото — потолок Ozon', () => {
+    const many = {
+      ...template,
+      sharedPhotoUrls: Array.from(
+        { length: 20 },
+        (_, i) => `https://example.com/${i}.jpg`,
+      ),
+    };
+    expect(
+      buildExtraImages(many, { ...print, extraPhotoUrls: [] }),
+    ).toHaveLength(14);
   });
 });
 

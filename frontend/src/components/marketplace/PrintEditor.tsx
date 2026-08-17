@@ -1,5 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { AttributeAutocomplete } from './AttributeAutocomplete';
+import { PhotoUpload } from './PhotoUpload';
 import {
   ALL_SIZES, DEFAULT_SIZES, GENDER_LABELS, colorCodeFor, previewOfferId,
   type ColorGroupDraft, type PrintDraft,
@@ -146,14 +147,15 @@ export function PrintEditor({
           <span className="text-xs font-medium text-gray-600">Цена до скидки, ₽ (необязательно)</span>
           <input type="number" min={0} className={`mt-1 ${field}`} value={draft.oldPrice} onChange={(e) => set('oldPrice', e.target.value)} />
         </label>
-        <label className="block sm:col-span-2">
-          <span className="text-xs font-medium text-gray-600">Ссылка на главное фото</span>
-          <input className={`mt-1 ${field}`} value={draft.mainPhotoUrl} onChange={(e) => set('mainPhotoUrl', e.target.value)} placeholder="https://…jpg" />
-        </label>
-        <label className="block sm:col-span-2">
-          <span className="text-xs font-medium text-gray-600">Доп. фото (по ссылке на строку, до 14)</span>
-          <textarea rows={compact ? 2 : 3} className={`mt-1 ${field}`} value={draft.extraPhotoUrls} onChange={(e) => set('extraPhotoUrls', e.target.value)} placeholder={'https://…1.jpg\nhttps://…2.jpg'} />
-        </label>
+        <div className="sm:col-span-2">
+          <PhotoUpload
+            label="Главное фото"
+            hint="Своё у каждого принта. Остальные фото карточки берутся общие — из шаблона кабинета."
+            urls={draft.mainPhotoUrl ? [draft.mainPhotoUrl] : []}
+            markFirstAsMain
+            onChange={(urls) => set('mainPhotoUrl', urls[0] ?? '')}
+          />
+        </div>
         {!compact && (
           <>
             <label className="block sm:col-span-2">

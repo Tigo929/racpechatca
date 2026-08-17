@@ -10,6 +10,8 @@ import { OzonPrintService } from './ozon-print.service';
 import { OzonImportService } from './ozon-import.service';
 import { OzonImportPollService } from './ozon-import-poll.service';
 import { OzonCatalogController } from './ozon-catalog.controller';
+import { OzonPhotoController } from './ozon-photo.controller';
+import { OzonPhotoStorageService } from './ozon/ozon-photo-storage.service';
 
 /**
  * Интеграции с маркетплейсами. Ozon — первая площадка; следующая добавляется
@@ -18,7 +20,13 @@ import { OzonCatalogController } from './ozon-catalog.controller';
  */
 @Module({
   imports: [PrismaModule],
-  controllers: [MarketplaceController, OzonCatalogController],
+  // OzonPhotoController раньше OzonCatalogController: его путь
+  // marketplace/ozon/photos/:file не должен попасть под :accountId-маршруты.
+  controllers: [
+    MarketplaceController,
+    OzonPhotoController,
+    OzonCatalogController,
+  ],
   providers: [
     MarketplaceAccountService,
     OzonApiClient,
@@ -28,6 +36,7 @@ import { OzonCatalogController } from './ozon-catalog.controller';
     OzonPrintService,
     OzonImportService,
     OzonImportPollService,
+    OzonPhotoStorageService,
   ],
   exports: [MarketplaceAccountService, OzonApiClient, OzonService],
 })
