@@ -163,6 +163,47 @@ model OrderPhoto {
   @@index([productCategory, status, reviewReminderNotifiedAt])
 }
 
+/// Подключённый кабинет маркетплейса. Модель намеренно не «озоновская»:
+/// у WB и Яндекса та же схема (пара «идентификатор кабинета + ключ»), поэтому
+/// следующая площадка добавляется значением enum, а не второй таблицей.
+///
+/// Ключ хранится только в зашифрованном виде (`apiKeySecret`), в ответах API
+/// не отдаётся никогда — наружу уходит лишь `apiKeyHint` (последние символы),
+/// чтобы человек узнал свой ключ, но не смог его увести из браузера.
+model MarketplaceAccount {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  marketplace EnumMarketplace
+  /// Как кабинет называется у нас: «Основной магазин», «Тест».
+  title       String
+  /// Публичная часть доступа: Client-Id у Ozon.
+  externalId  String
+  /// Секретная часть: зашифрованный Api-Key (AES-256-GCM).
+  apiKeySecret String
+  /// Хвост ключа для интерфейса — «…a1b2».
+  apiKeyHint   String
+  isActive     Boolean @default(true)
+
+  /// Итог последней проверки связи: когда, успешно ли, что ответила площадка.
+  lastCheckAt    DateTime?
+  lastCheckOk    Boolean?
+  lastCheckError String?
+  /// Сводка с площадки на момент проверки (товары, склады) — показываем на
+  /// карточке подключения, чтобы было видно, что ключ «живой», а не просто 200.
+  lastCheckInfo  Json?
+
+  @@unique([marketplace, externalId])
+  @@index([marketplace, isActive])
+}
+
+enum EnumMarketplace {
+  OZON
+  WB
+  YANDEX
+}
+
 model AvitoChat {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())

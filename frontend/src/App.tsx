@@ -15,6 +15,7 @@ const MySalaryPage = lazy(() => import('./pages/MySalaryPage'));
 const TasksPage = lazy(() => import('./pages/TasksPage'));
 const AvitoPage = lazy(() => import('./pages/AvitoPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const MarketplacePage = lazy(() => import('./pages/MarketplacePage'));
 const ReportsPage = lazy(() =>
   import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage })),
 );
@@ -84,6 +85,8 @@ function AppRoutes() {
         <Route path="/crm/my-salary" element={<CrmGate><PrivateRoute><MySalaryPage /></PrivateRoute></CrmGate>} />
         <Route path="/crm/reports" element={<CrmGate><AdminRoute><ReportsPage /></AdminRoute></CrmGate>} />
         <Route path="/crm/settings" element={<CrmGate><AdminRoute><SettingsPage /></AdminRoute></CrmGate>} />
+        {/* Доступы к кабинетам площадок — «ключи от кассы», поэтому только админ */}
+        <Route path="/crm/marketplace" element={<CrmGate><AdminRoute><MarketplacePage /></AdminRoute></CrmGate>} />
 
         {/* Корень и любой неизвестный путь ведут в CRM */}
         <Route path="*" element={<Navigate to="/crm" replace />} />
