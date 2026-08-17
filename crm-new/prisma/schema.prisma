@@ -194,6 +194,9 @@ model MarketplaceAccount {
   /// карточке подключения, чтобы было видно, что ключ «живой», а не просто 200.
   lastCheckInfo  Json?
 
+  ozonCatalogTemplate OzonCatalogTemplate?
+  ozonPrints          OzonPrint[]
+
   @@unique([marketplace, externalId])
   @@index([marketplace, isActive])
 }
@@ -202,6 +205,141 @@ enum EnumMarketplace {
   OZON
   WB
   YANDEX
+}
+
+/// Константы карточки товара «Футболка», общие для всего ассортимента
+/// кабинета: страна, материал, состав, стиль и т.п. У продавца одна
+/// категория на весь магазин, поэтому шаблон один на кабинет, а не на
+/// каждый принт — иначе интерфейс превращается в тот же перегруженный
+/// конструктор Ozon, от которого и уходим.
+///
+/// dictionary_value_id-поля — то, что реально уходит в Ozon (числовой id
+/// значения словаря атрибута); Label-поля — то же самое человеку в
+/// интерфейсе. Оба берутся из одного ответа attribute-values/search и
+/// сохраняются парой, чтобы не резолвить их заново на каждой отправке.
+model OzonCatalogTemplate {
+  id                    String   @id @default(uuid())
+  updatedAt             DateTime @updatedAt
+  marketplaceAccountId  String   @unique
+  account               MarketplaceAccount @relation(fields: [marketplaceAccountId], references: [id], onDelete: Cascade)
+
+  descriptionCategoryId Int @default(200000933)
+  typeId                Int @default(93244)
+
+  vatRate          String  @default("Не облагается")
+  needsMarkingCode Boolean @default(false)
+
+  brandLabel               String @default("Нет бренда")
+  brandDictionaryValueId   Int    @default(126745801)
+  countryLabel              String?
+  countryDictionaryValueId  Int?
+  materialLabel             String? @default("Хлопок")
+  materialDictionaryValueId Int?    @default(62174)
+  materialComposition       String? @default("100% Хлопок")
+  styleLabel                String? @default("Повседневный")
+  styleDictionaryValueId    Int?    @default(29802)
+  seasonLabel               String? @default("На любой сезон")
+  seasonDictionaryValueId   Int?    @default(30937)
+  careInstructions          String?
+  sleeveLabel               String?
+  sleeveDictionaryValueId   Int?
+  necklineLabel             String?
+  necklineDictionaryValueId Int?
+  packageTypeLabel              String? @default("Пакет")
+  packageTypeDictionaryValueId  Int?    @default(44412)
+  tnvedLabel                     String? @default("Майки, фуфайки с рукавами и прочие нательные фуфайки трикотажные, из хлопчатобумажной пряжи")
+  tnvedDictionaryValueId         Int?    @default(971398495)
+
+  /// Габариты упаковки по умолчанию на каждый российский размер:
+  /// { XS: { weightG, widthMm, heightMm, lengthMm }, ... }. Задаётся один
+  /// раз в настройках, у конкретного варианта можно переопределить.
+  sizeDimensions Json
+}
+
+/// Принт (дизайн) — то, что в интерфейсе Ozon называется карточкой товара:
+/// одно название, одно фото, одна цена по умолчанию, но может объединять
+/// несколько цветов. Группировка на карточке живёт в unionKey — атрибуте
+/// Ozon «Объединить на одной карточке», одинаковом у всех вариантов принта.
+model OzonPrint {
+  id                   String   @id @default(uuid())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  marketplaceAccountId String
+  account              MarketplaceAccount @relation(fields: [marketplaceAccountId], references: [id], onDelete: Cascade)
+
+  /// Внутренний код принта: "labrov-nadpis". Идёт в артикул варианта
+  /// (<slug>-<размер>) и в атрибут Ozon «Название цвета» — так исторически
+  /// делает продавец, чтобы отличать принты в выгрузках Ozon.
+  slug           String
+  name           String
+  description    String?
+  hashtags       String?
+  mainPhotoUrl   String
+  extraPhotoUrls String[] @default([])
+  price          Int
+  oldPrice       Int?
+  gender         EnumTshirtGender @default(UNISEX)
+  /// Рисунок/тематика — «Животные», «Надписи» и т.п., атрибут 9437.
+  patternTags    String[] @default([])
+
+  unionKey String @unique
+
+  status    EnumOzonSyncStatus @default(DRAFT)
+  lastError String?
+
+  variants OzonVariant[]
+
+  @@index([marketplaceAccountId, status])
+}
+
+/// Одна позиция цвет×размер внутри принта — то, что реально уходит в Ozon
+/// как отдельный offer_id.
+model OzonVariant {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  printId String
+  print   OzonPrint @relation(fields: [printId], references: [id], onDelete: Cascade)
+
+  colorLabel             String
+  colorDictionaryValueId Int
+  size                   EnumTshirtSize
+
+  /// <slug>-<размер> по умолчанию, можно поправить вручную при конфликте.
+  offerId       String @unique
+  priceOverride Int?
+
+  status        EnumOzonSyncStatus @default(DRAFT)
+  ozonProductId BigInt?
+  ozonSku       BigInt?
+  lastError     String?
+
+  @@unique([printId, colorLabel, size])
+  @@index([printId])
+}
+
+/// Один вызов /v3/product/import (до 100 вариантов) и его task_id.
+/// Опрашивается OzonImportPollService, пока не закрыт.
+model OzonImportBatch {
+  id                   String   @id @default(uuid())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  marketplaceAccountId String
+  ozonTaskId           String
+  variantIds           String[]
+  /// polling — ждём ответа Ozon; done — все варианты пачки получили финальный статус.
+  status               String   @default("polling")
+
+  @@index([status])
+}
+
+enum EnumOzonSyncStatus {
+  DRAFT
+  QUEUED
+  SENT
+  OK
+  ERROR
 }
 
 model AvitoChat {
