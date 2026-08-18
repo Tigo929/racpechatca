@@ -162,8 +162,16 @@ export function PrintEditor({
             onChange={(urls) => set('mainPhotoUrl', urls[0] ?? '')}
           />
         </div>
-        {!compact && (
-          <>
+        {/* Описание и тематика нужны Ozon для поиска, поэтому доступны и в
+            массовом режиме. Там они свёрнуты: полей много, и раскрытый блок
+            на каждом принте превращает форму в простыню — но спрятать их
+            совсем значило бы выпускать карточки без того, по чему их
+            находят. */}
+        <details open={!compact} className="sm:col-span-2 rounded-lg border border-gray-100 p-2">
+          <summary className="cursor-pointer text-xs font-medium text-gray-600">
+            Описание, тематика и хештеги — влияют на поиск в Ozon
+          </summary>
+          <div className="mt-2 space-y-3">
             <label className="block sm:col-span-2">
               <span className="text-xs font-medium text-gray-600">Описание</span>
               <textarea rows={3} className={`mt-1 ${field}`} value={draft.description} onChange={(e) => set('description', e.target.value)} />
@@ -207,8 +215,8 @@ export function PrintEditor({
               <span className="text-xs font-medium text-gray-600">#Хештеги</span>
               <input className={`mt-1 ${field}`} value={draft.hashtags} onChange={(e) => set('hashtags', e.target.value)} placeholder="#футболка_с_принтом #streetwear" />
             </label>
-          </>
-        )}
+          </div>
+        </details>
       </div>
 
       <div className="space-y-2">
