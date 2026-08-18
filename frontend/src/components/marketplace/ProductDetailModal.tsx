@@ -144,6 +144,21 @@ export function ProductDetailModal({
             {product.statusDescription && (
               <p className="text-xs text-gray-500 pt-1">{product.statusDescription}</p>
             )}
+            {/* Родовая группа и штрихкоды — то, чего в карточке не хватало:
+                по группе Ozon переключает цвета покупателю, по штрихкодам
+                товар принимают на складе. */}
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 pt-2 text-xs">
+              <dt className="text-gray-500">Родовая группа</dt>
+              <dd className="text-gray-800">
+                {product.modelId
+                  ? `${product.modelId}${product.modelCount ? ` · товаров в группе: ${product.modelCount}` : ''}`
+                  : 'товар не объединён с другими цветами'}
+              </dd>
+              <dt className="text-gray-500">Штрихкоды</dt>
+              <dd className="font-mono text-[11px] text-gray-800">
+                {product.barcodes.length ? product.barcodes.join(', ') : '—'}
+              </dd>
+            </dl>
           </div>
         </div>
 

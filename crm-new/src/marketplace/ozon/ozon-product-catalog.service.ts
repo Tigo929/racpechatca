@@ -55,6 +55,7 @@ interface RawInfoItem {
   }[];
   stocks?: { present?: number; reserved?: number };
   visibility_details?: { has_price?: boolean; has_stock?: boolean };
+  barcodes?: string[];
 }
 
 interface RawInfoResponse {
@@ -169,6 +170,16 @@ export interface OzonCatalogProduct {
   orderedUnits30d: number;
   /** Выручка за последние 30 дней, ₽. */
   revenue30d: number;
+  /**
+   * Родовая группа глазами Ozon: товары одной модели объединены в карточке
+   * и переключаются покупателем как цвета. До сих пор мы догадывались о ней
+   * по написанию артикула — теперь берём то, что площадка считает правдой.
+   */
+  modelId: number | null;
+  /** Сколько товаров в этой модели по данным Ozon. */
+  modelCount: number | null;
+  /** Штрихкоды: по ним товар принимают на складе. */
+  barcodes: string[];
 }
 
 @Injectable()
@@ -385,6 +396,9 @@ export class OzonProductCatalogService {
       statusName: i.statuses?.status_name ?? '',
       moderateStatus: i.statuses?.moderate_status ?? null,
       statusDescription: i.statuses?.status_description || null,
+      modelId: i.model_info?.model_id ?? null,
+      modelCount: i.model_info?.count ?? null,
+      barcodes: (i.barcodes ?? []).filter(Boolean),
       hasPrice: i.visibility_details?.has_price ?? false,
       hasStock: i.visibility_details?.has_stock ?? false,
       stockPresent: stock?.present ?? i.stocks?.present ?? 0,

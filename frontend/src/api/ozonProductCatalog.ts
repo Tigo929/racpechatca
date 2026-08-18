@@ -26,6 +26,11 @@ export interface OzonCatalogProduct {
   commissionPercent: number | null;
   orderedUnits30d: number;
   revenue30d: number;
+  /** Родовая группа глазами Ozon: товары одной модели переключаются в карточке. */
+  modelId: number | null;
+  modelCount: number | null;
+  /** Штрихкоды: по ним товар принимают на складе. */
+  barcodes: string[];
 }
 
 export interface OzonAction {
