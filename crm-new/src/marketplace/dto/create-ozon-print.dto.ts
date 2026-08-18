@@ -79,9 +79,6 @@ export class DtoCreateOzonPrint {
   @IsString({ each: true })
   patternTags?: string[];
 
-  @IsArray()
-  @ArrayNotEmpty({ message: 'Нужен хотя бы один цвет с размерами.' })
-  @ArrayMinSize(1)
   /**
    * Значение поля Ozon «Объединить на одной карточке». Пусто — берём код
    * принта: обычно объединять надо ровно его цвета. Отдельное поле нужно,
@@ -92,6 +89,9 @@ export class DtoCreateOzonPrint {
   @MaxLength(80)
   unionKey?: string;
 
+  @IsArray()
+  @ArrayNotEmpty({ message: 'Нужен хотя бы один цвет с размерами.' })
+  @ArrayMinSize(1)
   @Type(() => DtoOzonColorGroup)
   @ValidateNested({ each: true })
   colorGroups!: DtoOzonColorGroup[];
