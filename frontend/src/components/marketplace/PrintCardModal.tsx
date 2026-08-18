@@ -8,6 +8,7 @@ import {
 import { getErrorMessage } from '../../utils/get-error-message';
 import { ozonCatalogApi } from '../../api/ozonCatalog';
 import { Modal } from '../ui/Modal';
+import { CardAnalytics } from './CardAnalytics';
 import { ColorGroupRow } from './PrintEditor';
 import { UnitEconomicsPanel } from './UnitEconomicsPanel';
 import { DEFAULT_SIZES, type ColorGroupDraft } from './printDraft';
@@ -278,6 +279,8 @@ export function PrintCardModal({
               </p>
             )}
           </div>
+
+          <CardAnalytics accountId={accountId} items={items} />
 
           {print ? (
             <div className="rounded-xl border border-gray-200 bg-white p-3">
