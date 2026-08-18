@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { AlertTriangle, Loader2, Package } from 'lucide-react';
 import {
-  ozonProductCatalogApi, sizeOf, type OzonCatalogProduct,
+  colorCodeOf, ozonProductCatalogApi, sizeOf, type OzonCatalogProduct,
 } from '../../api/ozonProductCatalog';
 import { getErrorMessage } from '../../utils/get-error-message';
 import { Modal } from '../ui/Modal';
@@ -65,6 +65,20 @@ export function PrintCardModal({
   const economicsFor =
     sorted.find((p) => p.offerId === economicsOfferId) ?? bestSeller;
 
+  /*
+   * Внутри родовой группы товары разложены по цветам: JDM-1-1 — это чёрная
+   * и белая футболки с одним принтом, у каждой свои размеры и остатки.
+   * Общий список размеров смешал бы их в кучу, где «M» встречается дважды.
+   */
+  const byColor = useMemo(() => {
+    const map = new Map<string, OzonCatalogProduct[]>();
+    for (const p of sorted) {
+      const color = colorCodeOf(p.offerId) ?? 'без цвета в артикуле';
+      map.set(color, [...(map.get(color) ?? []), p]);
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [sorted]);
+
   const prices = items.map((p) => p.price);
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
@@ -115,6 +129,12 @@ export function PrintCardModal({
           )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm text-gray-600">{first.name}</p>
+            {/* Состав родовой группы: видно, каких цветов карточка уже есть
+                и сколько у каждого размеров — без ухода на другой экран. */}
+            <p className="mt-1 text-[11px] text-gray-500">
+              Родовая группа <span className="font-mono text-gray-700">{code}</span> ·{' '}
+              {byColor.map(([color, list]) => `${color} (${list.length})`).join(' · ')}
+            </p>
           </div>
         </div>
 
@@ -163,7 +183,14 @@ export function PrintCardModal({
               )}
             </div>
 
-            {sorted.map((p) => {
+            {byColor.map(([color, list]) => (
+              <div key={color}>
+                {byColor.length > 1 && (
+                  <p className="border-t border-gray-100 bg-gray-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                    {color}
+                  </p>
+                )}
+                {list.map((p) => {
               const draft = stockDraft[p.offerId] ?? '';
               return (
                 <div key={p.offerId} className="flex items-center gap-2 border-t border-gray-50 px-3 py-2">
@@ -196,7 +223,9 @@ export function PrintCardModal({
                   />
                 </div>
               );
-            })}
+                })}
+              </div>
+            ))}
 
             {warehouses.length === 0 && (
               <p className="border-t border-gray-50 px-3 py-2 text-[11px] text-gray-500">

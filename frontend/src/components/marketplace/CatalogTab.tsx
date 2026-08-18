@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Boxes, RefreshCw, Search } from 'lucide-react';
 import {
-  ozonProductCatalogApi, printCodeOf, type OzonCatalogProduct,
+  baseCodeOf, colorCodeOf, ozonProductCatalogApi, type OzonCatalogProduct,
 } from '../../api/ozonProductCatalog';
 import { FilterChip } from '../ui/FilterChip';
 import { ProductDetailModal } from './ProductDetailModal';
@@ -35,6 +35,19 @@ function matchesFilter(p: OzonCatalogProduct, f: StatusFilter): boolean {
   return !p.archived && p.stockPresent > 0;
 }
 
+/**
+ * Цвета внутри родовой группы. У старых товаров цвета в артикуле нет —
+ * тогда список пустой, и в шапке остаётся число размеров.
+ */
+function colorsOf(items: OzonCatalogProduct[]): string[] {
+  const set = new Set<string>();
+  for (const p of items) {
+    const c = colorCodeOf(p.offerId);
+    if (c) set.add(c);
+  }
+  return [...set].sort();
+}
+
 export function CatalogTab({ accountId }: { accountId: string }) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<StatusFilter>('all');
@@ -64,7 +77,7 @@ export function CatalogTab({ accountId }: { accountId: string }) {
     );
     const map = new Map<string, OzonCatalogProduct[]>();
     for (const p of filtered) {
-      const code = printCodeOf(p.offerId);
+      const code = baseCodeOf(p.offerId);
       map.set(code, [...(map.get(code) ?? []), p]);
     }
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
@@ -203,7 +216,7 @@ export function CatalogTab({ accountId }: { accountId: string }) {
                   </div>
                   <div className="flex-shrink-0 text-right">
                     <p className="text-xs text-gray-500">
-                      {items.length} размер(ов) ·{' '}
+                      {colorsOf(items).join(' · ') || `${items.length} размер(ов)`} ·{' '}
                       <span className={stock === 0 ? 'font-semibold text-red-600' : ''}>
                         остаток {stock}
                       </span>

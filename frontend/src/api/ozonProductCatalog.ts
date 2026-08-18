@@ -226,3 +226,29 @@ export function printCodeOf(offerId: string): string {
 export function sizeOf(offerId: string): string | null {
   return offerId.match(SIZE_SUFFIX)?.[1]?.toUpperCase() ?? null;
 }
+
+/**
+ * Известные коды цвета в артикуле. Список, а не «последний сегмент»:
+ * у старых товаров цвета в артикуле нет вовсе (kavkaz-1-M), и отрезать
+ * там нечего — иначе принт распался бы на выдуманные группы.
+ */
+const COLOR_CODES = [
+  'black', 'white', 'grey', 'gray', 'red', 'blue', 'green',
+  'beige', 'pink', 'yellow', 'brown', 'orange', 'purple',
+];
+
+const COLOR_SUFFIX = new RegExp(`-(${COLOR_CODES.join('|')})$`, 'i');
+
+/**
+ * Родовая группа: артикул без размера и без цвета.
+ * JDM-1-1-black-S → JDM-1-1. По ней чёрная и белая футболки с одним
+ * принтом собираются в одну карточку, как в кабинете Ozon.
+ */
+export function baseCodeOf(offerId: string): string {
+  return printCodeOf(offerId).replace(COLOR_SUFFIX, '');
+}
+
+/** Код цвета из артикула, если он там есть. */
+export function colorCodeOf(offerId: string): string | null {
+  return printCodeOf(offerId).match(COLOR_SUFFIX)?.[1]?.toLowerCase() ?? null;
+}
