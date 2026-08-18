@@ -49,6 +49,8 @@ export interface UpdateOzonCatalogTemplateInput {
   tnvedDictionaryValueId?: number | null;
   sizeDimensions?: Record<string, VariantDimensions>;
   sharedPhotoUrls?: string[];
+  defaultPrice?: number;
+  defaultStock?: number;
 }
 
 @Injectable()

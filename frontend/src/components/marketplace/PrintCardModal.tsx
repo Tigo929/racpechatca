@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { AlertTriangle, Loader2, Package } from 'lucide-react';
 import {
-  colorCodeOf, ozonProductCatalogApi, sizeOf, type OzonCatalogProduct,
+  groupByColor, ozonProductCatalogApi, sizeOf, sizeRank,
+  type OzonCatalogProduct,
 } from '../../api/ozonProductCatalog';
 import { getErrorMessage } from '../../utils/get-error-message';
 import { ozonCatalogApi } from '../../api/ozonCatalog';
@@ -27,15 +28,6 @@ import { DEFAULT_SIZES, type ColorGroupDraft } from './printDraft';
  */
 
 const money = (v: number) => `${Math.round(v).toLocaleString('ru-RU')} ₽`;
-
-/** Порядок размеров как на бирке, а не по алфавиту: S идёт перед XL. */
-const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
-
-function sizeRank(offerId: string): number {
-  const size = (sizeOf(offerId) ?? '').toUpperCase();
-  const i = SIZE_ORDER.indexOf(size);
-  return i === -1 ? SIZE_ORDER.length : i;
-}
 
 export function PrintCardModal({
   accountId, code, items, onClose, onOpenSize,
@@ -74,14 +66,7 @@ export function PrintCardModal({
    * и белая футболки с одним принтом, у каждой свои размеры и остатки.
    * Общий список размеров смешал бы их в кучу, где «M» встречается дважды.
    */
-  const byColor = useMemo(() => {
-    const map = new Map<string, OzonCatalogProduct[]>();
-    for (const p of sorted) {
-      const color = colorCodeOf(p.offerId) ?? 'без цвета в артикуле';
-      map.set(color, [...(map.get(color) ?? []), p]);
-    }
-    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [sorted]);
+  const byColor = useMemo(() => groupByColor(sorted), [sorted]);
 
   const prices = items.map((p) => p.price);
   const minPrice = Math.min(...prices);

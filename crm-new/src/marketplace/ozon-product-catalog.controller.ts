@@ -98,9 +98,10 @@ export class OzonProductCatalogController {
   @Get(':accountId/catalog/content-rating')
   async contentRating(@Param('accountId', ParseUUIDPipe) accountId: string) {
     const creds = await this.accounts.credentials(accountId);
-    const products = await this.catalog.listProducts(creds);
-    const skus = products.map((p) => p.sku).filter((s): s is string => !!s);
-    const map = await this.catalog.contentRating(creds, skus);
+    const map = await this.catalog.contentRating(
+      creds,
+      await this.catalog.allSkus(creds),
+    );
     return Object.fromEntries(map);
   }
 

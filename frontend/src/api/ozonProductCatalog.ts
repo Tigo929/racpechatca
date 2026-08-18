@@ -316,3 +316,34 @@ export function baseCodeOf(offerId: string): string {
 export function colorCodeOf(offerId: string): string | null {
   return printCodeOf(offerId).match(COLOR_SUFFIX)?.[1]?.toLowerCase() ?? null;
 }
+
+/**
+ * Порядок размеров как на бирке, а не по алфавиту: S раньше XL.
+ *
+ * Список ровно тот же, что понимает SIZE_SUFFIX выше — иначе размер, которого
+ * в нём нет, молча уезжает в конец. Так и было: в карточке принта список
+ * обрывался на XL, а XXL и XXXL вставали хвостом в случайном порядке, потому
+ * что там перечислялись «2XL/3XL», которых в артикулах не бывает.
+ */
+const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+
+export function sizeRank(offerId: string): number {
+  const i = SIZE_ORDER.indexOf((sizeOf(offerId) ?? '').toUpperCase());
+  return i === -1 ? SIZE_ORDER.length : i;
+}
+
+/**
+ * Раскладка товаров карточки по цветам, размеры внутри — по бирке.
+ * Нужна одинаковой в двух окнах (карточка принта и карточка размера),
+ * поэтому живёт рядом с разбором артикула, а не копией в каждом из них.
+ */
+export function groupByColor<T extends { offerId: string }>(
+  items: T[],
+): [string, T[]][] {
+  const map = new Map<string, T[]>();
+  for (const p of [...items].sort((a, b) => sizeRank(a.offerId) - sizeRank(b.offerId))) {
+    const color = colorCodeOf(p.offerId) ?? 'без цвета';
+    map.set(color, [...(map.get(color) ?? []), p]);
+  }
+  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+}

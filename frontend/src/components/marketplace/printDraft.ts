@@ -63,6 +63,13 @@ export function previewOfferId(slug: string, name: string, colorCode: string, si
 }
 
 export interface PrintDraft {
+  /**
+   * Ключ строки в массовом режиме. Только для React: раньше строки
+   * различались по индексу, и после «дублировать» или «удалить» подсказка
+   * цвета оставалась у номера строки, а не у самого принта — на экране цвет
+   * оказывался не у того товара.
+   */
+  key: string;
   name: string;
   slug: string;
   description: string;
@@ -78,13 +85,31 @@ export interface PrintDraft {
   colorGroups: ColorGroupDraft[];
 }
 
-export function emptyPrintDraft(): PrintDraft {
+let keySeq = 0;
+function nextKey(): string {
+  keySeq += 1;
+  return `draft-${keySeq}`;
+}
+
+/**
+ * Пустой черновик. Цена приходит из шаблона кабинета: продавец заводит
+ * карточки сессиями по одной цене, и вбивать её в каждую из полусотни —
+ * лишняя работа. Значение остаётся правимым в любой строке.
+ */
+export function emptyPrintDraft(defaultPrice?: number): PrintDraft {
   return {
+    key: nextKey(),
     name: '', slug: '', description: '', hashtags: '',
     mainPhotoUrl: '', extraPhotoUrls: '',
-    price: '', oldPrice: '', gender: 'UNISEX', patternTags: '', unionKey: '',
+    price: defaultPrice ? String(defaultPrice) : '',
+    oldPrice: '', gender: 'UNISEX', patternTags: '', unionKey: '',
     colorGroups: [{ colorLabel: '', colorDictionaryValueId: 0, colorCode: '', sizes: [...DEFAULT_SIZES] }],
   };
+}
+
+/** Копия строки под новый принт: общее остаётся, своё у карточки — чистое. */
+export function duplicateDraft(d: PrintDraft): PrintDraft {
+  return { ...d, key: nextKey(), name: '', slug: '', mainPhotoUrl: '', extraPhotoUrls: '' };
 }
 
 /** Готовит тело запроса из черновика — здесь же живёт разбор многострочных/списочных полей. */

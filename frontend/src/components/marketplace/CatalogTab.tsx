@@ -113,6 +113,17 @@ export function CatalogTab({ accountId }: { accountId: string }) {
     });
   }, [products, query, filter, ratings]);
 
+  /*
+   * Товары открытой карточки берём из всего каталога, а не из отфильтрованных
+   * групп. Иначе карточка теряла содержимое под собой: сохранил остаток при
+   * фильтре «Без остатка» — группа выпала из выборки, items стали пустыми, и
+   * окно падало на первом же обращении к товару.
+   */
+  const openedItems = useMemo(
+    () => (openedCard ? products.filter((p) => baseCodeOf(p.offerId) === openedCard) : []),
+    [products, openedCard],
+  );
+
   const toggleGroup = (items: OzonCatalogProduct[]) => {
     const allSelected = items.every((i) => selected.has(i.offerId));
     setSelected((prev) => {
@@ -149,34 +160,41 @@ export function CatalogTab({ accountId }: { accountId: string }) {
         </div>
       </div>
 
-      <EconomicsSettings accountId={accountId} />
-
       {(activeActions.length > 0 || availableActions.length > 0) && (
-        <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-2">
-          <h3 className="text-sm font-semibold text-gray-900">Акции Ozon</h3>
-          {activeActions.length === 0 && (
-            <p className="text-xs text-gray-500">Сейчас товары не участвуют ни в одной акции.</p>
-          )}
-          {activeActions.map((a) => (
-            <div key={a.id} className="flex items-baseline justify-between gap-2 text-xs">
-              <span className="min-w-0 truncate text-gray-700">{a.title}</span>
-              <span className="flex-shrink-0 text-emerald-700 font-medium">
-                участвует {a.participatingProducts} товар(ов)
-              </span>
-            </div>
-          ))}
-          {availableActions.slice(0, 5).map((a) => (
-            <div key={a.id} className="flex items-baseline justify-between gap-2 text-xs">
-              <span className="min-w-0 truncate text-gray-500">{a.title}</span>
-              <span className="flex-shrink-0 text-gray-400">
-                подходит {a.potentialProducts} товар(ов)
-              </span>
-            </div>
-          ))}
-          <p className="text-[11px] text-gray-400 pt-1">
-            Добавление товаров в акции — следующий шаг; сейчас видно только участие.
-          </p>
-        </div>
+        /* Свёрнуто: акции смотрят раз в неделю, а список товаров — каждый
+           день, и держать справку выше работы значит листать мимо неё. */
+        <details className="rounded-xl border border-gray-200 bg-white p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-gray-900">
+            Акции Ozon
+            <span className="ml-2 text-xs font-normal text-gray-500">
+              участвуем в {activeActions.length}, подходим ещё под {availableActions.length}
+            </span>
+          </summary>
+          <div className="mt-2 space-y-2">
+            {activeActions.length === 0 && (
+              <p className="text-xs text-gray-500">Сейчас товары не участвуют ни в одной акции.</p>
+            )}
+            {activeActions.map((a) => (
+              <div key={a.id} className="flex items-baseline justify-between gap-2 text-xs">
+                <span className="min-w-0 truncate text-gray-700">{a.title}</span>
+                <span className="flex-shrink-0 text-emerald-700 font-medium">
+                  участвует {a.participatingProducts} товар(ов)
+                </span>
+              </div>
+            ))}
+            {availableActions.slice(0, 5).map((a) => (
+              <div key={a.id} className="flex items-baseline justify-between gap-2 text-xs">
+                <span className="min-w-0 truncate text-gray-500">{a.title}</span>
+                <span className="flex-shrink-0 text-gray-400">
+                  подходит {a.potentialProducts} товар(ов)
+                </span>
+              </div>
+            ))}
+            <p className="text-[11px] text-gray-400 pt-1">
+              Добавление товаров в акции — следующий шаг; сейчас видно только участие.
+            </p>
+          </div>
+        </details>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
@@ -318,13 +336,17 @@ export function CatalogTab({ accountId }: { accountId: string }) {
         </div>
       )}
 
+      {/* Себестоимость и налог — настройка «задал и забыл», поэтому она под
+          списком, а не над ним: сверху то, ради чего раздел открывают. */}
+      <EconomicsSettings accountId={accountId} />
+
       {/* Карточку группы прячем, пока открыт размер: закрытие размера
           возвращает к ней, и «назад» получается само собой. */}
-      {openedCard && !opened && (
+      {openedCard && !opened && openedItems.length > 0 && (
         <PrintCardModal
           accountId={accountId}
           code={openedCard}
-          items={groups.find(([c]) => c === openedCard)?.[1] ?? []}
+          items={openedItems}
           onClose={() => setOpenedCard(null)}
           onOpenSize={(p) => setOpened(p)}
         />
@@ -334,7 +356,7 @@ export function CatalogTab({ accountId }: { accountId: string }) {
         <ProductDetailModal
           product={opened}
           accountId={accountId}
-          siblings={groups.find(([c]) => c === openedCard)?.[1] ?? []}
+          siblings={openedItems}
           onSelect={setOpened}
           onBack={openedCard ? () => setOpened(null) : undefined}
           onClose={() => {

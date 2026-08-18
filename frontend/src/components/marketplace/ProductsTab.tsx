@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
-  AlertTriangle, Boxes, Copy, Loader2, Plus, Rocket, Trash2,
+  AlertTriangle, Boxes, Copy, Loader2, Pencil, Plus, Rocket, Trash2,
 } from 'lucide-react';
 import {
   ozonCatalogApi, type EnumOzonSyncStatus, type OzonPrint,
@@ -11,11 +11,15 @@ import { getErrorMessage } from '../../utils/get-error-message';
 import { TSHIRT_SIZE_LABELS } from '../../constants';
 import { TemplateSettings } from './TemplateSettings';
 import { PrintEditor } from './PrintEditor';
-import { emptyPrintDraft, draftToPayload, draftErrors, GENDER_LABELS, type PrintDraft } from './printDraft';
+import { EditPrintModal } from './EditPrintModal';
+import {
+  duplicateDraft, emptyPrintDraft, draftToPayload, draftErrors, GENDER_LABELS,
+  type PrintDraft,
+} from './printDraft';
 
 /**
- * Вкладка «Товары»: создание карточек футболок для Ozon — одиночно и
- * массово — плюс список уже созданных принтов с ходом публикации.
+ * Вкладка «Создание»: новые карточки футболок для Ozon — по одной и списком —
+ * плюс уже заведённые принты с ходом публикации.
  */
 
 type Mode = 'single' | 'bulk';
@@ -28,6 +32,18 @@ const SYNC_STATUS: Record<EnumOzonSyncStatus, { bg: string; text: string; label:
   ERROR: { bg: 'bg-red-50', text: 'text-red-700', label: 'Ошибка' },
 };
 
+/**
+ * Принту есть что отправить, пока хоть один вариант не ушёл в Ozon.
+ *
+ * Не `status === 'DRAFT'`: цвет, добавленный в уже опубликованную карточку,
+ * остаётся черновиком внутри принта, а сам принт помечен OK. По статусу принта
+ * такие варианты оказывались неотправляемыми — ровно так белая футболка
+ * JDM-1-2 и застряла рядом с опубликованной чёрной.
+ */
+function needsPublish(print: OzonPrint): boolean {
+  return print.status === 'DRAFT' || print.variants.some((v) => v.status !== 'OK');
+}
+
 function SyncBadge({ status }: { status: EnumOzonSyncStatus }) {
   const s = SYNC_STATUS[status];
   return (
@@ -37,16 +53,41 @@ function SyncBadge({ status }: { status: EnumOzonSyncStatus }) {
   );
 }
 
-function PrintCard({ print, onPublish, onRemove, publishing }: {
+/**
+ * Чего не хватает, чтобы отправить карточку.
+ *
+ * Раньше список висел в атрибуте title у выключенной кнопки: чтобы понять,
+ * почему нельзя сохранить, нужно было догадаться навести мышь и подождать
+ * подсказку браузера. На телефоне подсказки нет вовсе.
+ */
+function DraftIssues({ errors }: { errors: string[] }) {
+  if (errors.length === 0) return null;
+  return (
+    <ul className="space-y-1 rounded-lg border border-amber-100 bg-amber-50 p-2.5">
+      {errors.map((e) => (
+        <li key={e} className="flex gap-1.5 text-xs text-amber-900">
+          <span aria-hidden="true">•</span>
+          {e}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function PrintCard({ print, onPublish, onRemove, onEdit, publishing }: {
   print: OzonPrint;
   onPublish: () => void;
   onRemove: () => void;
+  onEdit: () => void;
   publishing: boolean;
 }) {
   const byColor = new Map<string, typeof print.variants>();
   for (const v of print.variants) {
     byColor.set(v.colorLabel, [...(byColor.get(v.colorLabel) ?? []), v]);
   }
+
+  const pending = print.variants.filter((v) => v.status !== 'OK').length;
+  const editable = print.status === 'DRAFT' || print.status === 'ERROR';
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
@@ -64,22 +105,17 @@ function PrintCard({ print, onPublish, onRemove, publishing }: {
           </p>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
-          {/* Публиковать можно и опубликованный принт: цвет, добавленный в
-              группу позже, остаётся черновиком, а сам принт уже помечен OK —
-              и отправить новые варианты было нечем. Кнопка показывается,
-              пока хоть один вариант не ушёл в Ozon. */}
-          {(print.status === 'DRAFT' ||
-            print.variants.some((v) => v.status !== 'OK')) && (
+          {editable && (
             <button
-              onClick={onPublish}
-              disabled={publishing}
-              aria-label="Опубликовать в Ozon"
-              className="min-h-[32px] min-w-[32px] flex items-center justify-center rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+              onClick={onEdit}
+              aria-label="Изменить"
+              title="Изменить название, цену, фото"
+              className="min-h-[32px] min-w-[32px] flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-800 hover:bg-gray-100 transition-colors"
             >
-              {publishing ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Rocket size={15} aria-hidden="true" />}
+              <Pencil size={15} aria-hidden="true" />
             </button>
           )}
-          {(print.status === 'DRAFT' || print.status === 'ERROR') && (
+          {editable && (
             <button
               onClick={onRemove}
               aria-label="Удалить"
@@ -120,12 +156,30 @@ function PrintCard({ print, onPublish, onRemove, publishing }: {
           <p className="text-xs text-red-700">{print.lastError}</p>
         </div>
       )}
+
+      {/* Кнопка с подписью, а не иконка-ракета в углу: это главное действие
+          карточки, и раньше его приходилось угадывать. */}
+      {needsPublish(print) && (
+        <button
+          onClick={onPublish}
+          disabled={publishing}
+          className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50 transition-colors"
+        >
+          {publishing
+            ? <Loader2 size={13} className="animate-spin" aria-hidden="true" />
+            : <Rocket size={13} aria-hidden="true" />}
+          {print.status === 'DRAFT'
+            ? 'Отправить в Ozon'
+            : `Дослать в Ozon (${pending})`}
+        </button>
+      )}
     </div>
   );
 }
 
 function PrintsList({ accountId }: { accountId: string }) {
   const qc = useQueryClient();
+  const [editing, setEditing] = useState<OzonPrint | null>(null);
   const { data: prints = [], isLoading } = useQuery({
     queryKey: ['ozon-prints', accountId],
     queryFn: () => ozonCatalogApi.listPrints(accountId),
@@ -141,9 +195,11 @@ function PrintsList({ accountId }: { accountId: string }) {
     onError: (e) => toast.error(getErrorMessage(e, 'Не удалось отправить')),
   });
 
-  const publishAllDrafts = useMutation({
-    mutationFn: () => ozonCatalogApi.publish(accountId, prints.filter((p) => p.status === 'DRAFT').map((p) => p.id)),
-    onSuccess: () => { invalidate(); toast.success('Черновики отправлены в Ozon'); },
+  const unsent = prints.filter(needsPublish);
+
+  const publishAll = useMutation({
+    mutationFn: () => ozonCatalogApi.publish(accountId, unsent.map((p) => p.id)),
+    onSuccess: () => { invalidate(); toast.success('Отправлено в Ozon'); },
     onError: (e) => toast.error(getErrorMessage(e, 'Не удалось отправить')),
   });
 
@@ -152,8 +208,6 @@ function PrintsList({ accountId }: { accountId: string }) {
     onSuccess: () => { invalidate(); toast.success('Принт удалён'); },
     onError: (e) => toast.error(getErrorMessage(e, 'Не удалось удалить')),
   });
-
-  const draftCount = prints.filter((p) => p.status === 'DRAFT').length;
 
   if (isLoading) return <p className="text-sm text-gray-500">Загрузка…</p>;
 
@@ -168,16 +222,16 @@ function PrintsList({ accountId }: { accountId: string }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-gray-700">Принты ({prints.length})</h3>
-        {draftCount > 0 && (
+        {unsent.length > 1 && (
           <button
-            onClick={() => publishAllDrafts.mutate()}
-            disabled={publishAllDrafts.isPending}
+            onClick={() => publishAll.mutate()}
+            disabled={publishAll.isPending}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
           >
             <Rocket size={13} aria-hidden="true" />
-            Опубликовать все черновики ({draftCount})
+            Отправить все неотправленные ({unsent.length})
           </button>
         )}
       </div>
@@ -188,6 +242,7 @@ function PrintsList({ accountId }: { accountId: string }) {
             print={p}
             publishing={publish.isPending && publish.variables === p.id}
             onPublish={() => publish.mutate(p.id)}
+            onEdit={() => setEditing(p)}
             onRemove={() => {
               if (confirm(`Удалить принт «${p.name}»? Если он уже был отправлен в Ozon, там карточка останется.`)) {
                 remove.mutate(p.id);
@@ -196,111 +251,189 @@ function PrintsList({ accountId }: { accountId: string }) {
           />
         ))}
       </div>
+
+      {editing && (
+        <EditPrintModal
+          print={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); invalidate(); }}
+        />
+      )}
     </div>
   );
 }
 
-function SingleCreateForm({ accountId }: { accountId: string }) {
+/**
+ * Кнопки под формой.
+ *
+ * Главное действие — создать и сразу отправить: черновик, который потом надо
+ * найти в списке ниже и нажать там ещё одну кнопку, был лишним шагом ради
+ * ничего. Сохранение черновиком осталось второй кнопкой — оно нужно, когда
+ * фото ещё не готово или цену уточняют.
+ */
+function CreateActions({
+  errors, busy, busyLabel, onDraft, onPublish, publishLabel, draftLabel,
+}: {
+  errors: string[];
+  busy: boolean;
+  busyLabel: string;
+  onDraft: () => void;
+  onPublish: () => void;
+  publishLabel: string;
+  draftLabel: string;
+}) {
+  const blocked = busy || errors.length > 0;
+  return (
+    <div className="space-y-2">
+      <DraftIssues errors={errors} />
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <button
+          onClick={onPublish}
+          disabled={blocked}
+          className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+        >
+          {busy
+            ? <><Loader2 size={14} className="animate-spin" aria-hidden="true" /> {busyLabel}</>
+            : <><Rocket size={14} aria-hidden="true" /> {publishLabel}</>}
+        </button>
+        <button
+          onClick={onDraft}
+          disabled={blocked}
+          className="py-2.5 px-4 border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+        >
+          {draftLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SingleCreateForm({ accountId, defaultPrice }: { accountId: string; defaultPrice?: number }) {
   const qc = useQueryClient();
-  const [draft, setDraft] = useState<PrintDraft>(emptyPrintDraft());
+  const [draft, setDraft] = useState<PrintDraft>(() => emptyPrintDraft(defaultPrice));
   // Меняется при каждом успешном сохранении — вместе с key на PrintEditor это
   // пересоздаёт вложенные автодополнения (см. AttributeAutocomplete) вместо
   // синхронизации их локального состояния через эффект.
   const [formVersion, setFormVersion] = useState(0);
 
+  const reset = () => {
+    setDraft(emptyPrintDraft(defaultPrice));
+    setFormVersion((v) => v + 1);
+    qc.invalidateQueries({ queryKey: ['ozon-prints', accountId] });
+  };
+
   const create = useMutation({
-    mutationFn: () => ozonCatalogApi.createPrint(accountId, draftToPayload(draft)),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['ozon-prints', accountId] });
-      setDraft(emptyPrintDraft());
-      setFormVersion((v) => v + 1);
-      toast.success('Принт сохранён черновиком — опубликуйте его в списке ниже');
+    mutationFn: async (publish: boolean) => {
+      const print = await ozonCatalogApi.createPrint(accountId, draftToPayload(draft));
+      if (publish) await ozonCatalogApi.publish(accountId, [print.id]);
+      return publish;
+    },
+    onSuccess: (published) => {
+      reset();
+      toast.success(
+        published
+          ? 'Карточка создана и отправлена в Ozon — статус появится в списке ниже'
+          : 'Сохранено черновиком — отправить можно кнопкой в карточке ниже',
+      );
     },
     onError: (e) => toast.error(getErrorMessage(e, 'Не удалось создать принт')),
   });
 
-  const errors = draftErrors(draft);
-
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
       <PrintEditor key={formVersion} draft={draft} onChange={setDraft} accountId={accountId} />
-      <button
-        onClick={() => create.mutate()}
-        disabled={create.isPending || errors.length > 0}
-        title={errors.join('; ')}
-        className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
-      >
-        {create.isPending ? 'Сохраняем…' : 'Сохранить черновик'}
-      </button>
+      <CreateActions
+        errors={draftErrors(draft)}
+        busy={create.isPending}
+        busyLabel="Отправляем…"
+        publishLabel="Создать и отправить в Ozon"
+        draftLabel="Только сохранить"
+        onPublish={() => create.mutate(true)}
+        onDraft={() => create.mutate(false)}
+      />
     </div>
   );
 }
 
-function BulkCreateForm({ accountId }: { accountId: string }) {
+function BulkCreateForm({ accountId, defaultPrice }: { accountId: string; defaultPrice?: number }) {
   const qc = useQueryClient();
-  const [drafts, setDrafts] = useState<PrintDraft[]>([emptyPrintDraft()]);
-  // См. formVersion в SingleCreateForm — та же причина.
-  const [batchVersion, setBatchVersion] = useState(0);
+  const [drafts, setDrafts] = useState<PrintDraft[]>(() => [emptyPrintDraft(defaultPrice)]);
 
   const createBulk = useMutation({
-    mutationFn: () => ozonCatalogApi.createPrintsBulk(accountId, drafts.map(draftToPayload)),
-    onSuccess: (created) => {
+    mutationFn: async (publish: boolean) => {
+      const created = await ozonCatalogApi.createPrintsBulk(accountId, drafts.map(draftToPayload));
+      if (publish && created.length) {
+        await ozonCatalogApi.publish(accountId, created.map((p) => p.id));
+      }
+      return { count: created.length, publish };
+    },
+    onSuccess: ({ count, publish }) => {
       qc.invalidateQueries({ queryKey: ['ozon-prints', accountId] });
-      setDrafts([emptyPrintDraft()]);
-      setBatchVersion((v) => v + 1);
-      toast.success(`Сохранено черновиков: ${created.length} — опубликуйте их в списке ниже`);
+      setDrafts([emptyPrintDraft(defaultPrice)]);
+      toast.success(
+        publish
+          ? `Отправлено в Ozon карточек: ${count}`
+          : `Сохранено черновиков: ${count}`,
+      );
     },
     onError: (e) => toast.error(getErrorMessage(e, 'Не удалось создать принты')),
   });
 
-  const update = (idx: number, d: PrintDraft) => setDrafts((prev) => prev.map((p, i) => (i === idx ? d : p)));
-  const remove = (idx: number) => setDrafts((prev) => prev.filter((_, i) => i !== idx));
-  const duplicate = (idx: number) => setDrafts((prev) => [
-    ...prev.slice(0, idx + 1),
-    { ...prev[idx]!, name: '', slug: '', mainPhotoUrl: '', extraPhotoUrls: '' },
-    ...prev.slice(idx + 1),
-  ]);
+  const update = (key: string, d: PrintDraft) =>
+    setDrafts((prev) => prev.map((p) => (p.key === key ? d : p)));
+  const remove = (key: string) => setDrafts((prev) => prev.filter((p) => p.key !== key));
+  const duplicate = (key: string) => setDrafts((prev) => {
+    const idx = prev.findIndex((p) => p.key === key);
+    if (idx === -1) return prev;
+    return [...prev.slice(0, idx + 1), duplicateDraft(prev[idx]!), ...prev.slice(idx + 1)];
+  });
 
-  const allErrors = drafts.map(draftErrors);
-  const hasErrors = allErrors.some((e) => e.length > 0);
+  // Ошибки собираем с номером строки: в списке из десяти принтов «не указана
+  // цена» без номера ничего не говорит.
+  const allErrors = drafts.flatMap((d, i) =>
+    draftErrors(d).map((e) => `Принт #${i + 1}: ${e}`),
+  );
 
   return (
     <div className="space-y-3">
       {drafts.map((d, idx) => (
-        <div key={`${batchVersion}-${idx}`} className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+        <div key={d.key} className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500">Принт #{idx + 1}</span>
             <div className="flex items-center gap-1">
-              <button onClick={() => duplicate(idx)} aria-label="Дублировать"
+              <button onClick={() => duplicate(d.key)} aria-label="Дублировать"
+                title="Скопировать строку: общие поля останутся, название и фото — чистые"
                 className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
                 <Copy size={14} aria-hidden="true" />
               </button>
               {drafts.length > 1 && (
-                <button onClick={() => remove(idx)} aria-label="Удалить строку"
+                <button onClick={() => remove(d.key)} aria-label="Удалить строку"
                   className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg">
                   <Trash2 size={14} aria-hidden="true" />
                 </button>
               )}
             </div>
           </div>
-          <PrintEditor draft={d} onChange={(next) => update(idx, next)} accountId={accountId} compact />
+          <PrintEditor draft={d} onChange={(next) => update(d.key, next)} accountId={accountId} compact />
         </div>
       ))}
 
       <button
-        onClick={() => setDrafts((prev) => [...prev, emptyPrintDraft()])}
+        onClick={() => setDrafts((prev) => [...prev, emptyPrintDraft(defaultPrice)])}
         className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"
       >
         <Plus size={14} aria-hidden="true" /> Добавить принт
       </button>
 
-      <button
-        onClick={() => createBulk.mutate()}
-        disabled={createBulk.isPending || hasErrors}
-        className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
-      >
-        {createBulk.isPending ? 'Сохраняем…' : `Сохранить черновики (${drafts.length})`}
-      </button>
+      <CreateActions
+        errors={allErrors}
+        busy={createBulk.isPending}
+        busyLabel="Отправляем…"
+        publishLabel={`Создать и отправить в Ozon (${drafts.length})`}
+        draftLabel="Только сохранить"
+        onPublish={() => createBulk.mutate(true)}
+        onDraft={() => createBulk.mutate(false)}
+      />
     </div>
   );
 }
@@ -309,10 +442,19 @@ function BulkCreateForm({ accountId }: { accountId: string }) {
 export function ProductsTab({ accountId }: { accountId: string }) {
   const [mode, setMode] = useState<Mode>('single');
 
+  /*
+   * Шаблон нужен здесь только ради цены по умолчанию, поэтому запрос идёт
+   * всегда, а не по раскрытию настроек: форма должна открыться уже с ценой,
+   * а не подставлять её задним числом.
+   */
+  const { data: template } = useQuery({
+    queryKey: ['ozon-template', accountId],
+    queryFn: () => ozonCatalogApi.getTemplate(accountId),
+  });
+  const defaultPrice = template?.defaultPrice || undefined;
+
   return (
     <div className="space-y-4">
-      <TemplateSettings accountId={accountId} />
-
       <div className="flex gap-2">
         {(['single', 'bulk'] as const).map((m) => (
           <button
@@ -322,14 +464,23 @@ export function ProductsTab({ accountId }: { accountId: string }) {
               mode === m ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
             }`}
           >
-            {m === 'single' ? 'Одиночно' : 'Массово'}
+            {m === 'single' ? 'Одна карточка' : 'Списком'}
           </button>
         ))}
       </div>
 
-      {mode === 'single' ? <SingleCreateForm accountId={accountId} /> : <BulkCreateForm accountId={accountId} />}
+      {/* Форма пересоздаётся при смене цены по умолчанию: иначе первая
+          открытая форма осталась бы с пустым полем до перезагрузки. */}
+      {mode === 'single'
+        ? <SingleCreateForm key={`s-${defaultPrice ?? 0}`} accountId={accountId} defaultPrice={defaultPrice} />
+        : <BulkCreateForm key={`b-${defaultPrice ?? 0}`} accountId={accountId} defaultPrice={defaultPrice} />}
 
       <PrintsList accountId={accountId} />
+
+      {/* Шаблон — настройка «задал и забыл»: бренд, состав, габариты, цена по
+          умолчанию. Раньше он стоял над формой и каждый раз попадался на
+          глаза первым, хотя открывают его раз в месяц. */}
+      <TemplateSettings accountId={accountId} />
     </div>
   );
 }

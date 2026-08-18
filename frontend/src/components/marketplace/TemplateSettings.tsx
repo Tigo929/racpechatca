@@ -80,6 +80,42 @@ export function TemplateSettings({ accountId }: { accountId: string }) {
             дальше при создании принта их можно не трогать.
           </p>
 
+          {/* Цена и остаток идут первыми: их меняют от партии к партии, а
+              бренд с составом заданы однажды и больше не трогаются. */}
+          {!isLoading && template && effective && (
+            <div className="grid gap-3 rounded-lg border border-amber-100 bg-amber-50/50 p-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-xs font-medium text-gray-700">Цена новой карточки, ₽</span>
+                <input
+                  type="number"
+                  min={0}
+                  className={`mt-1 ${field}`}
+                  value={effective.defaultPrice ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, defaultPrice: Number(e.target.value) || 0 }))}
+                />
+                <span className="mt-1 block text-[11px] text-gray-500">
+                  Подставляется в форму нового принта. В самой карточке цену
+                  всё равно можно поменять.
+                </span>
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-gray-700">Остаток при публикации, шт.</span>
+                <input
+                  type="number"
+                  min={0}
+                  className={`mt-1 ${field}`}
+                  value={effective.defaultStock ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, defaultStock: Number(e.target.value) || 0 }))}
+                />
+                <span className="mt-1 block text-[11px] text-gray-500">
+                  Проставляется каждому размеру сразу, как Ozon принял карточку.
+                  Пока остаток ноль, площадка не показывает товар покупателю
+                  вообще. 0 — не проставлять.
+                </span>
+              </label>
+            </div>
+          )}
+
           {isLoading || !effective ? (
             <p className="text-sm text-gray-500">Загрузка…</p>
           ) : (

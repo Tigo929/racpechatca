@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { EnumOzonSyncStatus } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OzonProductCatalogService } from './ozon/ozon-product-catalog.service';
+import { OzonService } from './ozon/ozon.service';
 import { MarketplaceAccountService } from './marketplace-account.service';
 import { OzonCatalogTemplateService } from './ozon-catalog-template.service';
 import {
@@ -35,6 +36,7 @@ export class OzonImportService {
     private readonly templates: OzonCatalogTemplateService,
     private readonly catalog: OzonCatalogService,
     private readonly products: OzonProductCatalogService,
+    private readonly ozon: OzonService,
   ) {}
 
   /** Отправляет выбранные принты в Ozon: режет варианты на пачки ≤100 и создаёт по батчу на каждую. */
@@ -216,6 +218,13 @@ export class OzonImportService {
     }
 
     let settledCount = 0;
+    /*
+     * Варианты, которые Ozon принял именно сейчас. Им нужно доделать то,
+     * чего импорт не делает: проставить остаток и выдать штрихкод. Берём
+     * только те, у которых ещё не было product_id, — иначе повторная
+     * публикация принта затирала бы остаток, выставленный руками.
+     */
+    const justPublished: { offerId: string; productId: number }[] = [];
     for (const item of items) {
       const hasError = Boolean(item.errors?.length);
       // Именно > 0, а не «есть число»: у ещё не обработанного товара Ozon
@@ -240,6 +249,12 @@ export class OzonImportService {
           data: { status: EnumOzonSyncStatus.ERROR, lastError: message },
         });
       } else {
+        if (!variant.ozonProductId && item.product_id) {
+          justPublished.push({
+            offerId: variant.offerId,
+            productId: item.product_id,
+          });
+        }
         await this.prisma.ozonVariant.update({
           where: { id: variant.id },
           data: {
@@ -251,6 +266,10 @@ export class OzonImportService {
       }
     }
 
+    if (justPublished.length) {
+      await this.activatePublished(marketplaceAccountId, creds, justPublished);
+    }
+
     if (settledCount < items.length) return; // ещё не все варианты пачки получили финальный статус
 
     await this.prisma.ozonImportBatch.update({
@@ -258,6 +277,78 @@ export class OzonImportService {
       data: { status: 'done' },
     });
     await this.closeSettledPrints(batchId);
+  }
+
+  /**
+   * Доводит только что созданный товар до состояния «продаётся».
+   *
+   * `/v3/product/import` заводит карточку, но не делает двух вещей, без
+   * которых она мертва:
+   *
+   *  • **Остаток.** Пока он ноль, Ozon не показывает товар покупателю вообще.
+   *    Карточка есть, в кабинете зелёная — а заказов нет и быть не может.
+   *    Это ровно тот случай, когда «создали, а оно не продаётся».
+   *  • **Штрихкод.** Без него товар не примут на складе. Свой придумывать
+   *    нельзя — чужой диапазон EAN означает коллизию с чужим товаром, —
+   *    поэтому просим штрихкод у самой площадки её же методом.
+   *
+   * Обе операции необязательные: если они не прошли, товар всё равно создан,
+   * и ронять из-за них разбор ответа Ozon нельзя. Поэтому неудачи пишем в
+   * лог, а не в статус варианта — иначе успешно опубликованная карточка
+   * выглядела бы отклонённой.
+   */
+  private async activatePublished(
+    marketplaceAccountId: string,
+    creds: OzonCredentials,
+    published: { offerId: string; productId: number }[],
+  ): Promise<void> {
+    const template = await this.templates.getOrCreate(marketplaceAccountId);
+
+    if (template.defaultStock > 0) {
+      try {
+        const info = await this.ozon.checkConnection(creds);
+        const warehouseId = info.warehouses?.[0]?.id;
+        if (!warehouseId) {
+          this.logger.warn(
+            `Остаток новым товарам не проставлен: в кабинете не видно ни одного склада FBS`,
+          );
+        } else {
+          const res = await this.products.updateStocks(
+            creds,
+            warehouseId,
+            published.map((p) => ({
+              offerId: p.offerId,
+              stock: template.defaultStock,
+            })),
+          );
+          const failed = res.filter((r) => !r.updated);
+          this.logger.log(
+            `Остаток ${template.defaultStock} проставлен: ${res.length - failed.length} из ${res.length}`,
+          );
+          for (const f of failed) {
+            this.logger.warn(`Остаток ${f.offerId} не принят: ${f.error}`);
+          }
+        }
+      } catch (e) {
+        this.logger.warn(
+          `Не удалось проставить остаток новым товарам: ${e instanceof Error ? e.message : e}`,
+        );
+      }
+    }
+
+    try {
+      const failures = await this.products.generateBarcodes(
+        creds,
+        published.map((p) => p.productId),
+      );
+      this.logger.log(
+        `Штрихкоды запрошены на ${published.length} товаров, отказов: ${failures.length}`,
+      );
+    } catch (e) {
+      this.logger.warn(
+        `Штрихкоды новым товарам не выданы: ${e instanceof Error ? e.message : e}`,
+      );
+    }
   }
 
   /** Как только у принта не осталось вариантов в QUEUED/SENT — фиксируем итог: OK или ERROR. */

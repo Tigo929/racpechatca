@@ -131,4 +131,18 @@ export class DtoUpdateOzonCatalogTemplate {
     message: 'Ozon принимает не больше 14 дополнительных фото.',
   })
   sharedPhotoUrls?: string[];
+
+  /** Цена, с которой открывается форма нового принта. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  defaultPrice?: number;
+
+  /** Остаток, который проставляется сразу после публикации. 0 — не проставлять. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  defaultStock?: number;
 }

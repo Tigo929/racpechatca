@@ -47,6 +47,10 @@ export interface OzonCatalogTemplate {
   sizeDimensions: Record<string, SizeDimensions>;
   /** Общие доп. фото — одинаковые во всех карточках кабинета. */
   sharedPhotoUrls: string[];
+  /** Цена, с которой открывается форма нового принта. */
+  defaultPrice: number;
+  /** Остаток, который проставляется сразу после публикации. 0 — не проставлять. */
+  defaultStock: number;
 }
 
 export type UpdateOzonCatalogTemplateDto = Partial<
@@ -95,6 +99,16 @@ export interface OzonColorGroupInput {
   colorCode?: string;
   sizes: EnumTshirtSize[];
 }
+
+/** Что разрешено править у уже заведённого принта. Код и цвета не меняются:
+ *  из них собран артикул, уже ушедший в Ozon. */
+export type UpdateOzonPrintDto = Partial<
+  Pick<
+    CreateOzonPrintDto,
+    | 'name' | 'description' | 'hashtags' | 'mainPhotoUrl' | 'extraPhotoUrls'
+    | 'price' | 'oldPrice' | 'gender' | 'patternTags'
+  >
+>;
 
 export interface CreateOzonPrintDto {
   slug?: string;
@@ -187,6 +201,11 @@ export const ozonCatalogApi = {
 
   addColorGroup: async (printId: string, group: OzonColorGroupInput): Promise<OzonPrint> => {
     const { data } = await api.post<OzonPrint>(`/marketplace/ozon/prints/${printId}/variants`, group);
+    return data;
+  },
+
+  updatePrint: async (printId: string, dto: UpdateOzonPrintDto): Promise<OzonPrint> => {
+    const { data } = await api.patch<OzonPrint>(`/marketplace/ozon/prints/${printId}`, dto);
     return data;
   },
 

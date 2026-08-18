@@ -25,7 +25,7 @@ interface RawListResponse {
 }
 
 /** Атрибут в том виде, в каком Ozon его отдаёт и принимает обратно. */
-interface RawAttribute {
+export interface RawAttribute {
   attribute_id?: number;
   attribute_name?: string;
   complex_id?: number;
@@ -202,8 +202,43 @@ const DESCRIPTION_ATTRIBUTE_ID = 4191;
 /** «Объединить на одной карточке» — по нему Ozon сводит цвета вместе. */
 const UNION_ATTRIBUTE_ID = 8292;
 
+/** Атрибут в том виде, в каком его принимает `/v3/product/import`. */
+export interface OzonImportAttributeBody {
+  id: number;
+  complex_id: number;
+  values: { dictionary_value_id?: number; value?: string }[];
+}
+
+/**
+ * Перекладывает атрибут из ответа Ozon в тело импорта.
+ *
+ * Это не косметика: чтение отдаёт номер в поле `attribute_id`, а импорт ждёт
+ * его в поле `id`. Раньше прочитанные атрибуты уходили обратно как есть — то
+ * есть без номера вообще. Ozon такую задачу заводил (номер задачи приходил, и
+ * в интерфейсе всё выглядело отправленным), но карточка не менялась.
+ *
+ * Заодно выбрасываем пустые значения и нулевые dictionary_value_id: в ответе
+ * чтения они означают «значения нет», а в импорте — несуществующий пункт
+ * словаря, на котором площадка отбивает запрос целиком.
+ */
+export function toImportAttribute(a: RawAttribute): OzonImportAttributeBody | null {
+  if (!a.attribute_id) return null;
+  const values = (a.values ?? []).flatMap<
+    OzonImportAttributeBody['values'][number]
+  >((v) => {
+    if (v.dictionary_value_id) return [{ dictionary_value_id: v.dictionary_value_id }];
+    if (v.value) return [{ value: v.value }];
+    return [];
+  });
+  if (!values.length) return null;
+  return { id: a.attribute_id, complex_id: a.complex_id ?? 0, values };
+}
+
 /** Сколько SKU просим у рейтинга за один запрос. */
 const RATING_BATCH = 100;
+
+/** Сколько товаров Ozon берёт за один вызов генератора штрихкодов. */
+const BARCODE_BATCH = 100;
 
 /**
  * Подробности карточки, которых нет в списке товаров.
@@ -292,6 +327,23 @@ export class OzonProductCatalogService {
     ]);
 
     return infos.map((i) => this.toProduct(i, stocks, demand));
+  }
+
+  /**
+   * Только SKU кабинета — для методов, которым не нужен весь каталог.
+   *
+   * Контент-рейтинг раньше звал listProducts целиком: при открытии раздела
+   * каталог выгружался дважды, включая аналитику спроса, на которой Ozon
+   * уже отвечал 429. Здесь остаются список и карточки — без остатков и без
+   * аналитики.
+   */
+  async allSkus(creds: OzonCredentials): Promise<string[]> {
+    const offerIds = await this.allOfferIds(creds);
+    if (!offerIds.length) return [];
+    const infos = await this.infoFor(creds, offerIds);
+    return infos
+      .map((i) => (i.sku && i.sku !== 0 ? String(i.sku) : null))
+      .filter((s): s is string => s !== null);
   }
 
   /** Постраничный обход /v3/product/list — Ozon отдаёт курсором last_id. */
@@ -490,10 +542,10 @@ export class OzonProductCatalogService {
    * Ozon обновляет карточку импортом, и импорт заменяет её целиком: всё,
    * чего нет в запросе, стирается. Поэтому сначала читаем карточку как
    * есть, накладываем правки поверх и отправляем полный набор — иначе
-   * одна правка названия унесла бы с собой все заполненные характеристики.
+   * одна правка названия унесла бы с собой характеристики, цену и фото.
    *
-   * Описание у Ozon живёт не отдельным полем, а атрибутом 4191
-   * («Аннотация»), поэтому меняется среди прочих атрибутов.
+   * Описание у Ozon живёт не отдельным полем, а атрибутом «Аннотация»,
+   * поэтому меняется среди прочих атрибутов.
    *
    * Возвращаем номер задачи импорта: площадка принимает изменения не
    * мгновенно и может их отклонить, поэтому результат узнаём отдельным
@@ -504,15 +556,29 @@ export class OzonProductCatalogService {
     offerId: string,
     changes: { name?: string; description?: string },
   ): Promise<{ taskId: number }> {
-    const attrs = await this.api.post<RawAttributesResponse>(
-      creds,
-      '/v4/product/info/attributes',
-      { filter: { offer_id: [offerId], visibility: 'ALL' }, limit: 1 },
-    );
+    /*
+     * Два чтения, потому что Ozon держит карточку в двух местах: атрибуты и
+     * габариты — в info/attributes, цену с картинками — в info/list. Для
+     * импорта нужны обе половины: он заменяет карточку целиком, и то, чего
+     * нет в запросе, товар теряет.
+     */
+    const [attrs, info] = await Promise.all([
+      this.api.post<RawAttributesResponse>(
+        creds,
+        '/v4/product/info/attributes',
+        { filter: { offer_id: [offerId], visibility: 'ALL' }, limit: 1 },
+      ),
+      this.api.post<RawInfoResponse>(creds, '/v3/product/info/list', {
+        offer_id: [offerId],
+        product_id: [],
+        sku: [],
+      }),
+    ]);
     const current = attrs.result?.[0];
     if (!current) {
       throw new Error(`Товар ${offerId} не найден в кабинете Ozon`);
     }
+    const currentInfo = info.items?.[0];
 
     /*
      * Номер атрибута описания у Ozon различается по категориям, поэтому
@@ -530,15 +596,22 @@ export class OzonProductCatalogService {
     const descriptionAttrId =
       descriptionAttr?.attribute_id ?? DESCRIPTION_ATTRIBUTE_ID;
 
-    const kept = (current.attributes ?? []).filter(
-      (a) => a.attribute_id !== descriptionAttrId,
-    );
-    const description =
-      changes.description?.trim() ||
-      descriptionAttr?.values?.[0]?.value;
+    const kept = (current.attributes ?? [])
+      .filter((a) => a.attribute_id !== descriptionAttrId)
+      .map((a) => toImportAttribute(a))
+      .filter((a): a is OzonImportAttributeBody => a !== null);
 
+    const description =
+      changes.description?.trim() || descriptionAttr?.values?.[0]?.value;
+
+    /*
+     * Всё, что импорт обязан получить обратно неизменным. Раньше уходили
+     * только атрибуты — без цены, фото и габаритов, — и площадка либо
+     * отбивала задачу, либо принимала карточку без них.
+     */
     const item: Record<string, unknown> = {
       offer_id: offerId,
+      name: changes.name?.trim() || currentInfo?.name,
       description_category_id: current.description_category_id,
       type_id: current.type_id,
       attributes: [
@@ -554,7 +627,21 @@ export class OzonProductCatalogService {
           : []),
       ],
     };
-    if (changes.name?.trim()) item.name = changes.name.trim();
+    if (currentInfo?.price) item.price = String(Math.round(Number(currentInfo.price)));
+    if (currentInfo?.old_price) {
+      item.old_price = String(Math.round(Number(currentInfo.old_price)));
+    }
+    if (currentInfo?.currency_code) item.currency_code = currentInfo.currency_code;
+    if (currentInfo?.primary_image?.[0]) {
+      item.primary_image = currentInfo.primary_image[0];
+    }
+    if (currentInfo?.images?.length) item.images = currentInfo.images;
+    if (current.depth) item.depth = current.depth;
+    if (current.width) item.width = current.width;
+    if (current.height) item.height = current.height;
+    if (current.dimension_unit) item.dimension_unit = current.dimension_unit;
+    if (current.weight) item.weight = current.weight;
+    if (current.weight_unit) item.weight_unit = current.weight_unit;
 
     const res = await this.api.post<{ result?: { task_id?: number } }>(
       creds,
@@ -799,6 +886,39 @@ export class OzonProductCatalogService {
       updated: Boolean(r.updated),
       error: r.errors?.[0]?.message ?? r.errors?.[0]?.code ?? null,
     }));
+  }
+
+  /**
+   * Просит Ozon сам выдать штрихкоды товарам, у которых их нет.
+   *
+   * Свои штрихкоды продавцу генерировать нельзя: чужой диапазон EAN — это
+   * коллизия с чужим товаром на приёмке. У площадки для этого есть
+   * собственный метод, им и пользуемся. За раз она берёт не больше сотни
+   * товаров и не чаще одного вызова в минуту, поэтому шлём партиями.
+   *
+   * Ответ отдаёт только отказы: товар, которого нет в списке ошибок, получил
+   * штрихкод. «Уже есть штрихкод» — тоже отказ, и это нормальный случай при
+   * повторной публикации, а не проблема.
+   */
+  async generateBarcodes(
+    creds: OzonCredentials,
+    productIds: number[],
+  ): Promise<{ productId: number; error: string }[]> {
+    const failures: { productId: number; error: string }[] = [];
+    for (let i = 0; i < productIds.length; i += BARCODE_BATCH) {
+      const res = await this.api.post<{
+        errors?: { product_id?: number; error?: string; code?: string }[];
+      }>(creds, '/v1/barcode/generate', {
+        product_ids: productIds.slice(i, i + BARCODE_BATCH),
+      });
+      for (const e of res.errors ?? []) {
+        failures.push({
+          productId: e.product_id ?? 0,
+          error: e.error || e.code || 'неизвестная причина',
+        });
+      }
+    }
+    return failures;
   }
 
   /** Убрать товар из продажи в архив или вернуть обратно. */

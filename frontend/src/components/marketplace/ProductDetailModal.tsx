@@ -4,7 +4,8 @@ import toast from 'react-hot-toast';
 import { Archive, ArchiveRestore, TrendingUp } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import {
-  colorCodeOf, ozonProductCatalogApi, sizeOf, type OzonCatalogProduct,
+  colorCodeOf, groupByColor, ozonProductCatalogApi, sizeOf,
+  type OzonCatalogProduct,
 } from '../../api/ozonProductCatalog';
 import { getErrorMessage } from '../../utils/get-error-message';
 import { UnitEconomicsPanel } from './UnitEconomicsPanel';
@@ -35,25 +36,6 @@ function Stat({ label, value, hint, tone }: {
       {hint && <p className="mt-0.5 text-[11px] text-gray-400">{hint}</p>}
     </div>
   );
-}
-
-/** Порядок как на бирке, а не по алфавиту: S раньше XL. */
-const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL'];
-
-function sizeRank(offerId: string): number {
-  const i = SIZE_ORDER.indexOf((sizeOf(offerId) ?? '').toUpperCase());
-  return i === -1 ? SIZE_ORDER.length : i;
-}
-
-function groupSizesByColor(
-  items: OzonCatalogProduct[],
-): [string, OzonCatalogProduct[]][] {
-  const map = new Map<string, OzonCatalogProduct[]>();
-  for (const p of [...items].sort((a, b) => sizeRank(a.offerId) - sizeRank(b.offerId))) {
-    const color = colorCodeOf(p.offerId) ?? 'без цвета';
-    map.set(color, [...(map.get(color) ?? []), p]);
-  }
-  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 }
 
 export function ProductDetailModal({
@@ -204,7 +186,7 @@ export function ProductDetailModal({
                  «M M L XL XXL XXL» ничего не говорил: в родовой группе
                  размеры повторяются у каждого цвета. */
               <div className="space-y-1">
-                {groupSizesByColor(siblings).map(([color, list]) => (
+                {groupByColor(siblings).map(([color, list]) => (
                   <div key={color} className="flex flex-wrap items-center gap-1">
                     {siblingColors > 1 && (
                       <span className="w-14 flex-shrink-0 text-[11px] text-gray-500">
@@ -315,14 +297,15 @@ export function ProductDetailModal({
               <label className="block">
                 <span className="text-xs font-medium text-gray-600">Описание</span>
                 <textarea
-                  rows={5}
+                  rows={7}
                   className={`mt-1 ${field}`}
                   value={descDraft}
-                  placeholder={card?.description ?? 'Описание товара'}
+                  placeholder="Описание товара"
                   onChange={(e) => setDescDraft(e.target.value)}
                 />
                 <span className="mt-1 block text-[11px] text-gray-400">
-                  Пусто — описание останется прежним.
+                  Текущее описание уже подставлено — правьте его, а не набирайте
+                  заново. Если очистить поле, прежнее описание останется.
                 </span>
               </label>
               <div className="flex flex-wrap gap-2">
@@ -349,9 +332,12 @@ export function ProductDetailModal({
               <button
                 onClick={() => {
                   setNameDraft(product.name);
-                  setDescDraft('');
+                  // Подставляем то, что сейчас в Ozon: иначе описание пришлось
+                  // бы набирать целиком, чтобы поправить одно слово.
+                  setDescDraft(card?.description ?? '');
                   setEditing(true);
                 }}
+                disabled={cardLoading}
                 className="text-xs font-semibold text-amber-700 hover:text-amber-900"
               >
                 Редактировать
