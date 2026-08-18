@@ -906,12 +906,26 @@ export class OzonProductCatalogService {
   ): Promise<{ productId: number; error: string }[]> {
     const failures: { productId: number; error: string }[] = [];
     for (let i = 0; i < productIds.length; i += BARCODE_BATCH) {
-      const res = await this.api.post<{
-        errors?: { product_id?: number; error?: string; code?: string }[];
-      }>(creds, '/v1/barcode/generate', {
-        product_ids: productIds.slice(i, i + BARCODE_BATCH),
-      });
-      for (const e of res.errors ?? []) {
+      const batch = productIds.slice(i, i + BARCODE_BATCH);
+      /*
+       * Отказ на одной партии не должен отменять уже выданные штрихкоды:
+       * метод разрешён раз в минуту, и на второй сотне товаров площадка
+       * отвечает отказом по частоте. Пишем причину и идём дальше — товар
+       * при этом уже создан, штрихкод к нему добавляется отдельно.
+       */
+      const res = await this.api
+        .post<{ errors?: { product_id?: number; error?: string; code?: string }[] }>(
+          creds,
+          '/v1/barcode/generate',
+          { product_ids: batch },
+        )
+        .catch((e: unknown) => {
+          this.logger.warn(
+            `Штрихкоды для ${batch.length} товаров не выданы: ${e instanceof Error ? e.message : e}`,
+          );
+          return null;
+        });
+      for (const e of res?.errors ?? []) {
         failures.push({
           productId: e.product_id ?? 0,
           error: e.error || e.code || 'неизвестная причина',
