@@ -511,14 +511,28 @@ export class OzonProductCatalogService {
       throw new Error(`Товар ${offerId} не найден в кабинете Ozon`);
     }
 
+    /*
+     * Номер атрибута описания у Ozon различается по категориям, поэтому
+     * ищем его в самой карточке: сначала по имени («Аннотация», «Описание»),
+     * и только если не нашли — берём общий 4191.
+     *
+     * Раньше номер был захардкожен, и в категории с другим номером описание
+     * уходило в несуществующий атрибут: Ozon принимал задачу импорта, но
+     * текст не менялся — то есть отчёт «принято» был правдой, а результата
+     * не было.
+     */
+    const descriptionAttr = (current.attributes ?? []).find((a) =>
+      /аннотац|описан/i.test(a.attribute_name ?? ''),
+    );
+    const descriptionAttrId =
+      descriptionAttr?.attribute_id ?? DESCRIPTION_ATTRIBUTE_ID;
+
     const kept = (current.attributes ?? []).filter(
-      (a) => a.attribute_id !== DESCRIPTION_ATTRIBUTE_ID,
+      (a) => a.attribute_id !== descriptionAttrId,
     );
     const description =
       changes.description?.trim() ||
-      (current.attributes ?? []).find(
-        (a) => a.attribute_id === DESCRIPTION_ATTRIBUTE_ID,
-      )?.values?.[0]?.value;
+      descriptionAttr?.values?.[0]?.value;
 
     const item: Record<string, unknown> = {
       offer_id: offerId,
@@ -529,7 +543,7 @@ export class OzonProductCatalogService {
         ...(description
           ? [
               {
-                id: DESCRIPTION_ATTRIBUTE_ID,
+                id: descriptionAttrId,
                 complex_id: 0,
                 values: [{ value: description }],
               },
