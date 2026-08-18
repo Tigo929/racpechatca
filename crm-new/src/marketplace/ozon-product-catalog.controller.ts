@@ -90,6 +90,20 @@ export class OzonProductCatalogController {
     return this.catalog.importStatus(creds, Number(taskId));
   }
 
+  /**
+   * Контент-рейтинг: чего карточкам не хватает по мнению Ozon.
+   * Отдельным запросом — он тяжёлый (партии по сотне SKU), и держать его
+   * в списке товаров значило бы замедлять открытие раздела ради подсказки.
+   */
+  @Get(':accountId/catalog/content-rating')
+  async contentRating(@Param('accountId', ParseUUIDPipe) accountId: string) {
+    const creds = await this.accounts.credentials(accountId);
+    const products = await this.catalog.listProducts(creds);
+    const skus = products.map((p) => p.sku).filter((s): s is string => !!s);
+    const map = await this.catalog.contentRating(creds, skus);
+    return Object.fromEntries(map);
+  }
+
   /** Юнит-экономика по всем товарам: тарифы Ozon + себестоимость продавца. */
   @Get(':accountId/economics')
   economics(@Param('accountId', ParseUUIDPipe) accountId: string) {

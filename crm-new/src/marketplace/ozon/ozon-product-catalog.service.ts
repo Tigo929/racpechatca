@@ -48,6 +48,17 @@ interface RawAttributesResponse {
   }[];
 }
 
+interface RawRatingResponse {
+  products?: {
+    sku?: number;
+    rating?: number;
+    groups?: {
+      name?: string;
+      conditions?: { description?: string; fulfilled?: boolean; cost?: number }[];
+    }[];
+  }[];
+}
+
 interface RawImportInfoResponse {
   result?: {
     items?: {
@@ -188,6 +199,9 @@ interface RawPricesResponse {
  */
 const DESCRIPTION_ATTRIBUTE_ID = 4191;
 
+/** Сколько SKU просим у рейтинга за один запрос. */
+const RATING_BATCH = 100;
+
 /**
  * Подробности карточки, которых нет в списке товаров.
  *
@@ -208,6 +222,14 @@ export interface OzonProductCard {
   weightUnit: string | null;
   /** Заполненные атрибуты карточки: цвет, состав, бренд и прочее. */
   attributes: { name: string; values: string[] }[];
+}
+
+/** Контент-рейтинг одной карточки и то, чего ей не хватает. */
+export interface OzonContentRating {
+  /** Оценка Ozon, обычно из 100. */
+  rating: number;
+  /** Незакрытые условия, самые «дорогие» первыми. */
+  missing: { group: string; what: string; points: number }[];
 }
 
 export interface OzonCatalogProduct {
@@ -544,6 +566,54 @@ export class OzonProductCatalogService {
         .map((e) => e.message || e.code || '')
         .filter(Boolean),
     };
+  }
+
+  /**
+   * Контент-рейтинг карточек: чего им не хватает по мнению самого Ozon.
+   *
+   * Это не наша выдумка про «хорошее описание» — площадка считает рейтинг
+   * сама и по нему же ранжирует выдачу. Она возвращает и незакрытые
+   * условия, и вес каждого: видно не просто «заполните атрибуты», а какие
+   * именно и сколько баллов это добавит.
+   *
+   * Запрашиваем партиями: Ozon принимает ограниченное число SKU за раз, а
+   * товаров в кабинете сотни.
+   */
+  async contentRating(
+    creds: OzonCredentials,
+    skus: string[],
+  ): Promise<Map<string, OzonContentRating>> {
+    const map = new Map<string, OzonContentRating>();
+    const numeric = skus.map(Number).filter((n) => Number.isFinite(n) && n > 0);
+
+    for (let i = 0; i < numeric.length; i += RATING_BATCH) {
+      const batch = numeric.slice(i, i + RATING_BATCH);
+      const res = await this.api
+        .post<RawRatingResponse>(creds, '/v1/product/rating-by-sku', {
+          skus: batch,
+        })
+        // Рейтинг — подсказка, а не основа списка: если он не пришёл,
+        // товары должны показаться без него, а не пропасть.
+        .catch(() => null);
+
+      for (const p of res?.products ?? []) {
+        if (!p.sku) continue;
+        const missing = (p.groups ?? []).flatMap((g) =>
+          (g.conditions ?? [])
+            .filter((c) => !c.fulfilled && c.description)
+            .map((c) => ({
+              group: g.name ?? '',
+              what: c.description!,
+              points: c.cost ?? 0,
+            })),
+        );
+        map.set(String(p.sku), {
+          rating: p.rating ?? 0,
+          missing: missing.sort((a, b) => b.points - a.points),
+        });
+      }
+    }
+    return map;
   }
 
   /** Акции площадки: в каких участвуем и сколько товаров подходит. */

@@ -123,7 +123,22 @@ export interface OzonProductCard {
   attributes: { name: string; values: string[] }[];
 }
 
+/** Контент-рейтинг карточки и незакрытые условия Ozon. */
+export interface OzonContentRating {
+  rating: number;
+  missing: { group: string; what: string; points: number }[];
+}
+
 export const ozonProductCatalogApi = {
+  contentRating: async (
+    accountId: string,
+  ): Promise<Record<string, OzonContentRating>> => {
+    const { data } = await api.get<Record<string, OzonContentRating>>(
+      `/marketplace/ozon/${accountId}/catalog/content-rating`,
+    );
+    return data;
+  },
+
   /** Правка названия и описания. Ответ — номер задачи импорта Ozon. */
   updateCardText: async (
     accountId: string,

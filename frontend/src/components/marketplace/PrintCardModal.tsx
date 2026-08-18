@@ -121,6 +121,17 @@ export function PrintCardModal({
 
   const dirty = Object.values(stockDraft).some((v) => v.trim() !== '');
 
+  // Рейтинг берём худший в группе: тянет вниз тот цвет, что заполнен хуже.
+  const { data: ratings = {} } = useQuery({
+    queryKey: ['ozon-content-rating', accountId],
+    queryFn: () => ozonProductCatalogApi.contentRating(accountId),
+    staleTime: 600_000,
+  });
+  const rating = items
+    .map((p) => (p.sku ? ratings[p.sku] : undefined))
+    .filter((r): r is NonNullable<typeof r> => Boolean(r))
+    .sort((a, b) => a.rating - b.rating)[0];
+
   /*
    * Добавление цвета в эту же родовую группу.
    *
@@ -279,6 +290,30 @@ export function PrintCardModal({
               </p>
             )}
           </div>
+
+          {/* Что именно мешает карточке в выдаче — словами самого Ozon.
+              Пункты отсортированы по весу: сверху то, что добавит больше
+              всего баллов, а не то, что проще сделать. */}
+          {rating && rating.missing.length > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+              <p className="text-sm font-semibold text-amber-900">
+                Можно улучшить · рейтинг {Math.round(rating.rating)}
+              </p>
+              <ul className="mt-1.5 space-y-1 text-xs text-amber-900">
+                {rating.missing.slice(0, 6).map((m) => (
+                  <li key={m.what} className="flex gap-2">
+                    <span className="tabular-nums font-semibold">+{m.points}</span>
+                    <span>{m.what}</span>
+                  </li>
+                ))}
+              </ul>
+              {rating.missing.length > 6 && (
+                <p className="mt-1 text-[11px] text-amber-700">
+                  и ещё {rating.missing.length - 6} пунктов
+                </p>
+              )}
+            </div>
+          )}
 
           <CardAnalytics accountId={accountId} items={items} />
 

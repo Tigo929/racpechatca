@@ -19,12 +19,13 @@ import { EconomicsSettings } from './EconomicsSettings';
 
 const money = (v: number) => `${Math.round(v).toLocaleString('ru-RU')} ₽`;
 
-type StatusFilter = 'all' | 'selling' | 'no_stock' | 'archived';
+type StatusFilter = 'all' | 'selling' | 'no_stock' | 'improve' | 'archived';
 
 const FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'Все' },
   { key: 'selling', label: 'Продаются' },
   { key: 'no_stock', label: 'Без остатка' },
+  { key: 'improve', label: 'Можно улучшить' },
   { key: 'archived', label: 'В архиве' },
 ];
 
@@ -32,6 +33,8 @@ function matchesFilter(p: OzonCatalogProduct, f: StatusFilter): boolean {
   if (f === 'all') return true;
   if (f === 'archived') return p.archived;
   if (f === 'no_stock') return !p.archived && p.stockPresent === 0;
+  // Рейтинг проверяется на уровне группы — здесь пропускаем всё живое.
+  if (f === 'improve') return !p.archived;
   return !p.archived && p.stockPresent > 0;
 }
 
@@ -62,11 +65,30 @@ export function CatalogTab({ accountId }: { accountId: string }) {
     staleTime: 60_000,
   });
 
+  /*
+   * Контент-рейтинг Ozon — то, что в кабинете WB называется «можно
+   * улучшить». Запрос тяжёлый (партии по сотне SKU), поэтому идёт отдельно
+   * от списка: товары показываются сразу, рейтинг подтягивается следом.
+   */
+  const { data: ratings = {} } = useQuery({
+    queryKey: ['ozon-content-rating', accountId],
+    queryFn: () => ozonProductCatalogApi.contentRating(accountId),
+    staleTime: 600_000,
+  });
+
   const { data: actions = [] } = useQuery({
     queryKey: ['ozon-actions', accountId],
     queryFn: () => ozonProductCatalogApi.actions(accountId),
     staleTime: 300_000,
   });
+
+  /** Худший рейтинг в группе: тянет вниз тот цвет, что заполнен хуже всех. */
+  const ratingOf = (items: OzonCatalogProduct[]): number | null => {
+    const values = items
+      .map((p) => (p.sku ? ratings[p.sku]?.rating : undefined))
+      .filter((r): r is number => typeof r === 'number');
+    return values.length ? Math.min(...values) : null;
+  };
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -80,8 +102,16 @@ export function CatalogTab({ accountId }: { accountId: string }) {
       const code = baseCodeOf(p.offerId);
       map.set(code, [...(map.get(code) ?? []), p]);
     }
-    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [products, query, filter]);
+    const entries = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    // «Можно улучшить» отбирается по группам, а не по отдельным товарам:
+    // рейтинг живёт на карточке целиком, и показывать половину группы
+    // бессмысленно — улучшать всё равно придётся всю.
+    if (filter !== 'improve') return entries;
+    return entries.filter(([, list]) => {
+      const r = ratingOf(list);
+      return r !== null && r < 100;
+    });
+  }, [products, query, filter, ratings]);
 
   const toggleGroup = (items: OzonCatalogProduct[]) => {
     const allSelected = items.every((i) => selected.has(i.offerId));
@@ -199,6 +229,7 @@ export function CatalogTab({ accountId }: { accountId: string }) {
                 <th className="px-3 py-2 font-medium">Цвета</th>
                 <th className="px-3 py-2 font-medium">Баркоды</th>
                 <th className="px-3 py-2 text-right font-medium">Цена</th>
+                <th className="px-3 py-2 font-medium">Рейтинг</th>
                 <th className="px-3 py-2 text-right font-medium">Продажи 30 дн.</th>
               </tr>
             </thead>
@@ -257,6 +288,17 @@ export function CatalogTab({ accountId }: { accountId: string }) {
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums text-gray-900">
                       {minPrice === maxPrice ? money(minPrice) : `${money(minPrice)}–${money(maxPrice)}`}
+                    </td>
+                    <td className="px-3 py-2 text-xs tabular-nums">
+                      {(() => {
+                        const r = ratingOf(items);
+                        if (r === null) return <span className="text-gray-300">—</span>;
+                        // Порог 90 — не выдумка: ниже него Ozon сам помечает
+                        // карточку как требующую доработки.
+                        const color =
+                          r >= 90 ? 'text-emerald-700' : r >= 70 ? 'text-amber-600' : 'text-red-600';
+                        return <span className={`font-semibold ${color}`}>{Math.round(r)}</span>;
+                      })()}
                     </td>
                     <td className="px-3 py-2 text-right text-xs tabular-nums">
                       {ordered > 0 ? (
