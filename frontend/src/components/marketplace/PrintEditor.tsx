@@ -18,6 +18,12 @@ import type { EnumTshirtSize } from '../../types/index';
 
 /** attribute_id «Цвет товара» в категории Ozon «Футболка» — см. docs/ozon-integration.md. */
 const COLOR_ATTRIBUTE_ID = 10096;
+/**
+ * «Рисунок» (тематика). Ozon принимает его только значениями из словаря:
+ * набранный руками текст площадка отклоняет целиком — «указывайте значения
+ * из списка». Из-за этого пять вариантов уже уходили в ошибку публикации.
+ */
+const PATTERN_ATTRIBUTE_ID = 9437;
 
 const field = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500';
 const fieldSm = 'w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500';
@@ -163,8 +169,39 @@ export function PrintEditor({
               <textarea rows={3} className={`mt-1 ${field}`} value={draft.description} onChange={(e) => set('description', e.target.value)} />
             </label>
             <label className="block sm:col-span-2">
-              <span className="text-xs font-medium text-gray-600">Тематика рисунка (через запятую: «Животные, Надписи»)</span>
-              <input className={`mt-1 ${field}`} value={draft.patternTags} onChange={(e) => set('patternTags', e.target.value)} />
+              <span className="text-xs font-medium text-gray-600">Тематика рисунка</span>
+              <AttributeAutocomplete
+                accountId={accountId}
+                attributeId={PATTERN_ATTRIBUTE_ID}
+                placeholder="Начните вводить — «автомобили», «надписи»…"
+                label=""
+                inputClassName={`mt-1 ${field}`}
+                onSelect={(o) => {
+                  // Копим выбранные через запятую: у товара бывает несколько
+                  // тем, а список Ozon отдаёт по одному значению за выбор.
+                  const current = draft.patternTags
+                    .split(',')
+                    .map((x) => x.trim())
+                    .filter(Boolean);
+                  if (!current.includes(o.value)) current.push(o.value);
+                  set('patternTags', current.join(', '));
+                }}
+              />
+              {draft.patternTags && (
+                <span className="mt-1 block text-[11px] text-gray-500">
+                  Выбрано: {draft.patternTags}{' '}
+                  <button
+                    type="button"
+                    onClick={() => set('patternTags', '')}
+                    className="text-amber-700 hover:text-amber-900"
+                  >
+                    очистить
+                  </button>
+                </span>
+              )}
+              <span className="mt-1 block text-[11px] text-gray-400">
+                Только значения из списка Ozon — набранные руками площадка отклоняет.
+              </span>
             </label>
             <label className="block sm:col-span-2">
               <span className="text-xs font-medium text-gray-600">#Хештеги</span>
