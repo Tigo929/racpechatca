@@ -117,7 +117,31 @@ export function draftErrors(d: PrintDraft): string[] {
   if (d.name.trim().length < 3) errors.push('Название короче 3 символов');
   if (!d.mainPhotoUrl.trim()) errors.push('Не указана ссылка на главное фото');
   if (!Number(d.price)) errors.push('Не указана цена');
-  const validGroups = d.colorGroups.filter((g) => g.colorLabel && g.colorDictionaryValueId && g.sizes.length);
-  if (!validGroups.length) errors.push('Нужен хотя бы один цвет с выбранным значением из подсказки и размерами');
+  /*
+   * Каждый недозаполненный цвет называем отдельно.
+   *
+   * Раньше проверка срабатывала, только если не осталось ни одного годного
+   * цвета. Значит при «чёрный + белый», где у белого не выбрано значение из
+   * подсказки, карточка создавалась молча — с одним чёрным. На экране
+   * оставались оба, в Ozon уходил один, и разойтись это могло надолго.
+   */
+  const groups = d.colorGroups.filter(
+    (g) => g.colorLabel.trim() || g.colorDictionaryValueId || g.sizes.length,
+  );
+  if (!groups.length) {
+    errors.push('Нужен хотя бы один цвет с размерами');
+    return errors;
+  }
+  groups.forEach((g, i) => {
+    const name = g.colorLabel.trim() || `цвет #${i + 1}`;
+    if (!g.colorLabel.trim()) {
+      errors.push(`Цвет #${i + 1}: не указан`);
+    } else if (!g.colorDictionaryValueId) {
+      errors.push(
+        `Цвет «${name}»: выберите значение из подсказки — свободный текст Ozon не примет`,
+      );
+    }
+    if (!g.sizes.length) errors.push(`Цвет «${name}»: не отмечен ни один размер`);
+  });
   return errors;
 }
