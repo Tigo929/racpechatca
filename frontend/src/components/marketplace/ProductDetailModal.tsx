@@ -38,11 +38,16 @@ function Stat({ label, value, hint, tone }: {
 }
 
 export function ProductDetailModal({
-  product, accountId, onClose,
+  product, accountId, onClose, siblings = [], onSelect, onBack,
 }: {
   product: OzonCatalogProduct;
   accountId: string;
   onClose: () => void;
+  /** Размеры той же карточки — чтобы ходить между ними, не закрывая окно. */
+  siblings?: OzonCatalogProduct[];
+  onSelect?: (product: OzonCatalogProduct) => void;
+  /** Возврат к карточке группы. Пусто — окно просто закрывается. */
+  onBack?: () => void;
 }) {
   const qc = useQueryClient();
   const [price, setPrice] = useState(String(product.price));
@@ -159,6 +164,43 @@ export function ProductDetailModal({
   return (
     <Modal open onClose={onClose} title={product.name || product.offerId} size="lg">
       <div className="space-y-5">
+        {/* Переходы между размерами прямо здесь: раньше приходилось закрывать
+            окно, снова открывать группу и искать нужный размер — три действия
+            там, где нужно одно. */}
+        {(onBack || siblings.length > 1) && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-3">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-100"
+              >
+                ← К карточке
+              </button>
+            )}
+            {siblings.length > 1 && onSelect && (
+              <div className="flex flex-wrap gap-1">
+                {siblings.map((p) => {
+                  const active = p.offerId === product.offerId;
+                  return (
+                    <button
+                      key={p.offerId}
+                      onClick={() => onSelect(p)}
+                      title={p.offerId}
+                      className={`min-h-[28px] rounded-lg px-2.5 text-xs font-semibold transition-colors ${
+                        active
+                          ? 'bg-amber-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-amber-50 hover:text-amber-700'
+                      }`}
+                    >
+                      {sizeOf(p.offerId) ?? p.offerId}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex items-start gap-4">
           {product.primaryImage && (
             <img

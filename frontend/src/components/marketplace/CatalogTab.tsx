@@ -318,16 +318,15 @@ export function CatalogTab({ accountId }: { accountId: string }) {
         </div>
       )}
 
-      {openedCard && (
+      {/* Карточку группы прячем, пока открыт размер: закрытие размера
+          возвращает к ней, и «назад» получается само собой. */}
+      {openedCard && !opened && (
         <PrintCardModal
           accountId={accountId}
           code={openedCard}
           items={groups.find(([c]) => c === openedCard)?.[1] ?? []}
           onClose={() => setOpenedCard(null)}
-          onOpenSize={(p) => {
-            setOpenedCard(null);
-            setOpened(p);
-          }}
+          onOpenSize={(p) => setOpened(p)}
         />
       )}
 
@@ -335,7 +334,13 @@ export function CatalogTab({ accountId }: { accountId: string }) {
         <ProductDetailModal
           product={opened}
           accountId={accountId}
-          onClose={() => setOpened(null)}
+          siblings={groups.find(([c]) => c === openedCard)?.[1] ?? []}
+          onSelect={setOpened}
+          onBack={openedCard ? () => setOpened(null) : undefined}
+          onClose={() => {
+            setOpened(null);
+            setOpenedCard(null);
+          }}
         />
       )}
     </div>
