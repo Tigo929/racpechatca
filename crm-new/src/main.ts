@@ -3,6 +3,25 @@ import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 
+/*
+ * BigInt в JSON.
+ *
+ * Идентификаторы товаров Ozon не помещаются в обычное число, поэтому в базе
+ * они BigInt. JSON.stringify такой тип не умеет и падает с «Do not know how
+ * to serialize a BigInt» — то есть любой ответ, где есть опубликованный
+ * вариант, превращался в 500. Ломалась вся вкладка создания: список принтов,
+ * публикация, добавление цвета.
+ *
+ * Отдаём строкой, а не числом: идентификатор Ozon длиннее, чем безопасно
+ * помещается в число JavaScript, и превращение в Number молча испортило бы
+ * последние цифры.
+ */
+(BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function (
+  this: bigint,
+) {
+  return this.toString();
+};
+
 /**
  * Разрешённые источники для CORS. Задаются списком через запятую в
  * ALLOWED_ORIGINS; FRONTEND_URL поддержан для совместимости со старым
