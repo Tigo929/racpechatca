@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { AlertTriangle, Loader2, Package, X } from 'lucide-react';
+import { AlertTriangle, Loader2, Package } from 'lucide-react';
 import {
   ozonProductCatalogApi, sizeOf, type OzonCatalogProduct,
 } from '../../api/ozonProductCatalog';
 import { getErrorMessage } from '../../utils/get-error-message';
+import { Modal } from '../ui/Modal';
 import { UnitEconomicsPanel } from './UnitEconomicsPanel';
 
 /**
@@ -103,19 +104,18 @@ export function PrintCardModal({
   const dirty = Object.values(stockDraft).some((v) => v.trim() !== '');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
-      <div className="w-full sm:max-w-3xl max-h-[92dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-gray-50 shadow-xl">
-        <div className="sticky top-0 z-10 flex items-start gap-3 border-b border-gray-200 bg-white p-4">
+    // Общее окно проекта, а не своя разметка: оно закрывается кликом мимо и
+    // по Escape, держит фокус внутри и возвращает его на место при закрытии.
+    // Самодельная копия всё это теряла — закрыть можно было только крестиком.
+    <Modal open onClose={onClose} title={code} size="xl">
+      <div className="overflow-y-auto bg-gray-50">
+        <div className="flex items-start gap-3 border-b border-gray-200 bg-white p-4">
           {first.primaryImage && (
             <img src={first.primaryImage} alt="" className="h-14 w-14 flex-shrink-0 rounded-lg bg-gray-100 object-cover" />
           )}
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-sm font-semibold text-gray-900">{code}</p>
-            <p className="truncate text-xs text-gray-500">{first.name}</p>
+            <p className="truncate text-sm text-gray-600">{first.name}</p>
           </div>
-          <button onClick={onClose} aria-label="Закрыть" className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100">
-            <X size={18} aria-hidden="true" />
-          </button>
         </div>
 
         <div className="space-y-4 p-4">
@@ -248,6 +248,6 @@ export function PrintCardModal({
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
