@@ -10,7 +10,6 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import {
   buildOfferId,
   colorCodeFor,
-  generateUnionKey,
   normalizeSlug,
   slugify,
 } from './ozon/ozon-attributes';
@@ -119,7 +118,14 @@ export class OzonPrintService {
           oldPrice: input.oldPrice ?? null,
           gender: input.gender ?? EnumTshirtGender.UNISEX,
           patternTags: input.patternTags ?? [],
-          unionKey: generateUnionKey(),
+          /*
+           * Ключ объединения — сам код принта, а не случайная строка.
+           * В кабинете Ozon это поле так и заполняют: «Объединить на одной
+           * карточке» = JDM-1-1. Тогда чёрная и белая футболки с одним
+           * принтом сходятся в одну карточку по определению, без всякой
+           * синхронизации, а значение остаётся читаемым человеком.
+           */
+          unionKey: slug,
           variants: {
             create: this.flattenVariants(slug, input.colorGroups),
           },

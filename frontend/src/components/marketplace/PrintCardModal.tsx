@@ -377,28 +377,40 @@ export function PrintCardModal({
           <div>
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-semibold text-gray-900">Экономика размера</h3>
-              <div className="flex flex-wrap gap-1">
-                {sorted.map((p) => {
-                  const active = p.offerId === economicsFor.offerId;
-                  return (
-                    <button
-                      key={p.offerId}
-                      onClick={() => setEconomicsOfferId(p.offerId)}
-                      className={`min-h-[28px] rounded-lg px-2.5 text-xs font-semibold transition-colors ${
-                        active
-                          ? 'bg-amber-600 text-white'
-                          : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:text-amber-700'
-                      }`}
-                    >
-                      {sizeOf(p.offerId) ?? '—'}
-                    </button>
-                  );
-                })}
+              {/* Кнопки разложены по цветам: в родовой группе размеры
+                  повторяются у каждого цвета, и плоский ряд «S S M M L L»
+                  не даёт понять, чей размер выбираешь. */}
+              <div className="space-y-1">
+                {byColor.map(([color, list]) => (
+                  <div key={color} className="flex flex-wrap items-center gap-1">
+                    {byColor.length > 1 && (
+                      <span className="w-14 flex-shrink-0 text-[11px] text-gray-500">
+                        {color}
+                      </span>
+                    )}
+                    {list.map((p) => {
+                      const active = p.offerId === economicsFor.offerId;
+                      return (
+                        <button
+                          key={p.offerId}
+                          onClick={() => setEconomicsOfferId(p.offerId)}
+                          className={`min-h-[28px] rounded-lg px-2.5 text-xs font-semibold transition-colors ${
+                            active
+                              ? 'bg-amber-600 text-white'
+                              : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:text-amber-700'
+                          }`}
+                        >
+                          {sizeOf(p.offerId) ?? '—'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             </div>
             {samePriceEverywhere ? (
               <p className="mb-2 text-[11px] text-gray-500">
-                Цена одинаковая у всех размеров — расчёт от размера не зависит.
+                Цена одинаковая у всех размеров и цветов — расчёт от выбора не зависит.
               </p>
             ) : (
               <p className="mb-2 text-[11px] text-gray-500">

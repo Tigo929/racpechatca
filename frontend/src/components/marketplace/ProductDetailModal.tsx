@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { Archive, ArchiveRestore, TrendingUp } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import {
-  ozonProductCatalogApi, sizeOf, type OzonCatalogProduct,
+  colorCodeOf, ozonProductCatalogApi, sizeOf, type OzonCatalogProduct,
 } from '../../api/ozonProductCatalog';
 import { getErrorMessage } from '../../utils/get-error-message';
 import { UnitEconomicsPanel } from './UnitEconomicsPanel';
@@ -37,6 +37,25 @@ function Stat({ label, value, hint, tone }: {
   );
 }
 
+/** Порядок как на бирке, а не по алфавиту: S раньше XL. */
+const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL'];
+
+function sizeRank(offerId: string): number {
+  const i = SIZE_ORDER.indexOf((sizeOf(offerId) ?? '').toUpperCase());
+  return i === -1 ? SIZE_ORDER.length : i;
+}
+
+function groupSizesByColor(
+  items: OzonCatalogProduct[],
+): [string, OzonCatalogProduct[]][] {
+  const map = new Map<string, OzonCatalogProduct[]>();
+  for (const p of [...items].sort((a, b) => sizeRank(a.offerId) - sizeRank(b.offerId))) {
+    const color = colorCodeOf(p.offerId) ?? 'без цвета';
+    map.set(color, [...(map.get(color) ?? []), p]);
+  }
+  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+}
+
 export function ProductDetailModal({
   product, accountId, onClose, siblings = [], onSelect, onBack,
 }: {
@@ -50,6 +69,9 @@ export function ProductDetailModal({
   onBack?: () => void;
 }) {
   const qc = useQueryClient();
+  const siblingColors = new Set(
+    siblings.map((p) => colorCodeOf(p.offerId) ?? 'без цвета'),
+  ).size;
   const [price, setPrice] = useState(String(product.price));
   const [oldPrice, setOldPrice] = useState(String(product.oldPrice || ''));
   const [stock, setStock] = useState(String(product.stockPresent));
@@ -178,24 +200,36 @@ export function ProductDetailModal({
               </button>
             )}
             {siblings.length > 1 && onSelect && (
-              <div className="flex flex-wrap gap-1">
-                {siblings.map((p) => {
-                  const active = p.offerId === product.offerId;
-                  return (
-                    <button
-                      key={p.offerId}
-                      onClick={() => onSelect(p)}
-                      title={p.offerId}
-                      className={`min-h-[28px] rounded-lg px-2.5 text-xs font-semibold transition-colors ${
-                        active
-                          ? 'bg-amber-600 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-amber-50 hover:text-amber-700'
-                      }`}
-                    >
-                      {sizeOf(p.offerId) ?? p.offerId}
-                    </button>
-                  );
-                })}
+              /* Размеры разложены по цветам и по порядку бирки. Плоский ряд
+                 «M M L XL XXL XXL» ничего не говорил: в родовой группе
+                 размеры повторяются у каждого цвета. */
+              <div className="space-y-1">
+                {groupSizesByColor(siblings).map(([color, list]) => (
+                  <div key={color} className="flex flex-wrap items-center gap-1">
+                    {siblingColors > 1 && (
+                      <span className="w-14 flex-shrink-0 text-[11px] text-gray-500">
+                        {color}
+                      </span>
+                    )}
+                    {list.map((p) => {
+                      const active = p.offerId === product.offerId;
+                      return (
+                        <button
+                          key={p.offerId}
+                          onClick={() => onSelect(p)}
+                          title={p.offerId}
+                          className={`min-h-[28px] rounded-lg px-2.5 text-xs font-semibold transition-colors ${
+                            active
+                              ? 'bg-amber-600 text-white'
+                              : 'bg-gray-100 text-gray-600 hover:bg-amber-50 hover:text-amber-700'
+                          }`}
+                        >
+                          {sizeOf(p.offerId) ?? p.offerId}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             )}
           </div>
