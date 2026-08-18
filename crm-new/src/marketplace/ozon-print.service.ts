@@ -30,6 +30,8 @@ export interface ColorGroupInput {
 
 export interface CreatePrintInput {
   slug?: string;
+  /** Значение «Объединить на одной карточке»; пусто — берём код принта. */
+  unionKey?: string;
   name: string;
   description?: string;
   hashtags?: string;
@@ -125,7 +127,7 @@ export class OzonPrintService {
            * принтом сходятся в одну карточку по определению, без всякой
            * синхронизации, а значение остаётся читаемым человеком.
            */
-          unionKey: slug,
+          unionKey: input.unionKey?.trim() || slug,
           variants: {
             create: this.flattenVariants(slug, input.colorGroups),
           },

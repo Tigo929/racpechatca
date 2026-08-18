@@ -12,6 +12,7 @@ import {
   Min,
   MinLength,
   ValidateNested,
+  MaxLength,
 } from 'class-validator';
 import { EnumTshirtGender } from 'src/generated/prisma/enums';
 import { DtoOzonColorGroup } from './ozon-color-group.dto';
@@ -81,6 +82,16 @@ export class DtoCreateOzonPrint {
   @IsArray()
   @ArrayNotEmpty({ message: 'Нужен хотя бы один цвет с размерами.' })
   @ArrayMinSize(1)
+  /**
+   * Значение поля Ozon «Объединить на одной карточке». Пусто — берём код
+   * принта: обычно объединять надо ровно его цвета. Отдельное поле нужно,
+   * когда карточка в кабинете уже собрана под другим значением.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  unionKey?: string;
+
   @Type(() => DtoOzonColorGroup)
   @ValidateNested({ each: true })
   colorGroups!: DtoOzonColorGroup[];

@@ -139,6 +139,22 @@ export function PrintEditor({
             Категория-подгруппа-пункт, как в папках макетов. Регистр сохраняется.
           </span>
         </label>
+        <label className="block sm:col-span-2">
+          <span className="text-xs font-medium text-gray-600">Объединить на одной карточке</span>
+          <input
+            className={`mt-1 ${field}`}
+            value={draft.unionKey}
+            onChange={(e) => set('unionKey', e.target.value)}
+            placeholder={draft.slug || 'JDM-1-1'}
+          />
+          <span className="mt-1 block text-[11px] text-gray-400">
+            То же поле, что в кабинете Ozon: товары с одинаковым значением
+            площадка показывает одной карточкой, где покупатель переключает
+            цвета. Пусто — подставим код принта, обычно этого и достаточно.
+            Своё значение нужно, если карточка в кабинете уже собрана под
+            другим.
+          </span>
+        </label>
         <label className="block">
           <span className="text-xs font-medium text-gray-600">Пол</span>
           <select className={`mt-1 ${field}`} value={draft.gender} onChange={(e) => set('gender', e.target.value as EnumTshirtGender)}>

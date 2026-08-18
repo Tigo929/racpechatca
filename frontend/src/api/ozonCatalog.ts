@@ -107,6 +107,8 @@ export interface CreateOzonPrintDto {
   oldPrice?: number;
   gender?: EnumTshirtGender;
   patternTags?: string[];
+  /** «Объединить на одной карточке»; пусто — сервер возьмёт код принта. */
+  unionKey?: string;
   colorGroups: OzonColorGroupInput[];
 }
 

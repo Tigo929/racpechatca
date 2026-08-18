@@ -73,6 +73,8 @@ export interface PrintDraft {
   oldPrice: string;
   gender: EnumTshirtGender;
   patternTags: string; // через запятую
+  /** «Объединить на одной карточке» в Ozon. Пусто — берётся код принта. */
+  unionKey: string;
   colorGroups: ColorGroupDraft[];
 }
 
@@ -80,7 +82,7 @@ export function emptyPrintDraft(): PrintDraft {
   return {
     name: '', slug: '', description: '', hashtags: '',
     mainPhotoUrl: '', extraPhotoUrls: '',
-    price: '', oldPrice: '', gender: 'UNISEX', patternTags: '',
+    price: '', oldPrice: '', gender: 'UNISEX', patternTags: '', unionKey: '',
     colorGroups: [{ colorLabel: '', colorDictionaryValueId: 0, colorCode: '', sizes: [...DEFAULT_SIZES] }],
   };
 }
@@ -98,6 +100,7 @@ export function draftToPayload(d: PrintDraft): CreateOzonPrintDto {
     oldPrice: d.oldPrice.trim() ? Number(d.oldPrice) : undefined,
     gender: d.gender,
     patternTags: d.patternTags.split(',').map((s) => s.trim()).filter(Boolean),
+    ...(d.unionKey.trim() ? { unionKey: d.unionKey.trim() } : {}),
     colorGroups: d.colorGroups
       .filter((g) => g.colorLabel && g.colorDictionaryValueId && g.sizes.length)
       .map((g): OzonColorGroupInput => ({
