@@ -1,11 +1,9 @@
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
-import { Boxes, Percent, RefreshCw, Search, Tag } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Boxes, RefreshCw, Search } from 'lucide-react';
 import {
   ozonProductCatalogApi, printCodeOf, type OzonCatalogProduct,
 } from '../../api/ozonProductCatalog';
-import { getErrorMessage } from '../../utils/get-error-message';
 import { FilterChip } from '../ui/FilterChip';
 import { ProductDetailModal } from './ProductDetailModal';
 import { PrintCardModal } from './PrintCardModal';
@@ -35,81 +33,6 @@ function matchesFilter(p: OzonCatalogProduct, f: StatusFilter): boolean {
   if (f === 'archived') return p.archived;
   if (f === 'no_stock') return !p.archived && p.stockPresent === 0;
   return !p.archived && p.stockPresent > 0;
-}
-
-/** Массовая смена цены у выбранных товаров: в рублях или процентом. */
-function BulkPriceBar({
-  accountId, selected, products, onDone,
-}: {
-  accountId: string;
-  selected: Set<string>;
-  products: OzonCatalogProduct[];
-  onDone: () => void;
-}) {
-  const qc = useQueryClient();
-  const [mode, setMode] = useState<'set' | 'percent'>('set');
-  const [value, setValue] = useState('');
-
-  const apply = useMutation({
-    mutationFn: () => {
-      const num = Number(value);
-      const items = products
-        .filter((p) => selected.has(p.offerId))
-        .map((p) => ({
-          offerId: p.offerId,
-          price: mode === 'set' ? num : Math.round(p.price * (1 + num / 100)),
-          oldPrice: p.oldPrice || undefined,
-        }));
-      return ozonProductCatalogApi.updatePrices(accountId, items);
-    },
-    onSuccess: (res) => {
-      qc.invalidateQueries({ queryKey: ['ozon-catalog', accountId] });
-      const failed = res.filter((r) => !r.updated);
-      if (failed.length === 0) toast.success(`Цена обновлена: ${res.length} товар(ов)`);
-      else toast.error(`Не приняты: ${failed.length} — ${failed[0]?.error ?? ''}`, { duration: 6000 });
-      onDone();
-    },
-    onError: (e) => toast.error(getErrorMessage(e, 'Не удалось обновить цены')),
-  });
-
-  return (
-    <div className="sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 shadow-sm">
-      <span className="text-sm font-medium text-amber-900">
-        Выбрано: {selected.size}
-      </span>
-      <div className="flex gap-1">
-        <button
-          onClick={() => setMode('set')}
-          className={`px-2.5 py-1 rounded-md text-xs font-medium ${mode === 'set' ? 'bg-amber-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}
-        >
-          <Tag size={11} className="inline mr-1" aria-hidden="true" />новая цена
-        </button>
-        <button
-          onClick={() => setMode('percent')}
-          className={`px-2.5 py-1 rounded-md text-xs font-medium ${mode === 'percent' ? 'bg-amber-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}
-        >
-          <Percent size={11} className="inline mr-1" aria-hidden="true" />изменить на %
-        </button>
-      </div>
-      <input
-        type="number"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder={mode === 'set' ? '3500' : '-10'}
-        className="w-28 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-      />
-      <button
-        onClick={() => apply.mutate()}
-        disabled={apply.isPending || !value || !selected.size}
-        className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
-      >
-        {apply.isPending ? 'Применяем…' : 'Применить'}
-      </button>
-      <button onClick={onDone} className="text-xs text-gray-500 hover:text-gray-700 ml-auto">
-        снять выделение
-      </button>
-    </div>
-  );
 }
 
 export function CatalogTab({ accountId }: { accountId: string }) {
@@ -295,15 +218,6 @@ export function CatalogTab({ accountId }: { accountId: string }) {
             );
           })}
         </div>
-      )}
-
-      {selected.size > 0 && (
-        <BulkPriceBar
-          accountId={accountId}
-          selected={selected}
-          products={products}
-          onDone={() => setSelected(new Set())}
-        />
       )}
 
       {openedCard && (

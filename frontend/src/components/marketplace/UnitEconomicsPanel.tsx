@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Calculator, Info } from 'lucide-react';
 import {
@@ -48,17 +48,36 @@ export function UnitEconomicsPanel({
   price: number;
 }) {
   const [whatIf, setWhatIf] = useState('');
-  const effectivePrice = Number(whatIf) || price;
+  /*
+   * Поле ввода живёт отдельно от запроса. Раньше цена уходила в queryKey
+   * прямо из поля, и каждое нажатие клавиши било запросом на сервер: пока
+   * набираешь «3500», уходит четыре запроса, и цифры на экране скачут за
+   * каждой из них. Отсюда и ощущение «ввожу — жду».
+   *
+   * Теперь набор мгновенный, а пересчёт идёт через полсекунды после того,
+   * как человек закончил печатать.
+   */
+  const [settledPrice, setSettledPrice] = useState(price);
 
-  const { data, isLoading } = useQuery<ProductEconomics>({
-    queryKey: ['ozon-economics', accountId, offerId, effectivePrice],
-    queryFn: () => ozonProductCatalogApi.economicsPreview(accountId, offerId, effectivePrice),
+  useEffect(() => {
+    const value = Number(whatIf);
+    const next = value > 0 ? value : price;
+    const timer = setTimeout(() => setSettledPrice(next), 500);
+    return () => clearTimeout(timer);
+  }, [whatIf, price]);
+
+  const { data, isFetching } = useQuery<ProductEconomics>({
+    queryKey: ['ozon-economics', accountId, offerId, settledPrice],
+    queryFn: () => ozonProductCatalogApi.economicsPreview(accountId, offerId, settledPrice),
     // Тарифы площадки живут своей жизнью — держим свежими, но не дёргаем
     // Ozon на каждый символ в поле цены.
     staleTime: 60_000,
+    // Пока считается новая цена, показываем прошлый расчёт: иначе панель
+    // схлопывается в «Считаем…» и вёрстка прыгает на каждой правке.
+    placeholderData: (prev) => prev,
   });
 
-  if (isLoading) {
+  if (!data) {
     return <p className="text-sm text-gray-500">Считаем юнит-экономику…</p>;
   }
 
@@ -92,6 +111,9 @@ export function UnitEconomicsPanel({
             placeholder={String(price)}
             className="w-24 rounded-lg border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
           />
+          {/* Спокойная подпись вместо «Считаем…» во всю панель: цифры на
+              экране остаются прежними, пока не придёт новый расчёт. */}
+          {isFetching && <span className="text-[11px] text-gray-400">пересчитываем…</span>}
         </label>
       </div>
 
