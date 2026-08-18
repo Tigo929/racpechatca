@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Boxes, RefreshCw, Search } from 'lucide-react';
 import {
-  baseCodeOf, colorCodeOf, ozonProductCatalogApi, type OzonCatalogProduct,
+  baseCodeOf, colorCodeOf, ozonProductCatalogApi, sizeOf, type OzonCatalogProduct,
 } from '../../api/ozonProductCatalog';
 import { FilterChip } from '../ui/FilterChip';
 import { ProductDetailModal } from './ProductDetailModal';
@@ -186,50 +186,93 @@ export function CatalogTab({ accountId }: { accountId: string }) {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {groups.map(([code, items]) => {
-            const first = items[0]!;
-            const ordered = items.reduce((s, p) => s + p.orderedUnits30d, 0);
-            const stock = items.reduce((s, p) => s + p.stockPresent, 0);
-            return (
-              <div key={code} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                <div className="flex items-center gap-3 p-3">
-                  <input
-                    type="checkbox"
-                    checked={items.every((i) => selected.has(i.offerId))}
-                    onChange={() => toggleGroup(items)}
-                    className="w-4 h-4 accent-amber-600 flex-shrink-0"
-                    aria-label={`Выбрать все размеры ${code}`}
-                  />
-                  {/* Вся строка — кнопка: карточка открывается по клику,
-                      размеры внутри неё, а не в общем списке. */}
-                  <button
+        <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+          {/* Таблица, а не карточки-плитки: по колонкам глаз сравнивает
+              товары между собой, а в плитках приходится читать каждую. */}
+          <table className="w-full min-w-[860px] text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-left text-[11px] uppercase tracking-wide text-gray-500">
+                <th className="w-8 px-3 py-2" />
+                <th className="px-3 py-2 font-medium">Товар</th>
+                <th className="px-3 py-2 font-medium">Остаток</th>
+                <th className="px-3 py-2 font-medium">Размеры</th>
+                <th className="px-3 py-2 font-medium">Цвета</th>
+                <th className="px-3 py-2 font-medium">Баркоды</th>
+                <th className="px-3 py-2 text-right font-medium">Цена</th>
+                <th className="px-3 py-2 text-right font-medium">Продажи 30 дн.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {groups.map(([code, items]) => {
+                const first = items[0]!;
+                const ordered = items.reduce((s, p) => s + p.orderedUnits30d, 0);
+                const revenue = items.reduce((s, p) => s + p.revenue30d, 0);
+                const stock = items.reduce((s, p) => s + p.stockPresent, 0);
+                const sizes = items
+                  .map((p) => sizeOf(p.offerId))
+                  .filter((x): x is string => Boolean(x));
+                const barcodes = items.flatMap((p) => p.barcodes);
+                const prices = items.map((p) => p.price);
+                const minPrice = Math.min(...prices);
+                const maxPrice = Math.max(...prices);
+                return (
+                  <tr
+                    key={code}
                     onClick={() => setOpenedCard(code)}
-                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    className="cursor-pointer border-b border-gray-50 last:border-0 hover:bg-amber-50/40"
                   >
-                  {first.primaryImage && (
-                    <img src={first.primaryImage} alt="" className="w-12 h-12 rounded-lg object-cover bg-gray-100 flex-shrink-0" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="font-mono text-sm font-semibold text-gray-900 truncate">{code}</p>
-                    <p className="text-xs text-gray-500 truncate">{first.name}</p>
-                  </div>
-                  <div className="flex-shrink-0 text-right">
-                    <p className="text-xs text-gray-500">
-                      {colorsOf(items).join(' · ') || `${items.length} размер(ов)`} ·{' '}
-                      <span className={stock === 0 ? 'font-semibold text-red-600' : ''}>
-                        остаток {stock}
-                      </span>
-                    </p>
-                    <p className="text-xs font-medium text-gray-700">
-                      {ordered > 0 ? `заказали ${ordered} шт. за 30 дн.` : 'продаж за 30 дней нет'}
-                    </p>
-                  </div>
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={items.every((i) => selected.has(i.offerId))}
+                        onChange={() => toggleGroup(items)}
+                        className="h-4 w-4 accent-amber-600"
+                        aria-label={`Выбрать все размеры ${code}`}
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2.5">
+                        {first.primaryImage && (
+                          <img src={first.primaryImage} alt="" className="h-10 w-10 flex-shrink-0 rounded-lg bg-gray-100 object-cover" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="truncate text-xs text-gray-800">{first.name}</p>
+                          <p className="truncate font-mono text-[11px] text-gray-400">{code}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className={`px-3 py-2 tabular-nums ${stock === 0 ? 'font-semibold text-red-600' : 'text-gray-700'}`}>
+                      {stock}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-gray-600">
+                      {sizes.length ? sizes.join(', ') : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-gray-600">
+                      {colorsOf(items).join(', ') || '—'}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-[11px] text-gray-500">
+                      {barcodes.length
+                        ? `${barcodes[0]}${barcodes.length > 1 ? ` +${barcodes.length - 1}` : ''}`
+                        : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-gray-900">
+                      {minPrice === maxPrice ? money(minPrice) : `${money(minPrice)}–${money(maxPrice)}`}
+                    </td>
+                    <td className="px-3 py-2 text-right text-xs tabular-nums">
+                      {ordered > 0 ? (
+                        <>
+                          <span className="font-semibold text-gray-900">{ordered} шт.</span>
+                          <span className="block text-gray-400">{money(revenue)}</span>
+                        </>
+                      ) : (
+                        <span className="text-gray-400">нет продаж</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
