@@ -50,6 +50,25 @@ export function PrintCardModal({
   );
 
   const first = sorted[0]!;
+  // Размер, по которому считаем экономику. По умолчанию — самый ходовой:
+  // смотреть разбор выгоднее по тому, что реально продаётся, а не по
+  // первому в списке.
+  const bestSeller = useMemo(
+    () =>
+      [...items].sort(
+        (a, b) => b.orderedUnits30d - a.orderedUnits30d || b.stockPresent - a.stockPresent,
+      )[0]!,
+    [items],
+  );
+  const [economicsOfferId, setEconomicsOfferId] = useState<string | null>(null);
+  const economicsFor =
+    sorted.find((p) => p.offerId === economicsOfferId) ?? bestSeller;
+
+  const prices = items.map((p) => p.price);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const samePriceEverywhere = minPrice === maxPrice;
+
   const totalStock = items.reduce((s, p) => s + p.stockPresent, 0);
   const ordered30d = items.reduce((s, p) => s + p.orderedUnits30d, 0);
   const revenue30d = items.reduce((s, p) => s + p.revenue30d, 0);
@@ -187,13 +206,45 @@ export function PrintCardModal({
             )}
           </div>
 
-          {/* Экономика считается по конкретному размеру: цена у размеров
-              может отличаться, и «средняя по карточке» никого не спасёт. */}
+          {/* Экономика считается по конкретному размеру: цены у размеров
+              расходятся, и «средняя по карточке» скрыла бы как раз то, ради
+              чего смотрят — какой размер продаётся в минус. */}
           <div>
-            <h3 className="mb-2 text-sm font-semibold text-gray-900">
-              Экономика размера {sizeOf(first.offerId) ?? ''}
-            </h3>
-            <UnitEconomicsPanel accountId={accountId} offerId={first.offerId} price={first.price} />
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <h3 className="text-sm font-semibold text-gray-900">Экономика размера</h3>
+              <div className="flex flex-wrap gap-1">
+                {sorted.map((p) => {
+                  const active = p.offerId === economicsFor.offerId;
+                  return (
+                    <button
+                      key={p.offerId}
+                      onClick={() => setEconomicsOfferId(p.offerId)}
+                      className={`min-h-[28px] rounded-lg px-2.5 text-xs font-semibold transition-colors ${
+                        active
+                          ? 'bg-amber-600 text-white'
+                          : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:text-amber-700'
+                      }`}
+                    >
+                      {sizeOf(p.offerId) ?? '—'}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {samePriceEverywhere ? (
+              <p className="mb-2 text-[11px] text-gray-500">
+                Цена одинаковая у всех размеров — расчёт от размера не зависит.
+              </p>
+            ) : (
+              <p className="mb-2 text-[11px] text-gray-500">
+                Цены у размеров разные: от {money(minPrice)} до {money(maxPrice)}.
+              </p>
+            )}
+            <UnitEconomicsPanel
+              accountId={accountId}
+              offerId={economicsFor.offerId}
+              price={economicsFor.price}
+            />
           </div>
         </div>
       </div>
