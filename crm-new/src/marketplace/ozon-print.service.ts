@@ -142,10 +142,46 @@ export class OzonPrintService {
   /** Массовое создание за один запрос — та же валидация на каждый принт. */
   async createBulk(marketplaceAccountId: string, inputs: CreatePrintInput[]) {
     if (!inputs.length) throw new BadRequestException('Список принтов пуст');
+
+    /*
+     * Все коды проверяем до первой записи.
+     *
+     * Раньше принты создавались по одному и падение на втором оставляло
+     * первый в базе: пользователь видел ошибку «такой артикул уже есть»,
+     * обновлял страницу — и находил принт в черновиках. Дальше повтор
+     * упирался в им же созданную запись, и выйти из круга было нельзя.
+     *
+     * Проверка до записи убирает самый частый случай целиком: ошибка
+     * приходит раньше, чем что-либо сохранено.
+     */
+    const slugs = inputs.map((i) =>
+      i.slug?.trim() ? normalizeSlug(i.slug) : slugify(i.name),
+    );
+
+    const seen = new Set<string>();
+    for (const slug of slugs) {
+      if (seen.has(slug)) {
+        throw new BadRequestException(
+          `Код принта «${slug}» повторяется в списке — у каждой карточки он должен быть свой.`,
+        );
+      }
+      seen.add(slug);
+    }
+
+    const existing = await this.prisma.ozonPrint.findMany({
+      where: { marketplaceAccountId, slug: { in: slugs } },
+      select: { slug: true },
+    });
+    if (existing.length) {
+      const names = existing.map((e) => e.slug).join(', ');
+      throw new BadRequestException(
+        `Уже заведены принты: ${names}. Чтобы добавить цвет, откройте карточку и нажмите «Добавить цвет в группу».`,
+      );
+    }
+
     const created: Awaited<ReturnType<typeof this.create>>[] = [];
-    // Последовательно, не в одной транзакции: один плохой принт не должен
-    // откатывать остальные — таблица массового создания показывает, что
-    // прошло, а что нет, построчно.
+    // Дальше — по одному: остальные отказы (например, от Ozon) редки, и
+    // построчный результат важнее отката.
     for (const input of inputs) {
       created.push(await this.create(marketplaceAccountId, input));
     }
