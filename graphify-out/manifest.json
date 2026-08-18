@@ -235,8 +235,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/main.ts": {
-    "mtime": 1786485470.5607512,
-    "ast_hash": "532ba6c22e316f406cd563c55f9aa7e6",
+    "mtime": 1787088863.195991,
+    "ast_hash": "64c37dba92a9a7f4027508708a4a0730",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/dto/all-oreders-for-query.dto.ts": {
@@ -820,8 +820,8 @@
     "semantic_hash": ""
   },
   "frontend/src/utils/get-error-message.ts": {
-    "mtime": 1784234826.7504766,
-    "ast_hash": "52ca304aa4eb0b3f2628c493c056f45b",
+    "mtime": 1787090348.3816564,
+    "ast_hash": "3a9f405f4a50144acc63a367167de530",
     "semantic_hash": ""
   },
   "frontend/src/utils/settlement.ts": {
@@ -1295,13 +1295,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/marketplace.module.ts": {
-    "mtime": 1786997943.194749,
-    "ast_hash": "bbf386756bbd0d94839d69469c64f1f9",
+    "mtime": 1786999452.6099243,
+    "ast_hash": "47abf79c61c43eb0d00129acd4b0a7f6",
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon/ozon-api.client.ts": {
-    "mtime": 1786986095.0487056,
-    "ast_hash": "bf74b4667d34911ed047ef8bc433f3b0",
+    "mtime": 1786998919.5158377,
+    "ast_hash": "f98bd83145ddbb61061cbb9d0246cf97",
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon/ozon.service.ts": {
@@ -1425,8 +1425,8 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/MarketplacePage.tsx": {
-    "mtime": 1786998055.5823185,
-    "ast_hash": "cce14bb0ebf98824897a12486c63aa32",
+    "mtime": 1786999144.0881703,
+    "ast_hash": "c8003c124f2358b87a4cf04a65b1504e",
     "semantic_hash": ""
   },
   "frontend/src/utils/photo-material.ts": {
@@ -1445,13 +1445,13 @@
     "semantic_hash": ""
   },
   "docs/ozon-integration.md": {
-    "mtime": 1786998245.5306296,
-    "ast_hash": "f02c39c2962912172920819848f995fb",
+    "mtime": 1786999664.3762925,
+    "ast_hash": "30012d954a752c07e56dc60664016e7b",
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/dto/create-ozon-print.dto.ts": {
-    "mtime": 1786993010.541258,
-    "ast_hash": "035ea0c1b63fea12d1729470c468bd35",
+    "mtime": 1787094100.677739,
+    "ast_hash": "3e5732aa89963991c5d452f5a19ef345",
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/dto/create-ozon-prints-bulk.dto.ts": {
@@ -1470,8 +1470,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/dto/update-ozon-catalog-template.dto.ts": {
-    "mtime": 1786995714.373469,
-    "ast_hash": "730d2deafa28793902d5fbb2602f3628",
+    "mtime": 1787096247.390035,
+    "ast_hash": "e62e540649aa0991590575ae2a8d59c5",
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/dto/update-ozon-print.dto.ts": {
@@ -1480,8 +1480,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon-catalog-template.service.ts": {
-    "mtime": 1786995702.8377187,
-    "ast_hash": "93c11bc23d880ad4558f62ec9b416be2",
+    "mtime": 1787096247.39056,
+    "ast_hash": "5798e452ff6961b0b734501429494d43",
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon-catalog.controller.ts": {
@@ -1495,13 +1495,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon-import.service.ts": {
-    "mtime": 1786995701.6691606,
-    "ast_hash": "4b3082336ede412f147978192480bd58",
+    "mtime": 1787096247.3916018,
+    "ast_hash": "29cc984f05dcce3de9e6ae75c9d7ba78",
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon-print.service.ts": {
-    "mtime": 1786994698.4422517,
-    "ast_hash": "43e69133e04551b41a1746555ded6184",
+    "mtime": 1787094754.1660697,
+    "ast_hash": "8cb1d0bba567db23ca42383e094c9dea",
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon/ozon-attributes.spec.ts": {
@@ -1510,8 +1510,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon/ozon-attributes.ts": {
-    "mtime": 1786995695.0290842,
-    "ast_hash": "73b1b5cea3387ca8b71efdfd6442b78a",
+    "mtime": 1787091546.7941563,
+    "ast_hash": "edf32f3e7832c35b572e4bd99a49cef7",
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon/ozon-catalog.service.ts": {
@@ -1520,8 +1520,8 @@
     "semantic_hash": ""
   },
   "frontend/src/api/ozonCatalog.ts": {
-    "mtime": 1786995797.3015943,
-    "ast_hash": "d5f9160c6af908afafd8ab2ddb560493",
+    "mtime": 1787096407.1466646,
+    "ast_hash": "c2920b2e40540e38eb9031aec33aa613",
     "semantic_hash": ""
   },
   "frontend/src/components/marketplace/AttributeAutocomplete.tsx": {
@@ -1530,23 +1530,23 @@
     "semantic_hash": ""
   },
   "frontend/src/components/marketplace/PrintEditor.tsx": {
-    "mtime": 1786996022.1034303,
-    "ast_hash": "1f4c18f2a1abd7aa1640e63578c9b1ad",
+    "mtime": 1787093946.1254132,
+    "ast_hash": "1745bccfe7128d240f9f2759f65d98bc",
     "semantic_hash": ""
   },
   "frontend/src/components/marketplace/ProductsTab.tsx": {
-    "mtime": 1786998154.2547486,
-    "ast_hash": "09687bfa3b951431f1bdc09a83903a2c",
+    "mtime": 1787096507.5567994,
+    "ast_hash": "96f2d1a2f90689a23bad272a7c049226",
     "semantic_hash": ""
   },
   "frontend/src/components/marketplace/TemplateSettings.tsx": {
-    "mtime": 1786996040.5298834,
-    "ast_hash": "1b249775a8adce36d83782b3dad55f80",
+    "mtime": 1787096543.9099019,
+    "ast_hash": "154d439f1c5e74968b324e4b306e0a45",
     "semantic_hash": ""
   },
   "frontend/src/components/marketplace/printDraft.ts": {
-    "mtime": 1786994633.5377507,
-    "ast_hash": "b81216aeacbccc58cb80ae567df7796a",
+    "mtime": 1787096398.5919354,
+    "ast_hash": "1214ede1f42576c649f781e03c59c91d",
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon-orders.controller.ts": {
@@ -1605,8 +1605,93 @@
     "semantic_hash": ""
   },
   "frontend/src/components/marketplace/sections.ts": {
-    "mtime": 1786997975.4854863,
-    "ast_hash": "fbb4bb98d0501a95d01f9a61be0fecc3",
+    "mtime": 1786999136.3287792,
+    "ast_hash": "012f95d1f5c2a6d71c48489331729ce9",
+    "semantic_hash": ""
+  },
+  "crm-new/src/marketplace/dto/ozon-catalog-edit.dto.ts": {
+    "mtime": 1786998929.810157,
+    "ast_hash": "9a2b52a5b836247d1831286ed46581d9",
+    "semantic_hash": ""
+  },
+  "crm-new/src/marketplace/dto/update-ozon-card-text.dto.ts": {
+    "mtime": 1787047568.2817712,
+    "ast_hash": "c02f8454458524a456b38409c8520d07",
+    "semantic_hash": ""
+  },
+  "crm-new/src/marketplace/dto/update-ozon-unit-economics.dto.ts": {
+    "mtime": 1786999446.8407507,
+    "ast_hash": "4cd97cadaa5a61324cec9c38231cb7c6",
+    "semantic_hash": ""
+  },
+  "crm-new/src/marketplace/ozon-product-catalog.controller.ts": {
+    "mtime": 1787096247.3921194,
+    "ast_hash": "42b5c997bb6e6fe46aa3767c1f8f35a5",
+    "semantic_hash": ""
+  },
+  "crm-new/src/marketplace/ozon-unit-economics.service.ts": {
+    "mtime": 1786999632.544821,
+    "ast_hash": "ef08e6667b858b7bd18910b6910ef128",
+    "semantic_hash": ""
+  },
+  "crm-new/src/marketplace/ozon/ozon-import-attribute.spec.ts": {
+    "mtime": 1787096611.163222,
+    "ast_hash": "b5932f44dcb56aa2ab72486c5685743f",
+    "semantic_hash": ""
+  },
+  "crm-new/src/marketplace/ozon/ozon-product-catalog.service.ts": {
+    "mtime": 1787096611.1252213,
+    "ast_hash": "948bccf7dbeafd9bbfbcf9d06cf74f02",
+    "semantic_hash": ""
+  },
+  "crm-new/src/marketplace/ozon/ozon-unit-economics.spec.ts": {
+    "mtime": 1786999881.0065506,
+    "ast_hash": "ccc5cfc5492443f65e30bb8be16e30e4",
+    "semantic_hash": ""
+  },
+  "crm-new/src/marketplace/ozon/ozon-unit-economics.ts": {
+    "mtime": 1786999632.544821,
+    "ast_hash": "fdbee9cbeaa69276295db954409a0e6a",
+    "semantic_hash": ""
+  },
+  "frontend/src/api/ozonProductCatalog.ts": {
+    "mtime": 1787096307.4386427,
+    "ast_hash": "ae8f72e5f5da838014da6daefa8be3ce",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/marketplace/CardAnalytics.tsx": {
+    "mtime": 1787058121.9240825,
+    "ast_hash": "54414c531e498fa8c2b0db1e075019b6",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/marketplace/CatalogTab.tsx": {
+    "mtime": 1787096648.6172838,
+    "ast_hash": "af4ae6a60d47929d3660aef8e8fa1794",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/marketplace/EconomicsSettings.tsx": {
+    "mtime": 1786999868.6122766,
+    "ast_hash": "18ac94b10d535893500b22c99e832f82",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/marketplace/EditPrintModal.tsx": {
+    "mtime": 1787096531.139191,
+    "ast_hash": "c3b15556011650e5332d3964b175649a",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/marketplace/PrintCardModal.tsx": {
+    "mtime": 1787096338.0444324,
+    "ast_hash": "52bd6e8e668414aaf2df7d1c37b4138a",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/marketplace/ProductDetailModal.tsx": {
+    "mtime": 1787096329.561608,
+    "ast_hash": "ef8f5841d2bc475429eed9a7a851ca78",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/marketplace/UnitEconomicsPanel.tsx": {
+    "mtime": 1787045681.4840841,
+    "ast_hash": "60e4db4a1e900969e3ab39147e51769d",
     "semantic_hash": ""
   }
 }
