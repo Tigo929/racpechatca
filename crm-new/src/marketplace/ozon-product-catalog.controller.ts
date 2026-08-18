@@ -15,6 +15,7 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { EnumRole } from 'src/generated/prisma/enums';
 import { MarketplaceAccountService } from './marketplace-account.service';
 import { OzonProductCatalogService } from './ozon/ozon-product-catalog.service';
+import { DtoOzonUpdateCardText } from './dto/update-ozon-card-text.dto';
 import { OzonService } from './ozon/ozon.service';
 import {
   DtoOzonArchive,
@@ -58,6 +59,35 @@ export class OzonProductCatalogController {
   ) {
     const creds = await this.accounts.credentials(accountId);
     return this.catalog.productCard(creds, offerId);
+  }
+
+  /**
+   * Правка названия и описания опубликованного товара.
+   *
+   * Ozon принимает изменения не мгновенно, поэтому отвечаем номером задачи:
+   * результат узнаётся отдельным запросом ниже. Так видно и отказ модерации
+   * с причиной, а не только «запрос ушёл».
+   */
+  @Post(':accountId/catalog/card')
+  async updateCard(
+    @Param('accountId', ParseUUIDPipe) accountId: string,
+    @Body() dto: DtoOzonUpdateCardText,
+  ) {
+    const creds = await this.accounts.credentials(accountId);
+    return this.catalog.updateCardText(creds, dto.offerId, {
+      name: dto.name,
+      description: dto.description,
+    });
+  }
+
+  /** Чем закончился импорт: приняли, ещё считают или отклонили с причиной. */
+  @Get(':accountId/catalog/import-status')
+  async importStatus(
+    @Param('accountId', ParseUUIDPipe) accountId: string,
+    @Query('taskId') taskId: string,
+  ) {
+    const creds = await this.accounts.credentials(accountId);
+    return this.catalog.importStatus(creds, Number(taskId));
   }
 
   /** Юнит-экономика по всем товарам: тарифы Ozon + себестоимость продавца. */

@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Archive, ArchiveRestore, TrendingUp } from 'lucide-react';
@@ -112,6 +111,42 @@ export function ProductDetailModal({
     staleTime: 300_000,
   });
 
+  /*
+   * Правка текстов. Ozon обновляет карточку импортом, который заменяет её
+   * целиком, поэтому сервер сначала читает карточку, накладывает правки и
+   * отправляет полный набор — иначе правка названия унесла бы с собой все
+   * характеристики. Здесь остаётся только показать статус задачи: площадка
+   * принимает изменения не мгновенно и может их отклонить.
+   */
+  const [editing, setEditing] = useState(false);
+  const [nameDraft, setNameDraft] = useState(product.name);
+  const [descDraft, setDescDraft] = useState('');
+  const [taskId, setTaskId] = useState<number | null>(null);
+
+  const { data: importState } = useQuery({
+    queryKey: ['ozon-import', accountId, taskId],
+    queryFn: () => ozonProductCatalogApi.importStatus(accountId, taskId!),
+    enabled: taskId !== null,
+    // Ozon обрабатывает импорт несколько секунд — переспрашиваем, пока идёт.
+    refetchInterval: (q) =>
+      q.state.data && q.state.data.status !== 'pending' ? false : 3000,
+  });
+
+  const saveText = useMutation({
+    mutationFn: () =>
+      ozonProductCatalogApi.updateCardText(accountId, {
+        offerId: product.offerId,
+        name: nameDraft.trim() !== product.name ? nameDraft.trim() : undefined,
+        description: descDraft.trim() || undefined,
+      }),
+    onSuccess: (res) => {
+      setTaskId(res.taskId);
+      setEditing(false);
+      toast.success('Отправлено в Ozon — ждём ответа площадки');
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
   // Деньги считает UnitEconomicsPanel ниже — там полная раскладка с
   // логистикой, эквайрингом, возвратами и налогом. Дублировать грубую оценку
   // здесь значило бы показать две разные цифры про одно и то же.
@@ -185,8 +220,88 @@ export function ProductDetailModal({
           </div>
         </div>
 
+        {/* Тексты карточки — то, по чему Ozon её ищет. Правка идёт импортом,
+            поэтому меняются они здесь, а результат приходит от площадки
+            отдельно: она может отклонить изменение с причиной. */}
+        <div className="rounded-lg border border-gray-200 p-3">
+          {editing ? (
+            <div className="space-y-2">
+              <label className="block">
+                <span className="text-xs font-medium text-gray-600">
+                  Название — главное поле для поиска Ozon
+                </span>
+                <input
+                  className={`mt-1 ${field}`}
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-gray-600">Описание</span>
+                <textarea
+                  rows={5}
+                  className={`mt-1 ${field}`}
+                  value={descDraft}
+                  placeholder={card?.description ?? 'Описание товара'}
+                  onChange={(e) => setDescDraft(e.target.value)}
+                />
+                <span className="mt-1 block text-[11px] text-gray-400">
+                  Пусто — описание останется прежним.
+                </span>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => saveText.mutate()}
+                  disabled={saveText.isPending}
+                  className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+                >
+                  {saveText.isPending ? 'Отправляем…' : 'Отправить в Ozon'}
+                </button>
+                <button
+                  onClick={() => setEditing(false)}
+                  className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700"
+                >
+                  Отмена
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-gray-600">
+                Название и описание — по ним товар находят в поиске
+              </span>
+              <button
+                onClick={() => {
+                  setNameDraft(product.name);
+                  setDescDraft('');
+                  setEditing(true);
+                }}
+                className="text-xs font-semibold text-amber-700 hover:text-amber-900"
+              >
+                Редактировать
+              </button>
+            </div>
+          )}
+
+          {importState && (
+            <p className="mt-2 text-xs">
+              {importState.status === 'pending' && (
+                <span className="text-gray-500">Ozon обрабатывает изменение…</span>
+              )}
+              {importState.status === 'imported' && (
+                <span className="text-emerald-700">Ozon принял изменение.</span>
+              )}
+              {importState.errors.length > 0 && (
+                <span className="text-red-600">
+                  Ozon отклонил: {importState.errors.join('; ')}
+                </span>
+              )}
+            </p>
+          )}
+        </div>
+
         {/* Описание и атрибуты — то, что раньше можно было посмотреть
-            только в кабинете Ozon. Пока читаем; правка — следующий шаг. */}
+            только в кабинете Ozon. */}
         {card && (card.description || card.attributes.length > 0) && (
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-3">
             {card.description && (

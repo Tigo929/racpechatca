@@ -24,20 +24,37 @@ interface RawListResponse {
   result?: { items?: RawListItem[]; last_id?: string; total?: number };
 }
 
+/** Атрибут в том виде, в каком Ozon его отдаёт и принимает обратно. */
+interface RawAttribute {
+  attribute_id?: number;
+  attribute_name?: string;
+  complex_id?: number;
+  values?: { dictionary_value_id?: number; value?: string }[];
+}
+
 interface RawAttributesResponse {
   result?: {
+    id?: number;
+    offer_id?: string;
+    description_category_id?: number;
+    type_id?: number;
     depth?: number;
     width?: number;
     height?: number;
     dimension_unit?: string;
     weight?: number;
     weight_unit?: string;
-    attributes?: {
-      attribute_id?: number;
-      attribute_name?: string;
-      values?: { value?: string }[];
-    }[];
+    attributes?: RawAttribute[];
   }[];
+}
+
+interface RawImportInfoResponse {
+  result?: {
+    items?: {
+      status?: string;
+      errors?: { code?: string; message?: string }[];
+    }[];
+  };
 }
 
 interface RawDescriptionResponse {
@@ -164,6 +181,12 @@ interface RawPricesResponse {
   }[];
   cursor?: string;
 }
+
+/**
+ * Описание в Ozon — не отдельное поле, а атрибут «Аннотация». Номер один
+ * на все категории товаров, поэтому вынесен константой.
+ */
+const DESCRIPTION_ATTRIBUTE_ID = 4191;
 
 /**
  * Подробности карточки, которых нет в списке товаров.
@@ -433,6 +456,93 @@ export class OzonProductCatalogService {
           values: (a.values ?? []).map((v) => v.value ?? '').filter(Boolean),
         }))
         .filter((a) => a.name && a.values.length > 0),
+    };
+  }
+
+  /**
+   * Правка названия и описания у уже опубликованного товара.
+   *
+   * Ozon обновляет карточку импортом, и импорт заменяет её целиком: всё,
+   * чего нет в запросе, стирается. Поэтому сначала читаем карточку как
+   * есть, накладываем правки поверх и отправляем полный набор — иначе
+   * одна правка названия унесла бы с собой все заполненные характеристики.
+   *
+   * Описание у Ozon живёт не отдельным полем, а атрибутом 4191
+   * («Аннотация»), поэтому меняется среди прочих атрибутов.
+   *
+   * Возвращаем номер задачи импорта: площадка принимает изменения не
+   * мгновенно и может их отклонить, поэтому результат узнаём отдельным
+   * запросом, а не по факту «запрос ушёл».
+   */
+  async updateCardText(
+    creds: OzonCredentials,
+    offerId: string,
+    changes: { name?: string; description?: string },
+  ): Promise<{ taskId: number }> {
+    const attrs = await this.api.post<RawAttributesResponse>(
+      creds,
+      '/v4/product/info/attributes',
+      { filter: { offer_id: [offerId], visibility: 'ALL' }, limit: 1 },
+    );
+    const current = attrs.result?.[0];
+    if (!current) {
+      throw new Error(`Товар ${offerId} не найден в кабинете Ozon`);
+    }
+
+    const kept = (current.attributes ?? []).filter(
+      (a) => a.attribute_id !== DESCRIPTION_ATTRIBUTE_ID,
+    );
+    const description =
+      changes.description?.trim() ||
+      (current.attributes ?? []).find(
+        (a) => a.attribute_id === DESCRIPTION_ATTRIBUTE_ID,
+      )?.values?.[0]?.value;
+
+    const item: Record<string, unknown> = {
+      offer_id: offerId,
+      description_category_id: current.description_category_id,
+      type_id: current.type_id,
+      attributes: [
+        ...kept,
+        ...(description
+          ? [
+              {
+                id: DESCRIPTION_ATTRIBUTE_ID,
+                complex_id: 0,
+                values: [{ value: description }],
+              },
+            ]
+          : []),
+      ],
+    };
+    if (changes.name?.trim()) item.name = changes.name.trim();
+
+    const res = await this.api.post<{ result?: { task_id?: number } }>(
+      creds,
+      '/v3/product/import',
+      { items: [item] },
+    );
+    const taskId = res.result?.task_id;
+    if (!taskId) throw new Error('Ozon не вернул номер задачи импорта');
+    return { taskId };
+  }
+
+  /** Чем закончился импорт: приняли, ещё считают или отклонили с причиной. */
+  async importStatus(
+    creds: OzonCredentials,
+    taskId: number,
+  ): Promise<{ status: string; errors: string[] }> {
+    const res = await this.api.post<RawImportInfoResponse>(
+      creds,
+      '/v1/product/import/info',
+      { task_id: taskId },
+    );
+    const item = res.result?.items?.[0];
+    return {
+      status: item?.status ?? 'unknown',
+      errors: (item?.errors ?? [])
+        .map((e) => e.message || e.code || '')
+        .filter(Boolean),
     };
   }
 

@@ -124,6 +124,29 @@ export interface OzonProductCard {
 }
 
 export const ozonProductCatalogApi = {
+  /** Правка названия и описания. Ответ — номер задачи импорта Ozon. */
+  updateCardText: async (
+    accountId: string,
+    payload: { offerId: string; name?: string; description?: string },
+  ): Promise<{ taskId: number }> => {
+    const { data } = await api.post<{ taskId: number }>(
+      `/marketplace/ozon/${accountId}/catalog/card`,
+      payload,
+    );
+    return data;
+  },
+
+  importStatus: async (
+    accountId: string,
+    taskId: number,
+  ): Promise<{ status: string; errors: string[] }> => {
+    const { data } = await api.get<{ status: string; errors: string[] }>(
+      `/marketplace/ozon/${accountId}/catalog/import-status`,
+      { params: { taskId } },
+    );
+    return data;
+  },
+
   card: async (accountId: string, offerId: string): Promise<OzonProductCard> => {
     const { data } = await api.get<OzonProductCard>(
       `/marketplace/ozon/${accountId}/catalog/card`,
