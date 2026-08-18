@@ -24,6 +24,26 @@ interface RawListResponse {
   result?: { items?: RawListItem[]; last_id?: string; total?: number };
 }
 
+interface RawAttributesResponse {
+  result?: {
+    depth?: number;
+    width?: number;
+    height?: number;
+    dimension_unit?: string;
+    weight?: number;
+    weight_unit?: string;
+    attributes?: {
+      attribute_id?: number;
+      attribute_name?: string;
+      values?: { value?: string }[];
+    }[];
+  }[];
+}
+
+interface RawDescriptionResponse {
+  result?: { description?: string };
+}
+
 interface RawInfoItem {
   id?: number;
   offer_id?: string;
@@ -143,6 +163,28 @@ interface RawPricesResponse {
     marketing_actions?: { actions?: { title?: string; value?: number }[] };
   }[];
   cursor?: string;
+}
+
+/**
+ * Подробности карточки, которых нет в списке товаров.
+ *
+ * Ozon отдаёт их отдельными запросами, поэтому грузим только при открытии
+ * карточки: тянуть описание и габариты для всех восьмидесяти шести товаров
+ * ради списка — это восемьдесят шесть лишних запросов на каждое открытие
+ * раздела.
+ */
+export interface OzonProductCard {
+  offerId: string;
+  description: string | null;
+  /** Габариты упаковки в единицах Ozon (обычно миллиметры и граммы). */
+  depth: number | null;
+  width: number | null;
+  height: number | null;
+  dimensionUnit: string | null;
+  weight: number | null;
+  weightUnit: string | null;
+  /** Заполненные атрибуты карточки: цвет, состав, бренд и прочее. */
+  attributes: { name: string; values: string[] }[];
 }
 
 export interface OzonCatalogProduct {
@@ -348,6 +390,50 @@ export class OzonProductCatalogService {
       if (!cursor || items.length === 0) break;
     }
     return map;
+  }
+
+  /**
+   * Подробности одной карточки: описание и габариты.
+   *
+   * Два запроса, потому что Ozon держит описание отдельно от остальных
+   * атрибутов. Падение любого из них не должно ронять карточку целиком —
+   * лучше показать часть полей, чем пустой экран с ошибкой.
+   */
+  async productCard(
+    creds: OzonCredentials,
+    offerId: string,
+  ): Promise<OzonProductCard> {
+    const [attrs, description] = await Promise.all([
+      this.api
+        .post<RawAttributesResponse>(creds, '/v4/product/info/attributes', {
+          filter: { offer_id: [offerId], visibility: 'ALL' },
+          limit: 1,
+        })
+        .catch(() => null),
+      this.api
+        .post<RawDescriptionResponse>(creds, '/v1/product/info/description', {
+          offer_id: offerId,
+        })
+        .catch(() => null),
+    ]);
+
+    const item = attrs?.result?.[0];
+    return {
+      offerId,
+      description: description?.result?.description ?? null,
+      depth: item?.depth ?? null,
+      width: item?.width ?? null,
+      height: item?.height ?? null,
+      dimensionUnit: item?.dimension_unit ?? null,
+      weight: item?.weight ?? null,
+      weightUnit: item?.weight_unit ?? null,
+      attributes: (item?.attributes ?? [])
+        .map((a) => ({
+          name: a.attribute_name ?? String(a.attribute_id ?? ''),
+          values: (a.values ?? []).map((v) => v.value ?? '').filter(Boolean),
+        }))
+        .filter((a) => a.name && a.values.length > 0),
+    };
   }
 
   /** Акции площадки: в каких участвуем и сколько товаров подходит. */

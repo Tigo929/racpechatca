@@ -46,6 +46,20 @@ export class OzonProductCatalogController {
     return this.catalog.listProducts(creds);
   }
 
+  /**
+   * Подробности карточки: описание, габариты, заполненные атрибуты.
+   * Отдельным запросом — Ozon держит их вне списка товаров, и грузить их
+   * для всего каталога ради списка незачем.
+   */
+  @Get(':accountId/catalog/card')
+  async card(
+    @Param('accountId', ParseUUIDPipe) accountId: string,
+    @Query('offerId') offerId: string,
+  ) {
+    const creds = await this.accounts.credentials(accountId);
+    return this.catalog.productCard(creds, offerId);
+  }
+
   /** Юнит-экономика по всем товарам: тарифы Ozon + себестоимость продавца. */
   @Get(':accountId/economics')
   economics(@Param('accountId', ParseUUIDPipe) accountId: string) {

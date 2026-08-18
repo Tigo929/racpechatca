@@ -110,7 +110,28 @@ export interface UnitEconomicsSettings {
   commissionOverridePercent: number | null;
 }
 
+/** Подробности карточки: грузятся только при её открытии. */
+export interface OzonProductCard {
+  offerId: string;
+  description: string | null;
+  depth: number | null;
+  width: number | null;
+  height: number | null;
+  dimensionUnit: string | null;
+  weight: number | null;
+  weightUnit: string | null;
+  attributes: { name: string; values: string[] }[];
+}
+
 export const ozonProductCatalogApi = {
+  card: async (accountId: string, offerId: string): Promise<OzonProductCard> => {
+    const { data } = await api.get<OzonProductCard>(
+      `/marketplace/ozon/${accountId}/catalog/card`,
+      { params: { offerId } },
+    );
+    return data;
+  },
+
   economics: async (accountId: string): Promise<ProductEconomics[]> => {
     const { data } = await api.get<ProductEconomics[]>(
       `/marketplace/ozon/${accountId}/economics`,

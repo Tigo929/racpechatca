@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Fragment } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Archive, ArchiveRestore, TrendingUp } from 'lucide-react';
@@ -99,6 +100,18 @@ export function ProductDetailModal({
     onError: (e) => toast.error(getErrorMessage(e, 'Не удалось изменить статус')),
   });
 
+  /*
+   * Описание, габариты и атрибуты Ozon держит вне списка товаров, поэтому
+   * грузим их только здесь — при открытии конкретной карточки. Грузить их
+   * для всего каталога значило бы делать под сотню лишних запросов ради
+   * списка, в котором эти поля всё равно не показываются.
+   */
+  const { data: card, isLoading: cardLoading } = useQuery({
+    queryKey: ['ozon-product-card', accountId, product.offerId],
+    queryFn: () => ozonProductCatalogApi.card(accountId, product.offerId),
+    staleTime: 300_000,
+  });
+
   // Деньги считает UnitEconomicsPanel ниже — там полная раскладка с
   // логистикой, эквайрингом, возвратами и налогом. Дублировать грубую оценку
   // здесь значило бы показать две разные цифры про одно и то же.
@@ -158,9 +171,52 @@ export function ProductDetailModal({
               <dd className="font-mono text-[11px] text-gray-800">
                 {product.barcodes.length ? product.barcodes.join(', ') : '—'}
               </dd>
+              <dt className="text-gray-500">Габариты</dt>
+              <dd className="text-gray-800">
+                {cardLoading
+                  ? 'загружаем…'
+                  : card && card.depth && card.width && card.height
+                    ? `${card.depth}×${card.width}×${card.height} ${card.dimensionUnit ?? ''}${
+                        card.weight ? `, ${card.weight} ${card.weightUnit ?? ''}` : ''
+                      }`
+                    : '—'}
+              </dd>
             </dl>
           </div>
         </div>
+
+        {/* Описание и атрибуты — то, что раньше можно было посмотреть
+            только в кабинете Ozon. Пока читаем; правка — следующий шаг. */}
+        {card && (card.description || card.attributes.length > 0) && (
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-3">
+            {card.description && (
+              <div>
+                <p className="text-xs font-semibold text-gray-700">Описание</p>
+                <p className="mt-1 max-h-40 overflow-y-auto whitespace-pre-line text-xs leading-relaxed text-gray-600">
+                  {card.description}
+                </p>
+              </div>
+            )}
+            {card.attributes.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-700">Характеристики</p>
+                <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px]">
+                  {card.attributes.slice(0, 12).map((a) => (
+                    <Fragment key={a.name}>
+                      <dt className="text-gray-500">{a.name}</dt>
+                      <dd className="text-gray-800">{a.values.join(', ')}</dd>
+                    </Fragment>
+                  ))}
+                </dl>
+                {card.attributes.length > 12 && (
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    и ещё {card.attributes.length - 12} — остальные видны в кабинете
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Цена и остаток — то, что правят чаще всего */}
         <div className="grid gap-3 sm:grid-cols-3">
