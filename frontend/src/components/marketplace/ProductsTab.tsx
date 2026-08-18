@@ -64,7 +64,12 @@ function PrintCard({ print, onPublish, onRemove, publishing }: {
           </p>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
-          {print.status === 'DRAFT' && (
+          {/* Публиковать можно и опубликованный принт: цвет, добавленный в
+              группу позже, остаётся черновиком, а сам принт уже помечен OK —
+              и отправить новые варианты было нечем. Кнопка показывается,
+              пока хоть один вариант не ушёл в Ozon. */}
+          {(print.status === 'DRAFT' ||
+            print.variants.some((v) => v.status !== 'OK')) && (
             <button
               onClick={onPublish}
               disabled={publishing}
