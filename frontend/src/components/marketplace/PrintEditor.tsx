@@ -22,7 +22,7 @@ const COLOR_ATTRIBUTE_ID = 10096;
 const field = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500';
 const fieldSm = 'w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500';
 
-function ColorGroupRow({
+export function ColorGroupRow({
   group, onChange, onRemove, accountId, removable, slug, name,
 }: {
   group: ColorGroupDraft;

@@ -6,8 +6,11 @@ import {
   colorCodeOf, ozonProductCatalogApi, sizeOf, type OzonCatalogProduct,
 } from '../../api/ozonProductCatalog';
 import { getErrorMessage } from '../../utils/get-error-message';
+import { ozonCatalogApi } from '../../api/ozonCatalog';
 import { Modal } from '../ui/Modal';
+import { ColorGroupRow } from './PrintEditor';
 import { UnitEconomicsPanel } from './UnitEconomicsPanel';
+import { DEFAULT_SIZES, type ColorGroupDraft } from './printDraft';
 
 /**
  * Карточка товара: один принт со всеми размерами.
@@ -116,6 +119,47 @@ export function PrintCardModal({
   });
 
   const dirty = Object.values(stockDraft).some((v) => v.trim() !== '');
+
+  /*
+   * Добавление цвета в эту же родовую группу.
+   *
+   * Артикулы новых размеров собираются системой из группы, цвета и размера
+   * (JDM-1-1 + white + M → JDM-1-1-white-M), поэтому промахнуться с
+   * написанием нельзя — а именно на этом обычно и разъезжаются карточки.
+   *
+   * Работает только для принтов, заведённых через CRM: у товара, созданного
+   * прямо в кабинете Ozon, здесь нечего дополнять — связи с ним у нас нет.
+   */
+  const { data: prints = [] } = useQuery({
+    queryKey: ['ozon-prints', accountId],
+    queryFn: () => ozonCatalogApi.listPrints(accountId),
+    staleTime: 120_000,
+  });
+  const print = prints.find((p) => p.slug === code);
+
+  const [colorDraft, setColorDraft] = useState<ColorGroupDraft | null>(null);
+
+  const addColor = useMutation({
+    mutationFn: () => {
+      if (!print || !colorDraft) throw new Error('Не выбран цвет');
+      if (!colorDraft.colorDictionaryValueId) {
+        throw new Error('Выберите цвет из подсказки — свободный текст Ozon не примет');
+      }
+      if (colorDraft.sizes.length === 0) throw new Error('Отметьте хотя бы один размер');
+      return ozonCatalogApi.addColorGroup(print.id, {
+        colorLabel: colorDraft.colorLabel,
+        colorDictionaryValueId: colorDraft.colorDictionaryValueId,
+        colorCode: colorDraft.colorCode || undefined,
+        sizes: colorDraft.sizes,
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ozon-prints', accountId] });
+      setColorDraft(null);
+      toast.success('Цвет добавлен в группу. Опубликуйте карточку на вкладке «Создание»');
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
 
   return (
     // Общее окно проекта, а не своя разметка: оно закрывается кликом мимо и
@@ -234,6 +278,60 @@ export function PrintCardModal({
               </p>
             )}
           </div>
+
+          {print ? (
+            <div className="rounded-xl border border-gray-200 bg-white p-3">
+              {colorDraft ? (
+                <div className="space-y-2">
+                  <ColorGroupRow
+                    group={colorDraft}
+                    accountId={accountId}
+                    slug={code}
+                    name={first.name}
+                    removable={false}
+                    onChange={setColorDraft}
+                    onRemove={() => setColorDraft(null)}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => addColor.mutate()}
+                      disabled={addColor.isPending}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+                    >
+                      {addColor.isPending && <Loader2 size={12} className="animate-spin" aria-hidden="true" />}
+                      Добавить цвет в группу
+                    </button>
+                    <button
+                      onClick={() => setColorDraft(null)}
+                      className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700"
+                    >
+                      Отмена
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() =>
+                    setColorDraft({
+                      colorLabel: '',
+                      colorDictionaryValueId: 0,
+                      colorCode: '',
+                      sizes: [...DEFAULT_SIZES],
+                    })
+                  }
+                  className="text-xs font-semibold text-amber-700 hover:text-amber-900"
+                >
+                  + Добавить цвет в группу {code}
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-gray-200 bg-white p-3 text-[11px] text-gray-500">
+              Товар заведён прямо в кабинете Ozon, а не через CRM — добавить в
+              группу новый цвет отсюда нельзя. Создайте карточку на вкладке
+              «Создание» с кодом принта <span className="font-mono">{code}</span>.
+            </p>
+          )}
 
           {/* Экономика считается по конкретному размеру: цены у размеров
               расходятся, и «средняя по карточке» скрыла бы как раз то, ради
