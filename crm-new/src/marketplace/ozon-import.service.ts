@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { EnumOzonSyncStatus } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { OzonProductCatalogService } from './ozon/ozon-product-catalog.service';
 import { MarketplaceAccountService } from './marketplace-account.service';
 import { OzonCatalogTemplateService } from './ozon-catalog-template.service';
 import {
@@ -33,6 +34,7 @@ export class OzonImportService {
     private readonly accounts: MarketplaceAccountService,
     private readonly templates: OzonCatalogTemplateService,
     private readonly catalog: OzonCatalogService,
+    private readonly products: OzonProductCatalogService,
   ) {}
 
   /** Отправляет выбранные принты в Ozon: режет варианты на пачки ≤100 и создаёт по батчу на каждую. */
@@ -58,6 +60,33 @@ export class OzonImportService {
     }
 
     const creds = await this.accounts.credentials(marketplaceAccountId);
+
+    /*
+     * Ключ объединения берём у уже опубликованной карточки с тем же кодом
+     * принта, а не свой. Иначе добавленный цвет уходит в Ozon отдельной
+     * карточкой: площадка сводит товары именно по совпадению этого ключа.
+     *
+     * Найденный ключ сохраняем принту — чтобы следующая публикация не
+     * зависела от того, ответит ли Ozon, и чтобы в базе была та же правда,
+     * что в кабинете.
+     */
+    const unionKeys = new Map<string, string>();
+    for (const print of prints) {
+      const existing = await this.products
+        .existingUnionKey(creds, print.slug)
+        .catch(() => null);
+      if (existing && existing !== print.unionKey) {
+        unionKeys.set(print.id, existing);
+        await this.prisma.ozonPrint.update({
+          where: { id: print.id },
+          data: { unionKey: existing },
+        });
+        this.logger.log(
+          `Принт ${print.slug}: подхватил ключ объединения существующей карточки Ozon`,
+        );
+      }
+    }
+
     const sizeDimensions = template.sizeDimensions as unknown as Record<
       string,
       VariantDimensions
@@ -99,7 +128,7 @@ export class OzonImportService {
             oldPrice: print.oldPrice,
             gender: print.gender,
             patternTags: print.patternTags,
-            unionKey: print.unionKey,
+            unionKey: unionKeys.get(print.id) ?? print.unionKey,
           },
           {
             offerId: variant.offerId,

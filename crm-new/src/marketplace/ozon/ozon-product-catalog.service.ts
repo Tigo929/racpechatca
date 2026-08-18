@@ -199,6 +199,9 @@ interface RawPricesResponse {
  */
 const DESCRIPTION_ATTRIBUTE_ID = 4191;
 
+/** «Объединить на одной карточке» — по нему Ozon сводит цвета вместе. */
+const UNION_ATTRIBUTE_ID = 8292;
+
 /** Сколько SKU просим у рейтинга за один запрос. */
 const RATING_BATCH = 100;
 
@@ -628,6 +631,50 @@ export class OzonProductCatalogService {
       }
     }
     return map;
+  }
+
+  /**
+   * Ключ объединения уже опубликованной карточки с этим кодом принта.
+   *
+   * Ozon сводит товары в одну карточку по атрибуту 8292: значение должно
+   * совпадать у всех цветов. Если генерировать его заново при каждой
+   * публикации, добавленный цвет уходит отдельной карточкой — так и вышло
+   * с белой футболкой JDM-1-1, вставшей рядом с чёрной вместо неё.
+   *
+   * Поэтому перед публикацией спрашиваем у самой площадки: есть ли уже
+   * товар с таким кодом и какой у него ключ. Нашли — используем его,
+   * не нашли — принт публикуется впервые, и подойдёт собственный.
+   */
+  async existingUnionKey(
+    creds: OzonCredentials,
+    slug: string,
+  ): Promise<string | null> {
+    const list = await this.api
+      .post<{ result?: { items?: { offer_id?: string }[] } }>(
+        creds,
+        '/v3/product/list',
+        { filter: { visibility: 'ALL' }, last_id: '', limit: 1000 },
+      )
+      .catch(() => null);
+
+    // Ищем любой уже заведённый вариант этого принта: артикул начинается
+    // с кода и продолжается цветом или размером.
+    const sibling = (list?.result?.items ?? [])
+      .map((i) => i.offer_id ?? '')
+      .find((id) => id.startsWith(`${slug}-`));
+    if (!sibling) return null;
+
+    const attrs = await this.api
+      .post<RawAttributesResponse>(creds, '/v4/product/info/attributes', {
+        filter: { offer_id: [sibling], visibility: 'ALL' },
+        limit: 1,
+      })
+      .catch(() => null);
+
+    const value = (attrs?.result?.[0]?.attributes ?? []).find(
+      (a) => a.attribute_id === UNION_ATTRIBUTE_ID,
+    )?.values?.[0]?.value;
+    return value?.trim() || null;
   }
 
   /** Акции площадки: в каких участвуем и сколько товаров подходит. */
