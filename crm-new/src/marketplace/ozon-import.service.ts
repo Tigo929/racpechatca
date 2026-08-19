@@ -142,6 +142,7 @@ export class OzonImportService {
             colorDictionaryValueId: variant.colorDictionaryValueId,
             size: variant.size,
             priceOverride: variant.priceOverride,
+            mainPhotoUrl: variant.mainPhotoUrl,
           },
         ),
       );

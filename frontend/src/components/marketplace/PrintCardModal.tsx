@@ -12,7 +12,7 @@ import { Modal } from '../ui/Modal';
 import { CardAnalytics } from './CardAnalytics';
 import { ColorGroupRow } from './PrintEditor';
 import { UnitEconomicsPanel } from './UnitEconomicsPanel';
-import { DEFAULT_SIZES, type ColorGroupDraft } from './printDraft';
+import { emptyColorGroup, type ColorGroupDraft } from './printDraft';
 
 /**
  * Карточка товара: один принт со всеми размерами.
@@ -147,6 +147,9 @@ export function PrintCardModal({
         colorLabel: colorDraft.colorLabel,
         colorDictionaryValueId: colorDraft.colorDictionaryValueId,
         colorCode: colorDraft.colorCode || undefined,
+        // Фото нового цвета — своё: иначе добавленный белый уедет в Ozon со
+        // снимком чёрного, который уже лежит у принта.
+        mainPhotoUrl: colorDraft.mainPhotoUrl || undefined,
         sizes: colorDraft.sizes,
       });
     },
@@ -334,14 +337,7 @@ export function PrintCardModal({
                 </div>
               ) : (
                 <button
-                  onClick={() =>
-                    setColorDraft({
-                      colorLabel: '',
-                      colorDictionaryValueId: 0,
-                      colorCode: '',
-                      sizes: [...DEFAULT_SIZES],
-                    })
-                  }
+                  onClick={() => setColorDraft(emptyColorGroup())}
                   className="text-xs font-semibold text-amber-700 hover:text-amber-900"
                 >
                   + Добавить цвет в группу {code}

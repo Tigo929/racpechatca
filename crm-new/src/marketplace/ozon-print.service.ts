@@ -25,6 +25,8 @@ export interface ColorGroupInput {
   colorDictionaryValueId: number;
   /** Латинский код цвета для артикула; пусто — выводим из подписи. */
   colorCode?: string;
+  /** Главное фото этого цвета; пусто — берём фото принта. */
+  mainPhotoUrl?: string;
   sizes: EnumTshirtSize[];
 }
 
@@ -282,10 +284,15 @@ export class OzonPrintService {
   ): Prisma.OzonVariantCreateManyPrintInput[] {
     return groups.flatMap((g) => {
       const colorCode = g.colorCode?.trim() || colorCodeFor(g.colorLabel);
+      const mainPhotoUrl = g.mainPhotoUrl?.trim() || null;
       return g.sizes.map((size) => ({
         colorLabel: g.colorLabel.trim(),
         colorDictionaryValueId: g.colorDictionaryValueId,
         colorCode,
+        // Фото у цвета, а не у размера: размеры одного цвета снимают одну и
+        // ту же футболку. Дублируется по вариантам потому, что в Ozon
+        // картинки живут на offer_id, а он у каждого размера свой.
+        mainPhotoUrl,
         size,
         offerId: buildOfferId(slug, colorCode, size),
       }));

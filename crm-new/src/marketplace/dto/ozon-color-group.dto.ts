@@ -7,6 +7,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUrl,
   MaxLength,
   Min,
   MinLength,
@@ -32,6 +33,17 @@ export class DtoOzonColorGroup {
   @IsString()
   @MaxLength(20)
   colorCode?: string;
+
+  /**
+   * Главное фото этого цвета. Пусто — уйдёт фото принта, но тогда белая
+   * футболка окажется в Ozon с фотографией чёрной.
+   */
+  @IsOptional()
+  @IsUrl(
+    {},
+    { message: 'Ссылка на фото цвета должна быть прямой ссылкой на изображение.' },
+  )
+  mainPhotoUrl?: string;
 
   @IsArray()
   @ArrayNotEmpty({ message: 'Отметьте хотя бы один размер.' })

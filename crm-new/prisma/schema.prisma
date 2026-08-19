@@ -370,6 +370,12 @@ model OzonVariant {
   colorCode              String @default("")
   size                   EnumTshirtSize
 
+  /// Главное фото именно этого цвета. У принта фото одно на всех, но
+  /// футболка на снимке своего цвета: белый вариант с фотографией чёрного
+  /// покупатель видит как чужой товар, а Ozon — как повод для отказа.
+  /// Пусто — берётся главное фото принта.
+  mainPhotoUrl  String?
+
   /// <принт>-<цвет>-<размер>, схема продавца: JDM-1-1-black-S.
   offerId       String @unique
   priceOverride Int?

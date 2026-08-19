@@ -270,6 +270,8 @@ export interface VariantForImport {
   colorDictionaryValueId: number;
   size: EnumTshirtSize;
   priceOverride: number | null;
+  /** Главное фото этого цвета; пусто — берём фото принта. */
+  mainPhotoUrl?: string | null;
 }
 
 /** Тело одного элемента массива `items` в `/v3/product/import`. */
@@ -361,6 +363,15 @@ export function buildImportItem(
    */
   const oldPrice = print.oldPrice && print.oldPrice > price ? print.oldPrice : 0;
 
+  /*
+   * Главное фото — своё у каждого цвета. Один принт, разные футболки: белый
+   * вариант с фотографией чёрного покупатель видит как чужой товар, а Ozon
+   * считает несоответствием карточки. Фото принта остаётся запасным — для
+   * цветов, у которых своего нет, и для карточек, заведённых до того, как
+   * фото стало частью цвета.
+   */
+  const primaryImage = variant.mainPhotoUrl?.trim() || print.mainPhotoUrl;
+
   const attributes = [
     { id: OZON_ATTR.UNION_KEY, values: [{ value: print.unionKey }] },
     dictAttr(OZON_ATTR.COLOR, variant.colorDictionaryValueId),
@@ -406,8 +417,8 @@ export function buildImportItem(
     depth: dims.lengthMm,
     dimension_unit: 'mm',
     weight_unit: 'g',
-    images: buildExtraImages(template, print),
-    primary_image: print.mainPhotoUrl,
+    images: buildExtraImages(template, { ...print, mainPhotoUrl: primaryImage }),
+    primary_image: primaryImage,
     attributes,
   };
 }

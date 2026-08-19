@@ -20,7 +20,25 @@ export interface ColorGroupDraft {
   colorDictionaryValueId: number;
   /** Латинский код цвета в артикуле: JDM-1-1-**black**-S. */
   colorCode: string;
+  /**
+   * Главное фото этого цвета.
+   *
+   * Принт один, а футболки разные: белый вариант с фотографией чёрного
+   * покупатель видит как чужой товар. Пусто — уйдёт главное фото принта.
+   */
+  mainPhotoUrl: string;
   sizes: EnumTshirtSize[];
+}
+
+/** Новая цветовая партия: размеры по умолчанию, фото и цвет — пустые. */
+export function emptyColorGroup(): ColorGroupDraft {
+  return {
+    colorLabel: '',
+    colorDictionaryValueId: 0,
+    colorCode: '',
+    mainPhotoUrl: '',
+    sizes: [...DEFAULT_SIZES],
+  };
 }
 
 /**
@@ -110,7 +128,7 @@ export function emptyPrintDraft(defaultPrice?: number): PrintDraft {
     mainPhotoUrl: '', extraPhotoUrls: '',
     price: defaultPrice ? String(defaultPrice) : '',
     oldPrice: '', gender: 'UNISEX', patternTags: [], unionKey: '',
-    colorGroups: [{ colorLabel: '', colorDictionaryValueId: 0, colorCode: '', sizes: [...DEFAULT_SIZES] }],
+    colorGroups: [emptyColorGroup()],
   };
 }
 
@@ -122,7 +140,9 @@ export function duplicateDraft(d: PrintDraft): PrintDraft {
     // Свой массив, а не ссылка на соседний: иначе правка тематики в одной
     // строке меняла бы её и во всех скопированных.
     patternTags: [...d.patternTags],
-    colorGroups: d.colorGroups.map((g) => ({ ...g, sizes: [...g.sizes] })),
+    // Фото цветов не копируем: это снимки другого принта, и подставить их
+    // новому — тот же промах, что одно фото на все цвета.
+    colorGroups: d.colorGroups.map((g) => ({ ...g, mainPhotoUrl: '', sizes: [...g.sizes] })),
     name: '', slug: '', mainPhotoUrl: '', extraPhotoUrls: '',
   };
 }
@@ -147,6 +167,7 @@ export function draftToPayload(d: PrintDraft): CreateOzonPrintDto {
         colorLabel: g.colorLabel,
         colorDictionaryValueId: g.colorDictionaryValueId,
         colorCode: g.colorCode.trim() || colorCodeFor(g.colorLabel),
+        ...(g.mainPhotoUrl.trim() ? { mainPhotoUrl: g.mainPhotoUrl.trim() } : {}),
         sizes: g.sizes,
       })),
   };

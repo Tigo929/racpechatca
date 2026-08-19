@@ -130,6 +130,34 @@ describe('ozon-attributes: сборка запроса на импорт', () =>
     expect(item.old_price).toBe('0');
   });
 
+  it('главное фото берётся у цвета, а не у принта', () => {
+    /*
+     * Один принт — разные футболки. Белый вариант с фотографией чёрного
+     * покупатель видит как чужой товар, а Ozon считает несоответствием
+     * карточки. До этого фото было одно на весь принт, и все цвета уходили
+     * со снимком первого.
+     */
+    const item = buildImportItem(template, print, {
+      ...variant,
+      mainPhotoUrl: 'https://example.com/white.jpg',
+    });
+    expect(item.primary_image).toBe('https://example.com/white.jpg');
+    // Фото принта в дополнительные не подмешивается: это снимок другого цвета.
+    expect(item.images).not.toContain(print.mainPhotoUrl);
+  });
+
+  it('без своего фото цвет берёт фото принта', () => {
+    // Так продолжают работать карточки, заведённые до того, как фото стало
+    // частью цвета, и цвета, у которых снимок ещё не готов.
+    expect(buildImportItem(template, print, variant).primary_image).toBe(
+      print.mainPhotoUrl,
+    );
+    expect(
+      buildImportItem(template, print, { ...variant, mainPhotoUrl: '   ' })
+        .primary_image,
+    ).toBe(print.mainPhotoUrl);
+  });
+
   it('override цены варианта важнее цены принта', () => {
     const item = buildImportItem(template, print, {
       ...variant,

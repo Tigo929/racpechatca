@@ -2,7 +2,7 @@ import { Plus, Trash2, X } from 'lucide-react';
 import { AttributeAutocomplete } from './AttributeAutocomplete';
 import { PhotoUpload } from './PhotoUpload';
 import {
-  ALL_SIZES, DEFAULT_SIZES, GENDER_LABELS, colorCodeFor, previewOfferId,
+  ALL_SIZES, GENDER_LABELS, colorCodeFor, emptyColorGroup, previewOfferId,
   type ColorGroupDraft, type PrintDraft,
 } from './printDraft';
 import { TSHIRT_SIZE_LABELS } from '../../constants';
@@ -86,6 +86,22 @@ export function ColorGroupRow({
       <p className="text-[11px] text-gray-400 font-mono">
         Артикул: {previewOfferId(slug, name, group.colorCode, firstSize)}
       </p>
+
+      {/* Фото у цвета, а не у принта. Принт один, а футболки разные: белый
+          вариант с фотографией чёрного покупатель видит как чужой товар, а
+          Ozon — как несоответствие карточки. Остальные поля общие, поэтому
+          на каждый цвет заводится только снимок. */}
+      <PhotoUpload
+        label={`Фото цвета${group.colorLabel ? ` «${group.colorLabel}»` : ''}`}
+        hint={
+          group.mainPhotoUrl
+            ? undefined
+            : 'Пока не задано — уйдёт главное фото принта, то есть футболка другого цвета.'
+        }
+        urls={group.mainPhotoUrl ? [group.mainPhotoUrl] : []}
+        markFirstAsMain
+        onChange={(urls) => onChange({ ...group, mainPhotoUrl: urls[0] ?? '' })}
+      />
       <div className="flex flex-wrap gap-1.5">
         {ALL_SIZES.map((size) => (
           <button
@@ -122,7 +138,7 @@ export function PrintEditor({
     next[idx] = g;
     set('colorGroups', next);
   };
-  const addGroup = () => set('colorGroups', [...draft.colorGroups, { colorLabel: '', colorDictionaryValueId: 0, colorCode: '', sizes: [...DEFAULT_SIZES] }]);
+  const addGroup = () => set('colorGroups', [...draft.colorGroups, emptyColorGroup()]);
   const removeGroup = (idx: number) => set('colorGroups', draft.colorGroups.filter((_, i) => i !== idx));
 
   return (
@@ -157,8 +173,8 @@ export function PrintEditor({
         </label>
         <div className="sm:col-span-2">
           <PhotoUpload
-            label="Главное фото"
-            hint="Своё у каждого принта. Остальные фото карточки берутся общие — из шаблона кабинета."
+            label="Главное фото принта"
+            hint="Запасное: уйдёт тем цветам, у которых своего фото нет. Остальные фото карточки берутся общие — из шаблона кабинета."
             urls={draft.mainPhotoUrl ? [draft.mainPhotoUrl] : []}
             markFirstAsMain
             onChange={(urls) => set('mainPhotoUrl', urls[0] ?? '')}
