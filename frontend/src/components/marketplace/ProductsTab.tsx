@@ -32,6 +32,11 @@ const SYNC_STATUS: Record<EnumOzonSyncStatus, { bg: string; text: string; label:
   ERROR: { bg: 'bg-red-50', text: 'text-red-700', label: 'Ошибка' },
 };
 
+/** Принт уже отправлен и ждёт ответа площадки — трогать его нечем. */
+function isInFlight(print: OzonPrint): boolean {
+  return print.status === 'QUEUED' || print.status === 'SENT';
+}
+
 /**
  * Принту есть что отправить, пока хоть один вариант не ушёл в Ozon.
  *
@@ -39,9 +44,21 @@ const SYNC_STATUS: Record<EnumOzonSyncStatus, { bg: string; text: string; label:
  * остаётся черновиком внутри принта, а сам принт помечен OK. По статусу принта
  * такие варианты оказывались неотправляемыми — ровно так белая футболка
  * JDM-1-2 и застряла рядом с опубликованной чёрной.
+ *
+ * И не во время отправки: у принта в очереди варианты тоже не OK, и кнопка
+ * предлагала отправить его второй раз — то есть завести в Ozon дубль импорта
+ * поверх ещё не разобранного.
  */
 function needsPublish(print: OzonPrint): boolean {
-  return print.status === 'DRAFT' || print.variants.some((v) => v.status !== 'OK');
+  return (
+    !isInFlight(print) &&
+    (print.status === 'DRAFT' || print.variants.some((v) => v.status !== 'OK'))
+  );
+}
+
+/** Всё уехало в Ozon и принято — дальше карточка живёт в «Моих товарах». */
+function isSettled(print: OzonPrint): boolean {
+  return print.status === 'OK' && print.variants.every((v) => v.status === 'OK');
 }
 
 function SyncBadge({ status }: { status: EnumOzonSyncStatus }) {
@@ -220,37 +237,68 @@ function PrintsList({ accountId }: { accountId: string }) {
     );
   }
 
+  /*
+   * Готовые карточки уходят под сворачиваемую строку.
+   *
+   * Экран создания отвечает на один вопрос: что ещё не уехало в Ozon. Принт,
+   * который уже опубликован целиком, ответа не меняет — он живёт в «Моих
+   * товарах», где у него цена, остаток и продажи. Держать его здесь второй
+   * копией значит каждый раз листать мимо сделанного к несделанному.
+   */
+  const settled = prints.filter(isSettled);
+  const active = prints.filter((p) => !isSettled(p));
+
+  const card = (p: OzonPrint) => (
+    <PrintCard
+      key={p.id}
+      print={p}
+      publishing={publish.isPending && publish.variables === p.id}
+      onPublish={() => publish.mutate(p.id)}
+      onEdit={() => setEditing(p)}
+      onRemove={() => {
+        if (confirm(`Удалить принт «${p.name}»? Если он уже был отправлен в Ozon, там карточка останется.`)) {
+          remove.mutate(p.id);
+        }
+      }}
+    />
+  );
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-gray-700">Принты ({prints.length})</h3>
-        {unsent.length > 1 && (
-          <button
-            onClick={() => publishAll.mutate()}
-            disabled={publishAll.isPending}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
-          >
-            <Rocket size={13} aria-hidden="true" />
-            Отправить все неотправленные ({unsent.length})
-          </button>
-        )}
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {prints.map((p) => (
-          <PrintCard
-            key={p.id}
-            print={p}
-            publishing={publish.isPending && publish.variables === p.id}
-            onPublish={() => publish.mutate(p.id)}
-            onEdit={() => setEditing(p)}
-            onRemove={() => {
-              if (confirm(`Удалить принт «${p.name}»? Если он уже был отправлен в Ozon, там карточка останется.`)) {
-                remove.mutate(p.id);
-              }
-            }}
-          />
-        ))}
-      </div>
+      {active.length > 0 && (
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-gray-700">
+              Ещё не в Ozon ({active.length})
+            </h3>
+            {unsent.length > 1 && (
+              <button
+                onClick={() => publishAll.mutate()}
+                disabled={publishAll.isPending}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
+              >
+                <Rocket size={13} aria-hidden="true" />
+                Отправить все ({unsent.length})
+              </button>
+            )}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">{active.map(card)}</div>
+        </>
+      )}
+
+      {settled.length > 0 && (
+        <details className="rounded-2xl border border-gray-200 bg-white">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-700">
+            Уже в Ozon ({settled.length})
+            <span className="ml-2 text-xs font-normal text-gray-500">
+              цена, остаток и продажи — в разделе «Мои товары»
+            </span>
+          </summary>
+          <div className="grid gap-3 border-t border-gray-100 p-4 sm:grid-cols-2">
+            {settled.map(card)}
+          </div>
+        </details>
+      )}
 
       {editing && (
         <EditPrintModal
@@ -322,19 +370,37 @@ function SingleCreateForm({ accountId, defaultPrice }: { accountId: string; defa
     qc.invalidateQueries({ queryKey: ['ozon-prints', accountId] });
   };
 
+  /*
+   * Создание и отправка — два запроса, и падать они могут порознь.
+   *
+   * Если карточка создалась, а отправка не прошла, показывать «не удалось
+   * создать принт» нельзя: человек правит форму и жмёт снова, а в ответ
+   * получает «принт уже заведён» — при том что в списке ниже он и правда
+   * лежит. Ровно в этот круг здесь уже попадали. Поэтому отказ отправки
+   * возвращается как результат, а не как ошибка: форма очищается, а сказать
+   * остаётся только «лежит черновиком, отправьте кнопкой».
+   */
   const create = useMutation({
     mutationFn: async (publish: boolean) => {
       const print = await ozonCatalogApi.createPrint(accountId, draftToPayload(draft));
-      if (publish) await ozonCatalogApi.publish(accountId, [print.id]);
-      return publish;
+      if (!publish) return { publishError: null as string | null };
+      try {
+        await ozonCatalogApi.publish(accountId, [print.id]);
+        return { publishError: null as string | null };
+      } catch (e) {
+        return { publishError: getErrorMessage(e, 'Ozon не принял запрос') };
+      }
     },
-    onSuccess: (published) => {
+    onSuccess: ({ publishError }) => {
       reset();
-      toast.success(
-        published
-          ? 'Карточка создана и отправлена в Ozon — статус появится в списке ниже'
-          : 'Сохранено черновиком — отправить можно кнопкой в карточке ниже',
-      );
+      if (publishError) {
+        toast.error(
+          `Карточка сохранена, но в Ozon не ушла: ${publishError}. Она в списке ниже — отправьте кнопкой.`,
+          { duration: 9000 },
+        );
+      } else {
+        toast.success('Карточка создана — статус появится в списке ниже');
+      }
     },
     onError: (e) => toast.error(getErrorMessage(e, 'Не удалось создать принт')),
   });
@@ -359,24 +425,38 @@ function BulkCreateForm({ accountId, defaultPrice }: { accountId: string; defaul
   const qc = useQueryClient();
   const [drafts, setDrafts] = useState<PrintDraft[]>(() => [emptyPrintDraft(defaultPrice)]);
 
+  // Та же развилка, что в одиночном создании: отказ отправки — это результат,
+  // а не ошибка. Плюс список обновляем и при отказе создания: часть принтов
+  // могла успеть записаться, и человек должен увидеть, что именно.
   const createBulk = useMutation({
     mutationFn: async (publish: boolean) => {
       const created = await ozonCatalogApi.createPrintsBulk(accountId, drafts.map(draftToPayload));
-      if (publish && created.length) {
-        await ozonCatalogApi.publish(accountId, created.map((p) => p.id));
+      if (!publish || !created.length) {
+        return { count: created.length, publishError: null as string | null };
       }
-      return { count: created.length, publish };
+      try {
+        await ozonCatalogApi.publish(accountId, created.map((p) => p.id));
+        return { count: created.length, publishError: null as string | null };
+      } catch (e) {
+        return { count: created.length, publishError: getErrorMessage(e, 'Ozon не принял запрос') };
+      }
     },
-    onSuccess: ({ count, publish }) => {
+    onSuccess: ({ count, publishError }) => {
       qc.invalidateQueries({ queryKey: ['ozon-prints', accountId] });
       setDrafts([emptyPrintDraft(defaultPrice)]);
-      toast.success(
-        publish
-          ? `Отправлено в Ozon карточек: ${count}`
-          : `Сохранено черновиков: ${count}`,
-      );
+      if (publishError) {
+        toast.error(
+          `Сохранено карточек: ${count}, но в Ozon они не ушли: ${publishError}. Отправьте их кнопкой в списке ниже.`,
+          { duration: 9000 },
+        );
+      } else {
+        toast.success(`Создано карточек: ${count}`);
+      }
     },
-    onError: (e) => toast.error(getErrorMessage(e, 'Не удалось создать принты')),
+    onError: (e) => {
+      qc.invalidateQueries({ queryKey: ['ozon-prints', accountId] });
+      toast.error(getErrorMessage(e, 'Не удалось создать принты'));
+    },
   });
 
   const update = (key: string, d: PrintDraft) =>

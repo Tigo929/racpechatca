@@ -100,6 +100,36 @@ describe('ozon-attributes: сборка запроса на импорт', () =>
     ]);
   });
 
+  it('не отправляет «цену до скидки», если она не выше цены', () => {
+    /*
+     * Ozon отбивает товар целиком, если зачёркнутая цена ниже актуальной.
+     * На создании это выглядело как «карточка просто не появилась»: ошибка
+     * приходила на весь вариант, а причина — в поле, которое человек считал
+     * необязательным. Тот же порядок уже стоял в обновлении цен, а на
+     * импорте его не было.
+     */
+    expect(buildImportItem(template, { ...print, oldPrice: 2000 }, variant).old_price)
+      .toBe('0');
+    expect(buildImportItem(template, { ...print, oldPrice: 3500 }, variant).old_price)
+      .toBe('0');
+    expect(buildImportItem(template, { ...print, oldPrice: null }, variant).old_price)
+      .toBe('0');
+    // А выше цены — уходит как есть.
+    expect(buildImportItem(template, { ...print, oldPrice: 6000 }, variant).old_price)
+      .toBe('6000');
+  });
+
+  it('сравнивает «цену до скидки» с ценой варианта, а не принта', () => {
+    // У варианта своя цена — от неё и считается, выше ли зачёркнутая.
+    const item = buildImportItem(
+      template,
+      { ...print, oldPrice: 4000 },
+      { ...variant, priceOverride: 5000 },
+    );
+    expect(item.price).toBe('5000');
+    expect(item.old_price).toBe('0');
+  });
+
   it('override цены варианта важнее цены принта', () => {
     const item = buildImportItem(template, print, {
       ...variant,

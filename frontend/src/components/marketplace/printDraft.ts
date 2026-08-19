@@ -79,7 +79,14 @@ export interface PrintDraft {
   price: string;
   oldPrice: string;
   gender: EnumTshirtGender;
-  patternTags: string; // через запятую
+  /**
+   * Тематика рисунка — списком, а не строкой через запятую.
+   *
+   * Строкой было нельзя: в словаре Ozon есть значения с запятой внутри
+   * («Надписи, цитаты»), и при разборе одно выбранное значение распадалось на
+   * два выдуманных. Ozon такие не принимает и отбивает карточку целиком.
+   */
+  patternTags: string[];
   /** «Объединить на одной карточке» в Ozon. Пусто — берётся код принта. */
   unionKey: string;
   colorGroups: ColorGroupDraft[];
@@ -102,14 +109,22 @@ export function emptyPrintDraft(defaultPrice?: number): PrintDraft {
     name: '', slug: '', description: '', hashtags: '',
     mainPhotoUrl: '', extraPhotoUrls: '',
     price: defaultPrice ? String(defaultPrice) : '',
-    oldPrice: '', gender: 'UNISEX', patternTags: '', unionKey: '',
+    oldPrice: '', gender: 'UNISEX', patternTags: [], unionKey: '',
     colorGroups: [{ colorLabel: '', colorDictionaryValueId: 0, colorCode: '', sizes: [...DEFAULT_SIZES] }],
   };
 }
 
 /** Копия строки под новый принт: общее остаётся, своё у карточки — чистое. */
 export function duplicateDraft(d: PrintDraft): PrintDraft {
-  return { ...d, key: nextKey(), name: '', slug: '', mainPhotoUrl: '', extraPhotoUrls: '' };
+  return {
+    ...d,
+    key: nextKey(),
+    // Свой массив, а не ссылка на соседний: иначе правка тематики в одной
+    // строке меняла бы её и во всех скопированных.
+    patternTags: [...d.patternTags],
+    colorGroups: d.colorGroups.map((g) => ({ ...g, sizes: [...g.sizes] })),
+    name: '', slug: '', mainPhotoUrl: '', extraPhotoUrls: '',
+  };
 }
 
 /** Готовит тело запроса из черновика — здесь же живёт разбор многострочных/списочных полей. */
@@ -124,7 +139,7 @@ export function draftToPayload(d: PrintDraft): CreateOzonPrintDto {
     price: Number(d.price) || 0,
     oldPrice: d.oldPrice.trim() ? Number(d.oldPrice) : undefined,
     gender: d.gender,
-    patternTags: d.patternTags.split(',').map((s) => s.trim()).filter(Boolean),
+    patternTags: d.patternTags,
     ...(d.unionKey.trim() ? { unionKey: d.unionKey.trim() } : {}),
     colorGroups: d.colorGroups
       .filter((g) => g.colorLabel && g.colorDictionaryValueId && g.sizes.length)
@@ -168,5 +183,28 @@ export function draftErrors(d: PrintDraft): string[] {
     }
     if (!g.sizes.length) errors.push(`Цвет «${name}»: не отмечен ни один размер`);
   });
+
+  /*
+   * Два цвета с одинаковым кодом в артикуле.
+   *
+   * Артикул собирается как <код>-<цвет>-<размер>, поэтому «чёрный» и «Черный»
+   * дают один и тот же JDM-1-1-black-M. Раньше это ловилось только базой уже
+   * после отправки формы, и ответ приходил про «такой артикул существует» —
+   * про артикул, которого человек в глаза не видел.
+   */
+  const codes = new Map<string, string[]>();
+  for (const g of groups) {
+    const code = (g.colorCode.trim() || colorCodeFor(g.colorLabel)).toLowerCase();
+    if (!code) continue;
+    codes.set(code, [...(codes.get(code) ?? []), g.colorLabel.trim() || code]);
+  }
+  for (const [code, labels] of codes) {
+    if (labels.length > 1) {
+      errors.push(
+        `Цвета ${labels.map((l) => `«${l}»`).join(' и ')} дают один код «${code}» — артикулы совпадут. Задайте разные коды цвета.`,
+      );
+    }
+  }
+
   return errors;
 }

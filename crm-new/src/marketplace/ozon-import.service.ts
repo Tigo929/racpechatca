@@ -73,10 +73,14 @@ export class OzonImportService {
      * что в кабинете.
      */
     const unionKeys = new Map<string, string>();
+    const existingBySlug = await this.products
+      .existingUnionKeys(
+        creds,
+        prints.map((p) => p.slug),
+      )
+      .catch(() => new Map<string, string>());
     for (const print of prints) {
-      const existing = await this.products
-        .existingUnionKey(creds, print.slug)
-        .catch(() => null);
+      const existing = existingBySlug.get(print.slug);
       if (existing && existing !== print.unionKey) {
         unionKeys.set(print.id, existing);
         await this.prisma.ozonPrint.update({

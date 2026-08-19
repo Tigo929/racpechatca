@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 import { AttributeAutocomplete } from './AttributeAutocomplete';
 import { PhotoUpload } from './PhotoUpload';
 import {
@@ -187,27 +187,36 @@ export function PrintEditor({
                 label=""
                 inputClassName={`mt-1 ${field}`}
                 onSelect={(o) => {
-                  // Копим выбранные через запятую: у товара бывает несколько
-                  // тем, а список Ozon отдаёт по одному значению за выбор.
-                  const current = draft.patternTags
-                    .split(',')
-                    .map((x) => x.trim())
-                    .filter(Boolean);
-                  if (!current.includes(o.value)) current.push(o.value);
-                  set('patternTags', current.join(', '));
+                  // Копим списком: у товара бывает несколько тем, а Ozon
+                  // отдаёт по одному значению за выбор.
+                  if (draft.patternTags.includes(o.value)) return;
+                  set('patternTags', [...draft.patternTags, o.value]);
                 }}
               />
-              {draft.patternTags && (
-                <span className="mt-1 block text-[11px] text-gray-500">
-                  Выбрано: {draft.patternTags}{' '}
-                  <button
-                    type="button"
-                    onClick={() => set('patternTags', '')}
-                    className="text-amber-700 hover:text-amber-900"
-                  >
-                    очистить
-                  </button>
-                </span>
+              {draft.patternTags.length > 0 && (
+                /* Каждая тема убирается отдельно: раньше был только сброс
+                   всего списка, и чтобы снять одну лишнюю, приходилось
+                   выбирать остальные заново. */
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {draft.patternTags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1 rounded-md bg-amber-50 py-0.5 pl-2 pr-1 text-[11px] text-amber-900"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        aria-label={`Убрать «${tag}»`}
+                        onClick={() =>
+                          set('patternTags', draft.patternTags.filter((t) => t !== tag))
+                        }
+                        className="rounded p-0.5 text-amber-600 hover:bg-amber-100 hover:text-amber-900"
+                      >
+                        <X size={11} aria-hidden="true" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
               )}
               <span className="mt-1 block text-[11px] text-gray-400">
                 Только значения из списка Ozon — набранные руками площадка отклоняет.

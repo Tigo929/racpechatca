@@ -353,7 +353,13 @@ export function buildImportItem(
   }
 
   const price = variant.priceOverride ?? print.price;
-  const oldPrice = print.oldPrice ?? 0;
+  /*
+   * «Цена до скидки» уходит, только если она действительно выше цены.
+   * Иначе зачёркнутая цена оказывается ниже актуальной, и Ozon отбивает
+   * товар целиком — на создании это выглядит как «карточка не появилась»
+   * без внятной причины. Тот же порядок уже стоит в обновлении цен.
+   */
+  const oldPrice = print.oldPrice && print.oldPrice > price ? print.oldPrice : 0;
 
   const attributes = [
     { id: OZON_ATTR.UNION_KEY, values: [{ value: print.unionKey }] },
