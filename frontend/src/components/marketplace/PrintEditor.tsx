@@ -88,17 +88,13 @@ export function ColorGroupRow({
         Артикул: {previewOfferId(slug, name, group.colorCode, firstSize)}
       </p>
 
-      {/* Фото у цвета, а не у принта. Принт один, а футболки разные: белый
-          вариант с фотографией чёрного покупатель видит как чужой товар, а
-          Ozon — как несоответствие карточки. Остальные поля общие, поэтому
-          на каждый цвет заводится только снимок. */}
+      {/* Единственное место, где задаётся фото. Раньше рядом было ещё и
+          «главное фото принта» запасным — два поля подряд путали и норовили
+          заполниться одной и той же картинкой дважды. Принт один, а футболки
+          разные: снимок бывает только у цвета. */}
       <PhotoUpload
         label={`Фото цвета${group.colorLabel ? ` «${group.colorLabel}»` : ''}`}
-        hint={
-          group.mainPhotoUrl
-            ? undefined
-            : 'Пока не задано — уйдёт главное фото принта, то есть футболка другого цвета.'
-        }
+        hint={group.mainPhotoUrl ? undefined : 'Обязательно: это фото уйдёт в карточку Ozon.'}
         urls={group.mainPhotoUrl ? [group.mainPhotoUrl] : []}
         markFirstAsMain
         onChange={(urls) => onChange({ ...group, mainPhotoUrl: urls[0] ?? '' })}
@@ -217,23 +213,6 @@ export function PrintEditor({
             {Object.entries(GENDER_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </label>
-        <label className="block">
-          <span className="text-xs font-medium text-gray-600">Цена, ₽</span>
-          <input type="number" min={0} className={`mt-1 ${field}`} value={draft.price} onChange={(e) => set('price', e.target.value)} />
-        </label>
-        <label className="block">
-          <span className="text-xs font-medium text-gray-600">Цена до скидки, ₽ (необязательно)</span>
-          <input type="number" min={0} className={`mt-1 ${field}`} value={draft.oldPrice} onChange={(e) => set('oldPrice', e.target.value)} />
-        </label>
-        <div className="sm:col-span-2">
-          <PhotoUpload
-            label="Главное фото принта"
-            hint="Запасное: уйдёт тем цветам, у которых своего фото нет. Остальные фото карточки берутся общие — из шаблона кабинета."
-            urls={draft.mainPhotoUrl ? [draft.mainPhotoUrl] : []}
-            markFirstAsMain
-            onChange={(urls) => set('mainPhotoUrl', urls[0] ?? '')}
-          />
-        </div>
       </div>
 
       <div className={tab === 'search' ? 'block' : 'hidden'}>

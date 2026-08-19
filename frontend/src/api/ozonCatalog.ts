@@ -49,8 +49,10 @@ export interface OzonCatalogTemplate {
   sharedPhotoUrls: string[];
   /** Цена, с которой открывается форма нового принта. */
   defaultPrice: number;
-  /** Остаток, который проставляется сразу после публикации. 0 — не проставлять. */
+  /** Остаток, который проставляется после публикации. 0 — не проставлять. */
   defaultStock: number;
+  /** «Цена до скидки» новой карточки. */
+  defaultOldPrice: number;
 }
 
 export type UpdateOzonCatalogTemplateDto = Partial<

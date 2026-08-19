@@ -14,7 +14,7 @@ import { PrintEditor } from './PrintEditor';
 import { EditPrintModal } from './EditPrintModal';
 import {
   duplicateDraft, emptyPrintDraft, draftToPayload, draftErrors, GENDER_LABELS,
-  type PrintDraft,
+  type PrintDefaults, type PrintDraft,
 } from './printDraft';
 
 /**
@@ -356,16 +356,16 @@ function CreateActions({
   );
 }
 
-function SingleCreateForm({ accountId, defaultPrice }: { accountId: string; defaultPrice?: number }) {
+function SingleCreateForm({ accountId, defaults }: { accountId: string; defaults: PrintDefaults }) {
   const qc = useQueryClient();
-  const [draft, setDraft] = useState<PrintDraft>(() => emptyPrintDraft(defaultPrice));
+  const [draft, setDraft] = useState<PrintDraft>(() => emptyPrintDraft());
   // Меняется при каждом успешном сохранении — вместе с key на PrintEditor это
   // пересоздаёт вложенные автодополнения (см. AttributeAutocomplete) вместо
   // синхронизации их локального состояния через эффект.
   const [formVersion, setFormVersion] = useState(0);
 
   const reset = () => {
-    setDraft(emptyPrintDraft(defaultPrice));
+    setDraft(emptyPrintDraft());
     setFormVersion((v) => v + 1);
     qc.invalidateQueries({ queryKey: ['ozon-prints', accountId] });
   };
@@ -382,7 +382,7 @@ function SingleCreateForm({ accountId, defaultPrice }: { accountId: string; defa
    */
   const create = useMutation({
     mutationFn: async (publish: boolean) => {
-      const print = await ozonCatalogApi.createPrint(accountId, draftToPayload(draft));
+      const print = await ozonCatalogApi.createPrint(accountId, draftToPayload(draft, defaults));
       if (!publish) return { publishError: null as string | null };
       try {
         await ozonCatalogApi.publish(accountId, [print.id]);
@@ -409,7 +409,7 @@ function SingleCreateForm({ accountId, defaultPrice }: { accountId: string; defa
     <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
       <PrintEditor key={formVersion} draft={draft} onChange={setDraft} accountId={accountId} />
       <CreateActions
-        errors={draftErrors(draft)}
+        errors={draftErrors(draft, defaults)}
         busy={create.isPending}
         busyLabel="Отправляем…"
         publishLabel="Создать и отправить в Ozon"
@@ -421,16 +421,19 @@ function SingleCreateForm({ accountId, defaultPrice }: { accountId: string; defa
   );
 }
 
-function BulkCreateForm({ accountId, defaultPrice }: { accountId: string; defaultPrice?: number }) {
+function BulkCreateForm({ accountId, defaults }: { accountId: string; defaults: PrintDefaults }) {
   const qc = useQueryClient();
-  const [drafts, setDrafts] = useState<PrintDraft[]>(() => [emptyPrintDraft(defaultPrice)]);
+  const [drafts, setDrafts] = useState<PrintDraft[]>(() => [emptyPrintDraft()]);
 
   // Та же развилка, что в одиночном создании: отказ отправки — это результат,
   // а не ошибка. Плюс список обновляем и при отказе создания: часть принтов
   // могла успеть записаться, и человек должен увидеть, что именно.
   const createBulk = useMutation({
     mutationFn: async (publish: boolean) => {
-      const created = await ozonCatalogApi.createPrintsBulk(accountId, drafts.map(draftToPayload));
+      const created = await ozonCatalogApi.createPrintsBulk(
+        accountId,
+        drafts.map((d) => draftToPayload(d, defaults)),
+      );
       if (!publish || !created.length) {
         return { count: created.length, publishError: null as string | null };
       }
@@ -443,7 +446,7 @@ function BulkCreateForm({ accountId, defaultPrice }: { accountId: string; defaul
     },
     onSuccess: ({ count, publishError }) => {
       qc.invalidateQueries({ queryKey: ['ozon-prints', accountId] });
-      setDrafts([emptyPrintDraft(defaultPrice)]);
+      setDrafts([emptyPrintDraft()]);
       if (publishError) {
         toast.error(
           `Сохранено карточек: ${count}, но в Ozon они не ушли: ${publishError}. Отправьте их кнопкой в списке ниже.`,
@@ -471,7 +474,7 @@ function BulkCreateForm({ accountId, defaultPrice }: { accountId: string; defaul
   // Ошибки собираем с номером строки: в списке из десяти принтов «не указана
   // цена» без номера ничего не говорит.
   const allErrors = drafts.flatMap((d, i) =>
-    draftErrors(d).map((e) => `Принт #${i + 1}: ${e}`),
+    draftErrors(d, defaults).map((e) => `Принт #${i + 1}: ${e}`),
   );
 
   return (
@@ -499,7 +502,7 @@ function BulkCreateForm({ accountId, defaultPrice }: { accountId: string; defaul
       ))}
 
       <button
-        onClick={() => setDrafts((prev) => [...prev, emptyPrintDraft(defaultPrice)])}
+        onClick={() => setDrafts((prev) => [...prev, emptyPrintDraft()])}
         className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"
       >
         <Plus size={14} aria-hidden="true" /> Добавить принт
@@ -531,7 +534,12 @@ export function ProductsTab({ accountId }: { accountId: string }) {
     queryKey: ['ozon-template', accountId],
     queryFn: () => ozonCatalogApi.getTemplate(accountId),
   });
-  const defaultPrice = template?.defaultPrice || undefined;
+  // Цена и «цена до скидки» живут только в шаблоне: в форме принта их полей
+  // больше нет. Два места под одно значение путали — и норовили разойтись.
+  const defaults: PrintDefaults = {
+    price: template?.defaultPrice ?? 0,
+    oldPrice: template?.defaultOldPrice ?? 0,
+  };
 
   return (
     <div className="space-y-4">
@@ -559,8 +567,8 @@ export function ProductsTab({ accountId }: { accountId: string }) {
       {/* Форма пересоздаётся при смене цены по умолчанию: иначе первая
           открытая форма осталась бы с пустым полем до перезагрузки. */}
       {mode === 'single'
-        ? <SingleCreateForm key={`s-${defaultPrice ?? 0}`} accountId={accountId} defaultPrice={defaultPrice} />
-        : <BulkCreateForm key={`b-${defaultPrice ?? 0}`} accountId={accountId} defaultPrice={defaultPrice} />}
+        ? <SingleCreateForm accountId={accountId} defaults={defaults} />
+        : <BulkCreateForm accountId={accountId} defaults={defaults} />}
 
       <PrintsList accountId={accountId} />
     </div>

@@ -139,10 +139,17 @@ export class DtoUpdateOzonCatalogTemplate {
   @Type(() => Number)
   defaultPrice?: number;
 
-  /** Остаток, который проставляется сразу после публикации. 0 — не проставлять. */
+  /** Остаток, который проставляется после публикации. 0 — не проставлять. */
   @IsOptional()
   @IsInt()
   @Min(0)
   @Type(() => Number)
   defaultStock?: number;
+
+  /** «Цена до скидки» новой карточки. Уходит в Ozon, только если выше цены. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  defaultOldPrice?: number;
 }

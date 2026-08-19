@@ -92,10 +92,7 @@ export interface PrintDraft {
   slug: string;
   description: string;
   hashtags: string;
-  mainPhotoUrl: string;
   extraPhotoUrls: string; // по одной ссылке на строку — парсится при отправке
-  price: string;
-  oldPrice: string;
   gender: EnumTshirtGender;
   /**
    * Тематика рисунка — списком, а не строкой через запятую.
@@ -121,13 +118,19 @@ function nextKey(): string {
  * карточки сессиями по одной цене, и вбивать её в каждую из полусотни —
  * лишняя работа. Значение остаётся правимым в любой строке.
  */
-export function emptyPrintDraft(defaultPrice?: number): PrintDraft {
+export interface PrintDefaults {
+  /** Цена из шаблона кабинета. В форме принта её поля больше нет. */
+  price: number;
+  /** «Цена до скидки» из шаблона. Уходит в Ozon, только если выше цены. */
+  oldPrice: number;
+}
+
+export function emptyPrintDraft(): PrintDraft {
   return {
     key: nextKey(),
     name: '', slug: '', description: '', hashtags: '',
-    mainPhotoUrl: '', extraPhotoUrls: '',
-    price: defaultPrice ? String(defaultPrice) : '',
-    oldPrice: '', gender: 'UNISEX', patternTags: [], unionKey: '',
+    extraPhotoUrls: '',
+    gender: 'UNISEX', patternTags: [], unionKey: '',
     colorGroups: [emptyColorGroup()],
   };
 }
@@ -143,26 +146,43 @@ export function duplicateDraft(d: PrintDraft): PrintDraft {
     // Фото цветов не копируем: это снимки другого принта, и подставить их
     // новому — тот же промах, что одно фото на все цвета.
     colorGroups: d.colorGroups.map((g) => ({ ...g, mainPhotoUrl: '', sizes: [...g.sizes] })),
-    name: '', slug: '', mainPhotoUrl: '', extraPhotoUrls: '',
+    name: '', slug: '', extraPhotoUrls: '',
   };
 }
 
+/** Цветовые партии, заполненные достаточно, чтобы уйти в Ozon. */
+function filledColorGroups(d: PrintDraft) {
+  return d.colorGroups.filter(
+    (g) => g.colorLabel && g.colorDictionaryValueId && g.sizes.length,
+  );
+}
+
 /** Готовит тело запроса из черновика — здесь же живёт разбор многострочных/списочных полей. */
-export function draftToPayload(d: PrintDraft): CreateOzonPrintDto {
+export function draftToPayload(
+  d: PrintDraft,
+  defaults: PrintDefaults,
+): CreateOzonPrintDto {
+  const groups = filledColorGroups(d);
   return {
     slug: d.slug.trim() || undefined,
     name: d.name.trim(),
     description: d.description.trim() || undefined,
     hashtags: d.hashtags.trim() || undefined,
-    mainPhotoUrl: d.mainPhotoUrl.trim(),
+    /*
+     * У принта своего фото больше нет: снимок бывает только у цвета. Поле в
+     * базе осталось запасным для карточек, заведённых раньше, поэтому шлём
+     * туда фото первого цвета — два поля рядом путали и норовили заполниться
+     * одной и той же картинкой дважды.
+     */
+    mainPhotoUrl: groups[0]?.mainPhotoUrl.trim() ?? '',
     extraPhotoUrls: d.extraPhotoUrls.split('\n').map((s) => s.trim()).filter(Boolean),
-    price: Number(d.price) || 0,
-    oldPrice: d.oldPrice.trim() ? Number(d.oldPrice) : undefined,
+    // Цена и «цена до скидки» — из шаблона кабинета, одни на всю партию.
+    price: defaults.price,
+    oldPrice: defaults.oldPrice || undefined,
     gender: d.gender,
     patternTags: d.patternTags,
     ...(d.unionKey.trim() ? { unionKey: d.unionKey.trim() } : {}),
-    colorGroups: d.colorGroups
-      .filter((g) => g.colorLabel && g.colorDictionaryValueId && g.sizes.length)
+    colorGroups: groups
       .map((g): OzonColorGroupInput => ({
         colorLabel: g.colorLabel,
         colorDictionaryValueId: g.colorDictionaryValueId,
@@ -173,11 +193,12 @@ export function draftToPayload(d: PrintDraft): CreateOzonPrintDto {
   };
 }
 
-export function draftErrors(d: PrintDraft): string[] {
+export function draftErrors(d: PrintDraft, defaults: PrintDefaults): string[] {
   const errors: string[] = [];
   if (d.name.trim().length < 3) errors.push('Название короче 3 символов');
-  if (!d.mainPhotoUrl.trim()) errors.push('Не указана ссылка на главное фото');
-  if (!Number(d.price)) errors.push('Не указана цена');
+  if (!defaults.price) {
+    errors.push('В шаблоне кабинета не задана цена — задайте её вверху страницы');
+  }
   /*
    * Каждый недозаполненный цвет называем отдельно.
    *
@@ -203,6 +224,9 @@ export function draftErrors(d: PrintDraft): string[] {
       );
     }
     if (!g.sizes.length) errors.push(`Цвет «${name}»: не отмечен ни один размер`);
+    // Фото теперь только у цвета, запасного больше нет — значит оно
+    // обязательно у каждого. Иначе карточка уйдёт в Ozon без картинки.
+    if (!g.mainPhotoUrl.trim()) errors.push(`Цвет «${name}»: не добавлено фото`);
   });
 
   /*

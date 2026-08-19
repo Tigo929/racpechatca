@@ -26,6 +26,13 @@ import {
  * есть в проекте для статуса заказов у партнёра
  * (`partner-status-poll.service.ts`) — переиспользуем форму, не механизм.
  */
+/**
+ * Сколько раз пробуем проставить остаток, прежде чем оставить вариант в покое.
+ * Опрос идёт раз в полминуты, то есть на попытки уходит около получаса —
+ * этого хватает даже медленной модерации Ozon.
+ */
+const MAX_STOCK_ATTEMPTS = 60;
+
 @Injectable()
 export class OzonImportService {
   private readonly logger = new Logger(OzonImportService.name);
@@ -161,7 +168,14 @@ export class OzonImportService {
 
       await this.prisma.ozonVariant.updateMany({
         where: { id: { in: variantIds } },
-        data: { status: EnumOzonSyncStatus.QUEUED, lastError: null },
+        data: {
+          status: EnumOzonSyncStatus.QUEUED,
+          lastError: null,
+          // Публикация означает «сделать продаваемым», поэтому остаток
+          // проставляется заново: отметка и счётчик попыток обнуляются.
+          stockAppliedAt: null,
+          stockAttempts: 0,
+        },
       });
       await this.prisma.ozonPrint.updateMany({
         where: { id: { in: batch.map(({ print }) => print.id) } },
@@ -184,7 +198,6 @@ export class OzonImportService {
       take: 20,
       orderBy: { createdAt: 'asc' },
     });
-    if (!open.length) return;
 
     for (const batch of open) {
       await this.pollBatch(
@@ -193,6 +206,119 @@ export class OzonImportService {
         batch.ozonTaskId,
       );
     }
+
+    await this.applyPendingStocks();
+  }
+
+  /**
+   * Дожимает остаток у опубликованных вариантов.
+   *
+   * Отдельным проходом, а не сразу после импорта, потому что Ozon на
+   * немедленную попытку отвечает «Product is not created»: карточка заведена,
+   * но товар ещё не готов принимать остатки. Одна попытка тут ничего не
+   * стоит — на живом кабинете так не прошло ни одного из десяти вариантов, и
+   * все они остались непродаваемыми при зелёном статусе.
+   *
+   * Уже выставленный остаток не трогаем: сначала читаем, что в кабинете, и
+   * заполняем только нули. Иначе «остаток при публикации» затирал бы цифру,
+   * которую поставили руками, — а повторная публикация карточки бывает.
+   */
+  async applyPendingStocks(): Promise<void> {
+    const pending = await this.prisma.ozonVariant.findMany({
+      where: {
+        status: EnumOzonSyncStatus.OK,
+        stockAppliedAt: null,
+        stockAttempts: { lt: MAX_STOCK_ATTEMPTS },
+      },
+      select: { id: true, offerId: true, print: { select: { marketplaceAccountId: true } } },
+      take: 200,
+    });
+    if (!pending.length) return;
+
+    // По кабинетам: склад и доступы у каждого свои.
+    const byAccount = new Map<string, { id: string; offerId: string }[]>();
+    for (const v of pending) {
+      const key = v.print.marketplaceAccountId;
+      byAccount.set(key, [...(byAccount.get(key) ?? []), { id: v.id, offerId: v.offerId }]);
+    }
+
+    for (const [accountId, variants] of byAccount) {
+      try {
+        await this.applyStocksForAccount(accountId, variants);
+      } catch (e) {
+        this.logger.warn(
+          `Остатки кабинета ${accountId} не проставлены: ${e instanceof Error ? e.message : e}`,
+        );
+      }
+    }
+  }
+
+  private async applyStocksForAccount(
+    marketplaceAccountId: string,
+    variants: { id: string; offerId: string }[],
+  ): Promise<void> {
+    const template = await this.templates.getOrCreate(marketplaceAccountId);
+    if (template.defaultStock <= 0) {
+      // Проставлять нечего — снимаем с очереди, иначе будем ходить сюда вечно.
+      await this.markStockApplied(variants.map((v) => v.id));
+      return;
+    }
+
+    const creds = await this.accounts.credentials(marketplaceAccountId);
+
+    // Что уже лежит в кабинете. Вариант с ненулевым остатком считаем
+    // сделанным: цифру мог поставить человек, и перебивать её нельзя.
+    const current = await this.products.stockByOfferId(creds).catch(() => null);
+    const alreadyStocked = variants.filter((v) => (current?.get(v.offerId) ?? 0) > 0);
+    if (alreadyStocked.length) {
+      await this.markStockApplied(alreadyStocked.map((v) => v.id));
+    }
+    const toFill = variants.filter((v) => !alreadyStocked.includes(v));
+    if (!toFill.length) return;
+
+    const info = await this.ozon.checkConnection(creds);
+    const warehouseId = info.warehouses?.[0]?.id;
+    if (!warehouseId) {
+      this.logger.warn(
+        'Остаток не проставлен: в кабинете не видно ни одного склада FBS',
+      );
+      return;
+    }
+
+    const results = await this.products.updateStocks(
+      creds,
+      warehouseId,
+      toFill.map((v) => ({ offerId: v.offerId, stock: template.defaultStock })),
+    );
+
+    const okIds: string[] = [];
+    const failed: string[] = [];
+    for (const r of results) {
+      const variant = toFill.find((v) => v.offerId === r.offerId);
+      if (!variant) continue;
+      if (r.updated) okIds.push(variant.id);
+      else failed.push(`${r.offerId}: ${r.error ?? 'без причины'}`);
+    }
+
+    if (okIds.length) await this.markStockApplied(okIds);
+    if (failed.length) {
+      await this.prisma.ozonVariant.updateMany({
+        where: { id: { in: toFill.filter((v) => !okIds.includes(v.id)).map((v) => v.id) } },
+        data: { stockAttempts: { increment: 1 } },
+      });
+      this.logger.log(
+        `Остаток ${template.defaultStock}: принято ${okIds.length}, отложено ${failed.length} (${failed[0]}) — повторим`,
+      );
+    } else if (okIds.length) {
+      this.logger.log(`Остаток ${template.defaultStock} проставлен: ${okIds.length}`);
+    }
+  }
+
+  private markStockApplied(ids: string[]) {
+    return this.prisma.ozonVariant.updateMany({
+      where: { id: { in: ids } },
+      data: { stockAppliedAt: new Date() },
+    });
   }
 
   private async pollBatch(
@@ -285,62 +411,26 @@ export class OzonImportService {
   }
 
   /**
-   * Доводит только что созданный товар до состояния «продаётся».
+   * Штрихкод только что созданному товару.
    *
-   * `/v3/product/import` заводит карточку, но не делает двух вещей, без
-   * которых она мертва:
+   * Без штрихкода товар не примут на складе. Свой придумывать нельзя — чужой
+   * диапазон EAN означает коллизию с чужим товаром, — поэтому просим у самой
+   * площадки её же методом; product_id она принимает сразу.
    *
-   *  • **Остаток.** Пока он ноль, Ozon не показывает товар покупателю вообще.
-   *    Карточка есть, в кабинете зелёная — а заказов нет и быть не может.
-   *    Это ровно тот случай, когда «создали, а оно не продаётся».
-   *  • **Штрихкод.** Без него товар не примут на складе. Свой придумывать
-   *    нельзя — чужой диапазон EAN означает коллизию с чужим товаром, —
-   *    поэтому просим штрихкод у самой площадки её же методом.
+   * Остаток здесь не ставится: на него Ozon сразу после импорта отвечает
+   * «Product is not created» — товар создан не до конца. Им занимается
+   * applyPendingStocks(), которая дожимает попытки фоном.
    *
-   * Обе операции необязательные: если они не прошли, товар всё равно создан,
-   * и ронять из-за них разбор ответа Ozon нельзя. Поэтому неудачи пишем в
-   * лог, а не в статус варианта — иначе успешно опубликованная карточка
-   * выглядела бы отклонённой.
+   * Операция необязательная: не прошла — товар всё равно создан, и ронять
+   * из-за неё разбор ответа Ozon нельзя. Поэтому неудача идёт в лог, а не в
+   * статус варианта: иначе успешно опубликованная карточка выглядела бы
+   * отклонённой.
    */
   private async activatePublished(
-    marketplaceAccountId: string,
+    _marketplaceAccountId: string,
     creds: OzonCredentials,
     published: { offerId: string; productId: number }[],
   ): Promise<void> {
-    const template = await this.templates.getOrCreate(marketplaceAccountId);
-
-    if (template.defaultStock > 0) {
-      try {
-        const info = await this.ozon.checkConnection(creds);
-        const warehouseId = info.warehouses?.[0]?.id;
-        if (!warehouseId) {
-          this.logger.warn(
-            `Остаток новым товарам не проставлен: в кабинете не видно ни одного склада FBS`,
-          );
-        } else {
-          const res = await this.products.updateStocks(
-            creds,
-            warehouseId,
-            published.map((p) => ({
-              offerId: p.offerId,
-              stock: template.defaultStock,
-            })),
-          );
-          const failed = res.filter((r) => !r.updated);
-          this.logger.log(
-            `Остаток ${template.defaultStock} проставлен: ${res.length - failed.length} из ${res.length}`,
-          );
-          for (const f of failed) {
-            this.logger.warn(`Остаток ${f.offerId} не принят: ${f.error}`);
-          }
-        }
-      } catch (e) {
-        this.logger.warn(
-          `Не удалось проставить остаток новым товарам: ${e instanceof Error ? e.message : e}`,
-        );
-      }
-    }
-
     try {
       const failures = await this.products.generateBarcodes(
         creds,

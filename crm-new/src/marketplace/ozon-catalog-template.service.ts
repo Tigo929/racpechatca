@@ -51,6 +51,7 @@ export interface UpdateOzonCatalogTemplateInput {
   sharedPhotoUrls?: string[];
   defaultPrice?: number;
   defaultStock?: number;
+  defaultOldPrice?: number;
 }
 
 @Injectable()

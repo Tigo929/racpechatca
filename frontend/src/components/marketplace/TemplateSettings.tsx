@@ -98,9 +98,9 @@ export function TemplateSettings({ accountId }: { accountId: string }) {
           {/* Цена и остаток идут первыми: их меняют от партии к партии, а
               бренд с составом заданы однажды и больше не трогаются. */}
           {!isLoading && template && effective && (
-            <div className="grid gap-3 rounded-lg border border-amber-100 bg-amber-50/50 p-3 sm:grid-cols-2">
+            <div className="grid gap-3 rounded-lg border border-amber-100 bg-amber-50/50 p-3 sm:grid-cols-3">
               <label className="block">
-                <span className="text-xs font-medium text-gray-700">Цена новой карточки, ₽</span>
+                <span className="text-xs font-medium text-gray-700">Цена, ₽</span>
                 <input
                   type="number"
                   min={0}
@@ -109,8 +109,22 @@ export function TemplateSettings({ accountId }: { accountId: string }) {
                   onChange={(e) => setDraft((d) => ({ ...d, defaultPrice: Number(e.target.value) || 0 }))}
                 />
                 <span className="mt-1 block text-[11px] text-gray-500">
-                  Подставляется в форму нового принта. В самой карточке цену
-                  всё равно можно поменять.
+                  Единственное место, где задаётся цена: в форме принта её поля
+                  больше нет. Карточки заводятся партиями по одной цене.
+                </span>
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-gray-700">Цена до скидки, ₽</span>
+                <input
+                  type="number"
+                  min={0}
+                  className={`mt-1 ${field}`}
+                  value={effective.defaultOldPrice ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, defaultOldPrice: Number(e.target.value) || 0 }))}
+                />
+                <span className="mt-1 block text-[11px] text-gray-500">
+                  Зачёркнутая цена. Ozon примет её, только если она выше
+                  обычной; ниже или равна — уйдёт без неё.
                 </span>
               </label>
               <label className="block">

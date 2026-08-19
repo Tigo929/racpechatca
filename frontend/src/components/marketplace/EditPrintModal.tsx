@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Modal } from '../ui/Modal';
-import { PhotoUpload } from './PhotoUpload';
 import { ozonCatalogApi, type EnumTshirtGender, type OzonPrint } from '../../api/ozonCatalog';
 import { getErrorMessage } from '../../utils/get-error-message';
 import { GENDER_LABELS } from './printDraft';
@@ -33,7 +32,6 @@ export function EditPrintModal({ print, onClose, onSaved }: {
   const [description, setDescription] = useState(print.description ?? '');
   const [hashtags, setHashtags] = useState(print.hashtags ?? '');
   const [gender, setGender] = useState<EnumTshirtGender>(print.gender);
-  const [mainPhotoUrl, setMainPhotoUrl] = useState(print.mainPhotoUrl);
 
   const save = useMutation({
     mutationFn: () =>
@@ -44,7 +42,6 @@ export function EditPrintModal({ print, onClose, onSaved }: {
         description: description.trim(),
         hashtags: hashtags.trim(),
         gender,
-        mainPhotoUrl,
       }),
     onSuccess: () => { toast.success('Принт изменён'); onSaved(); },
     onError: (e) => toast.error(getErrorMessage(e, 'Не удалось сохранить')),
@@ -52,7 +49,6 @@ export function EditPrintModal({ print, onClose, onSaved }: {
 
   const errors: string[] = [];
   if (name.trim().length < 3) errors.push('Название короче 3 символов');
-  if (!mainPhotoUrl.trim()) errors.push('Не указана ссылка на главное фото');
   if (!Number(price)) errors.push('Не указана цена');
 
   return (
@@ -60,8 +56,9 @@ export function EditPrintModal({ print, onClose, onSaved }: {
       <div className="space-y-3">
         <p className="rounded-lg bg-gray-50 p-2.5 text-[11px] text-gray-500">
           Код принта <span className="font-mono text-gray-700">{print.slug}</span>,
-          цвета и размеры здесь не меняются — из них собраны артикулы. Цвет
-          добавляется в карточке товара, размер — там же.
+          цвета, размеры и фото здесь не меняются — из кода и цвета собраны
+          артикулы, а фото принадлежит цвету. Цвет добавляется в карточке
+          товара, там же и его снимок.
         </p>
 
         <label className="block">
@@ -100,13 +97,6 @@ export function EditPrintModal({ print, onClose, onSaved }: {
           <input className={`mt-1 ${field}`} value={hashtags}
             onChange={(e) => setHashtags(e.target.value)} />
         </label>
-
-        <PhotoUpload
-          label="Главное фото"
-          urls={mainPhotoUrl ? [mainPhotoUrl] : []}
-          markFirstAsMain
-          onChange={(urls) => setMainPhotoUrl(urls[0] ?? '')}
-        />
 
         {errors.length > 0 && (
           <ul className="space-y-1 rounded-lg border border-amber-100 bg-amber-50 p-2.5">

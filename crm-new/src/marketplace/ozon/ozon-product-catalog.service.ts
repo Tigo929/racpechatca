@@ -384,6 +384,15 @@ export class OzonProductCatalogService {
     return items;
   }
 
+  /**
+   * Текущий остаток по артикулам. Нужен дожиманию остатка: перед тем как
+   * что-то ставить, проверяем, не стоит ли там уже цифра, выставленная руками.
+   */
+  async stockByOfferId(creds: OzonCredentials): Promise<Map<string, number>> {
+    const stocks = await this.stocksFor(creds);
+    return new Map([...stocks].map(([offerId, s]) => [offerId, s.present]));
+  }
+
   /** Остатки по всем товарам: offer_id → {present, reserved}. */
   private async stocksFor(
     creds: OzonCredentials,
