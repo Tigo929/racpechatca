@@ -494,7 +494,7 @@ function BulkCreateForm({ accountId, defaultPrice }: { accountId: string; defaul
               )}
             </div>
           </div>
-          <PrintEditor draft={d} onChange={(next) => update(d.key, next)} accountId={accountId} compact />
+          <PrintEditor draft={d} onChange={(next) => update(d.key, next)} accountId={accountId} />
         </div>
       ))}
 

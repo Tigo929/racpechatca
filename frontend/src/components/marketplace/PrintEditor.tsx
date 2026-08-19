@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Plus, Trash2, X } from 'lucide-react';
 import { AttributeAutocomplete } from './AttributeAutocomplete';
 import { PhotoUpload } from './PhotoUpload';
@@ -123,15 +124,31 @@ export function ColorGroupRow({
 }
 
 export function PrintEditor({
-  draft, onChange, accountId, compact,
+  draft, onChange, accountId,
 }: {
   draft: PrintDraft;
   onChange: (d: PrintDraft) => void;
   accountId: string;
-  /** В массовом режиме поля описания/хэштегов прячем за раскрытием — экономим место. */
-  compact?: boolean;
 }) {
   const set = <K extends keyof PrintDraft>(key: K, value: PrintDraft[K]) => onChange({ ...draft, [key]: value });
+
+  /*
+   * Две вкладки вместо свёрнутого блока.
+   *
+   * Описание, тематика и хештеги — то, по чему Ozon находит карточку, но
+   * лежали они за неприметной строкой «раскрыть», да ещё и свёрнутой в
+   * массовом создании. Туда не заглядывали, и товары уходили без единственного,
+   * что двигает их в выдаче. Вкладка это не прячет: её видно всегда, и на ней
+   * же написано, чего не хватает.
+   *
+   * Цвета и размеры остаются под вкладками — они меняются у каждого принта, и
+   * убирать их за переключатель значило бы менять одну потерю на другую.
+   */
+  const [tab, setTab] = useState<'main' | 'search'>('main');
+  const searchFilled =
+    Number(Boolean(draft.description.trim())) +
+    Number(draft.patternTags.length > 0) +
+    Number(Boolean(draft.hashtags.trim()));
 
   const updateGroup = (idx: number, g: ColorGroupDraft) => {
     const next = [...draft.colorGroups];
@@ -143,7 +160,44 @@ export function PrintEditor({
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2">
+      {/* Переключатель виден всегда — и в одиночном создании, и в списке. */}
+      <div className="flex flex-wrap gap-1 border-b border-gray-200">
+        {([
+          { key: 'main', label: 'Товар' },
+          { key: 'search', label: 'Описание, тематика, хештеги' },
+        ] as const).map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm transition-colors ${
+              tab === t.key
+                ? 'border-amber-600 font-semibold text-amber-700'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            {t.label}
+            {t.key === 'search' && (
+              /* Сколько из трёх полей заполнено — видно, не открывая вкладку.
+                 Пусто помечаем предупреждением, а не молчанием: именно по этим
+                 полям карточку находят. */
+              <span
+                className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${
+                  searchFilled === 3
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : searchFilled === 0
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-amber-50 text-amber-700'
+                }`}
+              >
+                {searchFilled}/3
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className={tab === 'main' ? 'grid gap-3 sm:grid-cols-2' : 'hidden'}>
         <label className="block sm:col-span-2">
           <span className="text-xs font-medium text-gray-600">Название товара</span>
           <input className={`mt-1 ${field}`} value={draft.name} onChange={(e) => set('name', e.target.value)} placeholder="Футболка с принтом «…»" />
@@ -180,21 +234,19 @@ export function PrintEditor({
             onChange={(urls) => set('mainPhotoUrl', urls[0] ?? '')}
           />
         </div>
-        {/* Описание и тематика нужны Ozon для поиска, поэтому доступны и в
-            массовом режиме. Там они свёрнуты: полей много, и раскрытый блок
-            на каждом принте превращает форму в простыню — но спрятать их
-            совсем значило бы выпускать карточки без того, по чему их
-            находят. */}
-        <details open={!compact} className="sm:col-span-2 rounded-lg border border-gray-100 p-2">
-          <summary className="cursor-pointer text-xs font-medium text-gray-600">
-            Описание, тематика и хештеги — влияют на поиск в Ozon
-          </summary>
-          <div className="mt-2 space-y-3">
-            <label className="block sm:col-span-2">
+      </div>
+
+      <div className={tab === 'search' ? 'block' : 'hidden'}>
+        <p className="mb-3 rounded-lg bg-amber-50 p-2.5 text-[11px] text-amber-900">
+          По этим полям Ozon находит карточку в поиске. Без них товар заведётся,
+          но покупатель его не увидит — а контент-рейтинг карточки просядет.
+        </p>
+        <div className="space-y-3">
+          <label className="block">
               <span className="text-xs font-medium text-gray-600">Описание</span>
-              <textarea rows={3} className={`mt-1 ${field}`} value={draft.description} onChange={(e) => set('description', e.target.value)} />
-            </label>
-            <label className="block sm:col-span-2">
+              <textarea rows={6} className={`mt-1 ${field}`} value={draft.description} onChange={(e) => set('description', e.target.value)} />
+          </label>
+          <label className="block">
               <span className="text-xs font-medium text-gray-600">Тематика рисунка</span>
               <AttributeAutocomplete
                 accountId={accountId}
@@ -237,13 +289,12 @@ export function PrintEditor({
               <span className="mt-1 block text-[11px] text-gray-400">
                 Только значения из списка Ozon — набранные руками площадка отклоняет.
               </span>
-            </label>
-            <label className="block sm:col-span-2">
+          </label>
+          <label className="block">
               <span className="text-xs font-medium text-gray-600">#Хештеги</span>
               <input className={`mt-1 ${field}`} value={draft.hashtags} onChange={(e) => set('hashtags', e.target.value)} placeholder="#футболка_с_принтом #streetwear" />
-            </label>
-          </div>
-        </details>
+          </label>
+        </div>
       </div>
 
       <div className="space-y-2">
