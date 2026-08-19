@@ -1,6 +1,42 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { telegramFetch } from './telegram-fetch';
+import { telegramFetch, telegramFormData } from './telegram-fetch';
+
+/**
+ * Итог отправки файла: номер сообщения или причина отказа.
+ *
+ * Раньше здесь было голое `false`, и настоящий ответ площадки оставался
+ * только в логе сервера. На экране висело «Telegram не принял ТЗ-файл» —
+ * фраза, по которой нельзя отличить «файл не доехал» от «бота выгнали из
+ * чата». Разбор одного такого случая занял поход в логи вместо взгляда на
+ * карточку заказа.
+ */
+export type TelegramSendResult = { messageId: number } | { error: string };
+
+/** Ответ Telegram — человеку. Незнакомое отдаём как есть, а не прячем. */
+export function describeTelegramError(status: number, body: string): string {
+  const description = (() => {
+    try {
+      return (JSON.parse(body) as { description?: string }).description ?? body;
+    } catch {
+      return body;
+    }
+  })();
+
+  const known: [RegExp, string][] = [
+    [/there is no (document|photo) in the request/i, 'файл не доехал до Telegram — тело запроса ушло пустым'],
+    [/file is too big|too large/i, 'файл больше того, что принимает Telegram (50 МБ)'],
+    [/chat not found/i, 'чат не найден: проверьте TSHIRT_PARTNER_TELEGRAM_CHAT_ID'],
+    [/bot was kicked|bot is not a member|not enough rights/i, 'бота нет в чате или не хватает прав'],
+    [/message thread not found/i, 'тема в чате не найдена: проверьте TSHIRT_PARTNER_TELEGRAM_THREAD_ID'],
+    [/caption is too long/i, 'подпись длиннее 1024 символов — Telegram столько не принимает'],
+    [/can't parse entities/i, 'Telegram не разобрал разметку подписи'],
+  ];
+  for (const [pattern, explanation] of known) {
+    if (pattern.test(description)) return explanation;
+  }
+  return `${description} (код ${status})`;
+}
 
 @Injectable()
 export class TelegramService {
@@ -70,7 +106,7 @@ export class TelegramService {
     caption?: string,
     threadId?: string,
     replyMarkup?: unknown,
-  ): Promise<number | false> {
+  ): Promise<TelegramSendResult> {
     return this.sendMultipart('sendPhoto', chatId, 'photo', photo, filename, {
       caption,
       contentType,
@@ -87,7 +123,7 @@ export class TelegramService {
     caption?: string,
     threadId?: string,
     replyMarkup?: unknown,
-  ): Promise<number | false> {
+  ): Promise<TelegramSendResult> {
     return this.sendMultipart(
       'sendDocument',
       chatId,
@@ -192,13 +228,13 @@ export class TelegramService {
       threadId?: string;
       replyMarkup?: unknown;
     },
-  ): Promise<number | false> {
+  ): Promise<TelegramSendResult> {
     if (!this.token) {
       this.logger.warn('TELEGRAM_BOT_TOKEN not set — notification skipped');
-      return false;
+      return { error: 'TELEGRAM_BOT_TOKEN не задан' };
     }
 
-    const form = new FormData();
+    const form = telegramFormData();
     form.set('chat_id', chatId);
     if (options.threadId) {
       form.set('message_thread_id', String(Number(options.threadId)));
@@ -227,13 +263,18 @@ export class TelegramService {
       if (!res.ok) {
         const body = await res.text();
         this.logger.error(`Telegram ${method} failed [${res.status}]: ${body}`);
-        return false;
+        return { error: describeTelegramError(res.status, body) };
       }
       const json = (await res.clone().json().catch(() => ({}))) as { result?: { message_id?: number } };
-      return json.result?.message_id ?? false;
+      const messageId = json.result?.message_id;
+      return messageId
+        ? { messageId }
+        : { error: 'Telegram ответил без номера сообщения' };
     } catch (err) {
       this.logger.error(`Telegram ${method} network error`, err);
-      return false;
+      return {
+        error: err instanceof Error ? err.message : 'сеть недоступна',
+      };
     }
   }
   async editMessageCaption(

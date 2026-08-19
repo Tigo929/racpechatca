@@ -6,7 +6,10 @@ import { PDFDocument } from 'pdf-lib';
 import sharp from 'sharp';
 import { PrismaService } from 'src/prisma/prisma.service';
 import type { Prisma } from 'src/generated/prisma/client';
-import { TelegramService } from 'src/telegram/telegram.service';
+import {
+  TelegramService,
+  type TelegramSendResult,
+} from 'src/telegram/telegram.service';
 import { TelegramStickerLinkService } from 'src/telegram/telegram-sticker-link.service';
 import {
   EnumPartnerSyncStatus,
@@ -139,8 +142,14 @@ export class TshirtPartnerTelegramService {
               caption,
               replyMarkup,
             );
-      if (sentTechSpec === false) {
-        await this.markFailed(orderId, 'Telegram не принял ТЗ-файл.');
+      // Причину показываем словами площадки, а не общей фразой: по «Telegram
+      // не принял ТЗ-файл» нельзя отличить пустое тело запроса от выгнанного
+      // из чата бота, и разбор каждый раз начинался с похода в логи сервера.
+      if ('error' in sentTechSpec) {
+        await this.markFailed(
+          orderId,
+          `Telegram не принял ТЗ-файл: ${sentTechSpec.error}`,
+        );
         return;
       }
 
@@ -151,7 +160,7 @@ export class TshirtPartnerTelegramService {
           partnerSyncAt: new Date(),
           partnerSyncError: null,
           partnerTgChatId: this.chatId,
-          partnerTgMessageId: typeof sentTechSpec === 'number' ? sentTechSpec : null,
+          partnerTgMessageId: sentTechSpec.messageId,
           executorSentAt: new Date(),
           sourceRevision: { increment: 1 },
         },
@@ -186,8 +195,8 @@ export class TshirtPartnerTelegramService {
     caption: string,
     replyMarkup?: unknown,
     // id отправленного сообщения (его сохраняем, чтобы потом редактировать
-    // подпись под кнопками) либо false, если Telegram не принял файл.
-  ): Promise<number | false> {
+    // подпись под кнопками) либо причина, по которой Telegram файл не принял.
+  ): Promise<TelegramSendResult> {
     return file.contentType === 'application/pdf'
       ? this.telegram.sendDocument(
           this.chatId,
@@ -214,7 +223,7 @@ export class TshirtPartnerTelegramService {
     attachments: TechSpecAttachment[],
     caption: string,
     replyMarkup: unknown,
-  ): Promise<number | false> {
+  ): Promise<TelegramSendResult> {
     const bundle = await this.buildTechSpecBundle(order, attachments);
     return this.telegram.sendDocument(
       this.chatId,

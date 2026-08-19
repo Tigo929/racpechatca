@@ -44,12 +44,17 @@ describe('telegramFetch: прокси только когда он задан', 
     delete process.env.TELEGRAM_PROXY_URL;
   });
 
-  it('без переменной идёт напрямую встроенным fetch', async () => {
+  it('без переменной идёт тем же undici, но без агента', async () => {
+    // Развилки «без прокси — встроенный fetch» больше нет: тело multipart
+    // собирается заранее, и сборка undici должна быть та же, что повезёт
+    // запрос. Иначе FormData чужой сборки молча превращается в строку и
+    // файл теряется — см. комментарий в telegram-fetch.ts.
     await telegramFetch('https://api.telegram.org/botX/getMe', { method: 'POST' });
 
-    expect(globalInit).toEqual({ method: 'POST' });
-    expect(globalInit).not.toHaveProperty('dispatcher');
-    expect(mockedUndiciFetch).not.toHaveBeenCalled();
+    expect(globalInit).toBeUndefined();
+    expect(mockedUndiciFetch).toHaveBeenCalledTimes(1);
+    expect(proxyInit()).not.toHaveProperty('dispatcher');
+    expect(proxyInit()?.method).toBe('POST');
   });
 
   it('с прокси запрос уходит через undici — иначе агент несовместим', async () => {
@@ -63,14 +68,13 @@ describe('telegramFetch: прокси только когда он задан', 
     expect(proxyInit()?.method).toBe('POST');
   });
 
-  it('кривой адрес не роняет отправку — идём напрямую', async () => {
+  it('кривой адрес не роняет отправку — идём без агента', async () => {
     process.env.TELEGRAM_PROXY_URL = 'это не адрес';
 
     await expect(
       telegramFetch('https://api.telegram.org/botX/getMe'),
     ).resolves.toBeDefined();
-    expect(globalInit).not.toHaveProperty('dispatcher');
-    expect(mockedUndiciFetch).not.toHaveBeenCalled();
+    expect(proxyInit()).not.toHaveProperty('dispatcher');
   });
 
   it('смена адреса подхватывается без перезапуска', async () => {

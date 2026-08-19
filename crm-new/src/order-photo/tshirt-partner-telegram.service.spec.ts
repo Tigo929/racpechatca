@@ -70,8 +70,8 @@ describe('TshirtPartnerTelegramService', () => {
       },
     };
     const telegram = {
-      sendPhoto: jest.fn().mockResolvedValue(true),
-      sendDocument: jest.fn().mockResolvedValue(true),
+      sendPhoto: jest.fn().mockResolvedValue({ messageId: 4242 }),
+      sendDocument: jest.fn().mockResolvedValue({ messageId: 4242 }),
     };
     const partnerSettings = {
       get: jest.fn().mockResolvedValue({ partnerRateBasisPoints: 3000 }),
@@ -144,7 +144,10 @@ describe('TshirtPartnerTelegramService', () => {
         // Координаты сообщения у партнёра — по ним потом редактируем подпись
         // под кнопками; отметка отправки и ревизия уходят в очередь gulian.
         partnerTgChatId: '-1004309818132',
-        partnerTgMessageId: null,
+        // Номер сообщения сохраняется — по нему потом правится подпись под
+        // кнопками. Раньше здесь стоял null: мок отвечал `true`, а не номером,
+        // и проверка закрепляла не поведение, а недостаток мока.
+        partnerTgMessageId: 4242,
         executorSentAt: expect.any(Date),
         sourceRevision: { increment: 1 },
       },
@@ -184,8 +187,8 @@ describe('TshirtPartnerTelegramService', () => {
       },
     };
     const telegram = {
-      sendPhoto: jest.fn().mockResolvedValue(true),
-      sendDocument: jest.fn().mockResolvedValue(true),
+      sendPhoto: jest.fn().mockResolvedValue({ messageId: 4242 }),
+      sendDocument: jest.fn().mockResolvedValue({ messageId: 4242 }),
     };
     const service = new TshirtPartnerTelegramService(
       prisma as never,

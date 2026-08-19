@@ -1,5 +1,10 @@
 import { Logger } from '@nestjs/common';
-import { fetch as undiciFetch, ProxyAgent, type Dispatcher } from 'undici';
+import {
+  fetch as undiciFetch,
+  FormData as UndiciFormData,
+  ProxyAgent,
+  type Dispatcher,
+} from 'undici';
 
 /**
  * Запросы к Telegram — через прокси, если он задан.
@@ -53,26 +58,48 @@ function proxyDispatcher(): Dispatcher | undefined {
 /**
  * fetch к api.telegram.org: тот же интерфейс, но с учётом прокси.
  *
- * Через прокси зовём fetch из самого undici, а не встроенный в Node.
- * Причина найдена на боевом сервере: агент создаётся установленным undici
- * (8.x), а глобальный fetch собран на той версии, что вшита в Node — и
- * интерфейс обработчика запроса у них разошёлся. Передача «чужого»
- * dispatcher роняла каждый запрос с InvalidArgumentError: invalid
- * onRequestStart method, то есть бот молчал так же, как при блокировке.
+ * Зовём fetch из самого undici, а не встроенный в Node. Первая причина
+ * нашлась на боевом сервере: агент создаётся установленным undici (8.x), а
+ * глобальный fetch собран на версии, вшитой в Node, — интерфейс обработчика
+ * запроса у них разошёлся, и передача «чужого» dispatcher роняла каждый
+ * запрос с «invalid onRequestStart method». Бот молчал так же, как при
+ * блокировке.
  *
- * Без прокси остаётся штатный fetch: незачем менять поведение там, где
- * оно и так работает.
+ * Вторая причина — и она же ответ на вопрос, почему здесь нет развилки
+ * «без прокси идём штатным fetch». Тело запроса собирается заранее, а какой
+ * fetch его повезёт, решалось потом. Для multipart это смертельно: каждая
+ * сборка undici узнаёт только свою FormData, чужую она молча приводит к
+ * строке. Файл превращался в семнадцать байт текста «[object FormData]» —
+ * Telegram отвечал «there is no document in the request», а мы показывали
+ * «Telegram не принял ТЗ-файл». Текстовые сообщения при этом ходили: они
+ * уходят обычным JSON.
+ *
+ * Поэтому путь один на всех: одна сборка undici и её же FormData ниже.
+ * Развилка возвращаться не должна — она и создала расхождение.
  */
 export function telegramFetch(
   url: string,
   init: RequestInit = {},
 ): Promise<Response> {
   const dispatcher = proxyDispatcher();
-  if (!dispatcher) return fetch(url, init);
-
   // У undici свои типы Request/Response — по составу они совпадают с
   // глобальными в той части, которой пользуется код бота (ok, json, text).
-  return undiciFetch(url, { ...init, dispatcher } as never) as unknown as Promise<Response>;
+  return undiciFetch(url, {
+    ...init,
+    ...(dispatcher ? { dispatcher } : {}),
+  } as never) as unknown as Promise<Response>;
+}
+
+/**
+ * FormData для запросов к Telegram — обязательно эта, а не глобальная.
+ *
+ * Тело multipart собирает та же сборка undici, что и отправляет: только свою
+ * FormData она разбирает на части, чужую приводит к строке и файл теряет.
+ * Blob можно брать глобальный — его undici принимает по составу, а не по
+ * происхождению.
+ */
+export function telegramFormData(): FormData {
+  return new UndiciFormData() as unknown as FormData;
 }
 
 /** Только для тестов: сбросить запомненный прокси между случаями. */
