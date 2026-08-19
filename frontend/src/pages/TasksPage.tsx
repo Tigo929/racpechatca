@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
@@ -95,7 +96,8 @@ export default function TasksPage() {
   const isAdmin = user?.role === 'ADMIN';
   const qc = useQueryClient();
 
-  const [filter, setFilter] = useState<StatusFilter>('ACTIVE');
+  // Отбор задач держится: возвращаясь к списку, видишь то же, что оставил.
+  const [filter, setFilter] = usePersistentState<StatusFilter>('tasks-filter', 'ACTIVE');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);

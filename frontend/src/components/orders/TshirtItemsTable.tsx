@@ -6,6 +6,7 @@ import { ordersApi } from '../../api/orders';
 import { partnerSettingsApi } from '../../api/partnerSettings';
 import { computePositionSettlement } from '../../utils/settlement';
 import { useAuth } from '../../context/useAuth';
+import { usePersistentState } from '../../hooks/usePersistentState';
 import {
   TSHIRT_SIZE_LABELS,
   PRINT_LOCATION_LABELS,
@@ -178,7 +179,11 @@ export function TshirtItemsTable({ order }: Props) {
 
   const [adding, setAdding] = useState(false);
   const [addFree, setAddFree] = useState(false);
-  const [newItem, setNewItem] = useState<EditState>(EMPTY);
+  // Недобавленная позиция не пропадает при уходе с карточки заказа.
+  const [newItem, setNewItem] = usePersistentState<EditState>(
+    `order-new-tshirt-${order.id}`,
+    EMPTY,
+  );
   const [newFreeItem, setNewFreeItem] = useState<FreeState>(EMPTY_FREE);
 
   const [editingFreeId, setEditingFreeId] = useState<string | null>(null);

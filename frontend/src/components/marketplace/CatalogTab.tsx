@@ -8,6 +8,7 @@ import { FilterChip } from '../ui/FilterChip';
 import { ProductDetailModal } from './ProductDetailModal';
 import { PrintCardModal } from './PrintCardModal';
 import { EconomicsSettings } from './EconomicsSettings';
+import { usePersistentState } from '../../hooks/usePersistentState';
 
 /**
  * «Мои товары» — то, что уже заведено в кабинете Ozon.
@@ -52,8 +53,13 @@ function colorsOf(items: OzonCatalogProduct[]): string[] {
 }
 
 export function CatalogTab({ accountId }: { accountId: string }) {
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<StatusFilter>('all');
+  // Поиск и отбор держатся: между «Моими товарами» и «Созданием» ходят
+  // постоянно, и каждый раз набирать артикул заново — лишняя работа.
+  const [query, setQuery] = usePersistentState(`ozon-catalog-search-${accountId}`, '');
+  const [filter, setFilter] = usePersistentState<StatusFilter>(
+    `ozon-catalog-filter-${accountId}`,
+    'all',
+  );
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [opened, setOpened] = useState<OzonCatalogProduct | null>(null);
   // Открытая карточка принта: размеры показываем только внутри неё.

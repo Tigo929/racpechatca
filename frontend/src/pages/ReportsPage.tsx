@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
 import { AppShell } from '../components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Camera, Shirt, Image, ChevronDown, ChevronRight, Handshake } from 'lucide-react';
@@ -389,8 +390,10 @@ function ExpenseList({ year, month }: { year: number; month: number }) {
 export function ReportsPage() {
   const now = new Date();
   const currentYear = now.getFullYear();
-  const [year, setYear] = useState(currentYear);
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  // Выбранный период держится: отчёты смотрят подряд по нескольким разделам,
+  // и каждый раз заново выставлять месяц — лишняя работа.
+  const [year, setYear] = usePersistentState('reports-year', currentYear);
+  const [month, setMonth] = usePersistentState('reports-month', now.getMonth() + 1);
   const [showAddExpense, setShowAddExpense] = useState(false);
   const qc = useQueryClient();
 

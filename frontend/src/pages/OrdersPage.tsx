@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Search, ChevronLeft, ChevronRight, Flame, Clock, Camera, Shirt, Image, Star, AlarmClock, Plus } from 'lucide-react';
@@ -82,6 +83,11 @@ export function OrdersPage({ section }: Props) {
 
   // Продукт задаётся разделом, а не фильтром: в списке всегда один процесс.
   // У обращений продукт не фиксируем — это общая входящая воронка.
+  /*
+   * Фильтры и поиск переживают уход в другой раздел: вернувшись, человек
+   * ожидает тот же список, а не сброшенный к первой странице. Ключ включает
+   * раздел — у заказов на футболки и у обращений отбор свой.
+   */
   const [query, setQuery] = useState<OrdersQuery>({
     page: 1,
     limit: PAGE_SIZE,
@@ -91,7 +97,10 @@ export function OrdersPage({ section }: Props) {
   });
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [searchInput, setSearchInput] = useState('');
+  const [searchInput, setSearchInput] = usePersistentState(
+    `orders-search-${isLeads ? 'leads' : section}`,
+    '',
+  );
 
   const qc = useQueryClient();
 

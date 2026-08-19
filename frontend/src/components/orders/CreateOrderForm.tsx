@@ -1,5 +1,5 @@
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Trash2, Camera, Shirt, Image, Flame, Clock } from 'lucide-react';
@@ -156,6 +156,56 @@ const fullSchema = baseSchema.superRefine((data, ctx) => {
 });
 
 type FormValues = z.infer<typeof baseSchema>;
+/** Ключ черновика заказа в sessionStorage — один на вкладку браузера. */
+const ORDER_DRAFT_KEY = 'order-create-draft';
+
+/** Форма, с которой начинают с чистого листа. */
+const EMPTY_ORDER_FORM = {
+  productCategory: 'PHOTO',
+  sourceOrder: 'AVITO' as const,
+  communicationPlatform: 'TELEGRAM',
+  deliveryMethod: 'PICKUP',
+  deliveryCost: 0,
+  isUrgent: false,
+  urgencyFee: 0,
+  executorId: '',
+  freePrice: false,
+  needsDesign: false,
+  designDevelopmentCost: 0,
+  freeItems: [{ name: '', quantity: 1, price: 0 }],
+  items: [{ isFreePrice: false, formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }],
+  tshirtItems: [{
+    freePrice: false, name: '',
+    color: 'Белый', size: 'M', printLocation: 'FRONT',
+    quantity: 1, price: 500, clientItem: false,
+  }],
+  canvasItems: [{
+    formatCanvas: '30×40',
+    quantity: 1,
+    clientPrice: 1500,
+    contractorPrice: 900,
+  }],
+} as unknown as FormValues;
+
+function readOrderDraft(): FormValues | null {
+  try {
+    const raw = sessionStorage.getItem(ORDER_DRAFT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as FormValues;
+  } catch {
+    // Битый черновик — начинаем с чистой формы, а не падаем на открытии окна.
+    return null;
+  }
+}
+
+function clearOrderDraft(): void {
+  try {
+    sessionStorage.removeItem(ORDER_DRAFT_KEY);
+  } catch {
+    // Нечего чистить или доступа нет.
+  }
+}
+
 interface Props { onClose: () => void }
 
 
@@ -166,35 +216,35 @@ const errorCls = 'text-red-500 text-xs mt-1';
 
 export function CreateOrderForm({ onClose }: Props) {
   const qc = useQueryClient();
-  const { register, control, handleSubmit, getValues, setValue, watch, formState: { errors } } = useForm<FormValues>({
+  // Читаем один раз при монтировании: дальше формой владеет react-hook-form.
+  const [restoredDraft] = useState(readOrderDraft);
+  const [draftRestored, setDraftRestored] = useState(restoredDraft !== null);
+  const { register, control, handleSubmit, getValues, setValue, watch, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(fullSchema),
-    defaultValues: {
-      productCategory: 'PHOTO',
-      sourceOrder: 'AVITO' as const,
-      communicationPlatform: 'TELEGRAM',
-      deliveryMethod: 'PICKUP',
-      deliveryCost: 0,
-      isUrgent: false,
-      urgencyFee: 0,
-      executorId: '',
-      freePrice: false,
-      needsDesign: false,
-      designDevelopmentCost: 0,
-      freeItems: [{ name: '', quantity: 1, price: 0 }],
-      items: [{ isFreePrice: false, formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }],
-      tshirtItems: [{
-        freePrice: false, name: '',
-        color: 'Белый', size: 'M', printLocation: 'FRONT',
-        quantity: 1, price: 500, clientItem: false,
-      }],
-      canvasItems: [{
-        formatCanvas: '30×40',
-        quantity: 1,
-        clientPrice: 1500,
-        contractorPrice: 900,
-      }],
-    },
+    // Черновик накладывается поверх пустой формы, а не заменяет её: у
+    // сохранённого раньше может не оказаться полей, добавленных позже, и
+    // форма открылась бы с дырами вместо значений по умолчанию.
+    defaultValues: { ...EMPTY_ORDER_FORM, ...(restoredDraft ?? {}) },
   });
+
+  /*
+   * Черновик заказа сохраняется, пока его набирают.
+   *
+   * Форма большая: клиент, доставка, позиции с ценами. Закрыли окно случайно
+   * или промахнулись мимо него — и всё набранное пропадало. Теперь оно
+   * переживает и закрытие окна, и обновление страницы, а после создания
+   * заявки стирается: держать отправленное незачем.
+   */
+  useEffect(() => {
+    const sub = watch((values) => {
+      try {
+        sessionStorage.setItem(ORDER_DRAFT_KEY, JSON.stringify(values));
+      } catch {
+        // Переполнение хранилища не должно мешать оформлять заказ.
+      }
+    });
+    return () => sub.unsubscribe();
+  }, [watch]);
 
   const productCategory = useWatch({ control, name: 'productCategory' });
   const communicationPlatform = useWatch({ control, name: 'communicationPlatform' });
@@ -275,6 +325,7 @@ export function CreateOrderForm({ onClose }: Props) {
     mutationFn: ordersApi.create,
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['orders'] });
+      clearOrderDraft();
       toast.success(vars.status === 'LEAD' ? 'Обращение записано' : 'Заявка создана');
       onClose();
     },
@@ -414,6 +465,26 @@ export function CreateOrderForm({ onClose }: Props) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      {/* Восстановленный черновик показываем явно: находить в форме чужие
+          значения без объяснения — хуже, чем набрать заново. */}
+      {draftRestored && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+          <span className="text-xs text-amber-900">
+            Восстановлен незаконченный черновик заявки.
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              clearOrderDraft();
+              reset(EMPTY_ORDER_FORM);
+              setDraftRestored(false);
+            }}
+            className="text-xs font-semibold text-amber-800 underline hover:text-amber-950"
+          >
+            Начать заново
+          </button>
+        </div>
+      )}
 
       {/* Категория товара */}
       <div>

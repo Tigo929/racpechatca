@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { ordersApi } from '../../api/orders';
 import { useAuth } from '../../context/useAuth';
+import { usePersistentState } from '../../hooks/usePersistentState';
 import type { ItemCanvas, OrderPhoto } from '../../types/index';
 
 interface Props {
@@ -54,7 +55,11 @@ export function CanvasItemsTable({ order }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editState, setEditState] = useState<EditState>(EMPTY);
   const [adding, setAdding] = useState(false);
-  const [newItem, setNewItem] = useState<EditState>(EMPTY);
+  // Недобавленная позиция не пропадает при уходе с карточки заказа.
+  const [newItem, setNewItem] = usePersistentState<EditState>(
+    `order-new-canvas-${order.id}`,
+    EMPTY,
+  );
 
   const items = order.canvasItems ?? [];
   const totals = items.reduce(
