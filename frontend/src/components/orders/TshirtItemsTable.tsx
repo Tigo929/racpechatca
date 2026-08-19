@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Plus, Pencil, Trash2, Check, X, ExternalLink, MessageCircle } from 'lucide-react';
 import { ordersApi } from '../../api/orders';
+import { partnerSettingsApi } from '../../api/partnerSettings';
+import { computePositionSettlement } from '../../utils/settlement';
 import { useAuth } from '../../context/useAuth';
 import {
   TSHIRT_SIZE_LABELS,
@@ -76,10 +78,12 @@ function TshirtRows({ state, onChange }: { state: EditState; onChange: (s: EditS
         <input className={inputCls} placeholder="https://… (нужна для отправки партнёру)"
           value={state.designUrl} onChange={(e) => onChange({ ...state, designUrl: e.target.value })} />
       </Row>
-      <Row label="Изделие клиента">
+      <Row label="Только нанесение">
         <label className="flex items-center gap-2 cursor-pointer">
           <input type="checkbox" checked={state.clientItem} onChange={(e) => onChange({ ...state, clientItem: e.target.checked })} className="w-4 h-4 accent-amber-600" />
-          <span className="text-sm text-gray-700">Клиент приносит своё — склад не трогаем</span>
+          <span className="text-sm text-gray-700">
+            Футболку приносит клиент — заготовку не покупаем, склад не трогаем
+          </span>
         </label>
       </Row>
     </>
@@ -106,9 +110,67 @@ function FreeRows({ state, onChange }: { state: FreeState; onChange: (s: FreeSta
   );
 }
 
+/**
+ * Разбор денег по одной позиции: из чего сложилась цена и что остаётся мне.
+ *
+ * Раньше прибыль была видна только итогом по заказу — понять, что приносит
+ * конкретная строка, было нечем. На «только нанесении» это особенно заметно:
+ * заготовку покупает клиент, и делится ровно работа печати, а не изделие.
+ */
+function PositionMoney({
+  item, rateBasisPoints,
+}: {
+  item: ItemTshirt;
+  rateBasisPoints: number;
+}) {
+  const s = computePositionSettlement(item, rateBasisPoints);
+  const money = (v: number) => `${v.toLocaleString('ru-RU')} ₽`;
+
+  const line = (label: string, value: string, tone?: 'muted' | 'strong') => (
+    <div
+      key={label}
+      className={`flex justify-between gap-3 ${
+        tone === 'strong'
+          ? 'font-semibold text-gray-900'
+          : tone === 'muted'
+            ? 'text-gray-400'
+            : 'text-gray-500'
+      }`}
+    >
+      <span>{label}</span>
+      <span className="tabular-nums">{value}</span>
+    </div>
+  );
+
+  return (
+    <div className="mx-3 mb-3 rounded-lg border border-gray-100 bg-gray-50/70 p-3 text-xs space-y-1">
+      {line('Выручка позиции', money(item.pricePosition))}
+      {item.designCost > 0 && line('− дизайн (мой)', money(item.designCost))}
+      {line(`− термоперенос (${item.quantity} шт.)`, money(s.thermal))}
+      {item.clientItem
+        ? line('− футболка', 'изделие клиента', 'muted')
+        : line(`− футболка (${item.quantity} шт.)`, money(s.blanks))}
+      {line('Делимая маржа', money(s.margin))}
+      {line(`Партнёру (${rateBasisPoints / 100}% + материалы)`, money(s.reward))}
+      <div className="border-t border-gray-200 pt-1 mt-1">
+        {line('Моя прибыль', money(s.ownerProfit), 'strong')}
+      </div>
+    </div>
+  );
+}
+
 export function TshirtItemsTable({ order }: Props) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
+
+  // Ставка партнёра нужна для разбора по позиции. Спрашиваем только у админа:
+  // исполнителю и менеджеру чужая маржа не показывается.
+  const { data: partnerSettings } = useQuery({
+    queryKey: ['partner-settings'],
+    queryFn: partnerSettingsApi.get,
+    enabled: isAdmin && (order.tshirtItems?.length ?? 0) > 0,
+    staleTime: 60_000,
+  });
   const qc = useQueryClient();
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -264,7 +326,12 @@ export function TshirtItemsTable({ order }: Props) {
               <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 #{idx + 1} — {item.color}, {TSHIRT_SIZE_LABELS[item.size]}
                 {item.clientItem && (
-                  <span className="text-xs px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-medium">Изделие клиента</span>
+                  <span
+                    title="Футболку приносит клиент — заготовку не покупаем и склад не трогаем"
+                    className="text-xs px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-medium"
+                  >
+                    Только нанесение
+                  </span>
                 )}
               </span>
               {isAdmin && (
@@ -312,6 +379,13 @@ export function TshirtItemsTable({ order }: Props) {
                   {isAdmin && <Row label="Итого"><span className="font-semibold">{item.pricePosition.toLocaleString()} ₽</span></Row>}
                 </tbody>
               </table>
+            )}
+
+            {isAdmin && partnerSettings && editingId !== item.id && (
+              <PositionMoney
+                item={item}
+                rateBasisPoints={partnerSettings.partnerRateBasisPoints}
+              />
             )}
           </div>
         ))}

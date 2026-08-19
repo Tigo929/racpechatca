@@ -311,14 +311,31 @@ export class TshirtPartnerTelegramService {
         },
         settings.partnerRateBasisPoints,
       );
+      /*
+       * Давальческую позицию называем словами, а не нулём в рублях.
+       * «футболка: 0 ₽» исполнитель читает как «заготовка бесплатная» и
+       * берёт её со склада — а её должен принести клиент. Цена ошибки —
+       * лишняя футболка со склада на каждую такую позицию.
+       */
+      const blankLine = item.clientItem
+        ? '<b>изделие клиента</b> — заготовку не берём'
+        : money(item.blankCost * item.quantity);
       return [
-        `${index + 1}) ${escapeHtml(item.color)} ${escapeHtml(item.size)} ×${item.quantity}, ${escapeHtml(PRINT_LOCATION_LABELS[item.printLocation] ?? item.printLocation)}, ${escapeHtml(PRINT_TYPE_LABELS[item.printType] ?? item.printType)}`,
-        `   Без дизайна: <b>${money(productionPrice)}</b>; футболка: ${item.clientItem ? '0 ₽' : money(item.blankCost * item.quantity)}; печать: ${money(item.thermalCost * item.quantity)}; доля: ${money(positionSettlement.partnerProfit)}`,
+        `${index + 1}) ${item.clientItem ? '🎽 только нанесение · ' : ''}${escapeHtml(item.color)} ${escapeHtml(item.size)} ×${item.quantity}, ${escapeHtml(PRINT_LOCATION_LABELS[item.printLocation] ?? item.printLocation)}, ${escapeHtml(PRINT_TYPE_LABELS[item.printType] ?? item.printType)}`,
+        `   Без дизайна: <b>${money(productionPrice)}</b>; футболка: ${blankLine}; печать: ${money(item.thermalCost * item.quantity)}; доля: ${money(positionSettlement.partnerProfit)}`,
       ];
     });
 
+    // Заголовок по составу: если все позиции давальческие, это заказ на
+    // нанесение, а не на футболку — исполнителю это видно с первой строки.
+    const allClientItems =
+      order.tshirtItems.length > 0 && order.tshirtItems.every((i) => i.clientItem);
+
     return [
-      `🧾 <b>Заказ на футболку</b>`,
+      `🧾 <b>${allClientItems ? 'Заказ на нанесение принта' : 'Заказ на футболку'}</b>`,
+      ...(allClientItems
+        ? ['<i>Изделия привозит клиент — заготовки со склада не нужны.</i>']
+        : []),
       `Заказ: <code>${escapeHtml(order.numberOrder)}</code>`,
       ...(order.tshirtModel
         ? [`Модель: ${escapeHtml(order.tshirtModel)}`]
