@@ -8,6 +8,7 @@ import {
   ozonCatalogApi, type EnumOzonSyncStatus, type OzonPrint,
 } from '../../api/ozonCatalog';
 import { getErrorMessage } from '../../utils/get-error-message';
+import { usePersistentState } from '../../hooks/usePersistentState';
 import { TSHIRT_SIZE_LABELS } from '../../constants';
 import { TemplateSettings } from './TemplateSettings';
 import { PrintEditor } from './PrintEditor';
@@ -358,7 +359,12 @@ function CreateActions({
 
 function SingleCreateForm({ accountId, defaults }: { accountId: string; defaults: PrintDefaults }) {
   const qc = useQueryClient();
-  const [draft, setDraft] = useState<PrintDraft>(() => emptyPrintDraft());
+  // Черновик переживает уход на другую вкладку и обновление страницы: форму
+  // заполняют не за секунду, и терять набранное от одного клика нельзя.
+  const [draft, setDraft] = usePersistentState<PrintDraft>(
+    `ozon-draft-single-${accountId}`,
+    emptyPrintDraft,
+  );
   // Меняется при каждом успешном сохранении — вместе с key на PrintEditor это
   // пересоздаёт вложенные автодополнения (см. AttributeAutocomplete) вместо
   // синхронизации их локального состояния через эффект.
@@ -423,7 +429,11 @@ function SingleCreateForm({ accountId, defaults }: { accountId: string; defaults
 
 function BulkCreateForm({ accountId, defaults }: { accountId: string; defaults: PrintDefaults }) {
   const qc = useQueryClient();
-  const [drafts, setDrafts] = useState<PrintDraft[]>(() => [emptyPrintDraft()]);
+  // См. SingleCreateForm — здесь потеря дороже: строк в списке бывает десяток.
+  const [drafts, setDrafts] = usePersistentState<PrintDraft[]>(
+    `ozon-draft-bulk-${accountId}`,
+    () => [emptyPrintDraft()],
+  );
 
   // Та же развилка, что в одиночном создании: отказ отправки — это результат,
   // а не ошибка. Плюс список обновляем и при отказе создания: часть принтов
@@ -523,7 +533,7 @@ function BulkCreateForm({ accountId, defaults }: { accountId: string; defaults: 
 
 /** Кабинет выбирается на уровне страницы и приходит сюда готовым. */
 export function ProductsTab({ accountId }: { accountId: string }) {
-  const [mode, setMode] = useState<Mode>('single');
+  const [mode, setMode] = usePersistentState<Mode>('ozon-create-mode', 'single');
 
   /*
    * Шаблон нужен здесь только ради цены по умолчанию, поэтому запрос идёт

@@ -107,10 +107,15 @@ export interface PrintDraft {
   colorGroups: ColorGroupDraft[];
 }
 
-let keySeq = 0;
+/**
+ * Ключ строки — случайный, а не по счётчику.
+ *
+ * Черновики переживают перезагрузку страницы (см. usePersistentState), а
+ * счётчик после неё начинается заново — и новая строка получала бы ключ уже
+ * восстановленной. React считал бы их одной, и правка уезжала не в ту строку.
+ */
 function nextKey(): string {
-  keySeq += 1;
-  return `draft-${keySeq}`;
+  return `draft-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 /**
