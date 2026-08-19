@@ -40,6 +40,12 @@ export function TemplateSettings({ accountId }: { accountId: string }) {
   const [open, setOpen] = useState(false);
   const qc = useQueryClient();
 
+  /*
+   * Запрос включается по раскрытию, но данные из кэша читаются всегда:
+   * вкладка «Создание» тянет тот же ключ ради цены по умолчанию. Поэтому в
+   * заголовке можно показать главное, не открывая панель и не делая второго
+   * запроса.
+   */
   const { data: template, isLoading } = useQuery({
     queryKey: ['ozon-template', accountId],
     queryFn: () => ozonCatalogApi.getTemplate(accountId),
@@ -66,9 +72,18 @@ export function TemplateSettings({ accountId }: { accountId: string }) {
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between gap-2 px-5 py-3.5 text-left"
       >
-        <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-semibold text-gray-900">
           <Settings2 size={15} className="text-amber-500" aria-hidden="true" />
           Шаблон по умолчанию
+          {/* Что подставится в новую карточку — видно, не раскрывая панель.
+              Именно за этим сюда и заходят чаще всего. */}
+          {template && (
+            <span className="text-xs font-normal text-gray-500">
+              цена {template.defaultPrice.toLocaleString('ru-RU')} ₽ · остаток при
+              публикации {template.defaultStock} шт.
+              {template.brandLabel ? ` · ${template.brandLabel}` : ''}
+            </span>
+          )}
         </span>
         {open ? <ChevronUp size={16} className="text-gray-400" aria-hidden="true" /> : <ChevronDown size={16} className="text-gray-400" aria-hidden="true" />}
       </button>

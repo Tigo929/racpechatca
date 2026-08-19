@@ -535,6 +535,13 @@ export function ProductsTab({ accountId }: { accountId: string }) {
 
   return (
     <div className="space-y-4">
+      {/* Шаблон стоит первым. Я его убирал вниз как настройку «задал и забыл»,
+          но искать его пошли именно сюда: цена, остаток и габариты меняются от
+          партии к партии, и это часть заведения карточек, а не отдельная
+          настройка. Свёрнутый он занимает одну строку и показывает главное
+          прямо в заголовке. */}
+      <TemplateSettings accountId={accountId} />
+
       <div className="flex gap-2">
         {(['single', 'bulk'] as const).map((m) => (
           <button
@@ -556,11 +563,6 @@ export function ProductsTab({ accountId }: { accountId: string }) {
         : <BulkCreateForm key={`b-${defaultPrice ?? 0}`} accountId={accountId} defaultPrice={defaultPrice} />}
 
       <PrintsList accountId={accountId} />
-
-      {/* Шаблон — настройка «задал и забыл»: бренд, состав, габариты, цена по
-          умолчанию. Раньше он стоял над формой и каждый раз попадался на
-          глаза первым, хотя открывают его раз в месяц. */}
-      <TemplateSettings accountId={accountId} />
     </div>
   );
 }
