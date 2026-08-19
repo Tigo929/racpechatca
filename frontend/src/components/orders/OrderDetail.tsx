@@ -1050,26 +1050,35 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             label="Платформа общения"
             value={COMMUNICATION_LABELS[order.communicationPlatform]}
           />
+          {/* Строки, которые правятся, открывают правку сами. Кнопка
+              «Изменить» стоит в шапке карточки, а эти поля — под списком
+              позиций: доскроллив сюда, приходилось искать дорогу обратно
+              наверх. Способ получения и сумма доставки меняются чаще всего,
+              и они же дальше всего от кнопки. */}
           <InfoRow
             label="Способ доставки"
             value={DELIVERY_LABELS[order.deliveryMethod]}
+            onEdit={isAdmin ? startEdit : undefined}
           />
           {isAdmin && (
             <>
               <InfoRow
                 label="Доставка"
                 value={`${(order.deliveryCost ?? 0).toLocaleString()} ₽`}
+                onEdit={startEdit}
               />
               {(order.urgencyFee ?? 0) > 0 && (
                 <InfoRow
                   label="Срочность"
                   value={`${(order.urgencyFee ?? 0).toLocaleString()} ₽`}
+                  onEdit={startEdit}
                 />
               )}
               {(order.designDevelopmentCost ?? 0) > 0 && (
                 <InfoRow
                   label="Разработка дизайна"
                   value={`${(order.designDevelopmentCost ?? 0).toLocaleString()} ₽`}
+                  onEdit={startEdit}
                 />
               )}
               {order.note && (
