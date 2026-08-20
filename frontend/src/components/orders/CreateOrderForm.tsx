@@ -6,6 +6,7 @@ import { Plus, Trash2, Camera, Shirt, Image, Flame, Clock } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { ordersApi } from '../../api/orders';
+import { canvasProductionApi } from '../../api/canvasProduction';
 import { PHOTO_FORMATS, sheetHint } from '../../config/photo-formats';
 import { printsPerSheet } from '../../utils/photo-material';
 import { usersApi } from '../../api/users';
@@ -40,11 +41,26 @@ const tshirtItemSchema = z.object({
   blankCost: z.coerce.number().int().min(0).optional(),
 });
 
+/*
+ * Холст: размер и материал берутся из прайса производства, и цену, которую мы
+ * ему должны, считает сервер. Свободный формат остаётся для нестандартных
+ * размеров — тогда sizeKey пустой, а цену подрядчика вводят руками.
+ */
 const canvasItemSchema = z.object({
-  formatCanvas: z.string().min(1, 'Укажите формат'),
+  sizeKey: z.string().optional(),
+  material: z.enum(['SYNTHETIC', 'COTTON']).optional(),
+  formatCanvas: z.string().optional(),
   quantity: z.coerce.number().int().positive(),
   clientPrice: z.coerce.number().int().min(0),
-  contractorPrice: z.coerce.number().int().min(0),
+  contractorPrice: z.coerce.number().int().min(0).optional(),
+}).superRefine((row, ctx) => {
+  if (!row.sizeKey && !(row.formatCanvas ?? '').trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Выберите размер или опишите нестандартный',
+      path: ['formatCanvas'],
+    });
+  }
 });
 
 // Свободная позиция: произвольное название + цена. Имя не валидируем строго здесь
@@ -180,10 +196,12 @@ const EMPTY_ORDER_FORM = {
     quantity: 1, price: 500, clientItem: false,
   }],
   canvasItems: [{
-    formatCanvas: '30×40',
+    sizeKey: '30x40',
+    material: 'SYNTHETIC',
+    formatCanvas: '',
     quantity: 1,
     clientPrice: 1500,
-    contractorPrice: 900,
+    contractorPrice: 0,
   }],
 } as unknown as FormValues;
 
@@ -301,10 +319,12 @@ export function CreateOrderForm({ onClose }: Props) {
       setValue('tshirtItems', []);
       if ((getValues('canvasItems')?.length ?? 0) === 0) {
         setValue('canvasItems', [{
-          formatCanvas: '30×40',
+          sizeKey: '30x40',
+          material: 'SYNTHETIC',
+          formatCanvas: '',
           quantity: 1,
           clientPrice: 1500,
-          contractorPrice: 900,
+          contractorPrice: 0,
         }]);
       }
     } else {
@@ -319,6 +339,18 @@ export function CreateOrderForm({ onClose }: Props) {
   const photoFields = useFieldArray({ control, name: 'items' });
   const tshirtFields = useFieldArray({ control, name: 'tshirtItems' });
   const canvasFields = useFieldArray({ control, name: 'canvasItems' });
+
+  /*
+   * Прайс производства: из него подставляется цена, которую мы должны.
+   * Считает её всё равно сервер — здесь она только чтобы маржа была видна
+   * сразу, пока заполняешь, а не после сохранения.
+   */
+  const { data: canvasPricing } = useQuery({
+    queryKey: ['canvas-production-pricing'],
+    queryFn: canvasProductionApi.pricing,
+    enabled: productCategory === 'CANVAS',
+    staleTime: 600_000,
+  });
   const freeFields = useFieldArray({ control, name: 'freeItems' });
 
   const mutation = useMutation({
@@ -407,12 +439,22 @@ export function CreateOrderForm({ onClose }: Props) {
     }
 
     if (data.productCategory === 'CANVAS') {
-      const canvasItems = (data.canvasItems ?? []).map((r) => ({
-        formatCanvas: r.formatCanvas,
-        quantity: r.quantity,
-        clientPrice: r.clientPrice,
-        contractorPrice: r.contractorPrice,
-      }));
+      const canvasItems = (data.canvasItems ?? []).map((r) =>
+        r.sizeKey
+          ? {
+              // Размер из прайса: подпись и цену производства ставит сервер.
+              sizeKey: r.sizeKey,
+              material: r.material ?? ('SYNTHETIC' as const),
+              quantity: r.quantity,
+              clientPrice: r.clientPrice,
+            }
+          : {
+              formatCanvas: (r.formatCanvas ?? '').trim(),
+              contractorPrice: r.contractorPrice ?? 0,
+              quantity: r.quantity,
+              clientPrice: r.clientPrice,
+            },
+      );
       mutation.mutate({
         ...base,
         productCategory: 'CANVAS',
@@ -899,10 +941,12 @@ export function CreateOrderForm({ onClose }: Props) {
             <h3 className="text-sm font-semibold text-gray-900">Позиции — холсты</h3>
             <button type="button"
               onClick={() => canvasFields.append({
-                formatCanvas: '30×40',
+                sizeKey: '30x40',
+                material: 'SYNTHETIC',
+                formatCanvas: '',
                 quantity: 1,
                 clientPrice: 1500,
-                contractorPrice: 900,
+                contractorPrice: 0,
               })}
               className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
               <Plus size={14} /> Добавить
@@ -916,7 +960,14 @@ export function CreateOrderForm({ onClose }: Props) {
               const row = canvasItemsWatch?.[idx];
               const qty = Number(row?.quantity ?? 0) || 0;
               const client = Number(row?.clientPrice ?? 0) || 0;
-              const contractor = Number(row?.contractorPrice ?? 0) || 0;
+              /*
+               * Цену производства берём из прайса — ту же, что посчитает
+               * сервер. Руками она задаётся только у нестандартного размера.
+               */
+              const priced = canvasPricing?.sizes.find((x) => x.key === row?.sizeKey);
+              const contractor = row?.sizeKey
+                ? (priced?.cost[row.material ?? 'SYNTHETIC'] ?? 0)
+                : Number(row?.contractorPrice ?? 0) || 0;
               const revenue = client * qty;
               const cost = contractor * qty;
               const profit = revenue - cost;
@@ -930,13 +981,35 @@ export function CreateOrderForm({ onClose }: Props) {
                       <Trash2 size={14} />
                     </button>
                   </div>
-                  <div className="grid sm:grid-cols-[1fr_80px_120px_120px] gap-3">
+                  <div className="grid sm:grid-cols-[1fr_130px_80px_120px] gap-3">
                     <div>
-                      <label className={labelCls}>Формат / описание</label>
-                      <input className={inputCls} placeholder="30×40, 40×60, модульный…"
-                        {...register(`canvasItems.${idx}.formatCanvas`)} />
+                      <label className={labelCls}>Размер</label>
+                      <select className={selectCls} {...register(`canvasItems.${idx}.sizeKey`)}>
+                        {(canvasPricing?.sizes ?? []).map((size) => (
+                          <option key={size.key} value={size.key}>{size.label}</option>
+                        ))}
+                        <option value="">Нестандартный размер…</option>
+                      </select>
+                      {!row?.sizeKey && (
+                        /* Размера нет в прайсе — описываем словами и вводим
+                           цену производства сами. */
+                        <input className={`${inputCls} mt-2`} placeholder="Модульный, нестандарт…"
+                          {...register(`canvasItems.${idx}.formatCanvas`)} />
+                      )}
                       {errors.canvasItems?.[idx]?.formatCanvas && (
                         <p className={errorCls}>{errors.canvasItems[idx]?.formatCanvas?.message}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className={labelCls}>Материал</label>
+                      {row?.sizeKey ? (
+                        <select className={selectCls} {...register(`canvasItems.${idx}.material`)}>
+                          <option value="SYNTHETIC">Синтетика</option>
+                          <option value="COTTON">Хлопок</option>
+                        </select>
+                      ) : (
+                        <input type="number" min={0} className={inputCls} placeholder="Подрядчик ₽/шт"
+                          {...register(`canvasItems.${idx}.contractorPrice`)} />
                       )}
                     </div>
                     <div>
@@ -947,10 +1020,6 @@ export function CreateOrderForm({ onClose }: Props) {
                       <label className={labelCls}>Клиент ₽/шт</label>
                       <input type="number" min={0} className={inputCls} {...register(`canvasItems.${idx}.clientPrice`)} />
                     </div>
-                    <div>
-                      <label className={labelCls}>Подрядчик ₽/шт</label>
-                      <input type="number" min={0} className={inputCls} {...register(`canvasItems.${idx}.contractorPrice`)} />
-                    </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div className="rounded-lg bg-white border border-cyan-100 px-3 py-2">
@@ -958,7 +1027,9 @@ export function CreateOrderForm({ onClose }: Props) {
                       <p className="font-semibold text-gray-800 tabular-nums">{revenue.toLocaleString('ru-RU')} ₽</p>
                     </div>
                     <div className="rounded-lg bg-white border border-cyan-100 px-3 py-2">
-                      <p className="text-gray-400">Подрядчик</p>
+                      <p className="text-gray-400">
+                        {row?.sizeKey ? 'Должен производству' : 'Подрядчик'}
+                      </p>
                       <p className="font-semibold text-gray-800 tabular-nums">{cost.toLocaleString('ru-RU')} ₽</p>
                     </div>
                     <div className={`rounded-lg bg-white border px-3 py-2 ${profit >= 0 ? 'border-emerald-100' : 'border-red-100'}`}>
