@@ -41,6 +41,7 @@ import {
 } from 'src/salary/salary-calculation';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
+import { resolveCanvasPosition } from 'src/canvas/canvas-production-price';
 import { hasTechSpecFiles } from 'src/partner/tech-spec-paths';
 import { GulianOutboxService } from 'src/gulian/gulian-outbox.service';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
@@ -296,13 +297,26 @@ export class OrderPhotoService {
           clientItem: e.clientItem ?? false,
         };
       });
-      const canvasCreate = (dto.canvasItems ?? []).map((e) => ({
-        formatCanvas: e.formatCanvas,
-        quantity: e.quantity,
-        clientPrice: e.clientPrice,
-        contractorPrice: e.contractorPrice,
-        ...calcCanvasMoney(e.quantity, e.clientPrice, e.contractorPrice),
-      }));
+      /*
+       * Цена производства выводится из прайса и договорной скидки, а не
+       * принимается из тела запроса: занизить себестоимость значит уйти
+       * в минус незаметно. Руками её задают только для нестандартного
+       * размера, которого в прайсе нет.
+       */
+      const canvasDiscount = (await this.partnerSettings.get(tx))
+        .canvasDiscountBasisPoints;
+      const canvasCreate = (dto.canvasItems ?? []).map((e) => {
+        const priced = resolveCanvasPosition(e, canvasDiscount);
+        return {
+          formatCanvas: priced.formatCanvas,
+          sizeKey: priced.sizeKey,
+          material: priced.material,
+          quantity: e.quantity,
+          clientPrice: e.clientPrice,
+          contractorPrice: priced.contractorPrice,
+          ...calcCanvasMoney(e.quantity, e.clientPrice, priced.contractorPrice),
+        };
+      });
 
       // «Разработка дизайна» — отдельная свободная сумма, входит в чек клиента
       // и служит базой премии менеджера по оформлению (не привязана к позициям).

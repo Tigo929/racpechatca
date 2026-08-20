@@ -10,6 +10,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
 import { DtoCreateCanvasItem } from './dto/create-canvas-item.dto';
 import { DtoUpdateCanvasItem } from './dto/update-canvas-item.dto';
+import { PartnerSettingsService } from 'src/partner/partner-settings.service';
+import { resolveCanvasPosition } from 'src/canvas/canvas-production-price';
 
 function canvasMoney(quantity: number, clientPrice: number, contractorPrice: number) {
   const pricePosition = clientPrice * quantity;
@@ -26,6 +28,7 @@ export class CanvasItemService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly financialIntegrity: OrderFinancialIntegrityService,
+    private readonly partnerSettings: PartnerSettingsService,
   ) {}
 
   async addCanvasItem(orderId: string, dto: DtoCreateCanvasItem) {
@@ -43,14 +46,24 @@ export class CanvasItemService {
 
       await this.financialIntegrity.assertOrderFinanciallyEditable(orderId, tx);
 
+      /*
+       * Цену производства считаем, а не принимаем от клиента запроса: она
+       * выводится из прайса и договорной скидки. Пришедшее в теле значение
+       * учитывается только для нестандартного размера, которого в прайсе нет.
+       */
+      const settings = await this.partnerSettings.get();
+      const priced = resolveCanvasPosition(dto, settings.canvasDiscountBasisPoints);
+
       await tx.itemCanvas.create({
         data: {
           orderId,
-          formatCanvas: dto.formatCanvas,
+          formatCanvas: priced.formatCanvas,
+          sizeKey: priced.sizeKey,
+          material: priced.material,
           quantity: dto.quantity,
           clientPrice: dto.clientPrice,
-          contractorPrice: dto.contractorPrice,
-          ...canvasMoney(dto.quantity, dto.clientPrice, dto.contractorPrice),
+          contractorPrice: priced.contractorPrice,
+          ...canvasMoney(dto.quantity, dto.clientPrice, priced.contractorPrice),
         },
       });
 
@@ -70,12 +83,45 @@ export class CanvasItemService {
 
       const quantity = dto.quantity ?? item.quantity;
       const clientPrice = dto.clientPrice ?? item.clientPrice;
-      const contractorPrice = dto.contractorPrice ?? item.contractorPrice;
+
+      /*
+       * Размер меняют — пересчитываем цену производства по прайсу. Не меняют —
+       * оставляем ту, что уже записана: она снимок на момент оформления, и
+       * пересчёт задним числом сдвинул бы долг по давно согласованному заказу.
+       */
+      const sizeChanged =
+        dto.sizeKey !== undefined || dto.material !== undefined;
+      let formatCanvas = dto.formatCanvas ?? item.formatCanvas;
+      let sizeKey = item.sizeKey;
+      let material = item.material;
+      let contractorPrice = dto.contractorPrice ?? item.contractorPrice;
+
+      if (sizeChanged) {
+        const settings = await this.partnerSettings.get();
+        const priced = resolveCanvasPosition(
+          {
+            sizeKey: dto.sizeKey ?? item.sizeKey ?? undefined,
+            material:
+              dto.material ??
+              (item.material as 'SYNTHETIC' | 'COTTON' | null) ??
+              undefined,
+            formatCanvas: dto.formatCanvas ?? item.formatCanvas,
+            contractorPrice: dto.contractorPrice ?? item.contractorPrice,
+          },
+          settings.canvasDiscountBasisPoints,
+        );
+        formatCanvas = priced.formatCanvas;
+        sizeKey = priced.sizeKey;
+        material = priced.material;
+        contractorPrice = priced.contractorPrice;
+      }
 
       await tx.itemCanvas.update({
         where: { id: itemId },
         data: {
-          formatCanvas: dto.formatCanvas ?? item.formatCanvas,
+          formatCanvas,
+          sizeKey,
+          material,
           quantity,
           clientPrice,
           contractorPrice,

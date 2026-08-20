@@ -110,6 +110,8 @@ export interface CostSettings {
   sheetCostKopecks: number;
   deliveryCostYandexPvz: number;
   deliveryCostOzonPvz: number;
+  /** Своя доставка производства холстов по Москве: сколько платим мы. */
+  canvasDeliveryCost: number;
   partnerRateBasisPoints: number;
 }
 
@@ -120,6 +122,9 @@ export interface CostSettings {
 function deliveryPaidFor(method: string, s: CostSettings): number {
   if (method === 'YANDEX_PVZ') return s.deliveryCostYandexPvz;
   if (method === 'OZON_PVZ') return s.deliveryCostOzonPvz;
+  // Своя доставка производства холстов по Москве: платим 700, клиенту
+  // называем 800 — разница остаётся у нас и должна попасть в отчёт.
+  if (method === 'PRODUCTION_MSK') return s.canvasDeliveryCost;
   return 0;
 }
 type ExpenseRow = { createdAt: Date; amount: number; category: string };
@@ -309,6 +314,7 @@ export class ReportsService {
         s?.photoSheetsPerBox ?? 500,
       ),
       deliveryCostYandexPvz: s?.deliveryCostYandexPvz ?? 99,
+      canvasDeliveryCost: s?.canvasDeliveryCost ?? 700,
       deliveryCostOzonPvz: s?.deliveryCostOzonPvz ?? 140,
       partnerRateBasisPoints: s?.partnerRateBasisPoints ?? 3000,
     };
