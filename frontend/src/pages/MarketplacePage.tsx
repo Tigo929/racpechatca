@@ -1,4 +1,4 @@
-import { useState } from 'react';
+
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { AppShell } from '../components/layout/AppShell';
@@ -11,6 +11,9 @@ import { CatalogTab } from '../components/marketplace/CatalogTab';
 import { ProductsTab } from '../components/marketplace/ProductsTab';
 import { OrdersTab } from '../components/marketplace/OrdersTab';
 import { SoonTab } from '../components/marketplace/SoonTab';
+import { ShopSwitcher } from '../components/marketplace/ShopSwitcher';
+import { usePersistentState } from '../hooks/usePersistentState';
+import { useAuth } from '../context/useAuth';
 
 /**
  * Раздел «Маркетплейсы»: кабинеты площадок и работа с ними по API.
@@ -24,15 +27,30 @@ import { SoonTab } from '../components/marketplace/SoonTab';
  * страницы не сбрасывает выбор — при десятке разделов это уже необходимость.
  */
 
-/** Кабинет выбирается один раз на весь раздел, а не отдельно в каждом экране. */
+/**
+ * Активный магазин: выбирается один раз на весь раздел, а не в каждом экране.
+ *
+ * Выбор переживает переход между разделами и обновление страницы: у владельца
+ * сервиса магазинов несколько, и терять выбранный на каждом клике — значит
+ * каждый раз заново вспоминать, чьи товары смотришь.
+ */
 function useSelectedAccount(platformKey: 'OZON' | 'WB' | 'YANDEX') {
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ['marketplace-accounts', platformKey],
     queryFn: () => marketplaceApi.list(platformKey),
   });
-  const [selected, setSelected] = useState('');
+  const [selected, setSelected] = usePersistentState(
+    `marketplace-shop-${platformKey}`,
+    '',
+  );
+  // Сохранённый магазин мог быть отключён или удалён — тогда берём первый
+  // живой, а не показываем пустой раздел со ссылкой в никуда.
+  const stillThere = accounts.some((a) => a.id === selected);
   const accountId =
-    selected || accounts.find((a) => a.isActive)?.id || accounts[0]?.id || '';
+    (stillThere ? selected : '') ||
+    accounts.find((a) => a.isActive)?.id ||
+    accounts[0]?.id ||
+    '';
   return { accounts, accountId, setSelected, isLoading };
 }
 
@@ -42,8 +60,8 @@ export default function MarketplacePage() {
   const section = sectionBySlug(params.section);
   const { accounts, accountId, setSelected } = useSelectedAccount(platform.key);
 
+  const { user } = useAuth();
   const needsAccount = section.key !== 'connection';
-  const showAccountPicker = needsAccount && accounts.length > 1;
 
   return (
     <AppShell title="Маркетплейсы" subtitle={section.subtitle} width="wide">
@@ -98,17 +116,15 @@ export default function MarketplacePage() {
           })}
         </div>
 
-        {showAccountPicker && (
-          <label className="block max-w-xs">
-            <span className="text-xs font-medium text-gray-600">Кабинет</span>
-            <select
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-              value={accountId}
-              onChange={(e) => setSelected(e.target.value)}
-            >
-              {accounts.map((a) => <option key={a.id} value={a.id}>{a.title}</option>)}
-            </select>
-          </label>
+        {/* Активный магазин — над содержимым раздела: он определяет всё, что
+            ниже, и должен быть виден до того, как начнёшь что-то менять. */}
+        {needsAccount && (
+          <ShopSwitcher
+            accounts={accounts}
+            accountId={accountId}
+            onSelect={setSelected}
+            showOwners={user?.role === 'ADMIN'}
+          />
         )}
 
         {!section.ready ? (

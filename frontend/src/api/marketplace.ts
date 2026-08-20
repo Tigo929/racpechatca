@@ -26,6 +26,11 @@ export interface MarketplaceAccount {
   lastCheckOk: boolean | null;
   lastCheckError: string | null;
   lastCheckInfo: OzonConnectionInfo | null;
+  /**
+   * Чей магазин. Пусто — ваш собственный. У владельца сервиса кабинетов
+   * несколько продавцов, и без подписи не отличить, чьи товары на экране.
+   */
+  owner: { id: string; username: string } | null;
 }
 
 export interface CreateAccountDto {

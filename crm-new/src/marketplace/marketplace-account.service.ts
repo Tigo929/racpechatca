@@ -33,6 +33,14 @@ export interface MarketplaceAccountView {
   lastCheckOk: boolean | null;
   lastCheckError: string | null;
   lastCheckInfo: unknown;
+  /**
+   * Чей магазин. У владельца сервиса кабинетов несколько продавцов, и без
+   * подписи невозможно понять, чьи товары сейчас на экране — а править чужие,
+   * думая, что свои, дороже, чем не увидеть их вовсе.
+   *
+   * Пусто — кабинет самого владельца сервиса.
+   */
+  owner: { id: string; username: string } | null;
 }
 
 export interface CreateAccountInput {
@@ -50,7 +58,15 @@ export interface UpdateAccountInput {
   isActive?: boolean;
 }
 
-type AccountRow = Prisma.MarketplaceAccountGetPayload<object>;
+// Владелец подтягивается вместе с кабинетом: без него в списке не отличить,
+// чей это магазин.
+const ACCOUNT_INCLUDE = {
+  owner: { select: { id: true, username: true } },
+} satisfies Prisma.MarketplaceAccountInclude;
+
+type AccountRow = Prisma.MarketplaceAccountGetPayload<{
+  include: typeof ACCOUNT_INCLUDE;
+}>;
 
 @Injectable()
 export class MarketplaceAccountService {
@@ -89,6 +105,7 @@ export class MarketplaceAccountService {
       lastCheckOk: row.lastCheckOk,
       lastCheckError: row.lastCheckError,
       lastCheckInfo: row.lastCheckInfo ?? null,
+      owner: row.owner ? { id: row.owner.id, username: row.owner.username } : null,
     };
   }
 
@@ -109,6 +126,7 @@ export class MarketplaceAccountService {
         ...(viewer.role === EnumRole.ADMIN ? {} : { ownerId: viewer.id }),
       },
       orderBy: { createdAt: 'asc' },
+      include: ACCOUNT_INCLUDE,
     });
     return rows.map((r) => this.toView(r));
   }
@@ -116,6 +134,7 @@ export class MarketplaceAccountService {
   async getOrFail(id: string): Promise<AccountRow> {
     const row = await this.prisma.marketplaceAccount.findUnique({
       where: { id },
+      include: ACCOUNT_INCLUDE,
     });
     if (!row) throw new NotFoundException('Кабинет маркетплейса не найден');
     return row;
@@ -157,6 +176,7 @@ export class MarketplaceAccountService {
         // продавец потом видит его, а чужие — нет.
         ownerId,
       },
+      include: ACCOUNT_INCLUDE,
     });
 
     return this.check(created.id);
@@ -182,6 +202,7 @@ export class MarketplaceAccountService {
             }
           : {}),
       },
+      include: ACCOUNT_INCLUDE,
     });
 
     // Доступы поменялись — старый результат проверки больше ничего не значит.
@@ -228,6 +249,7 @@ export class MarketplaceAccountService {
           lastCheckError: null,
           lastCheckInfo: info as unknown as Prisma.InputJsonValue,
         },
+        include: ACCOUNT_INCLUDE,
       });
       return this.toView(saved);
     } catch (e) {
@@ -245,6 +267,7 @@ export class MarketplaceAccountService {
           lastCheckOk: false,
           lastCheckError: message,
         },
+        include: ACCOUNT_INCLUDE,
       });
       return this.toView(saved);
     }
