@@ -3,7 +3,7 @@ export type EnumProductCategory = 'PHOTO' | 'TSHIRT' | 'CANVAS';
 export type EnumTshirtSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
 export type EnumPrintLocation = 'FRONT' | 'BACK' | 'FRONT_BACK' | 'SLEEVE_LEFT' | 'SLEEVE_RIGHT' | 'FULL' | 'BY_TZ';
 
-export type EnumStatus = 'LEAD' | 'NEW' | 'FOLDER_STRUCTURE_CREATED' | 'IN_PROGRESS' | 'PRINTED' | 'READY' | 'SHIPMENT_CREATED' | 'DONE' | 'SENT' | 'PAID' | 'READY_FOR_REVIEW' | 'COMPLETED' | 'CANCELLED' | 'PROBLEM';
+export type EnumStatus = 'LEAD' | 'NEW' | 'APPROVAL_SENT' | 'FOLDER_STRUCTURE_CREATED' | 'IN_PROGRESS' | 'PRINTED' | 'READY' | 'SHIPMENT_CREATED' | 'DONE' | 'SENT' | 'PAID' | 'READY_FOR_REVIEW' | 'COMPLETED' | 'CANCELLED' | 'PROBLEM';
 
 export type EnumSourceOrder = 'AVITO' | 'OZON' | 'WB' | 'LOCAL';
 

@@ -14,6 +14,8 @@ interface Props {
 const STATUS_STYLES: Record<EnumStatus, { bg: string; text: string; dot: string }> = {
   LEAD:                     { bg: 'bg-pink-50',    text: 'text-pink-700',    dot: 'bg-pink-400' },
   NEW:                      { bg: 'bg-blue-50',    text: 'text-blue-700',    dot: 'bg-blue-500' },
+  // Янтарный — «ждём ответа клиента»: цвет ожидания, а не работы и не готовности.
+  APPROVAL_SENT:            { bg: 'bg-amber-50',   text: 'text-amber-700',   dot: 'bg-amber-500' },
   FOLDER_STRUCTURE_CREATED: { bg: 'bg-purple-50',  text: 'text-purple-700',  dot: 'bg-purple-500' },
   IN_PROGRESS:              { bg: 'bg-sky-50',     text: 'text-sky-700',     dot: 'bg-sky-500' },
   PRINTED:                  { bg: 'bg-yellow-50',  text: 'text-yellow-700',  dot: 'bg-yellow-500' },

@@ -561,6 +561,10 @@ enum EnumCommunication {
 enum EnumStatus {
   LEAD
   NEW
+  /// Макет ушёл клиенту на согласование — до этого в производство не отдаём.
+  /// Второй шаг после «Новый» у футболок: партнёр не должен получить заказ,
+  /// пока клиент не подтвердил, что печатаем именно это.
+  APPROVAL_SENT
   FOLDER_STRUCTURE_CREATED
   IN_PROGRESS
   PRINTED

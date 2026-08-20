@@ -10,6 +10,7 @@ import type {
 export const STATUS_LABELS: Record<EnumStatus, string> = {
   LEAD: 'Обратился',
   NEW: 'Новый',
+  APPROVAL_SENT: 'Отправлен на согласование',
   FOLDER_STRUCTURE_CREATED: 'Создана папка',
   IN_PROGRESS: 'В обработке',
   PRINTED: 'Печатается',
@@ -40,6 +41,10 @@ export const STATUS_FLOW: EnumStatus[] = [
 // «передали партнёру», а SHIPMENT_CREATED — уже клиентская отгрузка после READY.
 export const TSHIRT_STATUS_FLOW: EnumStatus[] = [
   'NEW',
+  // Макет ушёл клиенту на согласование. Стоит перед «Отправлен» намеренно:
+  // партнёр не должен получить заказ, пока клиент не подтвердил макет —
+  // переделка после начала печати оплачивается заготовкой.
+  'APPROVAL_SENT',
   'SENT',
   'IN_PROGRESS',
   'READY',
@@ -50,6 +55,7 @@ export const TSHIRT_STATUS_FLOW: EnumStatus[] = [
 export const TSHIRT_STATUS_LABELS: Record<EnumStatus, string> = {
   LEAD: 'Обратился',
   NEW: 'Новый',
+  APPROVAL_SENT: 'На согласовании',
   SENT: 'Отправлен',
   IN_PROGRESS: 'В работе',
   READY: 'Готов',
