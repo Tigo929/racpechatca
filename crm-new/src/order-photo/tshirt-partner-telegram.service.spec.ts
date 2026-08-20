@@ -21,6 +21,109 @@ describe('TshirtPartnerTelegramService', () => {
     await fs.rm(uploadDir, { recursive: true, force: true });
   });
 
+  it('заказ на нанесение принта: заготовку исполнителю не считаем и говорим об этом словами', async () => {
+    /*
+     * Давальческая позиция — «только нанесение»: футболку привозит клиент.
+     *
+     * Проверяется именно текст, а не только цифры. Раньше в сообщение уходило
+     * «футболка: 0 ₽», и исполнитель читал это как «заготовка бесплатная» —
+     * то есть брал её со склада. Цена ошибки — лишняя футболка на каждую
+     * такую позицию.
+     */
+    const orderId = 'order-nanesenie';
+    const jpeg = await sharp({
+      create: { width: 4, height: 4, channels: 3, background: '#fff' },
+    })
+      .jpeg()
+      .toBuffer();
+    await fs.writeFile(path.join(uploadDir, 'tz.jpg'), jpeg);
+
+    const order = {
+      id: orderId,
+      numberOrder: '20260819-010',
+      tshirtModel: null,
+      techSpecPhotoPath: 'tz.jpg',
+      techSpecPhotoPaths: ['tz.jpg'],
+      tshirtItems: [
+        {
+          color: 'Своя',
+          size: EnumTshirtSize.M,
+          quantity: 2,
+          printLocation: EnumPrintLocation.BACK,
+          printType: EnumPrintType.DTF,
+          pricePosition: 1200,
+          designCost: 0,
+          thermalCost: 70,
+          blankCost: 400,
+          clientItem: true,
+        },
+      ],
+    };
+
+    const prisma = {
+      orderPhoto: {
+        findUnique: jest.fn().mockResolvedValue(order),
+        update: jest.fn().mockResolvedValue(order),
+      },
+    };
+    const telegram = {
+      sendPhoto: jest.fn().mockResolvedValue({ messageId: 7 }),
+      sendDocument: jest.fn().mockResolvedValue({ messageId: 7 }),
+    };
+    const partnerSettings = {
+      get: jest.fn().mockResolvedValue({ partnerRateBasisPoints: 3000 }),
+    };
+    const stickerLinks = {
+      buildStickerUrl: jest.fn().mockReturnValue('https://crm.example.test/s.pdf'),
+    };
+    const config = {
+      get: jest.fn((key: string) => {
+        const values: Record<string, string> = {
+          TSHIRT_PARTNER_TELEGRAM_CHAT_ID: '-1001',
+          UPLOAD_DIR: uploadDir,
+        };
+        return values[key];
+      }),
+    };
+
+    const service = new TshirtPartnerTelegramService(
+      prisma as never,
+      telegram as never,
+      partnerSettings as never,
+      stickerLinks as never,
+      config as never,
+    );
+
+    await service.sendOrder(orderId);
+
+    // Один файл — уходит фотографией, подпись пятым аргументом.
+    expect(telegram.sendPhoto).toHaveBeenCalledTimes(1);
+    const caption = telegram.sendPhoto.mock.calls[0][4] as string;
+
+    // Видно с первой строки, что футболки заводить не надо.
+    expect(caption).toContain('Заказ на нанесение принта');
+    expect(caption).toContain('только нанесение');
+    expect(caption).toContain('заготовку не берём');
+    // Ноль в рублях больше не пишем — именно его читали как «бесплатно».
+    expect(caption).not.toContain('футболка: 0 ₽');
+
+    /*
+     * Деньги: заготовка в материалы не входит, делится только печать.
+     * Материалы = термоперенос 70 × 2 = 140. Маржа = 1200 − 140 = 1060.
+     * Доля партнёра 30% = 318, к выплате 318 + 140 = 458.
+     */
+    expect(caption).toContain('Материалы: 140 ₽');
+    expect(caption).toContain('К выплате: <b>458 ₽</b>');
+
+    expect(prisma.orderPhoto.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          partnerSyncStatus: EnumPartnerSyncStatus.SENT,
+        }),
+      }),
+    );
+  });
+
   it('sends multiple tech spec files as one PDF message with buttons before marking SENT', async () => {
     const orderId = 'order-1';
     const jpeg = await sharp({
