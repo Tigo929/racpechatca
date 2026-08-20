@@ -12,6 +12,7 @@ import {
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
+import { MarketplaceAccessGuard } from './marketplace-access.guard';
 import { EnumRole } from 'src/generated/prisma/enums';
 import { MarketplaceAccountService } from './marketplace-account.service';
 import { OzonProductCatalogService } from './ozon/ozon-product-catalog.service';
@@ -31,8 +32,8 @@ import { OzonUnitEconomicsService } from './ozon-unit-economics.service';
  * копии в нашей базе нет (см. OzonProductCatalogService).
  */
 @Controller('marketplace/ozon')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(EnumRole.ADMIN)
+@UseGuards(JwtAuthGuard, RolesGuard, MarketplaceAccessGuard)
+@Roles(EnumRole.ADMIN, EnumRole.MARKETPLACE_CLIENT)
 export class OzonProductCatalogController {
   constructor(
     private readonly accounts: MarketplaceAccountService,

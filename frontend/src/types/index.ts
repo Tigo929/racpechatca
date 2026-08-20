@@ -271,7 +271,12 @@ export interface UpdateItemDto {
   isFreePrice?: boolean;
 }
 
-export type EnumRole = 'ADMIN' | 'EXECUTOR' | 'ORDER_MANAGER';
+/**
+ * MARKETPLACE_CLIENT — внешний продавец: пользуется только разделом
+ * «Маркетплейсы» и только своими кабинетами. Это не сотрудник, а клиент
+ * сервиса, поэтому ни заказов, ни зарплаты, ни отчётов он не видит.
+ */
+export type EnumRole = 'ADMIN' | 'EXECUTOR' | 'ORDER_MANAGER' | 'MARKETPLACE_CLIENT';
 
 export interface AuthUser {
   id: string;

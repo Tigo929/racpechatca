@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { MarketplaceController } from './marketplace.controller';
 import { MarketplaceAccountService } from './marketplace-account.service';
+import { MarketplaceAccessGuard } from './marketplace-access.guard';
 import { OzonApiClient } from './ozon/ozon-api.client';
 import { OzonService } from './ozon/ozon.service';
 import { OzonCatalogService } from './ozon/ozon-catalog.service';
@@ -35,6 +36,7 @@ import { OzonUnitEconomicsService } from './ozon-unit-economics.service';
     OzonCatalogController,
   ],
   providers: [
+    MarketplaceAccessGuard,
     MarketplaceAccountService,
     OzonApiClient,
     OzonService,

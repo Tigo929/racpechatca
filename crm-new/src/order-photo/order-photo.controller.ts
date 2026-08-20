@@ -47,8 +47,21 @@ interface RequestUser {
   role: string;
 }
 
+/*
+ * Роли на классе — «по умолчанию только сотрудники».
+ *
+ * RolesGuard пропускает всех, когда список ролей не задан. Пока каждый
+ * вошедший был сотрудником, часть маршрутов и жила без своего @Roles: сервисы
+ * фильтруют по роли внутри. С появлением внешних продавцов (клиентов сервиса,
+ * а не сотрудников) это перестало быть безопасным — они получили бы и чтение
+ * заказов, и смену статуса.
+ *
+ * Метод со своим @Roles сужает список дальше: getAllAndOverride берёт значение
+ * с метода, если оно есть, и только иначе — с класса.
+ */
 @Controller('order-photo')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(EnumRole.ADMIN, EnumRole.EXECUTOR, EnumRole.ORDER_MANAGER)
 @UseInterceptors(StripPricesInterceptor)
 export class OrderPhotoController {
   constructor(

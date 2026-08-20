@@ -37,6 +37,30 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Маркетплейсы: админ и внешний продавец. Сервер всё равно проверяет права
+ * и владельца кабинета — здесь только чтобы чужой раздел не открывался.
+ */
+function MarketplaceRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/crm/login" replace />;
+  if (user.role !== 'ADMIN' && user.role !== 'MARKETPLACE_CLIENT')
+    return <Navigate to="/crm" replace />;
+  return <>{children}</>;
+}
+
+/**
+ * Куда попадает вошедший. Внешнему продавцу фотопечать открывать незачем —
+ * он её не видит и всё равно был бы отброшен обратно.
+ */
+function HomeRedirect() {
+  const { user } = useAuth();
+  if (user?.role === 'MARKETPLACE_CLIENT') {
+    return <Navigate to="/crm/marketplace/ozon/connection" replace />;
+  }
+  return <Navigate to="/crm/photo" replace />;
+}
+
 /** Разделы заказов, доступные и админу, и менеджеру по оформлению. */
 function OrderStaffRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -77,7 +101,7 @@ function AppRoutes() {
         <Route path="/crm/avito" element={<CrmGate><OrderStaffRoute><AvitoPage /></OrderStaffRoute></CrmGate>} />
         {/* Задачи видят все: администратор ставит, исполнитель ведёт свои */}
         <Route path="/crm/tasks" element={<CrmGate><PrivateRoute><TasksPage /></PrivateRoute></CrmGate>} />
-        <Route path="/crm" element={<Navigate to="/crm/photo" replace />} />
+        <Route path="/crm" element={<CrmGate><HomeRedirect /></CrmGate>} />
         <Route path="/crm/users" element={<CrmGate><AdminRoute><UsersPage /></AdminRoute></CrmGate>} />
         <Route path="/crm/salary" element={<CrmGate><AdminRoute><SalaryPage /></AdminRoute></CrmGate>} />
         {/* Личный кабинет по деньгам — доступен любому вошедшему, сервер
@@ -90,7 +114,7 @@ function AppRoutes() {
             «назад», и обновление страницы не сбрасывает выбор. */}
         <Route path="/crm/marketplace" element={<Navigate to="/crm/marketplace/ozon/connection" replace />} />
         <Route path="/crm/marketplace/:platform" element={<Navigate to="connection" replace />} />
-        <Route path="/crm/marketplace/:platform/:section" element={<CrmGate><AdminRoute><MarketplacePage /></AdminRoute></CrmGate>} />
+        <Route path="/crm/marketplace/:platform/:section" element={<CrmGate><MarketplaceRoute><MarketplacePage /></MarketplaceRoute></CrmGate>} />
 
         {/* Корень и любой неизвестный путь ведут в CRM */}
         <Route path="*" element={<Navigate to="/crm" replace />} />

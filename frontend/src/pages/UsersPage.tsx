@@ -15,11 +15,15 @@ const ROLE_LABELS: Record<EnumRole, string> = {
   ADMIN: 'Администратор',
   EXECUTOR: 'Исполнитель',
   ORDER_MANAGER: 'Менеджер по оформлению',
+  MARKETPLACE_CLIENT: 'Продавец на маркетплейсах',
 };
 const ROLE_COLORS: Record<EnumRole, string> = {
   ADMIN: 'bg-indigo-100 text-indigo-800',
   EXECUTOR: 'bg-gray-100 text-gray-600',
   ORDER_MANAGER: 'bg-amber-100 text-amber-800',
+  // Отдельный цвет: это не сотрудник, а внешний клиент сервиса, и путать
+  // его со своими в списке нельзя.
+  MARKETPLACE_CLIENT: 'bg-cyan-100 text-cyan-800',
 };
 
 function bpToPercent(bp: number): string {
@@ -313,7 +317,15 @@ export function UsersPage() {
                 <option value="EXECUTOR">Исполнитель</option>
                 <option value="ORDER_MANAGER">Менеджер по оформлению</option>
                 <option value="ADMIN">Администратор</option>
+                <option value="MARKETPLACE_CLIENT">Продавец на маркетплейсах (внешний)</option>
               </select>
+              {form.role === 'MARKETPLACE_CLIENT' && (
+                <p className="mt-1.5 text-xs text-cyan-800 bg-cyan-50 border border-cyan-100 rounded-lg p-2">
+                  Внешний клиент сервиса: увидит только раздел «Маркетплейсы» и
+                  только свои кабинеты. Заказы, зарплата и отчёты ему недоступны.
+                  Отключается снятием галочки «Активен» — доступ пропадает сразу.
+                </p>
+              )}
             </div>
             <div className="flex gap-2">
               <button

@@ -9,6 +9,7 @@ import {
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
+import { MarketplaceAccessGuard } from './marketplace-access.guard';
 import { EnumRole } from 'src/generated/prisma/enums';
 import { MarketplaceAccountService } from './marketplace-account.service';
 import { OzonOrdersService } from './ozon/ozon-orders.service';
@@ -19,10 +20,10 @@ import { OzonOrdersService } from './ozon/ozon-orders.service';
  * следующий шаг, там уже нужны решения по процессу.
  */
 @Controller('marketplace/ozon')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, MarketplaceAccessGuard)
 // Заказы ведёт и менеджер по оформлению, а не только владелец — в отличие
 // от доступов к кабинету, которые остаются админскими.
-@Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+@Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER, EnumRole.MARKETPLACE_CLIENT)
 export class OzonOrdersController {
   constructor(
     private readonly accounts: MarketplaceAccountService,

@@ -41,7 +41,10 @@ export class OzonPhotoController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(EnumRole.ADMIN)
+  // Внешний продавец наполняет свои карточки сам — фото ему загружать нужно.
+  // Кабинет здесь ни при чём: файл просто ложится в общее хранилище и живёт
+  // по ссылке, за которой приходит робот Ozon.
+  @Roles(EnumRole.ADMIN, EnumRole.MARKETPLACE_CLIENT)
   @UseInterceptors(
     AnyFilesInterceptor({
       limits: { fileSize: OZON_PHOTO_MAX_BYTES, files: OZON_PHOTO_MAX_FILES },

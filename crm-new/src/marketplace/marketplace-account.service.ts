@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from 'src/generated/prisma/client';
-import { EnumMarketplace } from 'src/generated/prisma/enums';
+import { EnumMarketplace, EnumRole } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { decryptSecret, encryptSecret, secretHint } from './secret-box';
 import { OzonApiError, type OzonCredentials } from './ozon/ozon-api.client';
@@ -92,9 +92,22 @@ export class MarketplaceAccountService {
     };
   }
 
-  async list(marketplace?: EnumMarketplace): Promise<MarketplaceAccountView[]> {
+  /**
+   * Кабинеты, доступные вызывающему.
+   *
+   * `ownerId` пустой — видит только владелец сервиса: это его собственные
+   * кабинеты, заведённые до появления внешних продавцов. Внешнему продавцу
+   * отдаём строго свои: в чужом кабинете лежит ключ от чужого магазина.
+   */
+  async list(
+    marketplace: EnumMarketplace | undefined,
+    viewer: { id: string; role: EnumRole },
+  ): Promise<MarketplaceAccountView[]> {
     const rows = await this.prisma.marketplaceAccount.findMany({
-      where: marketplace ? { marketplace } : undefined,
+      where: {
+        ...(marketplace ? { marketplace } : {}),
+        ...(viewer.role === EnumRole.ADMIN ? {} : { ownerId: viewer.id }),
+      },
       orderBy: { createdAt: 'asc' },
     });
     return rows.map((r) => this.toView(r));
@@ -114,7 +127,10 @@ export class MarketplaceAccountService {
    * Неудачная проверка не отменяет сохранение: ключ можно поправить, а если
    * Ozon просто лежит — доступы терять незачем.
    */
-  async create(input: CreateAccountInput): Promise<MarketplaceAccountView> {
+  async create(
+    input: CreateAccountInput,
+    ownerId: string,
+  ): Promise<MarketplaceAccountView> {
     const apiKey = input.apiKey.trim();
     const externalId = input.externalId.trim();
     if (!apiKey || !externalId) {
@@ -137,6 +153,9 @@ export class MarketplaceAccountService {
         externalId,
         apiKeySecret: encryptSecret(apiKey, this.masterSecret),
         apiKeyHint: secretHint(apiKey),
+        // Кабинет принадлежит тому, кто его завёл: по этому полю внешний
+        // продавец потом видит его, а чужие — нет.
+        ownerId,
       },
     });
 

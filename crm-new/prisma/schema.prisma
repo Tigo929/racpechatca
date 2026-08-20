@@ -34,6 +34,7 @@ model User {
   authoredTasks      Task[]            @relation("TaskAuthor")
   avitoMessages      AvitoMessage[]
   shipmentLeadState  AppState[]        @relation("ShipmentLead")
+  marketplaceAccounts MarketplaceAccount[] @relation("MarketplaceAccountOwner")
 }
 
 enum EnumRole {
@@ -43,6 +44,11 @@ enum EnumRole {
   // без доступа к «управляющим» разделам (склад, зарплата, отчёты, сотрудники,
   // настройки). Получает базовую ставку за оформленный заказ + премию за дизайн.
   ORDER_MANAGER
+  /// Внешний продавец: пользуется только разделом «Маркетплейсы» и только
+  /// своими кабинетами. Ни заказов, ни зарплаты, ни отчётов он не видит —
+  /// это не сотрудник, а клиент сервиса. Отключается снятием isActive:
+  /// проверка идёт на каждом запросе, поэтому доступ пропадает сразу.
+  MARKETPLACE_CLIENT
 }
 
 model OrderPhoto {
@@ -178,6 +184,12 @@ model MarketplaceAccount {
   marketplace EnumMarketplace
   /// Как кабинет называется у нас: «Основной магазин», «Тест».
   title       String
+
+  /// Чей это кабинет. Пусто — кабинеты владельца, заведённые до появления
+  /// внешних продавцов. Админ видит все, внешний продавец — только свои:
+  /// в кабинете лежит ключ от чужого магазина, и путать их нельзя.
+  ownerId String?
+  owner   User?   @relation("MarketplaceAccountOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   /// Публичная часть доступа: Client-Id у Ozon.
   externalId  String
   /// Секретная часть: зашифрованный Api-Key (AES-256-GCM).
@@ -199,6 +211,7 @@ model MarketplaceAccount {
   ozonPrints          OzonPrint[]
 
   @@unique([marketplace, externalId])
+  @@index([ownerId])
   @@index([marketplace, isActive])
 }
 
