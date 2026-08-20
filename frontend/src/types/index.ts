@@ -9,7 +9,10 @@ export type EnumSourceOrder = 'AVITO' | 'OZON' | 'WB' | 'LOCAL';
 
 export type EnumCommunication = 'AVITO' | 'TELEGRAM' | 'MAX' | 'OZON';
 
-export type EnumDeliveryMethod = 'YANDEX_PVZ' | 'OZON_PVZ' | 'PICKUP' | 'OZON_SELLER' | 'WB_SELLER';
+export type EnumDeliveryMethod = 'YANDEX_PVZ' | 'OZON_PVZ' | 'PICKUP' | 'OZON_SELLER' | 'WB_SELLER' | 'PRODUCTION_MSK';
+
+/** Материал холста по прайсу производства. */
+export type EnumCanvasMaterial = 'SYNTHETIC' | 'COTTON';
 
 export type EnumTypePaper = 'GLOSS' | 'MATTE';
 
@@ -43,6 +46,9 @@ export interface ItemCanvas {
   updatedAt: string;
   orderId: string;
   formatCanvas: string;
+  /** Размер из прайса производства. Пусто у нестандартных позиций. */
+  sizeKey: string | null;
+  material: EnumCanvasMaterial | null;
   quantity: number;
   clientPrice: number;
   contractorPrice: number;
@@ -181,13 +187,19 @@ export interface CreateTshirtItemDto {
 }
 
 export interface CreateCanvasItemDto {
-  formatCanvas: string;
+  /** Размер из прайса. Задан — сервер сам поставит подпись и цену производства. */
+  sizeKey?: string;
+  material?: EnumCanvasMaterial;
+  /** Нужны только для нестандартного размера, которого в прайсе нет. */
+  formatCanvas?: string;
+  contractorPrice?: number;
   quantity: number;
   clientPrice: number;
-  contractorPrice: number;
 }
 
 export interface UpdateCanvasItemDto {
+  sizeKey?: string;
+  material?: EnumCanvasMaterial;
   formatCanvas?: string;
   quantity?: number;
   clientPrice?: number;

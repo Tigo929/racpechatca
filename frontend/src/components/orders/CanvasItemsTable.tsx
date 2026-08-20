@@ -11,26 +11,41 @@ import {
   X,
 } from 'lucide-react';
 import { ordersApi } from '../../api/orders';
+import { canvasProductionApi } from '../../api/canvasProduction';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/useAuth';
 import { usePersistentState } from '../../hooks/usePersistentState';
-import type { ItemCanvas, OrderPhoto } from '../../types/index';
+import type { EnumCanvasMaterial, ItemCanvas, OrderPhoto } from '../../types/index';
 
 interface Props {
   order: OrderPhoto;
 }
 
+/**
+ * Строка позиции холста.
+ *
+ * `sizeKey` пустой — размер нестандартный: тогда подпись и цену производства
+ * вводят руками. Со стандартным размером цену считает сервер по прайсу, и
+ * трогать её нельзя: занизить себестоимость значит уйти в минус незаметно.
+ */
 type EditState = {
+  sizeKey: string;
+  material: EnumCanvasMaterial;
   formatCanvas: string;
   quantity: string;
   clientPrice: string;
   contractorPrice: string;
 };
 
+const CUSTOM_SIZE = '';
+
 const EMPTY: EditState = {
-  formatCanvas: '30×40',
+  sizeKey: '30x40',
+  material: 'SYNTHETIC',
+  formatCanvas: '',
   quantity: '1',
   clientPrice: '1500',
-  contractorPrice: '900',
+  contractorPrice: '0',
 };
 
 const inputCls =
@@ -39,10 +54,17 @@ const inputCls =
 const money = (value: number) => `${value.toLocaleString('ru-RU')} ₽`;
 
 function toDto(state: EditState) {
-  return {
-    formatCanvas: state.formatCanvas.trim(),
+  const base = {
     quantity: Math.max(1, Number(state.quantity) || 1),
     clientPrice: Math.max(0, Number(state.clientPrice) || 0),
+  };
+  if (state.sizeKey) {
+    // Размер из прайса: подпись и цену производства поставит сервер.
+    return { ...base, sizeKey: state.sizeKey, material: state.material };
+  }
+  return {
+    ...base,
+    formatCanvas: state.formatCanvas.trim(),
     contractorPrice: Math.max(0, Number(state.contractorPrice) || 0),
   };
 }
@@ -61,6 +83,19 @@ export function CanvasItemsTable({ order }: Props) {
     EMPTY,
   );
 
+  /*
+   * Прайс производства: из него берутся подпись размера и цена, которую мы
+   * должны. Только у админа — это условия договора, менеджеру их видеть
+   * незачем, и сервер их ему не отдаст.
+   */
+  const isAdmin = user?.role === 'ADMIN';
+  const { data: pricing } = useQuery({
+    queryKey: ['canvas-production-pricing'],
+    queryFn: canvasProductionApi.pricing,
+    enabled: isAdmin,
+    staleTime: 600_000,
+  });
+
   const items = order.canvasItems ?? [];
   const totals = items.reduce(
     (acc, item) => {
@@ -71,6 +106,17 @@ export function CanvasItemsTable({ order }: Props) {
     },
     { revenue: 0, cost: 0, profit: 0 },
   );
+
+  /*
+   * Доставка производства: платим мы, клиенту называем больше. Разница —
+   * заработок, а не транзит, поэтому она в прибыли, а не в себестоимости
+   * позиций. У самовывоза обе величины нулевые.
+   */
+  const deliveryOwnCost =
+    order.deliveryMethod === 'PRODUCTION_MSK' ? (pricing?.delivery.cost ?? 0) : 0;
+  const deliveryCharged =
+    order.deliveryMethod === 'PRODUCTION_MSK' ? (order.deliveryCost ?? 0) : 0;
+  const myProfit = totals.profit + deliveryCharged - deliveryOwnCost;
 
   const invalidate = (updated: OrderPhoto) => {
     qc.setQueryData(['order', order.id], updated);
@@ -111,6 +157,8 @@ export function CanvasItemsTable({ order }: Props) {
   const startEdit = (item: ItemCanvas) => {
     setEditingId(item.id);
     setEditState({
+      sizeKey: item.sizeKey ?? CUSTOM_SIZE,
+      material: item.material ?? 'SYNTHETIC',
       formatCanvas: item.formatCanvas,
       quantity: String(item.quantity),
       clientPrice: String(item.clientPrice),
@@ -118,18 +166,57 @@ export function CanvasItemsTable({ order }: Props) {
     });
   };
 
+  /** Сколько должны производству за штуку по выбранному размеру. */
+  const costOf = (state: EditState): number =>
+    pricing?.sizes.find((x) => x.key === state.sizeKey)?.cost[state.material] ?? 0;
+
+  /** Розница производства — показываем рядом, чтобы видеть, от чего скидка. */
+  const retailOf = (state: EditState): number =>
+    pricing?.sizes.find((x) => x.key === state.sizeKey)?.retail[state.material] ?? 0;
+
   const renderInputs = (
     state: EditState,
     onChange: (state: EditState) => void,
   ) => (
     <>
       <td className="px-4 py-2">
-        <input
-          className={inputCls}
-          value={state.formatCanvas}
-          onChange={(e) => onChange({ ...state, formatCanvas: e.target.value })}
-          placeholder="30×40, 40×60…"
-        />
+        <div className="space-y-1">
+          <select
+            className={inputCls}
+            value={state.sizeKey}
+            onChange={(e) => onChange({ ...state, sizeKey: e.target.value })}
+            aria-label="Размер холста"
+          >
+            {(pricing?.sizes ?? []).map((size) => (
+              <option key={size.key} value={size.key}>
+                {size.label}
+              </option>
+            ))}
+            <option value={CUSTOM_SIZE}>Нестандартный размер…</option>
+          </select>
+
+          {state.sizeKey ? (
+            <select
+              className={inputCls}
+              value={state.material}
+              onChange={(e) =>
+                onChange({ ...state, material: e.target.value as EnumCanvasMaterial })
+              }
+              aria-label="Материал"
+            >
+              <option value="SYNTHETIC">Синтетика</option>
+              <option value="COTTON">Хлопок</option>
+            </select>
+          ) : (
+            /* Размера нет в прайсе — подпись и цену производства вводим сами. */
+            <input
+              className={inputCls}
+              value={state.formatCanvas}
+              onChange={(e) => onChange({ ...state, formatCanvas: e.target.value })}
+              placeholder="Модульный, нестандарт…"
+            />
+          )}
+        </div>
       </td>
       <td className="px-4 py-2">
         <input
@@ -149,16 +236,29 @@ export function CanvasItemsTable({ order }: Props) {
           onChange={(e) => onChange({ ...state, clientPrice: e.target.value })}
         />
       </td>
-      <td className="px-4 py-2">
-        <input
-          type="number"
-          min={0}
-          className={`${inputCls} text-right`}
-          value={state.contractorPrice}
-          onChange={(e) =>
-            onChange({ ...state, contractorPrice: e.target.value })
-          }
-        />
+      <td className="px-4 py-2 text-right">
+        {state.sizeKey ? (
+          /* Считается по прайсу и скидке — поэтому показываем, а не даём
+             вводить: цена производства не предмет договорённости с клиентом. */
+          <div className="text-sm">
+            <span className="font-semibold tabular-nums text-gray-900">
+              {money(costOf(state))}
+            </span>
+            <span className="block text-[11px] text-gray-400">
+              розница {money(retailOf(state))}
+            </span>
+          </div>
+        ) : (
+          <input
+            type="number"
+            min={0}
+            className={`${inputCls} text-right`}
+            value={state.contractorPrice}
+            onChange={(e) =>
+              onChange({ ...state, contractorPrice: e.target.value })
+            }
+          />
+        )}
       </td>
     </>
   );
@@ -360,6 +460,52 @@ export function CanvasItemsTable({ order }: Props) {
           </tfoot>
         </table>
       </div>
+
+      {/* Итог по заказу словами денег: сколько я должен производству и что
+          остаётся мне. Доставку считаем отдельной строкой — на ней тоже
+          зарабатываем, и в марже позиций её быть не должно. */}
+      {isAdmin && pricing && items.length > 0 && (
+        <div className="mt-3 rounded-xl border border-gray-200 bg-white p-4 text-sm">
+          <div className="flex justify-between text-gray-500">
+            <span>Клиент платит за холсты</span>
+            <span className="tabular-nums">{money(totals.revenue)}</span>
+          </div>
+          {deliveryOwnCost > 0 && (
+            <div className="flex justify-between text-gray-500">
+              <span>+ доставка клиенту</span>
+              <span className="tabular-nums">{money(order.deliveryCost ?? 0)}</span>
+            </div>
+          )}
+
+          <div className="mt-2 border-t border-gray-100 pt-2 space-y-1">
+            <div className="flex justify-between text-gray-500">
+              <span>Должен производству за холсты</span>
+              <span className="tabular-nums">{money(totals.cost)}</span>
+            </div>
+            {deliveryOwnCost > 0 && (
+              <div className="flex justify-between text-gray-500">
+                <span>Должен производству за доставку</span>
+                <span className="tabular-nums">{money(deliveryOwnCost)}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-semibold text-gray-900">
+              <span>Должен производству всего</span>
+              <span className="tabular-nums">{money(totals.cost + deliveryOwnCost)}</span>
+            </div>
+          </div>
+
+          <div className="mt-2 border-t border-gray-100 pt-2">
+            <div
+              className={`flex justify-between font-semibold ${
+                myProfit >= 0 ? 'text-emerald-700' : 'text-red-600'
+              }`}
+            >
+              <span>Моя прибыль</span>
+              <span className="tabular-nums">{money(myProfit)}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -103,6 +103,7 @@ export const DELIVERY_LABELS: Record<EnumDeliveryMethod, string> = {
   YANDEX_PVZ: 'Яндекс ПВЗ',
   OZON_PVZ: 'Ozon ПВЗ',
   PICKUP: 'Самовывоз',
+  PRODUCTION_MSK: 'Доставка производства (Москва)',
   OZON_SELLER: 'Ozon Продавец',
   WB_SELLER: 'WB Продавец',
 };

@@ -9,6 +9,7 @@ import { ordersApi } from '../api/orders';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Modal } from '../components/ui/Modal';
 import { CreateOrderForm } from '../components/orders/CreateOrderForm';
+import { CanvasCalculator } from '../components/orders/CanvasCalculator';
 import { OrderDetail } from '../components/orders/OrderDetail';
 import { FilterChip } from '../components/ui/FilterChip';
 import { DeliveryBadge } from '../components/ui/DeliveryBadge';
@@ -184,6 +185,9 @@ export function OrdersPage({ section }: Props) {
       ) : undefined}
     >
       <div className="space-y-4">
+        {/* Прикинуть цену холста до заявки: клиенту её называют в переписке,
+            задолго до того, как заказ вообще появится. */}
+        {section === 'CANVAS' && isAdmin && <CanvasCalculator />}
 
         {/* Поиск */}
         <div className="relative">

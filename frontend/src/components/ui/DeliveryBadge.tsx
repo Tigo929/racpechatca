@@ -9,6 +9,9 @@ const DELIVERY_STYLES: Record<EnumDeliveryMethod, string> = {
   OZON_SELLER: 'bg-sky-100 text-sky-700 ring-1 ring-sky-200/60',
   WB_SELLER:   'bg-violet-100 text-violet-700 ring-1 ring-violet-200/60',
   PICKUP:      'bg-gray-100 text-gray-600 ring-1 ring-gray-200/60',
+  // Своя доставка производства холстов по Москве — единственная, где везёт
+  // подрядчик, а не перевозчик, поэтому и цвет свой.
+  PRODUCTION_MSK: 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200/60',
 };
 
 export function DeliveryBadge({ method }: Props) {
