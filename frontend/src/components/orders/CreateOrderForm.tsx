@@ -86,7 +86,9 @@ const baseSchema = z.object({
   sourceOrder: z.enum(['AVITO', 'OZON', 'WB', 'LOCAL']),
   communicationPlatform: z.enum(['AVITO', 'TELEGRAM', 'MAX', 'OZON']),
   urlCommunication: z.string().min(1, 'Укажите ссылку или @username'),
-  deliveryMethod: z.enum(['YANDEX_PVZ', 'OZON_PVZ', 'PICKUP', 'OZON_SELLER', 'WB_SELLER']),
+  deliveryMethod: z.enum([
+    'YANDEX_PVZ', 'OZON_PVZ', 'PICKUP', 'OZON_SELLER', 'WB_SELLER', 'PRODUCTION_MSK',
+  ]),
   deliveryCost: z.coerce.number().int().min(0),
   note: z.string().optional(),
   isUrgent: z.boolean().optional(),
@@ -339,6 +341,8 @@ export function CreateOrderForm({ onClose }: Props) {
   const photoFields = useFieldArray({ control, name: 'items' });
   const tshirtFields = useFieldArray({ control, name: 'tshirtItems' });
   const canvasFields = useFieldArray({ control, name: 'canvasItems' });
+  const deliveryMethodWatch = useWatch({ control, name: 'deliveryMethod' });
+  const deliveryCostWatch = useWatch({ control, name: 'deliveryCost' });
 
   /*
    * Прайс производства: из него подставляется цена, которую мы должны.
@@ -351,6 +355,53 @@ export function CreateOrderForm({ onClose }: Props) {
     enabled: productCategory === 'CANVAS',
     staleTime: 600_000,
   });
+
+  /*
+   * Итог по заказу считается на лету, пока форму заполняют: цену клиенту
+   * называют в этот же момент, и ждать сохранения ради цифры незачем.
+   *
+   * Себестоимость берём из прайса — ровно ту, что запишет сервер. Доставка
+   * отдельной строкой: платим одно, называем другое, и разница — заработок,
+   * а не транзит, поэтому в марже позиций её быть не должно.
+   */
+  /*
+   * Выбрали доставку производства — цену клиенту подставляем из настроек
+   * (800 ₽ при нашей себестоимости 700). Правится руками: с конкретным
+   * клиентом можно договориться иначе, а угадывать за владельца нельзя.
+   */
+  useEffect(() => {
+    if (deliveryMethodWatch !== 'PRODUCTION_MSK' || !canvasPricing) return;
+    if (Number(getValues('deliveryCost')) > 0) return;
+    setValue('deliveryCost', canvasPricing.delivery.price);
+  }, [deliveryMethodWatch, canvasPricing, getValues, setValue]);
+
+  const canvasTotals = (() => {
+    let revenue = 0;
+    let cost = 0;
+    for (const row of canvasItemsWatch ?? []) {
+      const qty = Number(row?.quantity ?? 0) || 0;
+      revenue += (Number(row?.clientPrice ?? 0) || 0) * qty;
+      const priced = canvasPricing?.sizes.find((x) => x.key === row?.sizeKey);
+      const unit = row?.sizeKey
+        ? (priced?.cost[row.material ?? 'SYNTHETIC'] ?? 0)
+        : Number(row?.contractorPrice ?? 0) || 0;
+      cost += unit * qty;
+    }
+    const isProductionDelivery = deliveryMethodWatch === 'PRODUCTION_MSK';
+    const deliveryOwn = isProductionDelivery ? (canvasPricing?.delivery.cost ?? 0) : 0;
+    const deliveryCharged = Number(deliveryCostWatch ?? 0) || 0;
+    const clientTotal = revenue + deliveryCharged;
+    const owed = cost + deliveryOwn;
+    return {
+      revenue,
+      cost,
+      deliveryOwn,
+      deliveryCharged,
+      clientTotal,
+      owed,
+      profit: clientTotal - owed,
+    };
+  })();
   const freeFields = useFieldArray({ control, name: 'freeItems' });
 
   const mutation = useMutation({
@@ -639,6 +690,11 @@ export function CreateOrderForm({ onClose }: Props) {
             <option value="OZON_PVZ">Ozon ПВЗ</option>
             <option value="OZON_SELLER">Ozon Продавец</option>
             <option value="WB_SELLER">WB Продавец</option>
+            {/* Своя доставка производства — только у холста: везёт подрядчик,
+                который его и печатает. */}
+            {productCategory === 'CANVAS' && (
+              <option value="PRODUCTION_MSK">Доставка производства (Москва)</option>
+            )}
           </select>
         </div>
         <div>
@@ -1043,6 +1099,59 @@ export function CreateOrderForm({ onClose }: Props) {
               );
             })}
           </div>
+
+          {/* Итог по заказу до его создания: система посчитала — можно
+              оформлять и называть цену клиенту. Отдельного калькулятора для
+              этого не нужно: считают ровно тогда, когда заводят заявку. */}
+          {canvasPricing && (
+            <div className="mt-3 rounded-xl border border-cyan-200 bg-white p-4 text-sm">
+              <div className="flex justify-between text-gray-500">
+                <span>Клиент платит за холсты</span>
+                <span className="tabular-nums">{canvasTotals.revenue.toLocaleString('ru-RU')} ₽</span>
+              </div>
+              {canvasTotals.deliveryCharged > 0 && (
+                <div className="flex justify-between text-gray-500">
+                  <span>+ доставка клиенту</span>
+                  <span className="tabular-nums">{canvasTotals.deliveryCharged.toLocaleString('ru-RU')} ₽</span>
+                </div>
+              )}
+              <div className="mt-1 flex justify-between font-semibold text-gray-900">
+                <span>Итого клиенту</span>
+                <span className="tabular-nums">{canvasTotals.clientTotal.toLocaleString('ru-RU')} ₽</span>
+              </div>
+
+              <div className="mt-2 space-y-1 border-t border-gray-100 pt-2">
+                <div className="flex justify-between text-gray-500">
+                  <span>Должен производству за холсты</span>
+                  <span className="tabular-nums">{canvasTotals.cost.toLocaleString('ru-RU')} ₽</span>
+                </div>
+                {canvasTotals.deliveryOwn > 0 && (
+                  <div className="flex justify-between text-gray-500">
+                    <span>Должен производству за доставку</span>
+                    <span className="tabular-nums">{canvasTotals.deliveryOwn.toLocaleString('ru-RU')} ₽</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-semibold text-gray-900">
+                  <span>Должен производству всего</span>
+                  <span className="tabular-nums">{canvasTotals.owed.toLocaleString('ru-RU')} ₽</span>
+                </div>
+              </div>
+
+              <div className="mt-2 border-t border-gray-100 pt-2">
+                <div className={`flex justify-between text-base font-bold ${
+                  canvasTotals.profit >= 0 ? 'text-emerald-700' : 'text-red-600'
+                }`}>
+                  <span>Моя прибыль</span>
+                  <span className="tabular-nums">{canvasTotals.profit.toLocaleString('ru-RU')} ₽</span>
+                </div>
+                <p className="mt-0.5 text-[11px] text-gray-500">
+                  {canvasTotals.clientTotal > 0
+                    ? `${Math.round((canvasTotals.profit / canvasTotals.clientTotal) * 100)}% от того, что платит клиент · скидка производства ${canvasPricing.discountBasisPoints / 100}%`
+                    : 'Укажите цену клиенту'}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
