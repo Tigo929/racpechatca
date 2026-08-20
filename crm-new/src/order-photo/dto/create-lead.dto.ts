@@ -4,6 +4,7 @@ import {
   IsIn,
   IsInt,
   IsISO8601,
+  IsObject,
   IsOptional,
   IsString,
   IsUrl,
@@ -137,4 +138,40 @@ export class DtoCreateLead {
   @IsOptional()
   @IsEnum(EnumProductCategory)
   productCategory?: EnumProductCategory;
+
+  // --- Заявка на холст с сайта (productCategory = CANVAS) ---
+
+  /** Ключ размера из прайса: «30x40». */
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  canvasSizeKey?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  canvasSizeLabel?: string;
+
+  /** Основа: MATTE или GLOSS. Хранится в примечании, отдельного поля у позиции нет. */
+  @IsOptional()
+  @IsIn(['MATTE', 'GLOSS'])
+  canvasMaterial?: 'MATTE' | 'GLOSS';
+
+  /** Багет; NONE — галерейная натяжка без рамы. */
+  @IsOptional()
+  @IsIn(['NONE', 'BLACK', 'WHITE', 'WOOD', 'GOLD'])
+  canvasFrame?: 'NONE' | 'BLACK' | 'WHITE' | 'WOOD' | 'GOLD';
+
+  /**
+   * Кадрирование из конструктора, в пикселях оригинала. Идёт в примечание:
+   * печатнику это готовое задание, менеджеру — замена переписке.
+   */
+  @IsOptional()
+  @IsObject()
+  canvasCrop?: { x: number; y: number; width: number; height: number };
+
+  /** Вердикт конструктора по разрешению — клиент видел его до отправки. */
+  @IsOptional()
+  @IsIn(['ok', 'tight', 'low'])
+  canvasResolution?: 'ok' | 'tight' | 'low';
 }

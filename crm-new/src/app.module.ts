@@ -16,6 +16,7 @@ import { AvitoModule } from './avito/avito.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
 import { GulianModule } from './gulian/gulian.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { CanvasModule } from './canvas/canvas.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -43,6 +44,7 @@ import { HealthController } from './health.controller';
     MarketplaceModule,
     ScenarioModule,
     GulianModule,
+    CanvasModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

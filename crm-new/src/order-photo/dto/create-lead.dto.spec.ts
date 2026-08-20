@@ -65,7 +65,9 @@ describe('заявка с сайта: приём полей', () => {
     // Документирует механику бага: незнакомое поле исчезает без ошибки,
     // поэтому расхождение имён сайт↔CRM ничем себя не выдаёт.
     const dto = await pass({ ...base, somethingUnknown: 'значение' });
-    expect((dto as Record<string, unknown>).somethingUnknown).toBeUndefined();
+    expect(
+      (dto as unknown as Record<string, unknown>).somethingUnknown,
+    ).toBeUndefined();
   });
 
   it('цену клиент подменить не может — она перепроверяется отдельно', async () => {

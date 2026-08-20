@@ -19,6 +19,10 @@ import DtoAllOrdersforQuery from './dto/all-oreders-for-query.dto';
 import UpdateStatus from './dto/update-status.dto';
 import { DtoUpdateOrder } from './dto/update-order.dto';
 import { DtoCreateLead } from './dto/create-lead.dto';
+import {
+  CANVAS_FRAME_LABELS,
+  findCanvasSize,
+} from '../scenarios/products/canvas.pricing';
 import { DtoAssignExecutor } from './dto/assign-executor.dto';
 import {
   EnumCommunication,
@@ -567,6 +571,23 @@ export class OrderPhotoService {
         dto.photosArchiveUrl ? `Архив фото: ${dto.photosArchiveUrl}` : null,
         dto.photosCount != null ? `Фото: ${dto.photosCount} шт` : null,
         dto.photosFailed ? 'Фото загружались, но архив не сохранился' : null,
+        dto.canvasSizeLabel || dto.canvasSizeKey
+          ? `Холст: ${dto.canvasSizeLabel ?? dto.canvasSizeKey}`
+          : null,
+        dto.canvasMaterial
+          ? `Основа: ${dto.canvasMaterial === 'GLOSS' ? 'глянцевая' : 'матовая'}`
+          : null,
+        dto.canvasFrame && dto.canvasFrame !== 'NONE'
+          ? `Багет: ${CANVAS_FRAME_LABELS[dto.canvasFrame] ?? dto.canvasFrame}`
+          : null,
+        dto.canvasCrop
+          ? `Кадр клиента: ${dto.canvasCrop.width}×${dto.canvasCrop.height} px, смещение ${dto.canvasCrop.x};${dto.canvasCrop.y}`
+          : null,
+        dto.canvasResolution === 'low'
+          ? '⚠ Разрешения на выбранный размер не хватает — клиент предупреждён на сайте'
+          : dto.canvasResolution === 'tight'
+            ? 'Разрешение впритык — клиент предупреждён на сайте'
+            : null,
         dto.cloudLink ? `Ссылка на облако: ${dto.cloudLink}` : null,
         dto.yclid ? `yclid: ${dto.yclid}` : null,
         dto.yandexClientId ? `Yandex ClientID: ${dto.yandexClientId}` : null,
@@ -591,24 +612,9 @@ export class OrderPhotoService {
           note: noteLines.join('\n'),
           // Позицию заводим сразу: иначе администратору пришлось бы переносить
           // товар и тираж из примечания руками — это ошибки и потеря времени.
-          ...(money.quantity > 0
-            ? {
-                items: {
-                  create: [
-                    {
-                      formatPaper:
-                        dto.productName?.trim() ||
-                        dto.productSlug?.trim() ||
-                        'Заявка с сайта',
-                      typePaper: 'GLOSS' as const,
-                      quantity: money.quantity,
-                      price: money.unitPrice,
-                      pricePosition: money.pricePosition,
-                    },
-                  ],
-                },
-              }
-            : {}),
+          // Холст заводится в свою таблицу, а не в фото-позиции: у него
+          // другая экономика (себестоимость подрядчика по каждой штуке).
+          ...buildLeadPosition(dto, money),
         },
         include: { items: true, tshirtItems: true, canvasItems: true },
       });
@@ -1726,4 +1732,67 @@ export class OrderPhotoService {
       return { message: 'Заказ удалён успешно', data: deleted };
     });
   }
+}
+
+/**
+ * Позиция заказа из заявки с сайта.
+ *
+ * Холст и фотопечать живут в разных таблицах: у холста своя экономика —
+ * себестоимость подрядчика фиксируется по каждой штуке, и маржа считается
+ * по позиции. Поэтому категория решает, куда лечь заявке.
+ *
+ * Опции холста (основа, багет), кадрирование и ссылка на файл идут в
+ * примечание к заказу: отдельных полей у позиции нет, а заводить миграцию
+ * ради четырёх строк текста дороже, чем она того стоит.
+ */
+function buildLeadPosition(
+  dto: DtoCreateLead,
+  money: { quantity: number; unitPrice: number; pricePosition: number },
+) {
+  if (money.quantity <= 0) {
+    return {};
+  }
+
+  if (dto.productCategory === EnumProductCategory.CANVAS) {
+    // Себестоимость берём из прайса — того же, из которого сайт взял цену.
+    // Ноль означает, что прайс подрядчика ещё не согласован: тогда маржа
+    // по позиции будет завышена, и это видно в отчёте.
+    const size = dto.canvasSizeKey ? findCanvasSize(dto.canvasSizeKey) : undefined;
+    const contractorPrice = size?.contractorCost ?? 0;
+    const contractorCostPosition = contractorPrice * money.quantity;
+    return {
+      canvasItems: {
+        create: [
+          {
+            formatCanvas:
+              dto.canvasSizeLabel?.trim() ||
+              dto.canvasSizeKey?.trim() ||
+              dto.productName?.trim() ||
+              'Холст с сайта',
+            quantity: money.quantity,
+            clientPrice: money.unitPrice,
+            contractorPrice,
+            pricePosition: money.pricePosition,
+            contractorCostPosition,
+            profitPosition: money.pricePosition - contractorCostPosition,
+          },
+        ],
+      },
+    };
+  }
+
+  return {
+    items: {
+      create: [
+        {
+          formatPaper:
+            dto.productName?.trim() || dto.productSlug?.trim() || 'Заявка с сайта',
+          typePaper: 'GLOSS' as const,
+          quantity: money.quantity,
+          price: money.unitPrice,
+          pricePosition: money.pricePosition,
+        },
+      ],
+    },
+  };
 }
