@@ -28,9 +28,12 @@ import {
   EnumCommunication,
   EnumDeliveryMethod,
   EnumExpenseCategory,
+  EnumPrintLocation,
   EnumProductCategory,
   EnumRole,
   EnumStatus,
+  EnumTshirtGender,
+  type EnumTshirtSize,
 } from 'src/generated/prisma/enums';
 import type { Prisma } from 'src/generated/prisma/client';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
@@ -1795,6 +1798,34 @@ function buildLeadPosition(
     };
   }
 
+  if (dto.productCategory === EnumProductCategory.TSHIRT) {
+    // Корпоративная заявка приходит без цены: партию считает менеджер,
+    // и позиция по нулю только испортила бы отчёт по марже. Создаём
+    // заказ без позиции — менеджер добавит её после расчёта.
+    if (money.unitPrice <= 0) {
+      return {};
+    }
+    return {
+      tshirtItems: {
+        create: [
+          {
+            color: TSHIRT_COLOR_LABELS[dto.tshirtColor ?? 'black'],
+            size: (dto.tshirtSize ?? 'L') as EnumTshirtSize,
+            gender: TSHIRT_GENDER_BY_FIT[dto.tshirtFit ?? 'unisex'],
+            printLocation: PRINT_LOCATION_BY_PLACEMENT[dto.tshirtPlacement ?? 'front'],
+            quantity: money.quantity,
+            price: money.unitPrice,
+            pricePosition: money.pricePosition,
+            // Себестоимость печати — снимок на момент оформления, как и у
+            // позиции, заведённой руками: расчёт с партнёром не должен
+            // «поехать», если позже поменять значения по умолчанию.
+            designNote: buildTshirtNote(dto),
+          },
+        ],
+      },
+    };
+  }
+
   return {
     items: {
       create: [
@@ -1809,4 +1840,44 @@ function buildLeadPosition(
       ],
     },
   };
+}
+
+/** Подписи цвета футболки: в позиции цвет хранится строкой, а не перечислением. */
+const TSHIRT_COLOR_LABELS: Record<'black' | 'white', string> = {
+  black: 'Чёрная',
+  white: 'Белая',
+};
+
+/**
+ * Крой сайта → поле gender позиции.
+ *
+ * Оверсайз — не пол, а посадка, и отдельного поля под него в схеме нет.
+ * Кладём его в UNISEX, а сам крой уходит в примечание позиции: потерять
+ * его нельзя, печатнику важно, какая заготовка нужна.
+ */
+const TSHIRT_GENDER_BY_FIT: Record<string, EnumTshirtGender> = {
+  unisex: EnumTshirtGender.UNISEX,
+  oversize: EnumTshirtGender.UNISEX,
+  female: EnumTshirtGender.FEMALE,
+  kids: EnumTshirtGender.KIDS,
+};
+
+const PRINT_LOCATION_BY_PLACEMENT: Record<string, EnumPrintLocation> = {
+  front: EnumPrintLocation.FRONT,
+  back: EnumPrintLocation.BACK,
+  'front-back': EnumPrintLocation.FRONT_BACK,
+};
+
+/** Что печатаем и на чём — в примечание позиции, чтобы не искать в переписке. */
+function buildTshirtNote(dto: DtoCreateLead): string {
+  const parts: string[] = [];
+  if (dto.tshirtFit === 'oversize') parts.push('Крой: оверсайз');
+  if (dto.tshirtPrintSlug) {
+    parts.push(`Готовый принт: ${dto.tshirtPrintName ?? dto.tshirtPrintSlug}`);
+  } else {
+    parts.push('Принт: макет клиента (ссылка на архив в заказе)');
+  }
+  const utm = [dto.utmSource, dto.utmMedium, dto.utmCampaign].filter(Boolean);
+  if (utm.length > 0) parts.push(`Источник: ${utm.join(' / ')}`);
+  return parts.join('. ');
 }

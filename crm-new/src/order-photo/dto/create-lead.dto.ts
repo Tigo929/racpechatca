@@ -174,4 +174,69 @@ export class DtoCreateLead {
   @IsOptional()
   @IsIn(['ok', 'tight', 'low'])
   canvasResolution?: 'ok' | 'tight' | 'low';
+
+  // --- Заявка на футболку с сайта (productCategory = TSHIRT) ---
+  //
+  // Поля приходят отдельными колонками, а не одной строкой в комментарии:
+  // из них создаётся позиция ItemTshirt, по которой дальше считается
+  // расчёт с партнёром. Разбирать текст ради этого нельзя.
+
+  /** Крой: unisex | oversize | female | kids. */
+  @IsOptional()
+  @IsIn(['unisex', 'oversize', 'female', 'kids'])
+  tshirtFit?: 'unisex' | 'oversize' | 'female' | 'kids';
+
+  @IsOptional()
+  @IsIn(['black', 'white'])
+  tshirtColor?: 'black' | 'white';
+
+  @IsOptional()
+  @IsIn(['S', 'M', 'L', 'XL', 'XXL'])
+  tshirtSize?: 'S' | 'M' | 'L' | 'XL' | 'XXL';
+
+  @IsOptional()
+  @IsIn(['front', 'back', 'front-back'])
+  tshirtPlacement?: 'front' | 'back' | 'front-back';
+
+  /** Слаг готового принта из каталога сайта; пусто — макет клиента. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  tshirtPrintSlug?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  tshirtPrintName?: string;
+
+  // --- Метки рекламной кампании ---
+  //
+  // До сих пор источник был виден только по yclid, то есть только по
+  // Яндекс.Директу. UTM закрывают остальные каналы; хранятся в примечании
+  // заказа, отдельных колонок под них в схеме пока нет.
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  utmSource?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  utmMedium?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  utmCampaign?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  utmContent?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  utmTerm?: string;
 }
