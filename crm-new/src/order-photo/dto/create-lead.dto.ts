@@ -181,10 +181,10 @@ export class DtoCreateLead {
   // из них создаётся позиция ItemTshirt, по которой дальше считается
   // расчёт с партнёром. Разбирать текст ради этого нельзя.
 
-  /** Крой: unisex | oversize | female | kids. */
+  /** Крой: male | female | oversize. */
   @IsOptional()
-  @IsIn(['unisex', 'oversize', 'female', 'kids'])
-  tshirtFit?: 'unisex' | 'oversize' | 'female' | 'kids';
+  @IsIn(['male', 'female', 'oversize'])
+  tshirtFit?: 'male' | 'female' | 'oversize';
 
   @IsOptional()
   @IsIn(['black', 'white'])

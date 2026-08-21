@@ -1811,7 +1811,7 @@ function buildLeadPosition(
           {
             color: TSHIRT_COLOR_LABELS[dto.tshirtColor ?? 'black'],
             size: (dto.tshirtSize ?? 'L') as EnumTshirtSize,
-            gender: TSHIRT_GENDER_BY_FIT[dto.tshirtFit ?? 'unisex'],
+            gender: TSHIRT_GENDER_BY_FIT[dto.tshirtFit ?? 'male'],
             printLocation: PRINT_LOCATION_BY_PLACEMENT[dto.tshirtPlacement ?? 'front'],
             quantity: money.quantity,
             price: money.unitPrice,
@@ -1856,10 +1856,11 @@ const TSHIRT_COLOR_LABELS: Record<'black' | 'white', string> = {
  * его нельзя, печатнику важно, какая заготовка нужна.
  */
 const TSHIRT_GENDER_BY_FIT: Record<string, EnumTshirtGender> = {
-  unisex: EnumTshirtGender.UNISEX,
-  oversize: EnumTshirtGender.UNISEX,
+  male: EnumTshirtGender.MALE,
   female: EnumTshirtGender.FEMALE,
-  kids: EnumTshirtGender.KIDS,
+  // Оверсайз — посадка, а не пол: кладём в UNISEX, а сам крой уходит
+  // в примечание позиции, потому что печатнику важна заготовка.
+  oversize: EnumTshirtGender.UNISEX,
 };
 
 const PRINT_LOCATION_BY_PLACEMENT: Record<string, EnumPrintLocation> = {
