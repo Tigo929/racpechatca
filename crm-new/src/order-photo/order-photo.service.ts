@@ -534,12 +534,17 @@ export class OrderPhotoService {
           ? EnumCommunication.TELEGRAM
           : EnumCommunication.MAX;
       const maxLinkTemplate = (await this.partnerSettings.get(tx)).maxLinkTemplate;
+      // Телефона может не быть вовсе: клиент оставляет либо его, либо
+      // мессенджер. Поэтому каждая ветка знает запасной вариант — иначе
+      // в заказе оказалась бы пустая ссылка на переписку.
+      const phone = dto.phone?.trim() ?? '';
+      const remoteContact = dto.contactValue?.trim() ?? '';
       const communicationValue =
         contactMethod === 'telegram'
           ? `@${tgRaw}`
           : contactMethod === 'max'
-            ? (dto.contactValue ?? dto.phone)
-            : dto.phone;
+            ? remoteContact || phone
+            : phone || remoteContact;
       const urlCommunication = buildCommunicationUrl(
         communicationPlatform,
         communicationValue,
@@ -575,7 +580,7 @@ export class OrderPhotoService {
         clientComment ? `💬 Клиент просит: ${clientComment}` : null,
         dto.leadId ? `ID заявки: ${dto.leadId}` : null,
         `Имя: ${dto.name}`,
-        `Телефон: ${dto.phone}`,
+        phone ? `Телефон: ${phone}` : null,
         contactMethod === 'telegram' && tgRaw ? `Telegram: @${tgRaw}` : null,
         contactMethod === 'max' && dto.contactValue ? `MAX: ${dto.contactValue}` : null,
         contactMethod === 'email' && dto.contactValue ? `Email: ${dto.contactValue}` : null,

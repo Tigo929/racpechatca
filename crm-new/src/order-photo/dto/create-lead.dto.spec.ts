@@ -76,3 +76,27 @@ describe('заявка с сайта: приём полей', () => {
     expect(dto.total).toBe(1);
   });
 });
+
+describe('заявка с сайта: контакт клиента', () => {
+  it('без телефона, но с мессенджером — принимается', async () => {
+    const { phone: _phone, ...withoutPhone } = base;
+    const dto = await pass(withoutPhone);
+    expect(dto.phone).toBeUndefined();
+    expect(dto.contactValue).toBe('@anna');
+  });
+
+  it('без мессенджера, но с телефоном — принимается', async () => {
+    const { contactMethod: _m, contactValue: _v, ...withoutContact } = base;
+    const dto = await pass(withoutContact);
+    expect(dto.phone).toBe('+7 900 000-00-00');
+  });
+
+  it('без обоих контактов — отказ: отвечать будет некуда', async () => {
+    const { phone: _p, contactMethod: _m, contactValue: _v, ...bare } = base;
+    await expect(pass(bare)).rejects.toThrow();
+  });
+
+  it('телефон-обрубок по-прежнему не проходит', async () => {
+    await expect(pass({ ...base, phone: '123' })).rejects.toThrow();
+  });
+});

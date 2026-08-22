@@ -12,12 +12,27 @@ import {
   Max,
   MinLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import { EnumProductCategory } from 'src/generated/prisma/enums';
+
+/** Оставлен ли удалённый контакт — Telegram, MAX или почта. */
+function hasRemoteContact(o: DtoCreateLead): boolean {
+  return Boolean(o.contactValue && o.contactValue.trim());
+}
+
+/** Оставлен ли телефон. */
+function hasPhone(o: DtoCreateLead): boolean {
+  return Boolean(o.phone && o.phone.trim());
+}
 
 /**
  * Заявка с лендинга (публичная, без авторизации).
  * Превращается в заказ со статусом LEAD, который видит администратор в CRM.
+ *
+ * Контакт обязателен ровно один: телефон ИЛИ мессенджер. Раньше телефон был
+ * обязателен всегда, и заявка от человека, который оставил только Telegram,
+ * отбивалась с 400 — сайт показывал «принято», а в CRM ничего не появлялось.
  */
 export class DtoCreateLead {
   @IsOptional()
@@ -30,10 +45,11 @@ export class DtoCreateLead {
   @MaxLength(120)
   name!: string;
 
-  @IsString()
+  @ValidateIf((o: DtoCreateLead) => hasPhone(o) || !hasRemoteContact(o))
+  @IsString({ message: 'Укажите телефон или контакт в мессенджере' })
   @MinLength(5, { message: 'Укажите телефон' })
   @MaxLength(40)
-  phone!: string;
+  phone?: string;
 
   @IsOptional()
   @IsString()
