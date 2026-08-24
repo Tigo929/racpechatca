@@ -473,6 +473,37 @@ POST   /mockup-templates/:id/image
 DELETE /mockup-templates/:id
 ```
 
+Ozon image card generator (ADMIN + MARKETPLACE_CLIENT; templates edited by ADMIN):
+
+```text
+GET    /marketplace/ozon/card-templates
+POST   /marketplace/ozon/card-templates
+GET    /marketplace/ozon/card-templates/:id/image
+PATCH  /marketplace/ozon/card-templates/:id
+POST   /marketplace/ozon/card-templates/:id/image
+DELETE /marketplace/ozon/card-templates/:id
+
+GET    /marketplace/ozon/card-batches/capabilities
+GET    /marketplace/ozon/card-batches
+POST   /marketplace/ozon/card-batches
+GET    /marketplace/ozon/card-batches/:id
+PATCH  /marketplace/ozon/card-batches/:id
+DELETE /marketplace/ozon/card-batches/:id
+POST   /marketplace/ozon/card-batches/:id/sources
+POST   /marketplace/ozon/card-batches/:id/generate
+GET    /marketplace/ozon/card-batches/:id/cards
+GET    /marketplace/ozon/card-batches/cards/:cardId/preview
+PATCH  /marketplace/ozon/card-batches/cards/:cardId
+POST   /marketplace/ozon/card-batches/cards/:cardId/regenerate
+GET    /marketplace/ozon/card-batches/cards/:cardId/template
+POST   /marketplace/ozon/card-batches/:id/finalize
+GET    /marketplace/ozon/card-batches/:id/download
+POST   /marketplace/ozon/card-batches/:id/cards/bulk
+POST   /marketplace/ozon/card-batches/sources/:sourceId/retry
+GET    /marketplace/ozon/card-batches/sources/:sourceId/raster
+DELETE /marketplace/ozon/card-batches/sources/:sourceId
+```
+
 ## Frontend Map
 
 Frontend stack:
@@ -761,6 +792,80 @@ backup -> git pull -> build -> migrate -> docker compose up -d -> health check
   `/approvals` and `/mockup-templates` fell through to the SPA in local dev and
   returned HTML instead of JSON. `nginx-routes.spec.ts` now checks the Vite
   proxy the same way it checks nginx.
+
+### 2026-08-24 (later)
+
+- Added the Ozon image card generator, stages 2-3 of its spec
+  (`crm-new/src/marketplace/image-cards/`): card templates with a
+  mouse-drawn placement area, batch upload of print artwork, PDF
+  rasterization and background preparation of sources.
+- New tables `ImageCardTemplate`, `ImageCardBatch`, `ImageCardSource`,
+  `ImageCardGenerated`; new enums `EnumCardBatchStatus`,
+  `EnumSourceAssetStatus`, `EnumGeneratedCardStatus`.
+- Backend image now also installs `poppler-utils`: sharp cannot read PDF
+  (`sharp.format.pdf.input` is false for file, buffer and stream), so PDF
+  artwork is rendered by `pdftocairo`.
+- New upload directories inside `UPLOAD_DIR`: `ozon-templates/` and
+  `ozon-image-cards/<batch>/{source,generated}/`.
+
+### Ozon Image Cards
+
+Что важно знать про модуль:
+
+- **Область размещения** задаётся в пикселях шаблона и своя у каждого
+  шаблона: у чёрной и белой футболки композиция может не совпадать.
+- **Положение принта** нормализовано относительно области: `x`, `y` — центр
+  в долях, `scale` — доля от вписанного размера. Пиксели браузера не
+  хранятся: карточка собирается и в превью, и в полном разрешении.
+- **Версионность шаблонов** сделана снимком: карточка хранит файл, холст и
+  область на момент генерации, а файлы шаблонов при замене не удаляются.
+  Поэтому замена шаблона не меняет вид старых пачек.
+- **Очередь обработки — таблица, а не Redis.** Образец — GulianOutbox.
+  Строка занимается условным обновлением (`status: PENDING` → `PROCESSING`),
+  зависшие после перезапуска возвращаются в очередь на старте.
+- **Тип файла определяется по первым байтам**, а не по MIME и расширению:
+  и то и другое присылает браузер.
+- **Файлы грузятся по одному на запрос:** nginx пропускает 30 МБ на запрос
+  целиком, и пачка из полусотни макетов в него не влезает.
+- **Прозрачные поля обрезаются** при подготовке исходника: у макетов вокруг
+  рисунка часто половина холста пустоты (замерено: 1400×1800 → 800×662,
+  21% площади). Без обрезки принт «вписывается в область» вместе с
+  пустотой и выходит вдвое меньше задуманного. Белую рамку не трогаем —
+  удаление белого фона это отдельная настройка, по умолчанию выключенная.
+- **Превью и финал считает один и тот же код**, отличается только длинная
+  сторона: иначе на сетке было бы одно, а в скачанном файле другое.
+- **Статус FINALIZED руками не ставится:** его назначает только финальный
+  рендер, когда файл собран и прошёл проверку требований Ozon. Иначе
+  появились бы «готовые» карточки без файлов.
+- **Слой жестов общий** с редактором согласования:
+  `frontend/src/components/shared/TransformStage.tsx` — перетаскивание,
+  пропорциональный ресайз за угол, подгонка стрелками. Геометрия у
+  модулей разная (сантиметры против доли области), поэтому наружу
+  отдаются смещение и множитель, а не готовые значения.
+- **Подложка редактора — шаблон из снимка карточки**, а не текущая
+  версия шаблона: иначе после замены человек двигал бы принт по одной
+  картинке, а получал другую.
+- **Требования Ozon собраны в одном месте** — `ozon-image-preset.ts`:
+  минимум 900 × 1200, соотношение 3:4 с допуском 2%, PNG, до 10 МБ.
+  Площадка меняет правила без предупреждения, и править придётся ровно
+  эту таблицу, а не редактор и не рендер.
+- **Проверяется записанный файл, а не намерения:** размеры, формат и вес
+  берутся из того, что реально лежит на диске. Не прошедшая проверку
+  карточка получает статус ERROR и в архив не попадает.
+- **Финализация не берёт «требует проверки»** без отдельного
+  подтверждения: именно на этих карточках автоматика и засомневалась.
+- **Архив собирается потоком** (`archiver`): сотня PNG по паре мегабайт
+  не должна лежать в куче процесса целиком.
+- **Шаблон выбирается на пачку.** Пустой список в настройках означает
+  «брать активные по цвету»; первое же снятие превращает его в явный
+  список. Так можно держать несколько вариантов шаблона и сравнивать
+  их, не переключая «активен» туда-сюда.
+- **Отчёт по пачке считает сервер**, а не клиент: собранные на клиенте
+  цифры разъедутся с базой ровно тогда, когда по ним начнут принимать
+  решения.
+- **PDF проверен вживую** на Poppler 25.07: страница 800×1000 pt даёт
+  растр 1920×2400 с прозрачным фоном за ~400 мс. Тест `pdf-raster.spec.ts`
+  пропускает себя там, где Poppler не установлен.
 
 ### Print Approval
 
