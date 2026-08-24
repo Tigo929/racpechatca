@@ -22,6 +22,20 @@ import {
 export const PREVIEW_LONG_SIDE = 600;
 
 /**
+ * Потолок длинной стороны готовой карточки.
+ *
+ * Не ограничение ради ограничения, а два факта. Первый: у Ozon лимит на
+ * файл — 10 МБ, а карточка с шаблона 4000 px весит около 17 МБ, то есть
+ * площадка её просто не примет. Второй: сборка такой карточки занимает три
+ * секунды против четверти секунды у двухтысячной — на сотне карточек это
+ * разница между пятью минутами и сорока секундами.
+ *
+ * 2000 по длинной стороне — это 1500 × 2000 при пропорции 3:4, вдвое выше
+ * минимума Ozon для одежды (900 × 1200). Меняется здесь одним числом.
+ */
+export const FINAL_LONG_SIDE = 2000;
+
+/**
  * Порог «почти белого» при удалении фона. 242 выбран так, чтобы уйти сканерный
  * серый и артефакты JPEG, но остались светлые детали рисунка.
  */
@@ -59,10 +73,12 @@ export class ImageCardRenderService {
       }
     }
 
+    // Промежуточный файл, который тут же читают обратно: жать его сильно
+    // незачем, а быстрый уровень экономит заметную долю времени на пачке.
     return sharp(data, {
       raw: { width: info.width, height: info.height, channels },
     })
-      .png()
+      .png({ compressionLevel: 3 })
       .toBuffer();
   }
 
@@ -150,26 +166,31 @@ export class ImageCardRenderService {
     const width = Math.max(1, Math.round(rect.width));
     const height = Math.max(1, Math.round(rect.height));
 
+    /*
+     * Принт готовим в сырых пикселях, а не в PNG.
+     *
+     * Раньше между изменением размера, поворотом и обрезкой он трижды
+     * кодировался в PNG и трижды разбирался обратно — только чтобы передать
+     * его дальше по конвейеру. На сложной картинке кодирование PNG стоит
+     * дороже самого наложения, а результат этих промежуточных файлов никто
+     * никогда не видел.
+     */
     // fit: 'fill' безопасен: ширина и высота уже посчитаны с сохранением
     // пропорций, растянуть по одной оси эта пара не может.
-    let overlay = await sharp(design)
+    let pipeline = sharp(design)
       .resize(width, height, { fit: 'fill' })
-      .png()
-      .toBuffer();
-    let overlayW = width;
-    let overlayH = height;
-
+      .ensureAlpha();
     if (transform.rotation) {
-      const rotated = await sharp(overlay)
-        .rotate(transform.rotation, {
-          background: { r: 0, g: 0, b: 0, alpha: 0 },
-        })
-        .png()
-        .toBuffer({ resolveWithObject: true });
-      overlay = rotated.data;
-      overlayW = rotated.info.width;
-      overlayH = rotated.info.height;
+      pipeline = pipeline.rotate(transform.rotation, {
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      });
     }
+    const prepared = await pipeline.raw().toBuffer({ resolveWithObject: true });
+
+    let overlay = prepared.data;
+    let overlayW = prepared.info.width;
+    let overlayH = prepared.info.height;
+    const overlayChannels = prepared.info.channels;
 
     const bounds = rotatedBounds(rect, transform.rotation);
     const left = Math.round(bounds.x);
@@ -190,25 +211,48 @@ export class ImageCardRenderService {
         visibleW !== overlayW ||
         visibleH !== overlayH
       ) {
-        overlay = await sharp(overlay)
+        overlay = await sharp(overlay, {
+          raw: {
+            width: overlayW,
+            height: overlayH,
+            channels: overlayChannels,
+          },
+        })
           .extract({
             left: srcLeft,
             top: srcTop,
             width: visibleW,
             height: visibleH,
           })
-          .png()
+          .raw()
           .toBuffer();
+        overlayW = visibleW;
+        overlayH = visibleH;
       }
       composed = composed.composite([
-        { input: overlay, left: dstLeft, top: dstTop },
+        {
+          input: overlay,
+          raw: {
+            width: overlayW,
+            height: overlayH,
+            channels: overlayChannels,
+          },
+          left: dstLeft,
+          top: dstTop,
+        },
       ]);
     }
 
-    // Превью показывается на экране и живёт до следующей правки — жать его
-    // до последнего байта незачем. Финал уходит наружу, там уровень полный.
+    /*
+     * Уровень сжатия 6, а не 9.
+     *
+     * PNG сжимает без потерь на любом уровне — разница только в весе файла и
+     * во времени. Замерено на шаблоне 4000 × 5333: уровень 9 занимает 2283 мс
+     * и даёт 17,5 МБ, уровень 6 — 914 мс и 17,9 МБ. Два процента веса за
+     * две с половиной кратную скорость.
+     */
     return composed
-      .png({ compressionLevel: options.longSide ? 3 : 9 })
+      .png({ compressionLevel: options.longSide === PREVIEW_LONG_SIDE ? 3 : 6 })
       .toBuffer();
   }
 }

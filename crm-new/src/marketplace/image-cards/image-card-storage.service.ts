@@ -187,6 +187,15 @@ export class ImageCardStorageService {
     );
   }
 
+  /**
+   * Дизайн с убранным белым фоном. Лежит рядом с растром и считается один
+   * раз на исходник: тот же дизайн идёт и в чёрную карточку, и в белую, и
+   * в превью, и в финал — четыре прохода по пикселям вместо одного.
+   */
+  rasterCleanPath(batchId: string, baseName: string): string {
+    return this.batchDir(batchId, 'generated', baseName, 'source_nobg.png');
+  }
+
   /** Превью карточки для сетки проверки — рядом с растром этого дизайна. */
   previewPath(batchId: string, baseName: string, shirtColor: string): string {
     return this.batchDir(

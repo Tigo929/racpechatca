@@ -11,6 +11,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { ImageCardStorageService } from './image-card-storage.service';
 import { PdfRasterService, RASTER_LONG_SIDE } from './pdf-raster.service';
 import {
+  FINAL_LONG_SIDE,
   ImageCardRenderService,
   PREVIEW_LONG_SIDE,
   type CardTemplateSnapshot,
@@ -127,6 +128,35 @@ export class ImageCardProcessorService
     }
   }
 
+  /**
+   * Дизайн для композита.
+   *
+   * Если белый фон нужно убрать, делаем это один раз на исходник и держим
+   * результат рядом с растром. Раньше чистка запускалась на каждый рендер:
+   * один дизайн — две карточки, у каждой превью и финал, итого четыре
+   * прохода по всем пикселям вместо одного.
+   */
+  private async designFor(card: {
+    batchId: string;
+    removeWhiteBackground: boolean;
+    source: { baseName: string };
+  }): Promise<Buffer> {
+    const raster = this.storage.rasterPath(card.batchId, card.source.baseName);
+    if (!card.removeWhiteBackground) return this.storage.readFile(raster);
+
+    const clean = this.storage.rasterCleanPath(
+      card.batchId,
+      card.source.baseName,
+    );
+    if (await this.storage.exists(clean)) return this.storage.readFile(clean);
+
+    const cleaned = await this.render.removeWhiteBackground(
+      await this.storage.readFile(raster),
+    );
+    await fs.writeFile(clean, cleaned);
+    return cleaned;
+  }
+
   /** Карточки без превью — рисуем и складываем рядом с растром дизайна. */
   private async renderPendingPreviews(): Promise<number> {
     const cards = await this.prisma.imageCardGenerated.findMany({
@@ -145,9 +175,7 @@ export class ImageCardProcessorService
         if (!snapshot) throw new Error('У карточки нет снимка шаблона');
 
         const template = await this.storage.readTemplate(snapshot.file);
-        const design = await this.storage.readFile(
-          this.storage.rasterPath(card.batchId, card.source.baseName),
-        );
+        const design = await this.designFor(card);
 
         const preview = await this.render.composeCard({
           template,
@@ -156,7 +184,6 @@ export class ImageCardProcessorService
           designHeight: card.source.heightPx,
           snapshot,
           transform: parseTransform(card.transform),
-          removeWhite: card.removeWhiteBackground,
           longSide: PREVIEW_LONG_SIDE,
         });
 
@@ -216,9 +243,7 @@ export class ImageCardProcessorService
         if (!snapshot) throw new Error('У карточки нет снимка шаблона');
 
         const template = await this.storage.readTemplate(snapshot.file);
-        const design = await this.storage.readFile(
-          this.storage.rasterPath(card.batchId, card.source.baseName),
-        );
+        const design = await this.designFor(card);
 
         const full = await this.render.composeCard({
           template,
@@ -227,7 +252,7 @@ export class ImageCardProcessorService
           designHeight: card.source.heightPx,
           snapshot,
           transform: parseTransform(card.transform),
-          removeWhite: card.removeWhiteBackground,
+          longSide: FINAL_LONG_SIDE,
         });
 
         const filename = cardFileName(card.source.baseName, card.shirtColor);
@@ -350,6 +375,12 @@ export class ImageCardProcessorService
       }
 
       await this.trimTransparentMargins(rasterPath);
+      // Растр переписан — очищенная копия под него больше не подходит.
+      await fs
+        .rm(this.storage.rasterCleanPath(source.batchId, source.baseName), {
+          force: true,
+        })
+        .catch(() => undefined);
 
       const meta = await sharp(rasterPath).metadata();
       const width = meta.width ?? 0;
