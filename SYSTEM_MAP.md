@@ -388,6 +388,7 @@ POST   /order-photo
 POST   /order-photo/lead
 GET    /order-photo
 GET    /order-photo/stats
+GET    /order-photo/executor-workload
 GET    /order-photo/:idOrder
 PATCH  /order-photo/:idOrder
 PATCH  /order-photo/:idOrder/status
@@ -447,6 +448,29 @@ Stock:
 ```text
 GET   /stock
 PATCH /stock
+```
+
+Print approval (ADMIN + ORDER_MANAGER; шаблоны правит только ADMIN):
+
+```text
+GET    /approvals?orderId=...
+POST   /approvals
+GET    /approvals/:id
+PATCH  /approvals/:id
+DELETE /approvals/:id
+POST   /approvals/:id/print/:side
+GET    /approvals/:id/print/:side
+DELETE /approvals/:id/print/:side
+POST   /approvals/:id/preview
+POST   /approvals/:id/finalize
+GET    /approvals/:id/file
+
+GET    /mockup-templates
+GET    /mockup-templates/:id/image
+POST   /mockup-templates
+PATCH  /mockup-templates/:id
+POST   /mockup-templates/:id/image
+DELETE /mockup-templates/:id
 ```
 
 ## Frontend Map
@@ -714,6 +738,48 @@ backup -> git pull -> build -> migrate -> docker compose up -d -> health check
 - Removed production deadline text from copied order confirmations.
 - Hardened copied item text so free-price/photo free-form positions never show
   paper type labels such as `Глянец` or `Матт`.
+
+### 2026-08-24
+
+- Added the print approval module (`crm-new/src/approval/`): mockup templates
+  with print-area calibration, per-side print placement, server-side PNG sheet
+  rendering, and versioned approvals attached to the order.
+- New tables `MockupTemplate` and `PrintApproval`; new enums
+  `EnumApprovalSide` and `EnumApprovalStatus`. Existing tables untouched.
+- New nginx API prefixes `approvals` and `mockup-templates`.
+- Backend image now installs `fontconfig` and `ttf-dejavu`: the approval sheet
+  draws Cyrillic text through sharp/SVG, and alpine ships no fonts at all.
+- New upload directories inside `UPLOAD_DIR`: `mockups/` and `approvals/`.
+
+- Added the executor filter for the orders list: `executorId` in the orders
+  query (a user id, or `none` for unassigned) plus
+  `GET /order-photo/executor-workload` with per-executor active load. The role
+  guard still wins — an EXECUTOR cannot read another executor's orders through
+  the parameter (`crm-new/src/order-photo/executor-filter.spec.ts`).
+- Fixed the Vite dev proxy: it listed only six API prefixes, so `/tasks`,
+  `/reports`, `/expenses`, `/scenarios`, `/partner*`, `/canvas`, `/telegram`,
+  `/approvals` and `/mockup-templates` fell through to the SPA in local dev and
+  returned HTML instead of JSON. `nginx-routes.spec.ts` now checks the Vite
+  proxy the same way it checks nginx.
+
+### Print Approval
+
+Что важно знать про модуль:
+
+- **Калибровка** — пара «зона печати в пикселях фотографии» и «её реальный
+  размер в миллиметрах» (`MockupTemplate`). Из неё выводится масштаб, и только
+  благодаря ей «28 × 35 см» — это размер на картинке, а не подпись.
+- **Размещение принта** хранится нормализованным (`PrintApproval.sides`): центр
+  принта в долях зоны печати плюс физический размер в миллиметрах. Масштаба как
+  отдельного числа нет — размер и есть масштаб.
+- **Геометрия продублирована** в `crm-new/src/approval/approval-geometry.ts` и
+  `frontend/src/utils/approval-geometry.ts`. Сервер рисует итоговый файл, а
+  редактор обязан показывать то же самое до нажатия «Готово». Правится одна
+  формула — правятся обе.
+- **Версии не перезаписываются.** Повторное «Готово» переписывает лист своей
+  версии; новая версия создаётся отдельной записью (`orderId + version`).
+- Статусы версии не дублируют `EnumStatus`: `APPROVAL_SENT` говорит про заказ,
+  `EnumApprovalStatus` — про конкретный макет.
 
 ## Update Rule
 
