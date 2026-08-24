@@ -112,7 +112,7 @@ export class ImageCardBatchService {
         title: dto.title?.trim() || defaultTitle(),
         settings: {
           mode: dto.mode ?? 'BOTH',
-          removeWhiteBackground: dto.removeWhiteBackground ?? false,
+          removeWhiteBackground: dto.removeWhiteBackground ?? true,
           autoPlacement: dto.autoPlacement ?? true,
           templateIds: dto.templateIds ?? [],
         },

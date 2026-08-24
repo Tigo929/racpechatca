@@ -85,9 +85,58 @@ export class ImageCardRenderService {
     /** Длинная сторона результата. Пусто — полный размер холста. */
     longSide?: number;
   }): Promise<Buffer> {
-    const { snapshot, transform } = options;
+    const { transform } = options;
+
+    /*
+     * Превью собираем сразу в его размере, а не строим полный холст, чтобы
+     * потом его уменьшить. Разница большая: карточка 1200 × 1600 — это почти два
+     * миллиона точек, превью 450 × 600 — двести семьдесят тысяч. Раньше
+     * каждое превью считалось по полному холсту, и на сотне карточек это
+     * была основная трата времени.
+     *
+     * Все координаты пропорциональны, поэтому достаточно уменьшить холст
+     * вместе с областью размещения — картинка получится та же, только мельче.
+     */
+    const k = options.longSide
+      ? Math.min(
+          1,
+          options.longSide /
+            Math.max(
+              options.snapshot.canvasWidth,
+              options.snapshot.canvasHeight,
+            ),
+        )
+      : 1;
+    const snapshot: CardTemplateSnapshot =
+      k < 1
+        ? {
+            canvasWidth: Math.max(
+              1,
+              Math.round(options.snapshot.canvasWidth * k),
+            ),
+            canvasHeight: Math.max(
+              1,
+              Math.round(options.snapshot.canvasHeight * k),
+            ),
+            placementArea: {
+              x: options.snapshot.placementArea.x * k,
+              y: options.snapshot.placementArea.y * k,
+              width: options.snapshot.placementArea.width * k,
+              height: options.snapshot.placementArea.height * k,
+            },
+          }
+        : options.snapshot;
+
     const canvasW = snapshot.canvasWidth;
     const canvasH = snapshot.canvasHeight;
+
+    const template =
+      k < 1
+        ? await sharp(options.template)
+            .resize(canvasW, canvasH, { fit: 'fill' })
+            .png({ compressionLevel: 3 })
+            .toBuffer()
+        : options.template;
 
     const design = options.removeWhite
       ? await this.removeWhiteBackground(options.design)
@@ -133,7 +182,7 @@ export class ImageCardRenderService {
     const visibleW = Math.min(overlayW - srcLeft, canvasW - dstLeft);
     const visibleH = Math.min(overlayH - srcTop, canvasH - dstTop);
 
-    let composed = sharp(options.template);
+    let composed = sharp(template);
     if (visibleW > 0 && visibleH > 0) {
       if (
         srcLeft > 0 ||
@@ -156,17 +205,10 @@ export class ImageCardRenderService {
       ]);
     }
 
-    let result = composed.png({ compressionLevel: 9 });
-    if (options.longSide) {
-      result = sharp(await result.toBuffer())
-        .resize({
-          width: options.longSide,
-          height: options.longSide,
-          fit: 'inside',
-          withoutEnlargement: true,
-        })
-        .png({ compressionLevel: 9 });
-    }
-    return result.toBuffer();
+    // Превью показывается на экране и живёт до следующей правки — жать его
+    // до последнего байта незачем. Финал уходит наружу, там уровень полный.
+    return composed
+      .png({ compressionLevel: options.longSide ? 3 : 9 })
+      .toBuffer();
   }
 }

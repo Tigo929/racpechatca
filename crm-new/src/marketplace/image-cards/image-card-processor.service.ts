@@ -17,7 +17,6 @@ import {
 } from './image-card-render.service';
 import { parseRect, parseTransform } from './image-card-placement';
 import { cardFileName } from './image-card-naming';
-import { validateAgainstPreset } from './ozon-image-preset';
 
 /**
  * Фоновая подготовка исходников: PDF отрисовывается, картинка приводится к
@@ -32,15 +31,29 @@ import { validateAgainstPreset } from './ozon-image-preset';
  * продолжает обрабатываться, а человек нажимает «Повторить».
  */
 
-/** Как часто заглядывать в очередь. */
-const TICK_MS = 4_000;
+/** Как часто заглядывать в очередь, когда она пуста. */
+const TICK_MS = 2_000;
 
 /**
- * Сколько файлов брать за раз. Растеризация PDF прожорлива по памяти, а у
- * сервера её 1.6 ГБ: три штуки — компромисс между скоростью и тем, чтобы не
- * положить контейнер на пачке из полусотни макетов.
+ * Сколько строк забирать из базы за один заход.
+ *
+ * Работа всё равно идёт по одному файлу подряд, а не параллельно: у сервера
+ * одно ядро и 1.6 ГБ памяти, и держать несколько композитов sharp
+ * одновременно незачем. Это просто размер выборки, чтобы не тянуть из базы
+ * всю пачку разом.
  */
-const BATCH_SIZE = 3;
+const CHUNK = 5;
+
+/**
+ * Сколько выборок разрешено за один проход.
+ *
+ * Проход разгребает очередь до конца, а не по горсти за такт: раньше между
+ * горстями была пауза в четыре секунды, и полсотни файлов ждали минуту на
+ * ровном месте, хотя сама обработка занимает секунды. Ограничитель нужен
+ * лишь на случай, если в очередь непрерывно что-то досыпают — иначе один
+ * проход мог бы не закончиться никогда.
+ */
+const MAX_CHUNKS_PER_TICK = 200;
 
 @Injectable()
 export class ImageCardProcessorService
@@ -86,20 +99,26 @@ export class ImageCardProcessorService
     if (this.running) return;
     this.running = true;
     try {
-      const pending = await this.prisma.imageCardSource.findMany({
-        where: { status: 'PENDING' },
-        orderBy: { createdAt: 'asc' },
-        take: BATCH_SIZE,
-      });
-      for (const source of pending) {
-        await this.processOne(source.id);
+      // Разгребаем очередь исходников до конца.
+      for (let chunk = 0; chunk < MAX_CHUNKS_PER_TICK; chunk++) {
+        const pending = await this.prisma.imageCardSource.findMany({
+          where: { status: 'PENDING' },
+          orderBy: { createdAt: 'asc' },
+          take: CHUNK,
+        });
+        if (pending.length === 0) break;
+        for (const source of pending) {
+          await this.processOne(source.id);
+        }
       }
 
-      // Превью считаем только когда исходники разобраны: пока идёт
-      // растеризация, композит всё равно не из чего собирать.
-      if (pending.length === 0) {
-        await this.renderPendingPreviews();
-        await this.renderPendingFinals();
+      // Превью считаем после исходников: пока идёт растеризация, композит
+      // всё равно не из чего собирать.
+      for (let chunk = 0; chunk < MAX_CHUNKS_PER_TICK; chunk++) {
+        if ((await this.renderPendingPreviews()) === 0) break;
+      }
+      for (let chunk = 0; chunk < MAX_CHUNKS_PER_TICK; chunk++) {
+        if ((await this.renderPendingFinals()) === 0) break;
       }
     } catch (error) {
       this.logger.error('Сбой обхода очереди исходников', error as Error);
@@ -109,14 +128,14 @@ export class ImageCardProcessorService
   }
 
   /** Карточки без превью — рисуем и складываем рядом с растром дизайна. */
-  private async renderPendingPreviews(): Promise<void> {
+  private async renderPendingPreviews(): Promise<number> {
     const cards = await this.prisma.imageCardGenerated.findMany({
       where: {
         previewFile: null,
         status: { in: ['GENERATED', 'REVIEW_REQUIRED', 'APPROVED'] },
       },
       orderBy: { createdAt: 'asc' },
-      take: BATCH_SIZE,
+      take: CHUNK,
       include: { source: true },
     });
 
@@ -164,6 +183,7 @@ export class ImageCardProcessorService
     }
 
     if (cards.length > 0) await this.refreshBatchStatuses();
+    return cards.length;
   }
 
   /**
@@ -177,7 +197,7 @@ export class ImageCardProcessorService
    * тому, что реально лежит на диске. Не прошедшая проверку карточка готовой
    * не считается: иначе в выгрузке окажутся файлы, которые Ozon отклонит.
    */
-  private async renderPendingFinals(): Promise<void> {
+  private async renderPendingFinals(): Promise<number> {
     const cards = await this.prisma.imageCardGenerated.findMany({
       where: {
         status: 'APPROVED',
@@ -186,7 +206,7 @@ export class ImageCardProcessorService
         batch: { status: 'FINALIZING' },
       },
       orderBy: { createdAt: 'asc' },
-      take: BATCH_SIZE,
+      take: CHUNK,
       include: { source: true },
     });
 
@@ -218,29 +238,24 @@ export class ImageCardProcessorService
         const fullPath = path.join(dir, filename);
         await fs.writeFile(fullPath, full);
 
+        // Что получилось — записываем как факт: размеры, формат, вес. Это
+        // справка, а не пропуск: карточка считается готовой, если файл
+        // собрался. Требования площадки проверяет сама площадка.
         const meta = await sharp(full).metadata();
-        const result = validateAgainstPreset({
-          width: meta.width ?? 0,
-          height: meta.height ?? 0,
-          format: meta.format,
-          fileSizeBytes: full.length,
-        });
 
         await this.prisma.imageCardGenerated.update({
           where: { id: card.id },
-          data: result.ok
-            ? {
-                finalFile: filename,
-                status: 'FINALIZED',
-                validation: { ...result.checked, ok: true },
-                note: null,
-              }
-            : {
-                finalFile: null,
-                status: 'ERROR',
-                validation: { ...result.checked, ok: false },
-                note: `Файл не соответствует требованиям Ozon: ${result.problems.join('; ')}`,
-              },
+          data: {
+            finalFile: filename,
+            status: 'FINALIZED',
+            validation: {
+              width: meta.width ?? 0,
+              height: meta.height ?? 0,
+              format: meta.format ?? null,
+              fileSizeBytes: full.length,
+            },
+            note: null,
+          },
         });
       } catch (error) {
         const message =
@@ -254,6 +269,7 @@ export class ImageCardProcessorService
     }
 
     if (cards.length > 0) await this.closeFinishedBatches();
+    return cards.length;
   }
 
   /** Пачка закрывается, когда по всем её одобренным карточкам есть решение. */

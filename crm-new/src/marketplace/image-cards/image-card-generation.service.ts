@@ -118,7 +118,7 @@ export class ImageCardGenerationService {
           shirtColor: template.shirtColor,
           status: reasons.length > 0 ? 'REVIEW_REQUIRED' : 'GENERATED',
           transform: { ...DEFAULT_TRANSFORM },
-          removeWhiteBackground: settings.removeWhiteBackground ?? false,
+          removeWhiteBackground: settings.removeWhiteBackground ?? true,
           note: describe(reasons),
         });
       }
