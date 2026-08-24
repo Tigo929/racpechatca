@@ -9,6 +9,7 @@ import {
 import { ConnectionTab } from '../components/marketplace/ConnectionTab';
 import { CatalogTab } from '../components/marketplace/CatalogTab';
 import { ProductsTab } from '../components/marketplace/ProductsTab';
+import { CardsSection } from '../components/marketplace/CardsSection';
 import { OrdersTab } from '../components/marketplace/OrdersTab';
 import { SoonTab } from '../components/marketplace/SoonTab';
 import { ShopSwitcher } from '../components/marketplace/ShopSwitcher';
@@ -61,7 +62,10 @@ export default function MarketplacePage() {
   const { accounts, accountId, setSelected } = useSelectedAccount(platform.key);
 
   const { user } = useAuth();
-  const needsAccount = section.key !== 'connection';
+  // Генератору карточек кабинет не нужен: он собирает картинки у нас и
+  // в Ozon ничего не отправляет. Требовать выбранный магазин значило бы
+  // закрыть раздел тем, у кого кабинет ещё не подключён.
+  const needsAccount = section.key !== 'connection' && section.key !== 'cards';
 
   return (
     <AppShell title="Маркетплейсы" subtitle={section.subtitle} width="wide">
@@ -135,6 +139,8 @@ export default function MarketplacePage() {
           <NoAccount />
         ) : section.key === 'catalog' ? (
           <CatalogTab accountId={accountId} />
+        ) : section.key === 'cards' ? (
+          <CardsSection />
         ) : section.key === 'products' ? (
           <ProductsTab accountId={accountId} />
         ) : (

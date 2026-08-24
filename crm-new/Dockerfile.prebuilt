@@ -17,7 +17,8 @@ WORKDIR /app
 
 # Шрифты для листа согласования: sharp рисует текст через SVG, а в alpine
 # шрифтов нет вовсе — без них кириллица станет пустыми квадратами.
-RUN apk add --no-cache fontconfig ttf-dejavu && fc-cache -f
+# poppler-utils — растеризация PDF-макетов в генераторе карточек Ozon.
+RUN apk add --no-cache fontconfig ttf-dejavu poppler-utils && fc-cache -f
 
 COPY package*.json ./
 RUN npm ci --omit=dev

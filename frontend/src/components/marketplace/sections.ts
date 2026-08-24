@@ -1,5 +1,5 @@
 import {
-  Boxes, KeyRound, Package, ShoppingCart, Tags, type LucideIcon,
+  Boxes, Images, KeyRound, Package, ShoppingCart, Tags, type LucideIcon,
 } from 'lucide-react';
 import type { EnumMarketplace } from '../../api/marketplace';
 
@@ -30,6 +30,7 @@ export type SectionKey =
   | 'connection'
   | 'catalog'
   | 'products'
+  | 'cards'
   | 'orders'
   | 'prices';
 
@@ -69,6 +70,14 @@ export const SECTIONS: SectionDef[] = [
     icon: Package,
     ready: true,
     subtitle: 'Новые карточки футболок: одиночно и массово',
+  },
+  {
+    key: 'cards',
+    slug: 'cards',
+    label: 'Генератор карточек',
+    icon: Images,
+    ready: true,
+    subtitle: 'Главные фото карточек из макетов принтов, пачками',
   },
   {
     key: 'orders',

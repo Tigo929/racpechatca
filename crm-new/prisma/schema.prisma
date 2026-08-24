@@ -36,6 +36,7 @@ model User {
   shipmentLeadState  AppState[]        @relation("ShipmentLead")
   marketplaceAccounts MarketplaceAccount[] @relation("MarketplaceAccountOwner")
   printApprovals     PrintApproval[]   @relation("ApprovalAuthor")
+  imageCardBatches   ImageCardBatch[]  @relation("ImageCardBatchAuthor")
 }
 
 enum EnumRole {
@@ -1107,4 +1108,174 @@ model PrintApproval {
 
   @@unique([orderId, version])
   @@index([orderId])
+}
+
+// ── Генератор главных фото карточек Ozon ──────────────────────────────────
+
+/// Состояние пачки генерации.
+enum EnumCardBatchStatus {
+  /// Файлы загружаются, генерация ещё не запускалась.
+  DRAFT
+  /// Идёт растеризация и автоматическое размещение.
+  PROCESSING
+  /// Все карточки посчитаны, сотрудник проверяет сетку.
+  REVIEW
+  /// Идёт финальный рендер в полном разрешении.
+  FINALIZING
+  COMPLETED
+  FAILED
+}
+
+/// Состояние одного загруженного исходника.
+enum EnumSourceAssetStatus {
+  PENDING
+  PROCESSING
+  READY
+  ERROR
+}
+
+/// Состояние одной карточки (исходник × цвет футболки).
+enum EnumGeneratedCardStatus {
+  /// Автоматическое размещение отработало, вопросов нет.
+  GENERATED
+  /// Дизайн сомнительный (пропорции, разрешение, контраст) — нужен глаз.
+  REVIEW_REQUIRED
+  APPROVED
+  /// Финальный PNG собран и прошёл проверку требований Ozon.
+  FINALIZED
+  ERROR
+  SKIPPED
+}
+
+/// Шаблон карточки: готовая композиция с футболкой, фоном и инфографикой.
+///
+/// Модуль ничего не рисует поверх шаблона, кроме принта, — инфографика уже
+/// внутри картинки. Область размещения задаётся отдельно для каждого шаблона:
+/// у чёрной и белой футболки композиция может не совпадать, и предполагать
+/// обратное нельзя.
+model ImageCardTemplate {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title String
+  /// Цвет изделия ключом: black, white. Строкой, а не перечислением, чтобы
+  /// новый цвет добавлялся строкой в таблице, а не миграцией.
+  shirtColor String
+
+  /// Имя файла шаблона в UPLOAD_DIR/ozon-templates.
+  templateFile String?
+  canvasWidth  Int     @default(0)
+  canvasHeight Int     @default(0)
+
+  /// Куда ложится принт, в пикселях шаблона: { x, y, width, height }.
+  placementArea Json @default("{}")
+  /// Необязательная «безопасная» рамка внутри области размещения.
+  safeArea      Json?
+
+  /// Растёт при каждой замене картинки или области. Старые файлы не удаляются:
+  /// на них ссылаются снимки в уже сгенерированных карточках.
+  version Int     @default(1)
+  active  Boolean @default(true)
+
+  cards ImageCardGenerated[]
+
+  @@index([active, shirtColor])
+}
+
+/// Пачка генерации: один заход «загрузил файлы — получил карточки».
+model ImageCardBatch {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title  String
+  status EnumCardBatchStatus @default(DRAFT)
+
+  /// Настройки захода: режим (BLACK/WHITE/BOTH), выбранные шаблоны,
+  /// удалять ли белый фон, включено ли автоматическое размещение.
+  settings Json @default("{}")
+
+  createdById String?
+  createdBy   User?   @relation("ImageCardBatchAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  completedAt DateTime?
+
+  sources ImageCardSource[]
+  cards   ImageCardGenerated[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// Один загруженный исходник: PDF или картинка.
+model ImageCardSource {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  batchId String
+  batch   ImageCardBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  /// Как файл назывался у человека. Хранится отдельно от имени на диске:
+  /// имя на диске всегда придумывает сервер.
+  originalName String
+  /// Очищенное имя для итоговых файлов: «JDM Skyline.pdf» → «jdm-skyline».
+  baseName     String
+  /// pdf | png | jpeg | webp — что пришло на вход.
+  sourceType   String
+
+  sourceFile String
+  /// Растр первой страницы PDF либо нормализованная копия картинки.
+  /// Именно он идёт в композит, а не исходник.
+  rasterFile String?
+  widthPx    Int     @default(0)
+  heightPx   Int     @default(0)
+  hasAlpha   Boolean @default(false)
+
+  status       EnumSourceAssetStatus @default(PENDING)
+  errorMessage String?
+
+  cards ImageCardGenerated[]
+
+  @@index([batchId, status])
+}
+
+/// Одна карточка: исходник, наложенный на шаблон одного цвета.
+model ImageCardGenerated {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  batchId String
+  batch   ImageCardBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  sourceId String
+  source   ImageCardSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  templateId String
+  template   ImageCardTemplate @relation(fields: [templateId], references: [id])
+
+  /// Снимок шаблона на момент генерации: файл, размеры холста и область
+  /// размещения. Благодаря ему замена шаблона не меняет внешний вид старых
+  /// пачек — карточка рисуется тем, чем её собирали, а не текущей версией.
+  templateSnapshot Json @default("{}")
+
+  shirtColor String
+  status     EnumGeneratedCardStatus @default(GENERATED)
+
+  /// Положение принта в долях области размещения: { x, y, scale, rotation }.
+  /// Нормализованно, а не в пикселях браузера: карточка должна одинаково
+  /// собираться и в предпросмотре, и в финальном рендере любого размера.
+  transform Json @default("{}")
+
+  removeWhiteBackground Boolean @default(false)
+
+  previewFile String?
+  finalFile   String?
+  /// Что показала проверка требований Ozon: размеры, вес, формат.
+  validation  Json?
+  /// Почему карточка помечена как требующая проверки либо ошибочная.
+  note        String?
+
+  @@index([batchId, status])
+  @@index([sourceId])
 }

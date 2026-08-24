@@ -776,3 +776,147 @@ export interface UpdateApprovalDto {
   sides?: Partial<Record<EnumApprovalSide, ApprovalSideState>>;
   status?: EnumApprovalStatus;
 }
+
+// ── Генератор карточек Ozon ──────────────────────────────────
+
+/** Прямоугольник в пикселях шаблона. */
+export interface CardRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Шаблон карточки: готовая композиция с футболкой, фоном и инфографикой. */
+export interface ImageCardTemplate {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  title: string;
+  /** Ключ цвета изделия: black, white. */
+  shirtColor: string;
+  templateFile: string | null;
+  canvasWidth: number;
+  canvasHeight: number;
+  placementArea: Partial<CardRect>;
+  safeArea: Partial<CardRect> | null;
+  /** Растёт при каждой замене картинки или области размещения. */
+  version: number;
+  active: boolean;
+}
+
+export type CardMode = 'BLACK' | 'WHITE' | 'BOTH';
+
+export type EnumCardBatchStatus =
+  | 'DRAFT'
+  | 'PROCESSING'
+  | 'REVIEW'
+  | 'FINALIZING'
+  | 'COMPLETED'
+  | 'FAILED';
+
+export type EnumSourceAssetStatus = 'PENDING' | 'PROCESSING' | 'READY' | 'ERROR';
+
+export interface ImageCardBatchSettings {
+  mode?: CardMode;
+  removeWhiteBackground?: boolean;
+  autoPlacement?: boolean;
+  templateIds?: string[];
+}
+
+/** Один загруженный макет принта. */
+export interface ImageCardSource {
+  id: string;
+  createdAt: string;
+  batchId: string;
+  originalName: string;
+  /** Очищенное имя, из которого строятся имена итоговых файлов. */
+  baseName: string;
+  sourceType: string;
+  sourceFile: string;
+  widthPx: number;
+  heightPx: number;
+  hasAlpha: boolean;
+  status: EnumSourceAssetStatus;
+  errorMessage: string | null;
+}
+
+export interface ImageCardBatchProgress {
+  total: number;
+  ready: number;
+  failed: number;
+  pending: number;
+  done: number;
+}
+
+/** Сводка по пачке — то, что показывается отчётом. */
+export interface ImageCardBatchReport {
+  sourcesTotal: number;
+  sourcesReady: number;
+  sourcesFailed: number;
+  cardsExpected: number;
+  cardsTotal: number;
+  generated: number;
+  reviewRequired: number;
+  approved: number;
+  finalized: number;
+  failed: number;
+  skipped: number;
+}
+
+export interface ImageCardBatch {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  title: string;
+  status: EnumCardBatchStatus;
+  settings: ImageCardBatchSettings;
+  completedAt: string | null;
+  createdBy?: { id: string; username: string } | null;
+  sources?: ImageCardSource[];
+  progress?: ImageCardBatchProgress;
+  report?: ImageCardBatchReport;
+  _count?: { sources: number; cards: number };
+}
+
+export type EnumGeneratedCardStatus =
+  | 'GENERATED'
+  | 'REVIEW_REQUIRED'
+  | 'APPROVED'
+  | 'FINALIZED'
+  | 'ERROR'
+  | 'SKIPPED';
+
+/** Положение принта в долях области размещения. */
+export interface CardTransform {
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
+}
+
+export interface ImageCardGenerated {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  batchId: string;
+  sourceId: string;
+  templateId: string;
+  shirtColor: string;
+  status: EnumGeneratedCardStatus;
+  transform: Partial<CardTransform>;
+  removeWhiteBackground: boolean;
+  previewFile: string | null;
+  finalFile: string | null;
+  /** Почему карточку стоит посмотреть либо что с ней пошло не так. */
+  note: string | null;
+  /** Снимок шаблона на момент сборки: им карточка и рисуется. */
+  templateSnapshot?: Record<string, unknown>;
+  source: {
+    id: string;
+    originalName: string;
+    baseName: string;
+    widthPx: number;
+    heightPx: number;
+  };
+}
