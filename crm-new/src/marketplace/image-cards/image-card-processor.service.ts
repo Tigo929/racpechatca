@@ -56,6 +56,21 @@ const CHUNK = 5;
  */
 const MAX_CHUNKS_PER_TICK = 200;
 
+/**
+ * Пауза между обработанными файлами.
+ *
+ * У сервера одно ядро, и отрисовка занимает его целиком. Замерено на живом
+ * проде во время генерации: /health не отвечал две минуты подряд, при том
+ * что бэкенд не падал — аптайм рос непрерывно, — а сразу после отвечал за
+ * 176 мс. То есть на время сборки пачки вставала вся CRM, а не только
+ * генератор.
+ *
+ * Шестьдесят миллисекунд после каждой карточки оставляют примерно десятую
+ * часть процессора остальным запросам. На пачке это добавляет секунды, зато
+ * ей можно пользоваться, пока пачка считается.
+ */
+const BREATHE_MS = 60;
+
 @Injectable()
 export class ImageCardProcessorService
   implements OnModuleInit, OnModuleDestroy
@@ -95,6 +110,17 @@ export class ImageCardProcessorService
     if (this.timer) clearInterval(this.timer);
   }
 
+  /**
+   * Отдать процессор остальным.
+   *
+   * Не setImmediate: нативная отрисовка держит ядро, и очередь микрозадач
+   * тут не поможет — нужна настоящая пауза, за которую успеет отработать
+   * входящий запрос.
+   */
+  private breathe(): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, BREATHE_MS));
+  }
+
   /** Один проход очереди. Параллельных проходов не допускаем. */
   async tick(): Promise<void> {
     if (this.running) return;
@@ -110,6 +136,7 @@ export class ImageCardProcessorService
         if (pending.length === 0) break;
         for (const source of pending) {
           await this.processOne(source.id);
+          await this.breathe();
         }
       }
 
@@ -200,6 +227,7 @@ export class ImageCardProcessorService
           where: { id: card.id },
           data: { previewFile: path.basename(previewPath) },
         });
+        await this.breathe();
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'Неизвестная ошибка';
@@ -286,6 +314,7 @@ export class ImageCardProcessorService
             note: null,
           },
         });
+        await this.breathe();
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'Неизвестная ошибка';
