@@ -186,7 +186,7 @@ export class ImageCardBatchController {
     @Res() res: Response,
   ): Promise<void> {
     const buffer = await this.batches.readPreview(cardId);
-    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Content-Type', 'image/jpeg');
     res.setHeader('Cache-Control', 'private, max-age=300');
     res.end(buffer);
   }

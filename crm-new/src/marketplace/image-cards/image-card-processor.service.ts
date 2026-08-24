@@ -186,6 +186,7 @@ export class ImageCardProcessorService
           snapshot,
           transform: parseTransform(card.transform),
           longSide: PREVIEW_LONG_SIDE,
+          output: 'jpeg',
         });
 
         const previewPath = this.storage.previewPath(
@@ -255,6 +256,7 @@ export class ImageCardProcessorService
           snapshot,
           transform: parseTransform(card.transform),
           longSide: FINAL_LONG_SIDE,
+          output: 'jpeg',
         });
 
         const filename = cardFileName(card.source.baseName, card.shirtColor);

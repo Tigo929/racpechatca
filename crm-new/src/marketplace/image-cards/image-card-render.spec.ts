@@ -92,6 +92,19 @@ describe('сборка карточки', () => {
     expect(meta.height).toBe(CANVAS_H);
   });
 
+  it('готовая карточка отдаётся в JPEG', async () => {
+    const card = await compose({ longSide: 2000, output: 'jpeg' });
+    const meta = await sharp(card).metadata();
+    expect(meta.format).toBe('jpeg');
+    // JPEG прозрачности не знает: холст должен остаться непрозрачным.
+    expect(meta.hasAlpha).toBe(false);
+
+    // И принт на месте: формат сменился, картинка — нет.
+    const center = await pixelAt(card, 750, 1000);
+    expect(center.r).toBeGreaterThan(180);
+    expect(center.g).toBeLessThan(90);
+  });
+
   it('превью — тот же композит, только меньше', async () => {
     const meta = await sharp(await compose({ longSide: 600 })).metadata();
     // Холст 1200 × 1600, длинная сторона 600 → 450 × 600.

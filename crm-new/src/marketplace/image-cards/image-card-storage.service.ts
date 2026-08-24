@@ -202,7 +202,7 @@ export class ImageCardStorageService {
       batchId,
       'generated',
       baseName,
-      `preview_${shirtColor}.png`,
+      `preview_${shirtColor}.jpg`,
     );
   }
 

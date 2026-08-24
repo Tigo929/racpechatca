@@ -81,11 +81,15 @@ export function cleanBaseName(originalName: string): string {
 
 /**
  * Имя итогового файла карточки.
- * «jdm-skyline-r34» + «black» → «jdm-skyline-r34_black_image_card.png»
+ * «jdm-skyline-r34» + «black» → «jdm-skyline-r34_black_image_card.jpg»
  */
-export function cardFileName(baseName: string, shirtColor: string): string {
+export function cardFileName(
+  baseName: string,
+  shirtColor: string,
+  extension = 'jpg',
+): string {
   const color = cleanBaseName(shirtColor) || 'color';
-  return `${baseName}_${color}_image_card.png`;
+  return `${baseName}_${color}_image_card.${extension}`;
 }
 
 /**

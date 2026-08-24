@@ -62,10 +62,16 @@ describe('чистое имя из имени файла', () => {
 describe('имя итогового файла', () => {
   it('складывается по схеме из ТЗ', () => {
     expect(cardFileName('jdm-skyline-r34', 'black')).toBe(
-      'jdm-skyline-r34_black_image_card.png',
+      'jdm-skyline-r34_black_image_card.jpg',
     );
     expect(cardFileName('jdm-skyline-r34', 'white')).toBe(
-      'jdm-skyline-r34_white_image_card.png',
+      'jdm-skyline-r34_white_image_card.jpg',
+    );
+  });
+
+  it('расширение задаётся отдельно — формат может смениться', () => {
+    expect(cardFileName('kot', 'black', 'png')).toBe(
+      'kot_black_image_card.png',
     );
   });
 });
