@@ -279,6 +279,19 @@ export class OrderPhotoController {
     return this.orderPhotoService.getOrderStats(query, me.id, me.role);
   }
 
+  /**
+   * Загрузка по исполнителям для отбора в списке заказов.
+   *
+   * Исполнителю не отдаём: это сводка по всей команде, а он видит только свои
+   * заказы. Отдельный эндпоинт, а не список пользователей, потому что /users
+   * доступен только администратору, а отбор нужен и менеджеру по оформлению.
+   */
+  @Get('executor-workload')
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  getExecutorWorkload(@Query() query: DtoAllOrdersforQuery) {
+    return this.orderPhotoService.getExecutorWorkload(query);
+  }
+
   @Get('items/:idItem')
   getItemById(@Param('idItem') idItem: string, @CurrentUser() me: RequestUser) {
     return this.orderItemService.getItemById(idItem, me.id, me.role);

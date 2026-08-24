@@ -8,6 +8,7 @@ import type {
   UpdateItemDto,
   CreateItemDto,
   OrdersQuery,
+  ExecutorWorkload,
   ItemTshirt,
   ItemCanvas,
   CreateTshirtItemDto,
@@ -27,6 +28,7 @@ export const ordersApi = {
     if (query.productCategory) params.set('productCategory', query.productCategory);
     if (query.reviewLeft !== undefined) params.set('reviewLeft', String(query.reviewLeft));
     if (query.search) params.set('search', query.search);
+    if (query.executorId) params.set('executorId', query.executorId);
     const { data } = await api.get<OrdersResponse>(`/order-photo?${params}`);
     return data;
   },
@@ -38,8 +40,22 @@ export const ordersApi = {
     if (query.productCategory) params.set('productCategory', query.productCategory);
     if (query.reviewLeft !== undefined) params.set('reviewLeft', String(query.reviewLeft));
     if (query.search) params.set('search', query.search);
+    if (query.executorId) params.set('executorId', query.executorId);
     const qs = params.toString();
     const { data } = await api.get<OrdersStats>(`/order-photo/stats${qs ? `?${qs}` : ''}`);
+    return data;
+  },
+
+  /** Кто сколько тянет прямо сейчас — для отбора по исполнителю. */
+  getExecutorWorkload: async (
+    query: Pick<OrdersQuery, 'productCategory'> = {},
+  ): Promise<ExecutorWorkload[]> => {
+    const params = new URLSearchParams();
+    if (query.productCategory) params.set('productCategory', query.productCategory);
+    const qs = params.toString();
+    const { data } = await api.get<ExecutorWorkload[]>(
+      `/order-photo/executor-workload${qs ? `?${qs}` : ''}`,
+    );
     return data;
   },
 

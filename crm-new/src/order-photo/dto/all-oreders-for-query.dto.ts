@@ -5,6 +5,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -53,4 +54,20 @@ export default class DtoAllOrdersforQuery {
   @MaxLength(100)
   @Transform(({ value }: { value: string }) => value?.trim())
   search?: string;
+
+  /**
+   * Отбор по исполнителю: идентификатор сотрудника либо `none` — «никому не
+   * назначен». Второе значение не прихоть: заказ без исполнителя не виден
+   * ни в чьей загрузке, и именно такие теряются.
+   *
+   * На роль EXECUTOR параметр не влияет: сервис всё равно принудительно
+   * оставляет ему только свои заказы, иначе чужую загрузку можно было бы
+   * посмотреть подбором адреса.
+   */
+  @IsOptional()
+  @Matches(
+    /^(none|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/,
+    { message: 'executorId: ожидается идентификатор сотрудника или none' },
+  )
+  executorId?: string;
 }

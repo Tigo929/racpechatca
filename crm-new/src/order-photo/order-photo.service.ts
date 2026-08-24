@@ -824,6 +824,109 @@ export class OrderPhotoService {
     };
   }
 
+  /**
+   * Загрузка по исполнителям: кто сколько тянет прямо сейчас.
+   *
+   * Нужна, чтобы отбор по исполнителю не был выбором вслепую: в списке сразу
+   * видно, у кого сколько активных заказов, что горит и что просрочено. Сюда
+   * же попадает строка «Не назначен» — заказ без исполнителя не виден ни в
+   * чьей загрузке, и теряются именно такие.
+   *
+   * Считаем только активные заказы: закрытые и отправленные к нагрузке
+   * отношения не имеют, а цифра должна сходиться с рабочим списком.
+   */
+  async getExecutorWorkload(query: DtoAllOrdersforQuery) {
+    const orders = await this.prisma.orderPhoto.findMany({
+      where: {
+        status: { notIn: NOT_ACTIVE_STATUSES },
+        ...(query.productCategory
+          ? { productCategory: query.productCategory }
+          : {}),
+      },
+      select: {
+        executorId: true,
+        status: true,
+        productCategory: true,
+        isUrgent: true,
+        deadline: true,
+        createdAt: true,
+        totalOrder: true,
+      },
+    });
+
+    const load = new Map<
+      string,
+      {
+        activeCount: number;
+        urgentCount: number;
+        overdueCount: number;
+        readyCount: number;
+        activeAmount: number;
+      }
+    >();
+    const UNASSIGNED = 'none';
+
+    for (const order of orders) {
+      const key = order.executorId ?? UNASSIGNED;
+      const row = load.get(key) ?? {
+        activeCount: 0,
+        urgentCount: 0,
+        overdueCount: 0,
+        readyCount: 0,
+        activeAmount: 0,
+      };
+
+      row.activeCount += 1;
+      row.activeAmount += order.totalOrder ?? 0;
+      if (order.isUrgent) row.urgentCount += 1;
+      if (READY_STATUSES.includes(order.status)) row.readyCount += 1;
+      // Срок считаем так же, как в таблице и в общей статистике: у футболок
+      // производство ведёт партнёр, поэтому дедлайн по ним не отслеживается.
+      const days = this.daysLeft(order.deadline, order.createdAt);
+      if (
+        order.productCategory !== EnumProductCategory.TSHIRT &&
+        days !== null &&
+        days < 0
+      ) {
+        row.overdueCount += 1;
+      }
+
+      load.set(key, row);
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        role: {
+          in: [EnumRole.ADMIN, EnumRole.EXECUTOR, EnumRole.ORDER_MANAGER],
+        },
+        // Уволенного показываем, только пока на нём висят активные заказы:
+        // иначе его строка исчезнет вместе с незакрытой работой.
+        OR: [{ isActive: true }, { id: { in: [...load.keys()] } }],
+      },
+      select: { id: true, username: true, role: true, isActive: true },
+      orderBy: { username: 'asc' },
+    });
+
+    const empty = {
+      activeCount: 0,
+      urgentCount: 0,
+      overdueCount: 0,
+      readyCount: 0,
+      activeAmount: 0,
+    };
+
+    return [
+      ...users.map((user) => ({ ...user, ...(load.get(user.id) ?? empty) })),
+      {
+        id: UNASSIGNED,
+        username: 'Не назначен',
+        role: null,
+        isActive: true,
+        ...(load.get(UNASSIGNED) ?? empty),
+      },
+    ];
+  }
+
   private buildOrdersWhere(
     query: DtoAllOrdersforQuery,
     currentUserId: string,
@@ -859,6 +962,12 @@ export class OrderPhotoService {
       productCategory: query.productCategory,
       ...(query.reviewLeft !== undefined
         ? { clientReviewLeft: query.reviewLeft === 'true' }
+        : {}),
+      // Отбор по исполнителю. Стоит ДО блока роли EXECUTOR намеренно: тот
+      // перезаписывает executorId своим идентификатором, и подставить сюда
+      // чужого сотрудника через параметр запроса нельзя.
+      ...(query.executorId
+        ? { executorId: query.executorId === 'none' ? null : query.executorId }
         : {}),
       // Исполнитель видит только свои заказы и только фотопечать: внешние
       // продукты ведут подрядчики, исполнителям там делать нечего. productCategory

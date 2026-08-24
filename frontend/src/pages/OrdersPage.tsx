@@ -10,6 +10,7 @@ import { StatusBadge } from '../components/ui/StatusBadge';
 import { Modal } from '../components/ui/Modal';
 import { CreateOrderForm } from '../components/orders/CreateOrderForm';
 import { OrderDetail } from '../components/orders/OrderDetail';
+import { ExecutorFilter } from '../components/orders/ExecutorFilter';
 import { FilterChip } from '../components/ui/FilterChip';
 import { DeliveryBadge } from '../components/ui/DeliveryBadge';
 import {
@@ -133,6 +134,9 @@ export function OrdersPage({ section }: Props) {
   const setReviewFilter = (reviewLeft: boolean | undefined) =>
     setQuery(q => ({ ...q, reviewLeft, page: 1 }));
 
+  const setExecutor = (executorId: string | undefined) =>
+    setQuery(q => ({ ...q, executorId, page: 1 }));
+
   // У футболок свой путь заказа — показываем только его статусы. Раньше здесь
   // всегда были фото-статусы, поэтому «Выполнен» и «На стадии дизайна» у
   // футболок нельзя было выбрать вообще.
@@ -233,6 +237,15 @@ export function OrdersPage({ section }: Props) {
                 ))}
               </div>
             </div>
+          )}
+          {/* Отбор по исполнителю: кто что ведёт и что на ком висит.
+              В обращениях не показываем — там работа ещё никому не роздана. */}
+          {isAdmin && !isLeads && (
+            <ExecutorFilter
+              productCategory={query.productCategory}
+              value={query.executorId}
+              onChange={setExecutor}
+            />
           )}
           {/* Фильтр по отзыву — только для администратора */}
           {isAdmin && (
