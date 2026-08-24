@@ -35,6 +35,7 @@ model User {
   avitoMessages      AvitoMessage[]
   shipmentLeadState  AppState[]        @relation("ShipmentLead")
   marketplaceAccounts MarketplaceAccount[] @relation("MarketplaceAccountOwner")
+  printApprovals     PrintApproval[]   @relation("ApprovalAuthor")
 }
 
 enum EnumRole {
@@ -158,6 +159,7 @@ model OrderPhoto {
   tasks          Task[]
   expenses       ExpenseOrder[]
   avitoChats     AvitoChat[]
+  approvals      PrintApproval[]
 
   @@index([status])
   @@index([executorId])
@@ -997,4 +999,112 @@ model GulianOutbox {
 
   @@index([status, nextAttemptAt])
   @@index([aggregateId])
+}
+
+/// Сторона печати в согласовании. Отдельно от EnumPrintLocation намеренно:
+/// там значения производственные (рукава, «по ТЗ», full), а мокап бывает
+/// только с одной стороны — перед или спина.
+enum EnumApprovalSide {
+  FRONT
+  BACK
+}
+
+/// Состояние конкретной версии согласования. Не дублирует статус заказа:
+/// EnumStatus.APPROVAL_SENT говорит «заказ ждёт ответа клиента», а здесь
+/// видно, что именно случилось с этой версией макета.
+enum EnumApprovalStatus {
+  /// Черновик: сотрудник ещё двигает принт, файл не сформирован.
+  DRAFT
+  /// Нажата «Готово», PNG сформирован и лежит в заказе.
+  READY
+  /// Версия ушла клиенту.
+  SENT
+  /// Клиент подтвердил — печатаем именно это.
+  APPROVED
+  /// Клиент попросил переделать; следующая версия создаётся копированием.
+  CHANGES_REQUESTED
+}
+
+/// Шаблон мокапа: реальная фотография изделия плюс калибровка зоны печати.
+///
+/// Лежит в базе, а не в коде, потому что фотографии — расходный материал:
+/// их переснимают, меняют модель футболки, добавляют худи. Всё это должно
+/// делаться из настроек CRM, без пересборки образа.
+///
+/// Калибровка — пара «зона печати в пикселях фотографии» и «её реальный
+/// размер». Из неё выводится масштаб: сколько пикселей приходится на
+/// миллиметр. Без этой пары «28 × 35 см» осталось бы просто подписью.
+model MockupTemplate {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Устойчивый ключ («tshirt_black_front»). Согласование ссылается на него,
+  /// поэтому замена фотографии не рвёт связь со старыми версиями.
+  key         String           @unique
+  title       String
+  garmentType String           @default("tshirt")
+  /// Цвет изделия строкой, как в позициях заказа: «Чёрный», «Белый».
+  color       String
+  side        EnumApprovalSide
+
+  /// Имя файла фотографии в UPLOAD_DIR/mockups. Пусто — шаблон заведён, но
+  /// фотографию ещё не загрузили: в редакторе он показывается как незаполненный.
+  imageFile   String?
+  imageWidth  Int?
+  imageHeight Int?
+
+  // Зона печати в пикселях исходной фотографии.
+  printAreaX      Int @default(0)
+  printAreaY      Int @default(0)
+  printAreaWidth  Int @default(0)
+  printAreaHeight Int @default(0)
+
+  // Реальный размер той же зоны. В миллиметрах, а не в сантиметрах с дробью:
+  // целые числа не накапливают ошибку округления при пересчёте в пиксели.
+  printAreaWidthMm  Int @default(400)
+  printAreaHeightMm Int @default(500)
+
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  @@index([isActive, sortOrder])
+}
+
+/// Согласование печати: версия макета футболки, которую показывают клиенту.
+///
+/// Версии не перезаписываются и не удаляются автоматически — по ним видно,
+/// что именно подтвердил клиент, если на производстве возникнет спор.
+model PrintApproval {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order   OrderPhoto @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId String
+
+  /// Номер версии в пределах заказа, с единицы.
+  version Int
+  status  EnumApprovalStatus @default(DRAFT)
+
+  /// Цвет и размер футболки — строкой и перечислением, как в ItemTshirt.
+  shirtColor String
+  shirtSize  EnumTshirtSize
+  comment    String?
+
+  /// Размещение принта по сторонам: { "FRONT": {...}, "BACK": {...} }.
+  /// Стороны независимы (свой файл, свой размер, своё положение), любая
+  /// может отсутствовать. Хранится JSON, потому что читается всегда целиком
+  /// и по отдельным сторонам не ищется. Разбор — approval-state.ts.
+  sides Json @default("{}")
+
+  /// Готовый лист согласования (PNG) в UPLOAD_DIR/approvals. Пусто у черновика.
+  previewFile String?
+  finalizedAt DateTime?
+
+  createdById String?
+  createdBy   User?   @relation("ApprovalAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([orderId, version])
+  @@index([orderId])
 }

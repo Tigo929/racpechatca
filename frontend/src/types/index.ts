@@ -327,6 +327,21 @@ export interface OrdersQuery {
   productCategory?: EnumProductCategory;
   reviewLeft?: boolean;
   search?: string;
+  /** Идентификатор исполнителя либо 'none' — заказы без исполнителя. */
+  executorId?: string;
+}
+
+/** Строка сводки «кто сколько тянет» для отбора по исполнителю. */
+export interface ExecutorWorkload {
+  id: string;
+  username: string;
+  role: EnumRole | null;
+  isActive: boolean;
+  activeCount: number;
+  urgentCount: number;
+  overdueCount: number;
+  readyCount: number;
+  activeAmount: number;
 }
 
 // ── Salary types ──────────────────────────────────────────────────────────────
@@ -673,4 +688,91 @@ export interface OrderSettlement {
   ownerProfit: number;
   tshirtRevenue: number;
   rateBasisPoints: number;
+}
+
+// ── Согласование печати ──────────────────────────────────────
+
+export type EnumApprovalSide = 'FRONT' | 'BACK';
+
+export type EnumApprovalStatus =
+  | 'DRAFT'
+  | 'READY'
+  | 'SENT'
+  | 'APPROVED'
+  | 'CHANGES_REQUESTED';
+
+/** Шаблон мокапа: фотография изделия и калибровка зоны печати. */
+export interface MockupTemplate {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  key: string;
+  title: string;
+  garmentType: string;
+  color: string;
+  side: EnumApprovalSide;
+  imageFile: string | null;
+  imageWidth: number | null;
+  imageHeight: number | null;
+  printAreaX: number;
+  printAreaY: number;
+  printAreaWidth: number;
+  printAreaHeight: number;
+  /** Реальный размер зоны печати в миллиметрах — связь пикселей с сантиметрами. */
+  printAreaWidthMm: number;
+  printAreaHeightMm: number;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+/**
+ * Размещение принта на одной стороне. Координаты нормализованы: x и y — центр
+ * принта в долях зоны печати, поэтому положение переживает и смену экрана,
+ * и замену фотографии мокапа.
+ */
+export interface ApprovalSideState {
+  templateKey: string;
+  printFile: string | null;
+  printOriginalName: string | null;
+  printWidthPx: number;
+  printHeightPx: number;
+  widthMm: number;
+  heightMm: number;
+  lockRatio: boolean;
+  x: number;
+  y: number;
+  rotation: number;
+}
+
+export interface PrintApproval {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  orderId: string;
+  version: number;
+  status: EnumApprovalStatus;
+  shirtColor: string;
+  shirtSize: EnumTshirtSize;
+  comment: string | null;
+  sides: Partial<Record<EnumApprovalSide, ApprovalSideState>>;
+  previewFile: string | null;
+  finalizedAt: string | null;
+  createdBy?: { id: string; username: string } | null;
+  /** Согласование правили после того, как файл был сформирован. */
+  fileOutdated: boolean;
+}
+
+export interface CreateApprovalDto {
+  orderId: string;
+  shirtColor: string;
+  shirtSize: EnumTshirtSize;
+  copyFromId?: string;
+}
+
+export interface UpdateApprovalDto {
+  shirtColor?: string;
+  shirtSize?: EnumTshirtSize;
+  comment?: string;
+  sides?: Partial<Record<EnumApprovalSide, ApprovalSideState>>;
+  status?: EnumApprovalStatus;
 }

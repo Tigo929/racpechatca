@@ -7,6 +7,7 @@ import { partnerSettingsApi } from '../api/partnerSettings';
 import { shipmentLeadApi } from '../api/shipmentLead';
 import { usersApi } from '../api/users';
 import { ordersApi } from '../api/orders';
+import { MockupTemplatesCard } from '../components/approval/MockupTemplatesCard';
 import { getErrorMessage } from '../utils/get-error-message';
 import type { AppUser, PartnerSettings } from '../types/index';
 
@@ -297,6 +298,7 @@ export default function SettingsPage() {
         <DailyPlanCard />
         <ResendRemindersCard />
         <ShipmentLeadCard />
+        <MockupTemplatesCard />
         {isLoading || !form ? (
           <p className="py-16 text-center text-gray-400">Загрузка настроек партнёра…</p>
         ) : (

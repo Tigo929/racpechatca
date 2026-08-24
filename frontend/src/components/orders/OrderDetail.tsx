@@ -23,6 +23,7 @@ import {
 import { COMMUNICATION_LABELS, DELIVERY_LABELS } from "../../constants";
 import { GulianSyncBlock } from './GulianSyncBlock';
 import { DispatchToExecutorModal } from './DispatchToExecutorModal';
+import { ApprovalsBlock } from '../approval/ApprovalsBlock';
 
 /**
  * Напоминание о ПВЗ выделено: без пункта выдачи и телефона заявку на доставку
@@ -829,6 +830,17 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             })()}
           </div>
         )}
+
+      {/* Согласование макета с клиентом. Стоит перед блоком отправки
+          исполнителю намеренно: это предыдущий шаг процесса — сначала клиент
+          подтверждает макет, потом заказ уходит в печать. */}
+      {isAdmin && order.productCategory === "TSHIRT" && (
+        <ApprovalsBlock
+          orderId={order.id}
+          orderNumber={String(order.numberOrder ?? order.id)}
+          tshirtItems={order.tshirtItems ?? []}
+        />
+      )}
 
       {isAdmin && order.productCategory === "TSHIRT" && (
         <div

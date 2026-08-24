@@ -12,6 +12,12 @@ RUN npm run build
 FROM node:22-alpine
 WORKDIR /app
 
+# Шрифты для листа согласования. Текст на нём рисует sharp через SVG, а в
+# alpine нет ни одного шрифта: без этой строки вся кириллица на макете
+# превращается в пустые квадраты. DejaVu берём ради полного кириллического
+# набора, fontconfig — чтобы шрифт нашёлся по имени.
+RUN apk add --no-cache fontconfig ttf-dejavu && fc-cache -f
+
 COPY package*.json ./
 RUN npm ci --omit=dev
 
