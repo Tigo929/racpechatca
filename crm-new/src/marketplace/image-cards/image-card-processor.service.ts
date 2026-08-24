@@ -174,12 +174,13 @@ export class ImageCardProcessorService
         const snapshot = parseSnapshot(card.templateSnapshot);
         if (!snapshot) throw new Error('У карточки нет снимка шаблона');
 
-        const template = await this.storage.readTemplate(snapshot.file);
         const design = await this.designFor(card);
 
         const preview = await this.render.composeCard({
-          template,
+          template: () => this.storage.readTemplate(snapshot.file),
+          templateKey: snapshot.file,
           design,
+          designKey: `${card.sourceId}:${card.removeWhiteBackground}`,
           designWidth: card.source.widthPx,
           designHeight: card.source.heightPx,
           snapshot,
@@ -242,12 +243,13 @@ export class ImageCardProcessorService
         const snapshot = parseSnapshot(card.templateSnapshot);
         if (!snapshot) throw new Error('У карточки нет снимка шаблона');
 
-        const template = await this.storage.readTemplate(snapshot.file);
         const design = await this.designFor(card);
 
         const full = await this.render.composeCard({
-          template,
+          template: () => this.storage.readTemplate(snapshot.file),
+          templateKey: snapshot.file,
           design,
+          designKey: `${card.sourceId}:${card.removeWhiteBackground}`,
           designWidth: card.source.widthPx,
           designHeight: card.source.heightPx,
           snapshot,
@@ -375,7 +377,9 @@ export class ImageCardProcessorService
       }
 
       await this.trimTransparentMargins(rasterPath);
-      // Растр переписан — очищенная копия под него больше не подходит.
+      // Растр переписан — и очищенная копия, и разобранная картинка в
+      // памяти относятся уже к прошлой версии файла.
+      this.render.forgetDesign(source.id);
       await fs
         .rm(this.storage.rasterCleanPath(source.batchId, source.baseName), {
           force: true,
