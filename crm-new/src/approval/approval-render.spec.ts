@@ -185,7 +185,6 @@ describe('отрисовка согласования', () => {
       shirtColor: 'Чёрный',
       shirtSizeLabel: 'XL',
       comment: 'Печать по центру груди',
-      author: 'tigran',
       date: new Date('2026-08-24T10:00:00Z'),
       sides: [side(), { ...side(), side: 'BACK' }],
     });

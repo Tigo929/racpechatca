@@ -328,7 +328,6 @@ export class ApprovalService {
     shirtSize: EnumTshirtSize;
     comment: string | null;
     sides: unknown;
-    createdBy: { username: string } | null;
   }) {
     const sides = parseSides(approval.sides);
     const filled = filledSides(sides);
@@ -378,7 +377,6 @@ export class ApprovalService {
       shirtColor: approval.shirtColor,
       shirtSizeLabel: SIZE_LABELS[approval.shirtSize] ?? approval.shirtSize,
       comment: approval.comment,
-      author: approval.createdBy?.username ?? null,
       date: new Date(),
       sides: renderSides,
     };

@@ -67,7 +67,6 @@ export interface RenderSheetInput {
   shirtColor: string;
   shirtSizeLabel: string;
   comment: string | null;
-  author: string | null;
   date: Date;
   sides: RenderSideInput[];
 }
@@ -283,8 +282,9 @@ export class ApprovalRenderService {
         formatSizeCm(side.state.widthMm, side.state.heightMm),
       ]);
     }
+    // Кто собирал макет, в лист не выносим: клиенту это не нужно, а в
+    // базе автор всё равно записан (PrintApproval.createdById).
     rows.push(['Дата', formatDate(input.date)]);
-    if (input.author) rows.push(['Исполнитель', input.author]);
 
     rows.forEach(([label, value], index) => {
       const y = INFO_TOP + index * ROW_H;
