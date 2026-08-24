@@ -15,7 +15,9 @@ import { join } from 'node:path';
  */
 
 const SRC = join(__dirname);
-const NGINX_CONF = join(__dirname, '..', '..', 'frontend', 'nginx.conf');
+const FRONTEND = join(__dirname, '..', '..', 'frontend');
+const NGINX_CONF = join(FRONTEND, 'nginx.conf');
+const VITE_CONF = join(FRONTEND, 'vite.config.ts');
 
 /** Первый сегмент пути: 'partner/orders' проксируется правилом 'partner'. */
 function rootSegment(route: string): string {
@@ -45,8 +47,9 @@ function collectControllerRoutes(dir: string): string[] {
 function nginxPrefixes(): string[] {
   const conf = readFileSync(NGINX_CONF, 'utf8');
   const match = conf.match(/location\s+~\s+\^\/\(([^)]+)\)/);
-  if (!match) throw new Error('В nginx.conf не найден location с префиксами API');
-  return match[1]!.split('|').map((p) => p.trim());
+  if (!match)
+    throw new Error('В nginx.conf не найден location с префиксами API');
+  return match[1].split('|').map((p) => p.trim());
 }
 
 describe('маршруты API проксируются nginx', () => {
@@ -54,7 +57,9 @@ describe('маршруты API проксируются nginx', () => {
     const prefixes = nginxPrefixes();
     const missing = collectControllerRoutes(SRC)
       .map(rootSegment)
-      .filter((segment) => !prefixes.some((prefix) => segment.startsWith(prefix)));
+      .filter(
+        (segment) => !prefixes.some((prefix) => segment.startsWith(prefix)),
+      );
 
     expect([...new Set(missing)]).toEqual([]);
   });
@@ -69,5 +74,35 @@ describe('маршруты API проксируются nginx', () => {
     );
 
     expect(stale).toEqual([]);
+  });
+});
+
+/** Префиксы из `proxy:` в vite.config.ts — строки вида '/order-photo'. */
+function vitePrefixes(): string[] {
+  const conf = readFileSync(VITE_CONF, 'utf8');
+  const proxy = conf.slice(conf.indexOf('proxy:'));
+  if (!proxy) throw new Error('В vite.config.ts не найден блок proxy');
+  return [...proxy.matchAll(/'\/([a-z0-9-]+)'/g)].map((m) => m[1]);
+}
+
+/**
+ * То же самое, но для локальной разработки.
+ *
+ * У дев-сервера свой список префиксов, и он про nginx ничего не знает.
+ * Забыть его так же легко, а последствия те же: запрос уходит в SPA-фолбэк,
+ * фронт получает HTML вместо JSON, и раздел выглядит пустым — без ошибки в
+ * логах. Так и случилось с «Согласованием»: маршруты добавили в nginx.conf,
+ * а в vite.config.ts нет, и в дев-режиме раздел был пуст.
+ */
+describe('маршруты API проксируются дев-сервером Vite', () => {
+  it('каждый контроллер имеет префикс в vite.config.ts', () => {
+    const prefixes = vitePrefixes();
+    const missing = collectControllerRoutes(SRC)
+      .map(rootSegment)
+      .filter(
+        (segment) => !prefixes.some((prefix) => segment.startsWith(prefix)),
+      );
+
+    expect([...new Set(missing)]).toEqual([]);
   });
 });
