@@ -133,6 +133,28 @@ export function CatalogTab({ accountId }: { accountId: string }) {
     [products, openedCard],
   );
 
+  /*
+   * Выделение работает по тому, что сейчас на экране, а не по всему
+   * кабинету. Это и безопаснее, и ожидаемо: человек отобрал «Без остатка»,
+   * нажал галочку в шапке — и получил именно эти товары, а не все восемьдесят.
+   */
+  const visibleOfferIds = useMemo(
+    () => groups.flatMap(([, items]) => items.map((i) => i.offerId)),
+    [groups],
+  );
+  const allVisibleSelected =
+    visibleOfferIds.length > 0 && visibleOfferIds.every((id) => selected.has(id));
+
+  const toggleAllVisible = () =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const id of visibleOfferIds) {
+        if (allVisibleSelected) next.delete(id);
+        else next.add(id);
+      }
+      return next;
+    });
+
   const toggleGroup = (items: OzonCatalogProduct[]) => {
     const allSelected = items.every((i) => selected.has(i.offerId));
     setSelected((prev) => {
@@ -239,7 +261,20 @@ export function CatalogTab({ accountId }: { accountId: string }) {
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5">
           <span className="text-sm text-amber-900">
             Выбрано: <span className="font-semibold">{selected.size}</span>
+            <span className="ml-1 text-xs text-amber-700">
+              {selected.size === visibleOfferIds.length
+                ? '— всё, что в списке'
+                : `из ${visibleOfferIds.length} в списке`}
+            </span>
           </span>
+          {!allVisibleSelected && visibleOfferIds.length > selected.size && (
+            <button
+              onClick={toggleAllVisible}
+              className="rounded-lg px-2 py-1.5 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-100"
+            >
+              Выделить всё ({visibleOfferIds.length})
+            </button>
+          )}
           <button
             onClick={() => setBulkStockOpen(true)}
             className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-700"
@@ -273,7 +308,24 @@ export function CatalogTab({ accountId }: { accountId: string }) {
           <table className="w-full min-w-[860px] text-sm">
             <thead>
               <tr className="border-b border-gray-100 text-left text-[11px] uppercase tracking-wide text-gray-500">
-                <th className="w-8 px-3 py-2" />
+                <th className="w-8 px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={toggleAllVisible}
+                    className="h-4 w-4 accent-amber-600"
+                    aria-label={
+                      allVisibleSelected
+                        ? 'Снять выделение со всех товаров на экране'
+                        : 'Выделить все товары на экране'
+                    }
+                    title={
+                      allVisibleSelected
+                        ? 'Снять выделение'
+                        : 'Выделить всё, что сейчас в списке'
+                    }
+                  />
+                </th>
                 <th className="px-3 py-2 font-medium">Товар</th>
                 <th className="px-3 py-2 font-medium">Остаток</th>
                 <th className="px-3 py-2 font-medium">Размеры</th>
