@@ -18,6 +18,7 @@ import { OzonOrdersService } from './ozon/ozon-orders.service';
 import { OzonProductCatalogController } from './ozon-product-catalog.controller';
 import { OzonProductCatalogService } from './ozon/ozon-product-catalog.service';
 import { OzonUnitEconomicsService } from './ozon-unit-economics.service';
+import { OzonWarehouseService } from './ozon/ozon-warehouse.service';
 
 /**
  * Интеграции с маркетплейсами. Ozon — первая площадка; следующая добавляется
@@ -49,7 +50,13 @@ import { OzonUnitEconomicsService } from './ozon-unit-economics.service';
     OzonOrdersService,
     OzonProductCatalogService,
     OzonUnitEconomicsService,
+    OzonWarehouseService,
   ],
-  exports: [MarketplaceAccountService, OzonApiClient, OzonService],
+  exports: [
+    MarketplaceAccountService,
+    OzonApiClient,
+    OzonService,
+    OzonWarehouseService,
+  ],
 })
 export class MarketplaceModule {}

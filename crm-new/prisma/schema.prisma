@@ -212,6 +212,7 @@ model MarketplaceAccount {
   ozonCatalogTemplate OzonCatalogTemplate?
   ozonUnitEconomics   OzonUnitEconomics?
   ozonPrints          OzonPrint[]
+  ozonWarehouses      OzonWarehouse[]
 
   @@unique([marketplace, externalId])
   @@index([ownerId])
@@ -415,6 +416,54 @@ model OzonVariant {
 
   @@unique([printId, colorLabel, size])
   @@index([printId])
+}
+
+/// Склад продавца в кабинете Ozon — снимок ответа /v2/warehouse/list.
+///
+/// Список держим у себя, а не спрашиваем при каждом открытии окна: он
+/// меняется раз в месяцы, а окно массового изменения остатков открывают
+/// десятки раз в день. Заодно это единственный способ показать человеку
+/// «склады обновлены N минут назад» и дать кнопку обновления.
+///
+/// Ещё одна причина хранить: на склад ссылается история операций с
+/// остатками. Удалённый в кабинете склад нужно уметь назвать по имени
+/// и через полгода — поэтому строка не удаляется, а помечается archivedAt.
+model OzonWarehouse {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  marketplaceAccountId String
+  account              MarketplaceAccount @relation(fields: [marketplaceAccountId], references: [id], onDelete: Cascade)
+
+  /// warehouse_id площадки. Наружу в интерфейс не показываем (ТЗ §6), но
+  /// без него остаток не записать. BigInt, а не Int: идентификаторы Ozon
+  /// шестнадцатизначные и в 32 бита не помещаются.
+  warehouseId BigInt
+  name        String
+
+  /// Статус склада словами Ozon: created, disabled, blocked, error…
+  /// Храним как есть: список статусов площадка меняет без предупреждения,
+  /// а перевод в своё перечисление превратил бы новый статус в ошибку.
+  status String?
+
+  /// Можно ли писать остатки на этот склад. Считается из статуса при
+  /// синхронизации; неизвестный статус считаем рабочим — см. правила
+  /// в ozon-warehouse-rules.ts.
+  isEditable Boolean @default(true)
+  /// Почему нельзя — эту строку показываем рядом с выключенным пунктом,
+  /// иначе человек видит недоступный склад без объяснения.
+  disabledReason String?
+
+  /// Склад пропал из ответа Ozon: его удалили в кабинете. Строку оставляем
+  /// ради истории, но из выбора убираем.
+  archivedAt DateTime?
+
+  /// Когда строка последний раз подтверждена ответом площадки.
+  syncedAt DateTime @default(now())
+
+  @@unique([marketplaceAccountId, warehouseId])
+  @@index([marketplaceAccountId, archivedAt])
 }
 
 /// Один вызов /v3/product/import (до 100 вариантов) и его task_id.

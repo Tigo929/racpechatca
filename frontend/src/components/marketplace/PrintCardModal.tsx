@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { AlertTriangle, Loader2, Package } from 'lucide-react';
 import {
-  groupByColor, ozonProductCatalogApi, sizeOf, sizeRank,
+  firstEditableWarehouse, groupByColor, ozonProductCatalogApi, sizeOf, sizeRank,
   type OzonCatalogProduct,
 } from '../../api/ozonProductCatalog';
 import { getErrorMessage } from '../../utils/get-error-message';
@@ -78,7 +78,7 @@ export function PrintCardModal({
   const revenue30d = items.reduce((s, p) => s + p.revenue30d, 0);
   const withoutStock = items.filter((p) => !p.archived && p.stockPresent === 0);
 
-  const { data: warehouses = [] } = useQuery({
+  const { data: warehouseList } = useQuery({
     queryKey: ['ozon-warehouses', accountId],
     queryFn: () => ozonProductCatalogApi.warehouses(accountId),
     staleTime: 600_000,
@@ -86,8 +86,11 @@ export function PrintCardModal({
 
   const saveStocks = useMutation({
     mutationFn: () => {
-      const warehouseId = warehouses[0]?.id;
-      if (!warehouseId) throw new Error('Не найден склад в кабинете Ozon');
+      // Берём первый склад, на который писать разрешено: выключенный
+      // в кабинете склад молча съел бы все остатки пачки.
+      const warehouseId = firstEditableWarehouse(warehouseList)?.id;
+      if (!warehouseId)
+        throw new Error('Нет склада Ozon, на который можно проставить остаток');
       const changed = Object.entries(stockDraft)
         .filter(([, v]) => v.trim() !== '')
         .map(([offerId, v]) => ({ offerId, stock: Math.max(0, Number(v) || 0) }));
@@ -271,7 +274,7 @@ export function PrintCardModal({
               </div>
             ))}
 
-            {warehouses.length === 0 && (
+            {!firstEditableWarehouse(warehouseList) && (
               <p className="border-t border-gray-50 px-3 py-2 text-[11px] text-gray-500">
                 <Package size={11} className="mr-1 inline" aria-hidden="true" />
                 Склад из кабинета не загрузился — остатки сохранить не получится.

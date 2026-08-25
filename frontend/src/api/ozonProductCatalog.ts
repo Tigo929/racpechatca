@@ -48,6 +48,30 @@ export interface OzonAction {
 export interface OzonWarehouse {
   id: number;
   name: string;
+  /** Статус словами Ozon: created, disabled… Пусто — площадка не назвала. */
+  status: string | null;
+  /** Можно ли писать сюда остатки. */
+  isEditable: boolean;
+  /** Почему нельзя — показываем рядом с выключенным пунктом. */
+  disabledReason: string | null;
+}
+
+/**
+ * Список складов приходит вместе с отметкой времени: он хранится у нас
+ * снимком, и человек должен видеть, насколько тот свежий, а не гадать.
+ */
+export interface OzonWarehouseList {
+  warehouses: OzonWarehouse[];
+  syncedAt: string | null;
+  /** Площадка отказала — показан прежний снимок, и вот почему. */
+  syncError: string | null;
+}
+
+/** Первый склад, на который разрешено писать остаток. */
+export function firstEditableWarehouse(
+  list: OzonWarehouseList | undefined,
+): OzonWarehouse | undefined {
+  return list?.warehouses.find((w) => w.isEditable);
 }
 
 export interface EditResult {
@@ -220,9 +244,17 @@ export const ozonProductCatalogApi = {
     return data;
   },
 
-  warehouses: async (accountId: string): Promise<OzonWarehouse[]> => {
-    const { data } = await api.get<OzonWarehouse[]>(
+  warehouses: async (accountId: string): Promise<OzonWarehouseList> => {
+    const { data } = await api.get<OzonWarehouseList>(
       `/marketplace/ozon/${accountId}/warehouses`,
+    );
+    return data;
+  },
+
+  /** Обновить список складов принудительно, не дожидаясь устаревания снимка. */
+  syncWarehouses: async (accountId: string): Promise<OzonWarehouseList> => {
+    const { data } = await api.post<OzonWarehouseList>(
+      `/marketplace/ozon/${accountId}/warehouses/sync`,
     );
     return data;
   },

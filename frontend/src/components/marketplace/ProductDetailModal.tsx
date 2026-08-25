@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { Archive, ArchiveRestore, TrendingUp } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import {
-  colorCodeOf, groupByColor, ozonProductCatalogApi, sizeOf,
+  colorCodeOf, firstEditableWarehouse, groupByColor, ozonProductCatalogApi, sizeOf,
   type OzonCatalogProduct,
 } from '../../api/ozonProductCatalog';
 import { getErrorMessage } from '../../utils/get-error-message';
@@ -60,7 +60,7 @@ export function ProductDetailModal({
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['ozon-catalog', accountId] });
 
-  const { data: warehouses = [] } = useQuery({
+  const { data: warehouseList } = useQuery({
     queryKey: ['ozon-warehouses', accountId],
     queryFn: () => ozonProductCatalogApi.warehouses(accountId),
     staleTime: 300_000,
@@ -83,8 +83,9 @@ export function ProductDetailModal({
 
   const saveStock = useMutation({
     mutationFn: () => {
-      const wh = warehouses[0];
-      if (!wh) throw new Error('У кабинета нет складов — остаток проставить некуда');
+      const wh = firstEditableWarehouse(warehouseList);
+      if (!wh)
+        throw new Error('Нет склада Ozon, на который можно проставить остаток');
       return ozonProductCatalogApi.updateStocks(accountId, wh.id, [
         { offerId: product.offerId, stock: Number(stock) },
       ]);
@@ -435,7 +436,7 @@ export function ProductDetailModal({
           <div className="flex items-end">
             <button
               onClick={() => saveStock.mutate()}
-              disabled={saveStock.isPending || warehouses.length === 0}
+              disabled={saveStock.isPending || !firstEditableWarehouse(warehouseList)}
               className="w-full py-2 border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 text-gray-700 text-sm font-semibold rounded-lg transition-colors"
             >
               {saveStock.isPending ? 'Сохраняем…' : 'Сохранить остаток'}

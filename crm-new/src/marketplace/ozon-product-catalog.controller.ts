@@ -25,6 +25,7 @@ import {
 } from './dto/ozon-catalog-edit.dto';
 import { DtoUpdateOzonUnitEconomics } from './dto/update-ozon-unit-economics.dto';
 import { OzonUnitEconomicsService } from './ozon-unit-economics.service';
+import { OzonWarehouseService } from './ozon/ozon-warehouse.service';
 
 /**
  * Живой каталог кабинета: товары, которые уже заведены в Ozon, — с ценой,
@@ -40,6 +41,7 @@ export class OzonProductCatalogController {
     private readonly catalog: OzonProductCatalogService,
     private readonly ozon: OzonService,
     private readonly unitEconomics: OzonUnitEconomicsService,
+    private readonly warehouses: OzonWarehouseService,
   ) {}
 
   @Get(':accountId/catalog')
@@ -153,12 +155,25 @@ export class OzonProductCatalogController {
     return Object.fromEntries(map);
   }
 
-  /** Склады кабинета — нужны, чтобы проставить остаток. */
+  /**
+   * Склады кабинета — нужны, чтобы проставить остаток.
+   *
+   * Отдаём снимок из базы, к площадке идём только когда он устарел.
+   * Раньше здесь звалась проверка подключения: она тянула ещё и список
+   * товаров, то есть два запроса в Ozon на каждое открытие окна выбора
+   * склада — при том что список складов меняется раз в месяцы.
+   */
   @Get(':accountId/warehouses')
-  async warehouses(@Param('accountId', ParseUUIDPipe) accountId: string) {
+  async warehouseList(@Param('accountId', ParseUUIDPipe) accountId: string) {
     const creds = await this.accounts.credentials(accountId);
-    const info = await this.ozon.checkConnection(creds);
-    return info.warehouses ?? [];
+    return this.warehouses.list(accountId, creds);
+  }
+
+  /** Обновить список складов по кнопке — не дожидаясь истечения снимка. */
+  @Post(':accountId/warehouses/sync')
+  async warehouseSync(@Param('accountId', ParseUUIDPipe) accountId: string) {
+    const creds = await this.accounts.credentials(accountId);
+    return this.warehouses.sync(accountId, creds);
   }
 
   @Post(':accountId/catalog/prices')
