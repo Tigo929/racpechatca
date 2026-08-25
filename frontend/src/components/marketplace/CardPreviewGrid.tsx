@@ -89,11 +89,25 @@ export function CardPreviewGrid({ batchId }: { batchId: string }) {
     queryKey: ['ozon-cards', batchId],
     queryFn: () => ozonBatchesApi.listCards(batchId),
     // Превью считаются фоном: пока не у всех карточек они есть, обновляемся.
+    /*
+     * Опрашиваем сервер, пока в пачке есть незавершённая карточка.
+     *
+     * Раньше условие смотрело только на отсутствие превью — и это была
+     * ошибка, из-за которой всё выглядело бесконечно медленным. К моменту
+     * нажатия «Сгенерировать финальные PNG» превью есть у всех карточек,
+     * условие становилось ложным, опрос выключался совсем, и экран
+     * навсегда застывал на «Собирается», хотя файл на сервере собирался
+     * за десятые доли секунды.
+     */
     refetchInterval: (query) =>
       (query.state.data ?? []).some(
-        (card) => !card.previewFile && card.status !== 'ERROR',
+        (card) =>
+          (!card.previewFile &&
+            card.status !== 'ERROR' &&
+            card.status !== 'SKIPPED') ||
+          (card.status === 'APPROVED' && !card.finalFile),
       )
-        ? 2500
+        ? 2000
         : false,
   });
 

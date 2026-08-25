@@ -179,8 +179,20 @@ function BatchView({ id, onBack }: { id: string; onBack: () => void }) {
     queryFn: () => ozonBatchesApi.get(id),
     // Пока в очереди что-то есть, состояние подтягиваем сами: обработка идёт
     // фоном на сервере, и человек не должен жать «обновить».
-    refetchInterval: (query) =>
-      (query.state.data?.progress?.pending ?? 0) > 0 ? 2000 : false,
+    /*
+     * Опрашиваем, пока пачка в работе. Одного счётчика исходников мало:
+     * они разбираются первыми, и после этого опрос выключался, а отчёт
+     * по карточкам застывал ровно тогда, когда начиналась их сборка.
+     */
+    refetchInterval: (query) => {
+      const batch = query.state.data;
+      if (!batch) return false;
+      const busy =
+        (batch.progress?.pending ?? 0) > 0 ||
+        batch.status === 'PROCESSING' ||
+        batch.status === 'FINALIZING';
+      return busy ? 2000 : false;
+    },
   });
 
   const { data: templates = [] } = useQuery({
