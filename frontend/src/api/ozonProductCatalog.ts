@@ -134,6 +134,21 @@ export interface BulkStockOperation {
   items: BulkStockItem[];
 }
 
+/** Строка истории массовых изменений остатков. */
+export interface BulkStockHistoryRow {
+  id: string;
+  createdAt: string;
+  mode: BulkStockMode;
+  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+  defaultQuantity: number | null;
+  productCount: number;
+  warehouseCount: number;
+  operationCount: number;
+  successCount: number;
+  errorCount: number;
+  author: string | null;
+}
+
 export interface EditResult {
   offerId: string;
   updated: boolean;
@@ -341,6 +356,14 @@ export const ozonProductCatalogApi = {
   ): Promise<BulkStockOperation> => {
     const { data } = await api.get<BulkStockOperation>(
       `/marketplace/ozon/${accountId}/stocks/bulk/${operationId}`,
+    );
+    return data;
+  },
+
+  /** История массовых изменений остатков кабинета. */
+  bulkStockHistory: async (accountId: string): Promise<BulkStockHistoryRow[]> => {
+    const { data } = await api.get<BulkStockHistoryRow[]>(
+      `/marketplace/ozon/${accountId}/stocks/history`,
     );
     return data;
   },

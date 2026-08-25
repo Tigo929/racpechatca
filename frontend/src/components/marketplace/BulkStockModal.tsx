@@ -50,6 +50,14 @@ export function BulkStockModal({
    * проходом отрисовки — с миганием пустого списка по дороге.
    */
   const [touched, setTouched] = useState<Set<number> | null>(null);
+  /*
+   * Значения по складам. Пусто — работает общее поле «Количество»:
+   * это ежедневный режим, и заставлять вводить одно и то же число
+   * трижды нельзя. Раскрытый режим переопределяет общее поле только
+   * там, где число введено, — остальные склады берут общее.
+   */
+  const [perWarehouse, setPerWarehouse] = useState<Record<number, string>>({});
+  const [perWarehouseOpen, setPerWarehouseOpen] = useState(false);
   const [preview, setPreview] = useState<BulkStockPreview | null>(null);
   const [confirmWord, setConfirmWord] = useState('');
   const [operationId, setOperationId] = useState<string | null>(null);
@@ -81,14 +89,33 @@ export function BulkStockModal({
     parsedQuantity >= 0;
   const operationCount = offerIds.length * picked.size;
 
+  /** Количество для склада: своё, если введено, иначе общее. */
+  const quantityFor = (warehouseId: number): number => {
+    const own = perWarehouseOpen ? perWarehouse[warehouseId] : undefined;
+    if (own !== undefined && own.trim() !== '') return Number(own);
+    return parsedQuantity;
+  };
+
   const input: BulkStockInput = {
     mode,
     offerIds,
     warehouses: [...picked].map((warehouseId) => ({
       warehouseId,
-      quantity: parsedQuantity,
+      quantity: quantityFor(warehouseId),
     })),
   };
+
+  /*
+   * Общее поле обязательно, пока хотя бы у одного выбранного склада нет
+   * своего числа: иначе часть складов уехала бы с пустым количеством.
+   */
+  const everyPickedHasOwn =
+    perWarehouseOpen &&
+    [...picked].every((id) => (perWarehouse[id] ?? '').trim() !== '');
+  const quantityReady = quantityValid || everyPickedHasOwn;
+
+  const mixedQuantities =
+    new Set(input.warehouses.map((w) => w.quantity)).size > 1;
 
   const refreshWarehouses = useMutation({
     mutationFn: () => ozonProductCatalogApi.syncWarehouses(accountId),
@@ -307,7 +334,7 @@ export function BulkStockModal({
               </div>
 
               {editable.length > 0 && (
-                <div className="mt-2 flex gap-2 text-[11px]">
+                <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
                   <button
                     onClick={() => setTouched(new Set(editable.map((w) => w.id)))}
                     className="rounded px-2 py-1 text-gray-600 transition-colors hover:bg-gray-100"
@@ -320,6 +347,43 @@ export function BulkStockModal({
                   >
                     Снять все
                   </button>
+                  <button
+                    onClick={() => setPerWarehouseOpen((v) => !v)}
+                    className="rounded px-2 py-1 text-amber-700 transition-colors hover:bg-amber-50"
+                  >
+                    {perWarehouseOpen
+                      ? 'Одно количество для всех'
+                      : 'Настроить значения по складам'}
+                  </button>
+                </div>
+              )}
+
+              {perWarehouseOpen && picked.size > 0 && (
+                <div className="mt-2 space-y-1.5 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+                  <p className="text-[11px] text-amber-900">
+                    Пустое поле означает «взять общее количество».
+                  </p>
+                  {warehouses
+                    .filter((w) => picked.has(w.id))
+                    .map((w) => (
+                      <label key={w.id} className="flex items-center gap-2 text-sm">
+                        <span className="min-w-0 flex-1 truncate text-gray-800">
+                          {w.name}
+                        </span>
+                        <input
+                          value={perWarehouse[w.id] ?? ''}
+                          onChange={(e) =>
+                            setPerWarehouse((prev) => ({
+                              ...prev,
+                              [w.id]: e.target.value.replace(/[^\d]/g, ''),
+                            }))
+                          }
+                          inputMode="numeric"
+                          placeholder={quantity || '—'}
+                          className="w-20 rounded-lg border border-gray-200 px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                      </label>
+                    ))}
                 </div>
               )}
             </div>
@@ -344,10 +408,19 @@ export function BulkStockModal({
               <span className="font-medium">
                 {mode === 'ADD' ? 'Добавить' : 'Установить'}
               </span>{' '}
-              · {mode === 'ADD' ? 'прибавляем' : 'количество'}:{' '}
-              <span className="font-medium">
-                {mode === 'ADD' ? `+${parsedQuantity}` : parsedQuantity}
-              </span>
+              {mixedQuantities ? (
+                <> · количество разное по складам</>
+              ) : (
+                <>
+                  {' '}
+                  · {mode === 'ADD' ? 'прибавляем' : 'количество'}:{' '}
+                  <span className="font-medium">
+                    {mode === 'ADD'
+                      ? `+${input.warehouses[0]?.quantity ?? 0}`
+                      : (input.warehouses[0]?.quantity ?? 0)}
+                  </span>
+                </>
+              )}
             </p>
 
             {preview.zeroingCount > 0 && (
@@ -478,7 +551,7 @@ export function BulkStockModal({
               </button>
               <button
                 onClick={() => askPreview.mutate()}
-                disabled={!quantityValid || picked.size === 0 || askPreview.isPending}
+                disabled={!quantityReady || picked.size === 0 || askPreview.isPending}
                 className={primaryCls}
               >
                 {askPreview.isPending ? 'Считаем…' : 'Продолжить'}

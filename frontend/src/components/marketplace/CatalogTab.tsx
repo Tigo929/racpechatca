@@ -8,6 +8,7 @@ import { FilterChip } from '../ui/FilterChip';
 import { ProductDetailModal } from './ProductDetailModal';
 import { PrintCardModal } from './PrintCardModal';
 import { BulkStockModal } from './BulkStockModal';
+import { StockHistoryBlock } from './StockHistoryBlock';
 import { EconomicsSettings } from './EconomicsSettings';
 import { usePersistentState } from '../../hooks/usePersistentState';
 
@@ -229,6 +230,8 @@ export function CatalogTab({ accountId }: { accountId: string }) {
           <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} aria-hidden="true" />
         </button>
       </div>
+
+      <StockHistoryBlock accountId={accountId} />
 
       {/* Массовые действия появляются только когда есть что делать:
           панель, висящая над пустым выбором, занимает место и путает. */}
