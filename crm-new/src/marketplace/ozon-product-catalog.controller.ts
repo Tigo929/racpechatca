@@ -26,6 +26,9 @@ import {
 import { DtoUpdateOzonUnitEconomics } from './dto/update-ozon-unit-economics.dto';
 import { OzonUnitEconomicsService } from './ozon-unit-economics.service';
 import { OzonWarehouseService } from './ozon/ozon-warehouse.service';
+import { OzonBulkStockService } from './ozon/ozon-bulk-stock.service';
+import { DtoBulkStock } from './dto/ozon-bulk-stock.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 
 /**
  * Живой каталог кабинета: товары, которые уже заведены в Ozon, — с ценой,
@@ -42,6 +45,7 @@ export class OzonProductCatalogController {
     private readonly ozon: OzonService,
     private readonly unitEconomics: OzonUnitEconomicsService,
     private readonly warehouses: OzonWarehouseService,
+    private readonly bulkStock: OzonBulkStockService,
   ) {}
 
   @Get(':accountId/catalog')
@@ -192,6 +196,55 @@ export class OzonProductCatalogController {
   ) {
     const creds = await this.accounts.credentials(accountId);
     return this.catalog.updateStocks(creds, dto.warehouseId, dto.items);
+  }
+
+  /**
+   * Что произойдёт, если подтвердить. Ничего не меняет: считает пары
+   * «товар × склад», проверяет склады и предупреждает про обнуление.
+   */
+  @Post(':accountId/stocks/bulk/preview')
+  async bulkStockPreview(
+    @Param('accountId', ParseUUIDPipe) accountId: string,
+    @Body() dto: DtoBulkStock,
+  ) {
+    return this.bulkStock.preview(accountId, dto);
+  }
+
+  /**
+   * Запуск операции. Возвращает её идентификатор сразу: отправкой
+   * занимается фоновый обработчик, поэтому закрытая вкладка ничего
+   * не отменяет.
+   */
+  @Post(':accountId/stocks/bulk')
+  async bulkStockStart(
+    @Param('accountId', ParseUUIDPipe) accountId: string,
+    @Body() dto: DtoBulkStock,
+    @CurrentUser() user: { id: string } | undefined,
+  ) {
+    return this.bulkStock.start(accountId, user?.id ?? null, dto);
+  }
+
+  @Get(':accountId/stocks/bulk/:operationId')
+  async bulkStockStatus(
+    @Param('accountId', ParseUUIDPipe) accountId: string,
+    @Param('operationId', ParseUUIDPipe) operationId: string,
+  ) {
+    return this.bulkStock.status(accountId, operationId);
+  }
+
+  /** Повторить только неудачные пары — успешные не трогаем. */
+  @Post(':accountId/stocks/bulk/:operationId/retry-errors')
+  async bulkStockRetry(
+    @Param('accountId', ParseUUIDPipe) accountId: string,
+    @Param('operationId', ParseUUIDPipe) operationId: string,
+  ) {
+    return this.bulkStock.retryErrors(accountId, operationId);
+  }
+
+  /** История массовых изменений остатков кабинета. */
+  @Get(':accountId/stocks/history')
+  async bulkStockHistory(@Param('accountId', ParseUUIDPipe) accountId: string) {
+    return this.bulkStock.history(accountId);
   }
 
   @Post(':accountId/catalog/archive')

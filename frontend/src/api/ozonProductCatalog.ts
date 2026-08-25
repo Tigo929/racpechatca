@@ -74,6 +74,61 @@ export function firstEditableWarehouse(
   return list?.warehouses.find((w) => w.isEditable);
 }
 
+/** Массовое изменение остатков: режим, выбор и результат. */
+export type BulkStockMode = 'SET' | 'ADD';
+
+export interface BulkStockWarehouseInput {
+  warehouseId: number;
+  quantity: number;
+}
+
+export interface BulkStockInput {
+  mode: BulkStockMode;
+  offerIds: string[];
+  warehouses: BulkStockWarehouseInput[];
+}
+
+export interface BulkStockPreview {
+  productCount: number;
+  warehouseCount: number;
+  operationCount: number;
+  /** Сколько пар обнуляет остаток — предупреждаем отдельно. */
+  zeroingCount: number;
+  /** Требуется ли ввести слово подтверждения. */
+  strongConfirm: boolean;
+  sample: {
+    offerId: string;
+    warehouseId: number;
+    warehouseName: string;
+    quantity: number;
+  }[];
+}
+
+export interface BulkStockItem {
+  offerId: string;
+  warehouseName: string;
+  requestedQuantity: number;
+  status: 'PENDING' | 'SENT' | 'ERROR' | 'SKIPPED';
+  errorMessage: string | null;
+}
+
+export interface BulkStockOperation {
+  id: string;
+  mode: BulkStockMode;
+  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+  defaultQuantity: number | null;
+  productCount: number;
+  warehouseCount: number;
+  operationCount: number;
+  successCount: number;
+  errorCount: number;
+  createdAt: string;
+  completedAt: string | null;
+  author: string | null;
+  lastError: string | null;
+  items: BulkStockItem[];
+}
+
 export interface EditResult {
   offerId: string;
   updated: boolean;
@@ -247,6 +302,50 @@ export const ozonProductCatalogApi = {
   warehouses: async (accountId: string): Promise<OzonWarehouseList> => {
     const { data } = await api.get<OzonWarehouseList>(
       `/marketplace/ozon/${accountId}/warehouses`,
+    );
+    return data;
+  },
+
+  /** Что произойдёт, если подтвердить. Ничего не меняет. */
+  bulkStockPreview: async (
+    accountId: string,
+    input: BulkStockInput,
+  ): Promise<BulkStockPreview> => {
+    const { data } = await api.post<BulkStockPreview>(
+      `/marketplace/ozon/${accountId}/stocks/bulk/preview`,
+      input,
+    );
+    return data;
+  },
+
+  /** Запуск операции. Отправкой занимается сервер, вкладку можно закрыть. */
+  bulkStockStart: async (
+    accountId: string,
+    input: BulkStockInput,
+  ): Promise<{ operationId: string; operationCount: number }> => {
+    const { data } = await api.post<{ operationId: string; operationCount: number }>(
+      `/marketplace/ozon/${accountId}/stocks/bulk`,
+      input,
+    );
+    return data;
+  },
+
+  bulkStockStatus: async (
+    accountId: string,
+    operationId: string,
+  ): Promise<BulkStockOperation> => {
+    const { data } = await api.get<BulkStockOperation>(
+      `/marketplace/ozon/${accountId}/stocks/bulk/${operationId}`,
+    );
+    return data;
+  },
+
+  bulkStockRetryErrors: async (
+    accountId: string,
+    operationId: string,
+  ): Promise<{ retrying: number }> => {
+    const { data } = await api.post<{ retrying: number }>(
+      `/marketplace/ozon/${accountId}/stocks/bulk/${operationId}/retry-errors`,
     );
     return data;
   },

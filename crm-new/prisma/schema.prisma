@@ -37,6 +37,7 @@ model User {
   marketplaceAccounts MarketplaceAccount[] @relation("MarketplaceAccountOwner")
   printApprovals     PrintApproval[]   @relation("ApprovalAuthor")
   imageCardBatches   ImageCardBatch[]  @relation("ImageCardBatchAuthor")
+  bulkStockOperations OzonStockBulkOperation[] @relation("BulkStockAuthor")
 }
 
 enum EnumRole {
@@ -213,6 +214,7 @@ model MarketplaceAccount {
   ozonUnitEconomics   OzonUnitEconomics?
   ozonPrints          OzonPrint[]
   ozonWarehouses      OzonWarehouse[]
+  ozonStockOperations OzonStockBulkOperation[]
 
   @@unique([marketplace, externalId])
   @@index([ownerId])
@@ -464,6 +466,116 @@ model OzonWarehouse {
 
   @@unique([marketplaceAccountId, warehouseId])
   @@index([marketplaceAccountId, archivedAt])
+}
+
+/// Массовое изменение остатков Ozon: одна операция целиком.
+///
+/// Операция — это запись, а не действие в памяти. Так решаются сразу три
+/// задачи: повторное нажатие кнопки не создаёт вторую отправку, работа
+/// продолжается после закрытия вкладки, и через полгода можно ответить,
+/// кто и когда поставил этот остаток.
+model OzonStockBulkOperation {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  marketplaceAccountId String
+  account              MarketplaceAccount @relation(fields: [marketplaceAccountId], references: [id], onDelete: Cascade)
+
+  mode   EnumBulkStockMode   @default(SET)
+  status EnumBulkStockStatus @default(PENDING)
+
+  /// Что человек ввёл в поле «Количество». У режима «разные значения по
+  /// складам» единого числа нет — тогда пусто, а значения лежат в парах.
+  defaultQuantity Int?
+
+  productCount   Int @default(0)
+  warehouseCount Int @default(0)
+  operationCount Int @default(0)
+  successCount   Int @default(0)
+  errorCount     Int @default(0)
+
+  createdById String?
+  createdBy   User?   @relation("BulkStockAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  /// Ошибка, из-за которой встала вся операция (не отдельная пара).
+  lastError String?
+
+  items OzonStockBulkOperationItem[]
+
+  @@index([marketplaceAccountId, createdAt])
+  @@index([status])
+}
+
+/// Одна пара «товар × склад» внутри операции.
+///
+/// Отдельная строка на пару, а не на товар: у Ozon один товар на трёх
+/// складах — это три независимых изменения, и отказать площадка может
+/// по любому из них поодиночке.
+model OzonStockBulkOperationItem {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  operationId String
+  operation   OzonStockBulkOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+
+  /// Артикул продавца. Регистр значим — offer_id у Ozon регистрозависим.
+  offerId String
+  /// Внутренний номер товара в Ozon, если он известен на момент отправки.
+  ozonProductId BigInt?
+
+  warehouseId BigInt
+  /// Имя склада на момент операции. Копия, а не ссылка: склад могут
+  /// переименовать или удалить, а в истории он должен остаться собой.
+  warehouseName String
+
+  requestedQuantity Int
+  /// Остаток до изменения, если удалось его узнать. Для режима «Добавить»
+  /// это основа расчёта, для «Установить» — просто справка в отчёте.
+  previousStock Int?
+  /// Что в итоге отправили площадке. У «Установить» совпадает
+  /// с requestedQuantity, у «Добавить» — previousStock + requestedQuantity.
+  calculatedStock Int?
+
+  status     EnumBulkStockItemStatus @default(PENDING)
+  attempts   Int                     @default(0)
+  /// Когда пару последний раз отправляли. Ozon разрешает трогать одну пару
+  /// не чаще раза в тридцать секунд, и без этой отметки повтор ошибок
+  /// уходил бы в запрещённое окно и получал отказ второй раз подряд.
+  lastSentAt DateTime?
+
+  errorCode    String?
+  errorMessage String?
+
+  @@unique([operationId, offerId, warehouseId])
+  @@index([operationId, status])
+}
+
+enum EnumBulkStockMode {
+  /// Поставить конечное количество. Основной режим.
+  SET
+  /// Прибавить к текущему. Атомарного increment у Ozon нет, поэтому
+  /// значение вычисляется у нас перед самой отправкой.
+  ADD
+}
+
+enum EnumBulkStockStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum EnumBulkStockItemStatus {
+  PENDING
+  SENT
+  ERROR
+  /// Пропущена осознанно: например, нечего менять — остаток уже такой.
+  SKIPPED
 }
 
 /// Один вызов /v3/product/import (до 100 вариантов) и его task_id.

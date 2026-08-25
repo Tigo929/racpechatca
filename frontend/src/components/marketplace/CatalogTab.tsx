@@ -7,6 +7,7 @@ import {
 import { FilterChip } from '../ui/FilterChip';
 import { ProductDetailModal } from './ProductDetailModal';
 import { PrintCardModal } from './PrintCardModal';
+import { BulkStockModal } from './BulkStockModal';
 import { EconomicsSettings } from './EconomicsSettings';
 import { usePersistentState } from '../../hooks/usePersistentState';
 
@@ -61,6 +62,7 @@ export function CatalogTab({ accountId }: { accountId: string }) {
     'all',
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkStockOpen, setBulkStockOpen] = useState(false);
   const [opened, setOpened] = useState<OzonCatalogProduct | null>(null);
   // Открытая карточка принта: размеры показываем только внутри неё.
   const [openedCard, setOpenedCard] = useState<string | null>(null);
@@ -228,6 +230,28 @@ export function CatalogTab({ accountId }: { accountId: string }) {
         </button>
       </div>
 
+      {/* Массовые действия появляются только когда есть что делать:
+          панель, висящая над пустым выбором, занимает место и путает. */}
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5">
+          <span className="text-sm text-amber-900">
+            Выбрано: <span className="font-semibold">{selected.size}</span>
+          </span>
+          <button
+            onClick={() => setBulkStockOpen(true)}
+            className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-700"
+          >
+            Изменить остатки Ozon
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            className="rounded-lg px-2 py-1.5 text-xs text-amber-800 transition-colors hover:bg-amber-100"
+          >
+            Снять выделение
+          </button>
+        </div>
+      )}
+
       {isLoading ? (
         <p className="text-sm text-gray-500">Загружаем каталог из Ozon…</p>
       ) : groups.length === 0 ? (
@@ -355,6 +379,14 @@ export function CatalogTab({ accountId }: { accountId: string }) {
           items={openedItems}
           onClose={() => setOpenedCard(null)}
           onOpenSize={(p) => setOpened(p)}
+        />
+      )}
+
+      {bulkStockOpen && (
+        <BulkStockModal
+          accountId={accountId}
+          offerIds={[...selected]}
+          onClose={() => setBulkStockOpen(false)}
         />
       )}
 
