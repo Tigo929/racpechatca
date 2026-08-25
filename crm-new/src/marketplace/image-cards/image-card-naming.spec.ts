@@ -60,19 +60,25 @@ describe('чистое имя из имени файла', () => {
 });
 
 describe('имя итогового файла', () => {
-  it('складывается по схеме из ТЗ', () => {
+  it('повторяет артикул: имя принта, дефис, цвет', () => {
     expect(cardFileName('jdm-skyline-r34', 'black')).toBe(
-      'jdm-skyline-r34_black_image_card.jpg',
+      'jdm-skyline-r34-black.jpg',
     );
     expect(cardFileName('jdm-skyline-r34', 'white')).toBe(
-      'jdm-skyline-r34_white_image_card.jpg',
+      'jdm-skyline-r34-white.jpg',
     );
   });
 
+  it('разделитель только дефис — по нему ищут артикул', () => {
+    // Подчёркивание и слово «image_card» в имени были помехой: артикул
+    // пишется через дефис, и поиск по нему файл не находил.
+    const name = cardFileName('cat-1-1', 'black');
+    expect(name).toBe('cat-1-1-black.jpg');
+    expect(name).not.toContain('_');
+  });
+
   it('расширение задаётся отдельно — формат может смениться', () => {
-    expect(cardFileName('kot', 'black', 'png')).toBe(
-      'kot_black_image_card.png',
-    );
+    expect(cardFileName('kot', 'black', 'png')).toBe('kot-black.png');
   });
 });
 

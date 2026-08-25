@@ -81,7 +81,18 @@ export function cleanBaseName(originalName: string): string {
 
 /**
  * Имя итогового файла карточки.
- * «jdm-skyline-r34» + «black» → «jdm-skyline-r34_black_image_card.jpg»
+ *
+ * «jdm-skyline-r34» + «black» → «jdm-skyline-r34-black.jpg»
+ *
+ * Раньше выходило «jdm-skyline-r34_black_image_card.jpg». Хвост
+ * «_image_card» одинаков у всех карточек и потому ничего не различает,
+ * а подчёркивания рвали имя на куски, не совпадающие с артикулом.
+ * Артикулы у нас через дефис: JDM-1-1-black-S. Теперь имя файла — это
+ * тот же артикул без размера, и поиск по артикулу находит карточку
+ * вместе с макетом. Ради этого и правилось.
+ *
+ * На уже собранные карточки не влияет: их имена записаны в базе
+ * (`finalFile`) и берутся оттуда — и для скачивания, и для архива.
  */
 export function cardFileName(
   baseName: string,
@@ -89,7 +100,7 @@ export function cardFileName(
   extension = 'jpg',
 ): string {
   const color = cleanBaseName(shirtColor) || 'color';
-  return `${baseName}_${color}_image_card.${extension}`;
+  return `${baseName}-${color}.${extension}`;
 }
 
 /**

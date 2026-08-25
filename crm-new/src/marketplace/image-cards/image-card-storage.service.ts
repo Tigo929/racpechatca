@@ -139,7 +139,7 @@ export class ImageCardStorageService {
    *
    *   ozon-image-cards/<пачка>/source/<slug>.<ext>
    *   ozon-image-cards/<пачка>/generated/<slug>/source_extracted.png
-   *   ozon-image-cards/<пачка>/generated/<slug>/<slug>_black_image_card.png
+   *   ozon-image-cards/<пачка>/generated/<slug>/<slug>-black.jpg
    *
    * basename на каждом сегменте — защита от обхода каталога: сюда приходят
    * идентификаторы из базы, но полагаться на это без проверки нельзя.
