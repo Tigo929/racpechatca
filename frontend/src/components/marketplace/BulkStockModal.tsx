@@ -29,7 +29,7 @@ const CONFIRM_WORD = 'ПОДТВЕРДИТЬ';
 
 export function BulkStockModal({
   accountId,
-  offerIds,
+  offerIds: incoming,
   onClose,
 }: {
   accountId: string;
@@ -61,12 +61,24 @@ export function BulkStockModal({
   const [preview, setPreview] = useState<BulkStockPreview | null>(null);
   const [confirmWord, setConfirmWord] = useState('');
   const [operationId, setOperationId] = useState<string | null>(null);
+  /*
+   * Снятые в окне размеры. В списке товаров галочка берёт принт
+   * целиком — так и нужно в девяти случаях из десяти, — но иногда
+   * остаток меняют не всем размерам. Отдельного экрана ради этого
+   * не заводим: проще снять лишнее здесь, уже зная, что меняем.
+   */
+  const [excluded, setExcluded] = useState<Set<string>>(new Set());
 
   const { data: warehouseList, isFetching: loadingWarehouses } = useQuery({
     queryKey: ['ozon-warehouses', accountId],
     queryFn: () => ozonProductCatalogApi.warehouses(accountId),
     staleTime: 600_000,
   });
+
+  const offerIds = useMemo(
+    () => incoming.filter((id) => !excluded.has(id)),
+    [incoming, excluded],
+  );
 
   const warehouses = useMemo(
     () => warehouseList?.warehouses ?? [],
@@ -199,6 +211,9 @@ export function BulkStockModal({
             </h2>
             <p className="mt-0.5 text-xs text-gray-500">
               Выбрано товаров: {offerIds.length}
+              {excluded.size > 0 && (
+                <span className="text-gray-400"> · снято {excluded.size}</span>
+              )}
             </p>
           </div>
           <button
@@ -388,6 +403,37 @@ export function BulkStockModal({
               )}
             </div>
 
+            <details className="rounded-lg border border-gray-200 px-3 py-2">
+              <summary className="cursor-pointer text-xs font-medium text-gray-700">
+                Товары: {offerIds.length}
+                {excluded.size > 0 && (
+                  <span className="ml-2 font-normal text-gray-500">
+                    снято {excluded.size}
+                  </span>
+                )}
+              </summary>
+              <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
+                {incoming.map((id) => (
+                  <label key={id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={!excluded.has(id)}
+                      onChange={() =>
+                        setExcluded((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(id)) next.delete(id);
+                          else next.add(id);
+                          return next;
+                        })
+                      }
+                      className="h-4 w-4 accent-amber-600"
+                    />
+                    <span className="font-mono text-[11px] text-gray-700">{id}</span>
+                  </label>
+                ))}
+              </div>
+            </details>
+
             <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">
               Операций: {offerIds.length} товара × {picked.size} склада ={' '}
               <span className="font-semibold">{operationCount}</span>
@@ -551,7 +597,12 @@ export function BulkStockModal({
               </button>
               <button
                 onClick={() => askPreview.mutate()}
-                disabled={!quantityReady || picked.size === 0 || askPreview.isPending}
+                disabled={
+                  !quantityReady ||
+                  picked.size === 0 ||
+                  offerIds.length === 0 ||
+                  askPreview.isPending
+                }
                 className={primaryCls}
               >
                 {askPreview.isPending ? 'Считаем…' : 'Продолжить'}
