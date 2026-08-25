@@ -128,9 +128,15 @@ function generateConfirmationText(order: OrderPhoto): string {
   const isPickup = order.deliveryMethod === "PICKUP";
   const pickupAddr = resolvePickupAddress(order);
 
+  /*
+   * Обе строки оплаты построены одинаково: «когда — что — сколько».
+   * Прежние читались как обрывки («Остаток — 1 500 ₽ при самовывозе»):
+   * глагола нет, и непонятно, платить сейчас или потом. Для клиента это
+   * самое важное место сообщения, и гадать он тут не должен.
+   */
   const restLabel = isPickup
-    ? `👉 Остаток — ${rest.toLocaleString("ru-RU")} ₽ при самовывозе`
-    : `👉 Остаток — ${rest.toLocaleString("ru-RU")} ₽ при подтверждении фото доставки`;
+    ? `👉 При получении — остаток: ${rest.toLocaleString("ru-RU")} ₽`
+    : `👉 Когда пришлём фото доставки — остаток: ${rest.toLocaleString("ru-RU")} ₽`;
 
   return [
     "✅ Отлично, ваш заказ подтверждён!",
@@ -148,8 +154,8 @@ function generateConfirmationText(order: OrderPhoto): string {
       : []),
     `📦 Итого к оплате: ${total.toLocaleString("ru-RU")} ₽`,
     separator,
-    "💳 Для подтверждения заказа:",
-    `👉 Предоплата 50% — ${prepay.toLocaleString("ru-RU")} ₽ (сейчас)`,
+    "💳 Оплата в два этапа:",
+    `👉 Сейчас — предоплата 50%: ${prepay.toLocaleString("ru-RU")} ₽`,
     restLabel,
     ...(isPickup && pickupAddr ? ["", `📍 Самовывоз: ${pickupAddr}`] : []),
     // Холсты забирают у подрядчика: свой график и своё условие выдачи —
@@ -169,7 +175,7 @@ function generateConfirmationText(order: OrderPhoto): string {
     `   ${businessConfig.payment.phone}`,
     `   ${businessConfig.payment.recipient}`,
     "",
-    "👉 Как только внесёте оплату, пожалуйста, пришлите чек.",
+    "👉 Как только внесёте предоплату, пришлите, пожалуйста, чек.",
     "",
     "Спасибо за доверие! Приступаем к работе 🙌",
   ].join("\n");
@@ -240,9 +246,12 @@ function generateReadyText(order: OrderPhoto): string {
     `📦 Итого к оплате: ${total.toLocaleString("ru-RU")} ₽`,
     "",
     separator,
-    "💳 Остаток к оплате:",
-    `👉 Предоплата 50% — ${prepay.toLocaleString("ru-RU")} ₽ (уже внесена)`,
-    `👉 Остаток — ${rest.toLocaleString("ru-RU")} ₽`,
+    // Заголовок «Остаток к оплате» стоял над двумя строками, одну из
+    // которых платить не нужно — она уже оплачена. Теперь заголовок про
+    // оплату целиком, а строки сами говорят, что внесено и что осталось.
+    "💳 Оплата:",
+    `👉 Предоплата 50% — ${prepay.toLocaleString("ru-RU")} ₽, уже внесена`,
+    `👉 Осталось доплатить — ${rest.toLocaleString("ru-RU")} ₽`,
     ...(isPickup && pickupAddr ? ["", `📍 Самовывоз: ${pickupAddr}`] : []),
     // Заказ уже готов, поэтому здесь только часы работы. Срок изготовления
     // и «заберёте после фото готовой работы» — условия из подтверждения
@@ -258,7 +267,12 @@ function generateReadyText(order: OrderPhoto): string {
     `   ${businessConfig.payment.phone}`,
     `   ${businessConfig.payment.recipient}`,
     "",
-    "👉 Пожалуйста, оплатите остаток и пришлите чек по тем же реквизитам.",
+    // При самовывозе платить переводом необязательно — в подтверждении
+    // заказа клиенту так и обещали «остаток при получении». Требовать
+    // здесь перевод значит противоречить самим себе.
+    isPickup
+      ? "👉 Остаток можно внести при получении или переводом заранее — тогда пришлите, пожалуйста, чек."
+      : "👉 Пожалуйста, доплатите остаток и пришлите чек — реквизиты выше.",
     ...pvzReminder(order.deliveryMethod),
     "",
     "Спасибо! Ждём вас 🙌",
