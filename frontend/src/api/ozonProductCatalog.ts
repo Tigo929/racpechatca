@@ -100,8 +100,13 @@ export interface BulkStockPreview {
     offerId: string;
     warehouseId: number;
     warehouseName: string;
-    quantity: number;
+    /** Что стоит на складе сейчас. Пусто — Ozon не назвал. */
+    previousStock: number | null;
+    /** Что там будет после отправки. */
+    newStock: number;
   }[];
+  /** Удалось ли прочитать текущие остатки. */
+  stocksKnown: boolean;
 }
 
 export interface BulkStockItem {

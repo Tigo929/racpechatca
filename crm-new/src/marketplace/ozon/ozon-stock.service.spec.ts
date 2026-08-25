@@ -113,3 +113,53 @@ describe('разбор ответа', () => {
     ]);
   });
 });
+
+describe('чтение остатков по складам', () => {
+  it('ключ собирается из sku и склада, остатки не складываются', () => {
+    // У одного товара на трёх складах три разных остатка. Список товаров
+    // в каталоге показывает их сумму — здесь нужна именно разбивка.
+    const { service } = build(() => ({
+      result: [
+        { sku: 111, warehouse_id: PERVOMAY, present: 7, reserved: 1 },
+        { sku: 111, warehouse_id: AMIR, present: 40, reserved: 0 },
+      ],
+    }));
+
+    return service.stocksByWarehouse(CREDS, ['111']).then((map) => {
+      expect(map.get(`111@${PERVOMAY}`)).toBe(7);
+      expect(map.get(`111@${AMIR}`)).toBe(40);
+      expect(map.size).toBe(2);
+    });
+  });
+
+  it('строки без sku или склада пропускаются', () => {
+    const { service } = build(() => ({
+      result: [
+        { present: 5, warehouse_id: PERVOMAY },
+        { sku: 111, present: 5 },
+        { sku: 222, warehouse_id: PERVOMAY, present: 3 },
+      ],
+    }));
+
+    return service.stocksByWarehouse(CREDS, ['111', '222']).then((map) => {
+      expect([...map.keys()]).toEqual([`222@${PERVOMAY}`]);
+    });
+  });
+
+  it('отсутствие остатка читается как ноль, а не как «неизвестно»', () => {
+    const { service } = build(() => ({
+      result: [{ sku: 111, warehouse_id: PERVOMAY }],
+    }));
+
+    return service.stocksByWarehouse(CREDS, ['111']).then((map) => {
+      expect(map.get(`111@${PERVOMAY}`)).toBe(0);
+    });
+  });
+
+  it('используется метод остатков по складам FBS', () => {
+    const { service, post } = build(() => ({ result: [] }));
+    return service.stocksByWarehouse(CREDS, ['111']).then(() => {
+      expect(post.mock.calls[0]?.[1]).toBe('/v1/product/info/stocks-by-warehouse/fbs');
+    });
+  });
+});

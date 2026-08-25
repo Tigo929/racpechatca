@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MarketplaceAccountService } from '../marketplace-account.service';
 import { OzonApiError } from './ozon-api.client';
+import { OzonProductCatalogService } from './ozon-product-catalog.service';
 import { OzonStockService } from './ozon-stock.service';
 import { OzonWarehouseService } from './ozon-warehouse.service';
 import {
@@ -54,8 +55,13 @@ export interface BulkStockPreview {
     offerId: string;
     warehouseId: number;
     warehouseName: string;
-    quantity: number;
+    /** Что стоит на складе сейчас. Пусто — Ozon не назвал. */
+    previousStock: number | null;
+    /** Что там будет после отправки. */
+    newStock: number;
   }[];
+  /** Удалось ли прочитать текущие остатки. Нет — «было» не показываем. */
+  stocksKnown: boolean;
 }
 
 @Injectable()
@@ -67,6 +73,7 @@ export class OzonBulkStockService {
     private readonly accounts: MarketplaceAccountService,
     private readonly stocks: OzonStockService,
     private readonly warehouses: OzonWarehouseService,
+    private readonly catalog: OzonProductCatalogService,
   ) {}
 
   /**
@@ -78,6 +85,25 @@ export class OzonBulkStockService {
     input: BulkStockInput,
   ): Promise<BulkStockPreview> {
     const { pairs, names } = await this.plan(accountId, input);
+    const creds = await this.accounts.credentials(accountId);
+
+    /*
+     * Текущие остатки — справка для «Установить» и основа расчёта для
+     * «Добавить». Поэтому отношение к неудаче разное: в первом случае
+     * сводка просто останется без колонки «было», во втором показывать
+     * нечего и обманывать нельзя.
+     */
+    let current: Map<string, number> | null = null;
+    try {
+      current = await this.currentStocks(creds, pairs);
+    } catch (e) {
+      if (input.mode === 'ADD') throw e;
+      this.logger.warn(
+        `Остатки по складам не прочитались, сводка будет без «было»: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      );
+    }
 
     return {
       productCount: new Set(pairs.map((p) => p.offerId)).size,
@@ -85,12 +111,18 @@ export class OzonBulkStockService {
       operationCount: pairs.length,
       zeroingCount: zeroingCount(pairs),
       strongConfirm: needsStrongConfirm(pairs.length),
-      sample: pairs.slice(0, 20).map((pair) => ({
-        offerId: pair.offerId,
-        warehouseId: pair.warehouseId,
-        warehouseName: names.get(pair.warehouseId) ?? `Склад ${pair.warehouseId}`,
-        quantity: pair.quantity,
-      })),
+      stocksKnown: current !== null,
+      sample: pairs.slice(0, 20).map((pair) => {
+        const previous = current?.get(keyOf(pair.offerId, pair.warehouseId)) ?? null;
+        return {
+          offerId: pair.offerId,
+          warehouseId: pair.warehouseId,
+          warehouseName: names.get(pair.warehouseId) ?? `Склад ${pair.warehouseId}`,
+          previousStock: previous,
+          newStock:
+            input.mode === 'ADD' ? (previous ?? 0) + pair.quantity : pair.quantity,
+        };
+      }),
     };
   }
 
@@ -105,17 +137,6 @@ export class OzonBulkStockService {
     input: BulkStockInput,
   ): Promise<{ operationId: string; operationCount: number }> {
     const { pairs, names } = await this.plan(accountId, input);
-
-    // Режим «Добавить» пока не выпущен: атомарного increment у Ozon нет,
-    // а считать «текущий плюс дельта» без остатков по складам — значит
-    // выдумывать число. Явный отказ лучше молчаливо неверного остатка.
-    if (input.mode === 'ADD') {
-      throw new BulkStockValidationError(
-        'Режим «Добавить» пока недоступен: Ozon не умеет прибавлять к остатку, ' +
-          'а считать это у себя можно только зная остаток по каждому складу. ' +
-          'Пользуйтесь режимом «Установить».',
-      );
-    }
 
     const uniform = new Set(input.warehouses.map((w) => w.quantity));
 
@@ -136,8 +157,14 @@ export class OzonBulkStockService {
             warehouseName:
               names.get(pair.warehouseId) ?? `Склад ${pair.warehouseId}`,
             requestedQuantity: pair.quantity,
-            // У «Установить» отправляем ровно то, что ввёл человек.
-            calculatedStock: pair.quantity,
+            /*
+             * У «Установить» отправляем ровно то, что ввёл человек, и знаем
+             * это уже сейчас. У «Добавить» — не знаем: между подтверждением
+             * и отправкой покупатель может забрать товар, и складывать
+             * нужно с тем остатком, который будет в момент записи, а не
+             * с тем, что показали в сводке (ТЗ §19).
+             */
+            calculatedStock: input.mode === 'SET' ? pair.quantity : null,
           })),
         },
       },
@@ -283,7 +310,7 @@ export class OzonBulkStockService {
     const operation = await this.prisma.ozonStockBulkOperation.findFirst({
       where: { status: { in: ['PENDING', 'RUNNING'] } },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, marketplaceAccountId: true, status: true },
+      select: { id: true, marketplaceAccountId: true, status: true, mode: true },
     });
     if (!operation) return;
 
@@ -313,7 +340,30 @@ export class OzonBulkStockService {
     }
 
     const creds = await this.accounts.credentials(operation.marketplaceAccountId);
-    const pairs: StockPair[] = due.map((item) => ({
+
+    /*
+     * «Добавить» пересчитывается здесь, а не при подтверждении: между
+     * ними проходит время, за которое покупатель может забрать товар.
+     * Сложить с устаревшим числом значит вернуть на склад то, чего там
+     * уже нет.
+     */
+    if (operation.mode === 'ADD') {
+      const failed = await this.applyAddMode(creds, due);
+      if (failed) {
+        await this.refreshCounters(operation.id);
+        return;
+      }
+    }
+
+    const fresh = await this.prisma.ozonStockBulkOperationItem.findMany({
+      where: { id: { in: due.map((i) => i.id) }, status: 'PENDING' },
+    });
+    if (fresh.length === 0) {
+      await this.closeIfFinished(operation.id);
+      return;
+    }
+
+    const pairs: StockPair[] = fresh.map((item) => ({
       offerId: item.offerId,
       warehouseId: Number(item.warehouseId),
       quantity: item.calculatedStock ?? item.requestedQuantity,
@@ -322,7 +372,7 @@ export class OzonBulkStockService {
     // Отметку об отправке ставим до запроса: если он не вернётся вовсе,
     // пара всё равно была тронута, и повтор обязан выждать своё окно.
     await this.prisma.ozonStockBulkOperationItem.updateMany({
-      where: { id: { in: due.map((i) => i.id) } },
+      where: { id: { in: fresh.map((i) => i.id) } },
       data: { lastSentAt: now, attempts: { increment: 1 } },
     });
 
@@ -332,7 +382,7 @@ export class OzonBulkStockService {
         results.map((r) => [`${r.offerId}@${r.warehouseId}`, r]),
       );
 
-      for (const item of due) {
+      for (const item of fresh) {
         const key = `${item.offerId}@${Number(item.warehouseId)}`;
         const result = byKey.get(key);
         if (result?.updated) {
@@ -355,7 +405,7 @@ export class OzonBulkStockService {
         });
       }
     } catch (e) {
-      await this.handleTransport(operation.id, due, e);
+      await this.handleTransport(operation.id, fresh, e);
     }
 
     await this.refreshCounters(operation.id);
@@ -395,6 +445,91 @@ export class OzonBulkStockService {
     });
   }
 
+  /**
+   * Остатки по парам «товар × склад».
+   *
+   * Ozon опознаёт товар числовым sku, а мы работаем артикулами, поэтому
+   * сначала сопоставляем одно с другим, а потом переводим ключи обратно:
+   * наружу этот модуль про sku знать не должен.
+   */
+  private async currentStocks(
+    creds: { clientId: string; apiKey: string },
+    pairs: StockPair[],
+  ): Promise<Map<string, number>> {
+    const offerIds = [...new Set(pairs.map((p) => p.offerId))];
+    const skuByOffer = await this.catalog.skuByOfferId(creds, offerIds);
+
+    const offerBySku = new Map<string, string>();
+    for (const [offerId, sku] of skuByOffer) offerBySku.set(sku, offerId);
+
+    const raw = await this.stocks.stocksByWarehouse(creds, [...offerBySku.keys()]);
+
+    const result = new Map<string, number>();
+    for (const [key, present] of raw) {
+      const [sku, warehouseId] = key.split('@');
+      const offerId = sku ? offerBySku.get(sku) : undefined;
+      if (!offerId || !warehouseId) continue;
+      result.set(keyOf(offerId, Number(warehouseId)), present);
+    }
+    return result;
+  }
+
+  /**
+   * Считает «текущий плюс дельта» и записывает результат в пары.
+   *
+   * Возвращает true, если считать не из чего: это временная беда (Ozon не
+   * ответил), и пары остаются в ожидании — следующий такт попробует снова.
+   * Пара, остатка которой площадка не назвала при исправном ответе, уходит
+   * в ошибку: складывать с выдуманным нулём значит обнулить склад.
+   */
+  private async applyAddMode(
+    creds: { clientId: string; apiKey: string },
+    due: { id: string; offerId: string; warehouseId: bigint; requestedQuantity: number }[],
+  ): Promise<boolean> {
+    let current: Map<string, number>;
+    try {
+      current = await this.currentStocks(
+        creds,
+        due.map((item) => ({
+          offerId: item.offerId,
+          warehouseId: Number(item.warehouseId),
+          quantity: 0,
+        })),
+      );
+    } catch (e) {
+      this.logger.warn(
+        `Режим «Добавить»: остатки не прочитались — ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      );
+      return true;
+    }
+
+    for (const item of due) {
+      const previous = current.get(keyOf(item.offerId, Number(item.warehouseId)));
+      if (previous === undefined) {
+        await this.prisma.ozonStockBulkOperationItem.update({
+          where: { id: item.id },
+          data: {
+            status: 'ERROR',
+            errorCode: 'NO_CURRENT_STOCK',
+            errorMessage:
+              'Ozon не назвал текущий остаток на этом складе — прибавлять не к чему.',
+          },
+        });
+        continue;
+      }
+      await this.prisma.ozonStockBulkOperationItem.update({
+        where: { id: item.id },
+        data: {
+          previousStock: previous,
+          calculatedStock: previous + item.requestedQuantity,
+        },
+      });
+    }
+    return false;
+  }
+
   private async refreshCounters(operationId: string): Promise<void> {
     const [successCount, errorCount] = await Promise.all([
       this.prisma.ozonStockBulkOperationItem.count({
@@ -428,4 +563,9 @@ export class OzonBulkStockService {
       },
     });
   }
+}
+
+/** Ключ пары «товар × склад» для карт остатков. */
+function keyOf(offerId: string, warehouseId: number): string {
+  return `${offerId}@${warehouseId}`;
 }

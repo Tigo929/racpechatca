@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import {
   ozonProductCatalogApi,
   type BulkStockInput,
+  type BulkStockMode,
   type BulkStockPreview,
 } from '../../api/ozonProductCatalog';
 import { getErrorMessage } from '../../utils/get-error-message';
@@ -37,6 +38,7 @@ export function BulkStockModal({
 }) {
   const qc = useQueryClient();
   const [phase, setPhase] = useState<Phase>('form');
+  const [mode, setMode] = useState<BulkStockMode>('SET');
   const [quantity, setQuantity] = useState('');
   /*
    * Пусто означает «человек ещё не трогал выбор» — тогда отмечены все
@@ -80,7 +82,7 @@ export function BulkStockModal({
   const operationCount = offerIds.length * picked.size;
 
   const input: BulkStockInput = {
-    mode: 'SET',
+    mode,
     offerIds,
     warehouses: [...picked].map((warehouseId) => ({
       warehouseId,
@@ -189,22 +191,42 @@ export function BulkStockModal({
               </span>
               <div className="space-y-1.5">
                 <label className="flex items-center gap-2 text-sm text-gray-800">
-                  <input type="radio" checked readOnly className="accent-amber-600" />
+                  <input
+                    type="radio"
+                    checked={mode === 'SET'}
+                    onChange={() => setMode('SET')}
+                    className="accent-amber-600"
+                  />
                   Установить — поставить это количество
                 </label>
-                {/* Режим «Добавить» выключен осознанно: у Ozon нет
-                    прибавления к остатку, а считать «текущий плюс дельта»
-                    без остатков по каждому складу — значит выдумывать число. */}
-                <label className="flex items-center gap-2 text-sm text-gray-400">
-                  <input type="radio" disabled className="accent-amber-600" />
-                  Добавить к текущему — пока недоступно
+                <label className="flex items-center gap-2 text-sm text-gray-800">
+                  <input
+                    type="radio"
+                    checked={mode === 'ADD'}
+                    onChange={() => setMode('ADD')}
+                    className="accent-amber-600"
+                  />
+                  Добавить к текущему остатку
                 </label>
               </div>
+              {mode === 'ADD' && (
+                /* Прибавления у Ozon нет: мы читаем остаток и пишем сумму.
+                   Между чтением и записью проходит время, и если в этот
+                   момент товар купят, на склад вернётся то, чего там уже
+                   нет. Считаем перед самой отправкой, но совсем исключить
+                   это нельзя — и человек должен об этом знать. */
+                <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  Ozon не умеет прибавлять сам: мы читаем остаток и записываем
+                  сумму. Считаем прямо перед отправкой, но если товар купят
+                  в эти секунды, остаток окажется завышен на одну штуку.
+                  Когда важна точность — пользуйтесь режимом «Установить».
+                </p>
+              )}
             </div>
 
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium text-gray-700">
-                Количество
+                {mode === 'ADD' ? 'Прибавить' : 'Количество'}
               </span>
               <input
                 value={quantity}
@@ -213,7 +235,7 @@ export function BulkStockModal({
                 placeholder="25"
                 className="w-32 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
-              {quantity.trim() === '0' && (
+              {quantity.trim() === '0' && mode === 'SET' && (
                 <span className="mt-1.5 flex items-start gap-1.5 text-xs text-red-600">
                   <AlertTriangle size={13} className="mt-px flex-shrink-0" aria-hidden="true" />
                   Ноль снимет товары с продажи на выбранных складах.
@@ -318,8 +340,14 @@ export function BulkStockModal({
             </div>
 
             <p className="text-sm text-gray-700">
-              Режим: <span className="font-medium">Установить</span> · количество:{' '}
-              <span className="font-medium">{parsedQuantity}</span>
+              Режим:{' '}
+              <span className="font-medium">
+                {mode === 'ADD' ? 'Добавить' : 'Установить'}
+              </span>{' '}
+              · {mode === 'ADD' ? 'прибавляем' : 'количество'}:{' '}
+              <span className="font-medium">
+                {mode === 'ADD' ? `+${parsedQuantity}` : parsedQuantity}
+              </span>
             </p>
 
             {preview.zeroingCount > 0 && (
@@ -342,8 +370,11 @@ export function BulkStockModal({
                         {row.offerId}
                       </td>
                       <td className="px-3 py-1.5 text-gray-500">{row.warehouseName}</td>
+                      <td className="px-3 py-1.5 text-right text-gray-500">
+                        {row.previousStock ?? '—'}
+                      </td>
                       <td className="px-3 py-1.5 text-right font-medium text-gray-900">
-                        → {row.quantity}
+                        → {row.newStock}
                       </td>
                     </tr>
                   ))}
@@ -352,6 +383,11 @@ export function BulkStockModal({
               {preview.operationCount > preview.sample.length && (
                 <p className="px-3 py-1.5 text-[11px] text-gray-400">
                   …и ещё {preview.operationCount - preview.sample.length}
+                </p>
+              )}
+              {!preview.stocksKnown && (
+                <p className="border-t border-gray-50 px-3 py-1.5 text-[11px] text-gray-400">
+                  Текущие остатки Ozon не отдал — показано только то, что станет.
                 </p>
               )}
             </div>

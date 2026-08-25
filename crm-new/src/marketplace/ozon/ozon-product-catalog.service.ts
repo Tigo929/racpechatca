@@ -346,6 +346,29 @@ export class OzonProductCatalogService {
       .filter((s): s is string => s !== null);
   }
 
+  /**
+   * Артикул → sku площадки, только для запрошенных товаров.
+   *
+   * Нужен там, где Ozon опознаёт товар не артикулом, а своим числовым sku —
+   * например при чтении остатков по складам. Берём карточки ровно
+   * выбранных товаров, а не весь каталог: массовое изменение остатков
+   * работает с десятками артикулов, и выгружать ради них тысячу незачем.
+   */
+  async skuByOfferId(
+    creds: OzonCredentials,
+    offerIds: string[],
+  ): Promise<Map<string, string>> {
+    if (offerIds.length === 0) return new Map();
+    const infos = await this.infoFor(creds, offerIds);
+    const map = new Map<string, string>();
+    for (const info of infos) {
+      if (!info.offer_id) continue;
+      if (!info.sku || info.sku === 0) continue;
+      map.set(info.offer_id, String(info.sku));
+    }
+    return map;
+  }
+
   /** Постраничный обход /v3/product/list — Ozon отдаёт курсором last_id. */
   private async allOfferIds(creds: OzonCredentials): Promise<string[]> {
     const result: string[] = [];

@@ -2,6 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OzonApiClient, type OzonCredentials } from './ozon-api.client';
 import { OZON_STOCK_CHUNK, type StockPair } from './ozon-bulk-stock-rules';
 
+/** Сколько sku спрашиваем за раз при чтении остатков по складам. */
+const SKU_BATCH = 500;
+
 /**
  * Единственное место, где остатки уходят в Ozon.
  *
@@ -19,6 +22,15 @@ export interface StockUpdateResult {
   updated: boolean;
   errorCode: string | null;
   errorMessage: string | null;
+}
+
+interface RawWarehouseStocksResponse {
+  result?: {
+    sku?: number;
+    present?: number;
+    reserved?: number;
+    warehouse_id?: number;
+  }[];
 }
 
 interface RawStocksResponse {
@@ -64,6 +76,38 @@ export class OzonStockService {
       }
     }
     return results;
+  }
+
+  /**
+   * Текущие остатки по складам.
+   *
+   * Метод опознаёт товар числовым sku, а не артикулом — поэтому вызывающий
+   * сначала сопоставляет одно с другим. Ключ результата «sku@склад»:
+   * у одного товара на трёх складах три разных остатка, и складывать их
+   * нельзя, хотя список товаров в каталоге показывает именно сумму.
+   *
+   * Ошибку не глотаем: без этих чисел режим «Добавить» считать не из чего,
+   * и молчаливый ноль превратился бы в обнуление склада.
+   */
+  async stocksByWarehouse(
+    creds: OzonCredentials,
+    skus: string[],
+  ): Promise<Map<string, number>> {
+    const map = new Map<string, number>();
+    for (let i = 0; i < skus.length; i += SKU_BATCH) {
+      const res = await this.api.post<RawWarehouseStocksResponse>(
+        creds,
+        '/v1/product/info/stocks-by-warehouse/fbs',
+        { sku: skus.slice(i, i + SKU_BATCH) },
+      );
+      for (const row of res.result ?? []) {
+        if (typeof row.sku !== 'number' || typeof row.warehouse_id !== 'number') {
+          continue;
+        }
+        map.set(`${row.sku}@${row.warehouse_id}`, row.present ?? 0);
+      }
+    }
+    return map;
   }
 
   private async sendChunk(
