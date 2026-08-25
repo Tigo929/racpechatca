@@ -57,19 +57,28 @@ const CHUNK = 5;
 const MAX_CHUNKS_PER_TICK = 200;
 
 /**
- * Пауза между обработанными файлами.
+ * Какую долю от только что проделанной работы отдать остальным.
  *
  * У сервера одно ядро, и отрисовка занимает его целиком. Замерено на живом
- * проде во время генерации: /health не отвечал две минуты подряд, при том
+ * проде: во время генерации /health не отвечал две минуты подряд, при том
  * что бэкенд не падал — аптайм рос непрерывно, — а сразу после отвечал за
- * 176 мс. То есть на время сборки пачки вставала вся CRM, а не только
- * генератор.
+ * 176 мс. То есть вставала вся CRM, а не только генератор.
  *
- * Шестьдесят миллисекунд после каждой карточки оставляют примерно десятую
- * часть процессора остальным запросам. На пачке это добавляет секунды, зато
- * ей можно пользоваться, пока пачка считается.
+ * Пауза именно пропорциональная, а не фиксированная. Сначала стояло 60 мс
+ * после каждого рендера, и это было разумно, пока рендер занимал сотни
+ * миллисекунд. После оптимизаций он занимает в среднем 64 мс — и замер
+ * показал, что паузы стали половиной всего времени пачки: 10,1 секунды
+ * пауз против 10,8 секунды полезной работы на 42 дизайнах.
+ *
+ * Доля же держит соотношение постоянным: сколько бы ни занял рендер,
+ * остальным достаётся примерно пятая часть процессора, а быстрым рендерам
+ * не приписывается фиксированный оверхед.
  */
-const BREATHE_MS = 60;
+const BREATHE_SHARE = 0.2;
+
+/** Пределы паузы: меньше 8 мс бессмысленно, больше 150 мс уже расточительно. */
+const BREATHE_MIN_MS = 8;
+const BREATHE_MAX_MS = 120;
 
 @Injectable()
 export class ImageCardProcessorService
@@ -117,8 +126,12 @@ export class ImageCardProcessorService
    * тут не поможет — нужна настоящая пауза, за которую успеет отработать
    * входящий запрос.
    */
-  private breathe(): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, BREATHE_MS));
+  private breathe(workMs: number): Promise<void> {
+    const pause = Math.min(
+      BREATHE_MAX_MS,
+      Math.max(BREATHE_MIN_MS, Math.round(workMs * BREATHE_SHARE)),
+    );
+    return new Promise((resolve) => setTimeout(resolve, pause));
   }
 
   /** Один проход очереди. Параллельных проходов не допускаем. */
@@ -135,8 +148,9 @@ export class ImageCardProcessorService
         });
         if (pending.length === 0) break;
         for (const source of pending) {
+          const startedAt = Date.now();
           await this.processOne(source.id);
-          await this.breathe();
+          await this.breathe(Date.now() - startedAt);
         }
       }
 
@@ -198,6 +212,7 @@ export class ImageCardProcessorService
 
     for (const card of cards) {
       try {
+        const startedAt = Date.now();
         const snapshot = parseSnapshot(card.templateSnapshot);
         if (!snapshot) throw new Error('У карточки нет снимка шаблона');
 
@@ -227,7 +242,7 @@ export class ImageCardProcessorService
           where: { id: card.id },
           data: { previewFile: path.basename(previewPath) },
         });
-        await this.breathe();
+        await this.breathe(Date.now() - startedAt);
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'Неизвестная ошибка';
@@ -331,7 +346,7 @@ export class ImageCardProcessorService
         this.logger.log(
           `Финал ${filename}: ${(full.length / 1024).toFixed(0)} КБ за ${Date.now() - startedAt} мс`,
         );
-        await this.breathe();
+        await this.breathe(Date.now() - startedAt);
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'Неизвестная ошибка';
