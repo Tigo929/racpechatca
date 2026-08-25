@@ -169,6 +169,9 @@ StatusHistory
 OrderAssignment
 UserRateHistory
 ExpenseOrder
+OzonWarehouse
+OzonStockBulkOperation
+OzonStockBulkOperationItem
 ```
 
 Main enums:
@@ -502,6 +505,19 @@ POST   /marketplace/ozon/card-batches/:id/cards/bulk
 POST   /marketplace/ozon/card-batches/sources/:sourceId/retry
 GET    /marketplace/ozon/card-batches/sources/:sourceId/raster
 DELETE /marketplace/ozon/card-batches/sources/:sourceId
+```
+
+Ozon warehouses and bulk stock updates (ADMIN + MARKETPLACE_CLIENT):
+
+```text
+GET    /marketplace/ozon/:accountId/warehouses
+POST   /marketplace/ozon/:accountId/warehouses/sync
+
+POST   /marketplace/ozon/:accountId/stocks/bulk/preview
+POST   /marketplace/ozon/:accountId/stocks/bulk
+GET    /marketplace/ozon/:accountId/stocks/bulk/:operationId
+POST   /marketplace/ozon/:accountId/stocks/bulk/:operationId/retry-errors
+GET    /marketplace/ozon/:accountId/stocks/history
 ```
 
 ## Frontend Map
@@ -930,6 +946,62 @@ backup -> git pull -> build -> migrate -> docker compose up -d -> health check
   версии; новая версия создаётся отдельной записью (`orderId + version`).
 - Статусы версии не дублируют `EnumStatus`: `APPROVAL_SENT` говорит про заказ,
   `EnumApprovalStatus` — про конкретный макет.
+
+### 2026-08-25
+
+- Added bulk stock updates for Ozon across several warehouses
+  (`crm-new/src/marketplace/ozon/ozon-bulk-stock*`, `ozon-stock.service.ts`,
+  `ozon-warehouse*`). Entry point is the product list in «Мои товары»:
+  select products, pick warehouses, review the summary, confirm.
+- New tables `OzonWarehouse`, `OzonStockBulkOperation`,
+  `OzonStockBulkOperationItem`; new enums `EnumBulkStockMode`,
+  `EnumBulkStockStatus`, `EnumBulkStockItemStatus`.
+- Warehouses are now stored locally instead of being fetched on every modal
+  open. The previous route called `checkConnection`, which also pulled the
+  product list — two Ozon requests for a directory that changes once in months.
+- New background worker `OzonBulkStockProcessorService`: a table queue with
+  an interval tick, same pattern as image cards and GulianOutbox. No Redis.
+- No new nginx prefixes: everything lives under the existing `marketplace` one.
+
+### Ozon Bulk Stock
+
+Что важно знать про модуль:
+
+- **Ozon разрешает трогать одну пару «товар × склад» не чаще раза в тридцать
+  секунд.** Это самое жёсткое ограничение задачи, и именно оно, а не объём,
+  делает отправку фоновой: у каждой пары есть `lastSentAt`, и обработчик
+  берёт только те, чьё окно истекло. Без этого кнопка «повторить только
+  ошибки» гарантированно получала бы отказ второй раз подряд.
+- **За один запрос — сто пар**, причём считаются именно пары: один товар
+  на трёх складах это три позиции, а не одна.
+- **В одном запросе — один склад.** Ozon отвечает по `offer_id` и склад
+  не называет; смешанная пачка сделала бы отказ неоднозначным у товара
+  с двумя складами, и в историю попала бы неправда о том, где остаток
+  изменился. Плата — лишний запрос-другой.
+- **Молчание не считается успехом.** Товар, о котором площадка ничего
+  не сказала, уходит в ошибки со статусом `NO_RESULT`.
+- **Режим «Добавить» считается перед самой отправкой**, а не при
+  подтверждении: между ними проходят секунды, за которые товар могут
+  купить. Атомарного increment у Ozon нет вовсе. Пара без известного
+  текущего остатка уходит в ошибку — прибавить к неизвестному можно
+  только выдумав ноль, а это обнуление склада.
+- **Текущие остатки по складам** читаются методом
+  `/v1/product/info/stocks-by-warehouse/fbs`, и он опознаёт товар числовым
+  sku, а не артикулом. Каталог сопоставляет одно с другим по выбранным
+  товарам. Остатки в списке «Мои товары» — это сумма по всем складам,
+  и для этой задачи она непригодна.
+- **Деловая ошибка не повторяется автоматически** (товар не найден, склад
+  недоступен), временная — до трёх попыток. Решение о повторе деловых
+  ошибок принимает человек кнопкой.
+- **Порог усиленного подтверждения — 500 пар**, это наше число, а не лимит
+  площадки: оно про цену ошибки. Обнуление предупреждается отдельно при
+  любом размере операции.
+- **Склады не удаляются, а помечаются `archivedAt`**: на них ссылается
+  история операций, и удалённый в кабинете склад нужно уметь назвать
+  по имени через полгода.
+- **Доступность склада считается чёрным списком статусов, а не белым.**
+  Незнакомый статус считаем рабочим: Ozon добавляет статусы молча, и белый
+  список означал бы, что однажды утром остатки не проставить нигде.
 
 ## Update Rule
 
