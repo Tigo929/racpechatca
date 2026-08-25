@@ -1,7 +1,6 @@
 import { EnumStatus } from 'src/generated/prisma/enums';
 import {
   daysUntilDeadline,
-  deadlineMarker,
   escapeHtml,
   formatDeadlineLabel,
   mentionFor,
@@ -64,19 +63,17 @@ export interface ReadyOrder {
   items: { formatPaper: string; quantity: number }[];
 }
 
-/** Незакрытая задача сотрудника — попадает в его блок плана дня. */
-export interface PlanTask {
-  title: string;
-  deadline: Date | null;
-  rewardAmount: number;
-}
-
+/**
+ * План дня — только про заказы.
+ *
+ * Задачи отсюда убраны по решению владельца: у них есть своя ежедневная
+ * рассылка, и в плане они дублировали её, растягивая сообщение вдвое.
+ * План должен отвечать на один вопрос — что сегодня делать с заказами.
+ */
 export interface PlanGroup {
   executor: { username: string; telegramUsername: string | null };
   inWork: PlanOrder[];
   ready: ReadyOrder[];
-  /** Незакрытые задачи сотрудника. Необязательно — старые вызовы без задач. */
-  tasks?: PlanTask[];
 }
 
 /** «Старший дня» по отгрузкам — кого тегаем в блоке отгрузок. */
@@ -143,16 +140,12 @@ function inWorkTail(order: PlanOrder, now: Date): string {
 /** Разделитель между блоками — чтобы сообщение не читалось сплошным текстом. */
 const DIVIDER = '━━━━━━━━━━━━━━━━━━';
 
-/**
- * Расшифровка значков. Внизу сообщения: читающему не нужно держать в голове,
- * что означает каждый кружок.
+/*
+ * Расшифровки значков внизу сообщения больше нет — убрана по решению
+ * владельца. Четыре строки легенды повторялись в каждом плане и занимали
+ * места больше, чем сам план; значки за месяц запоминаются, а инструкция
+ * к ним читается один раз.
  */
-export const LEGEND = [
-  'ℹ️ <b>Что означают значки</b>',
-  '🔥 срочный · 🔴 просрочен · 🟠 сегодня · 🟡 завтра · 🟢 есть время',
-  '📦 самовывоз — клиент заберёт сам · 🚚 отгрузить в ПВЗ',
-  '📋 задача · ⚪ задача без срока · сумма рядом — оплата за выполнение',
-].join('\n');
 
 /**
  * Готовый к выдаче заказ (самовывоз). Способ доставки не пишем — значок 📦
@@ -160,19 +153,6 @@ export const LEGEND = [
  */
 function readyLine(order: ReadyOrder): string {
   return `📦 <code>${escapeHtml(order.numberOrder)}</code> · ${summarizeItems(order.items)}`;
-}
-
-/**
- * Строка задачи: срок и цена, если задача оплачиваемая. Цену показываем —
- * это мотивирует закрыть задачу и объясняет, откуда возьмутся деньги.
- */
-function taskLine(task: PlanTask, now: Date): string {
-  const marker = task.deadline ? deadlineMarker(task.deadline, now) : '⚪';
-  const due = task.deadline
-    ? ` — ${formatDeadlineLabel(task.deadline, now)}`
-    : '';
-  const reward = task.rewardAmount > 0 ? ` · ${task.rewardAmount} ₽` : '';
-  return `${marker} ${escapeHtml(task.title)}${due}${reward}`;
 }
 
 /** Строка заказа в блоке отгрузок: 🚚 номер · состав — куда везти. */
@@ -264,14 +244,8 @@ export function buildDailyPlanMessage(
       const readyForPickup = group.ready.filter(
         (o) => !needsShipping(o.deliveryMethod),
       );
-      const tasks = group.tasks ?? [];
       // Показывать нечего — исполнителя в плане не упоминаем.
-      if (
-        group.inWork.length === 0 &&
-        readyForPickup.length === 0 &&
-        tasks.length === 0
-      )
-        return '';
+      if (group.inWork.length === 0 && readyForPickup.length === 0) return '';
 
       // Пустая строка после имени и между подсекциями — иначе блок исполнителя
       // читается сплошной простынёй.
@@ -295,14 +269,6 @@ export function buildDailyPlanMessage(
         }
       }
 
-      // Задачи висят на сотруднике, пока он их не закроет, — напоминаем.
-      if (tasks.length > 0) {
-        lines.push('', `📋 <b>Задачи (${tasks.length})</b>`);
-        for (const task of tasks) {
-          lines.push(taskLine(task, now));
-        }
-      }
-
       return lines.join('\n');
     })
     .filter(Boolean);
@@ -322,7 +288,6 @@ export function buildDailyPlanMessage(
     ...blocks,
     ...(shipmentBlock ? [shipmentBlock] : []),
     ...(unassigned ? [unassigned] : []),
-    LEGEND,
   ];
 
   return [header, ...sections.flatMap((s) => [DIVIDER, s])].join('\n\n');

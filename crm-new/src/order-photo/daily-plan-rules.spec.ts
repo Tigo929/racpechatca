@@ -76,13 +76,11 @@ describe('buildDailyPlanMessage', () => {
       { numberOrder: 'R-SHIP', deliveryMethod: 'YANDEX_PVZ', items: [] },
       { numberOrder: 'R-PICKUP', deliveryMethod: 'PICKUP', items: [] },
     ],
-    tasks: [],
   };
   const lesha = {
     executor: { username: 'lesha', telegramUsername: null },
     inWork: [today],
     ready: [],
-    tasks: [],
   };
 
   it('исполнитель с самой горящей задачей идёт первым, внутри — срочное сверху', () => {
@@ -118,7 +116,6 @@ describe('buildDailyPlanMessage', () => {
       executor: { username: 'ready_guy', telegramUsername: null },
       inWork: [],
       ready: [{ numberOrder: 'R-ONLY', deliveryMethod: 'PICKUP', items: [] }],
-      tasks: [],
     };
     const msg = buildDailyPlanMessage([readyOnly], NOW, 0);
     expect(msg).toContain('ready_guy');
@@ -130,7 +127,6 @@ describe('buildDailyPlanMessage', () => {
       executor: { username: 'ship_guy', telegramUsername: null },
       inWork: [],
       ready: [{ numberOrder: 'R-S', deliveryMethod: 'YANDEX_PVZ', items: [] }],
-      tasks: [],
     };
     const msg = buildDailyPlanMessage([shipOnly], NOW, 0, null);
     // Имя не мелькает отдельным пустым блоком, а заказ виден в «Отгрузках».
@@ -179,49 +175,25 @@ describe('buildDailyPlanMessage', () => {
         executor: { username: 'p', telegramUsername: null },
         inWork: [],
         ready: [{ numberOrder: 'R-PU', deliveryMethod: 'PICKUP', items: [] }],
-        tasks: [],
       };
       const msg = buildDailyPlanMessage([pickupOnly], NOW, 0, lead);
       expect(msg).not.toContain('ОТГРУЗКИ');
     });
   });
 
-  describe('задачи сотрудника', () => {
-    const withTasks = {
-      executor: { username: 'ivan', telegramUsername: null },
-      inWork: [],
-      ready: [],
-      tasks: [
-        { title: 'Убрать склад', deadline: null, rewardAmount: 0 },
-        {
-          title: 'Свести отчёт',
-          deadline: new Date('2026-07-24T20:00:00Z'),
-          rewardAmount: 500,
-        },
-      ],
-    };
-
-    it('показывает задачи и цену там, где она есть', () => {
-      const msg = buildDailyPlanMessage([withTasks], NOW, 0);
-      expect(msg).toContain('Задачи (2)');
-      expect(msg).toContain('Убрать склад');
-      expect(msg).toContain('Свести отчёт');
-      // Оплата видна только у платной задачи: у бесплатной суммы в строке нет.
-      expect(msg).toContain('500 ₽');
-      const freeLine = msg
-        .split('\n')
-        .find((l) => l.includes('Убрать склад'));
-      expect(freeLine).not.toContain('₽');
+  describe('в плане только заказы', () => {
+    // Убрано по решению владельца: задачи ходят своей рассылкой, а легенда
+    // повторялась в каждом сообщении и была длиннее самого плана.
+    it('задач в плане нет', () => {
+      const msg = buildDailyPlanMessage([maksim, lesha], NOW, 0);
+      expect(msg).not.toContain('Задачи');
+      expect(msg).not.toContain('📋');
     });
 
-    it('сотрудник без заказов, но с задачей, в плане есть', () => {
-      const msg = buildDailyPlanMessage([withTasks], NOW, 0);
-      expect(msg).toContain('ivan');
-    });
-
-    it('без задач блока «Задачи» нет', () => {
-      const msg = buildDailyPlanMessage([maksim], NOW, 0);
-      expect(msg).not.toContain('Задачи (');
+    it('расшифровки значков внизу нет', () => {
+      const msg = buildDailyPlanMessage([maksim, lesha], NOW, 0);
+      expect(msg).not.toContain('Что означают значки');
+      expect(msg).not.toContain('срочный ·');
     });
   });
 });
