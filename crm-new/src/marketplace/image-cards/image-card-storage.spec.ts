@@ -100,10 +100,14 @@ describe('растеризация PDF без Poppler', () => {
     ).rejects.toBeInstanceOf(PdfRasterUnavailableError);
 
     // Сообщение уходит в карточку исходника и должно объяснять, что делать.
+    // `then(() => null)` нужен для типов: метод возвращает void, и без него
+    // результат получается `void | Error`, у которого нет `message`.
     const error = await service
       .rasterizeFirstPage('/нет/файла.pdf', '/нет/выхода.png')
+      .then(() => null)
       .catch((e: Error) => e);
-    expect(error.message).toContain('poppler-utils');
-    expect(error.message).toContain('PNG');
+    expect(error).toBeInstanceOf(Error);
+    expect(error?.message).toContain('poppler-utils');
+    expect(error?.message).toContain('PNG');
   });
 });
