@@ -255,12 +255,23 @@ export class ImageCardProcessorService
    * не считается: иначе в выгрузке окажутся файлы, которые Ozon отклонит.
    */
   private async renderPendingFinals(): Promise<number> {
+    /*
+     * Условия по состоянию пачки здесь намеренно нет.
+     *
+     * Раньше стояло `batch: { status: 'FINALIZING' }`, и это создавало
+     * состояние, из которого не было выхода: карточку одобрили кнопкой в
+     * сетке — она APPROVED и без файла, а пачка при этом в «проверке», а не
+     * в «финализации». Такую карточку не подхватывал никто и никогда, и
+     * панель вечно показывала «Собирается: 1», хотя не собиралось ничего.
+     *
+     * Теперь признак один и он же наблюдаемый: карточка одобрена, файла нет
+     * — значит его надо собрать. Застрять здесь больше негде.
+     */
     const cards = await this.prisma.imageCardGenerated.findMany({
       where: {
         status: 'APPROVED',
         finalFile: null,
         previewFile: { not: null },
-        batch: { status: 'FINALIZING' },
       },
       orderBy: { createdAt: 'asc' },
       take: CHUNK,
@@ -287,6 +298,7 @@ export class ImageCardProcessorService
           output: 'jpeg',
         });
 
+        const startedAt = Date.now();
         const filename = cardFileName(card.source.baseName, card.shirtColor);
         const dir = await this.storage.ensureAssetDir(
           card.batchId,
@@ -314,6 +326,11 @@ export class ImageCardProcessorService
             note: null,
           },
         });
+        // Замер в журнал: если сборка снова покажется медленной, разбираться
+        // будем по числам, а не по ощущениям.
+        this.logger.log(
+          `Финал ${filename}: ${(full.length / 1024).toFixed(0)} КБ за ${Date.now() - startedAt} мс`,
+        );
         await this.breathe();
       } catch (error) {
         const message =
