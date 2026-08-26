@@ -39,6 +39,9 @@ const SIZE_LABELS: Record<EnumTshirtSize, string> = {
 };
 
 /** Размер печати по умолчанию для только что загруженного принта: 28 × 35 см. */
+/** Насколько широким ложится только что загруженный принт — доля зоны печати. */
+const DEFAULT_VIEW_WIDTH = 0.8;
+
 const DEFAULT_WIDTH_MM = 280;
 
 const approvalInclude = {
@@ -156,6 +159,20 @@ export class ApprovalService {
     const ratio = saved.sourceHeight / saved.sourceWidth;
     const widthMm = previous?.widthMm ?? DEFAULT_WIDTH_MM;
 
+    /*
+     * Экранный размер задаём сразу, а не оставляем нулём.
+     *
+     * Ноль означает «считать размер от миллиметров» — так открываются старые
+     * согласования. У нового принта это дало бы разнобой: до первого движения
+     * мышкой ввод сантиметров дёргал бы картинку, а после — перестал. Ставим
+     * по ширине зоны печати с запасом и в пропорциях исходника.
+     */
+    const viewWidth = previous?.viewWidth || DEFAULT_VIEW_WIDTH;
+    const areaRatio =
+      template.printAreaWidth && template.printAreaHeight
+        ? template.printAreaWidth / template.printAreaHeight
+        : 1;
+
     const next: ApprovalSideState = {
       templateKey: template.key,
       printFile: saved.filename,
@@ -164,6 +181,10 @@ export class ApprovalService {
       printHeightPx: saved.sourceHeight,
       widthMm,
       heightMm: Math.round(widthMm * ratio),
+      viewWidth,
+      // Высота в долях своей оси: доли по ширине и высоте считаются от разных
+      // сторон зоны, поэтому пропорция исходника переводится через их отношение.
+      viewHeight: previous?.viewHeight || viewWidth * ratio * areaRatio,
       lockRatio: previous?.lockRatio ?? true,
       x: previous?.x ?? 0.5,
       y: previous?.y ?? 0.5,

@@ -26,12 +26,43 @@ export const MIN_MM = 20;
 export const MAX_MM = 600;
 
 /**
+ * Пределы экранного размера в долях зоны печати. Снизу — чтобы принт не
+ * схлопнулся в точку и его можно было снова поймать мышью; сверху — чтобы
+ * не уехал за пределы фотографии совсем.
+ */
+const MIN_VIEW = 0.05;
+const MAX_VIEW = 3;
+
+function clampView(value: number): number {
+  return clamp(value, MIN_VIEW, MAX_VIEW);
+}
+
+/**
+ * Текущая экранная доля стороны. У согласований, сохранённых до разделения
+ * размеров, её нет — тогда выводим из миллиметров, чтобы первый же жест
+ * продолжил с того размера, который человек видит на экране.
+ */
+function currentView(
+  state: ApprovalSideState,
+  template: MockupTemplate,
+): { width: number; height: number } {
+  if (state.viewWidth && state.viewHeight) {
+    return { width: state.viewWidth, height: state.viewHeight };
+  }
+  const scale = pxPerMm(template);
+  return {
+    width: (state.widthMm * scale) / (template.printAreaWidth || 1),
+    height: (state.heightMm * scale) / (template.printAreaHeight || 1),
+  };
+}
+
+/**
  * Холст согласования: реальная фотография футболки, поверх неё принт.
  *
  * Жесты живут в общем TransformStage — он же используется генератором
- * карточек Ozon. Здесь остаётся только своя геометрия: масштаб задают
- * сантиметры, а не доля области, поэтому изменение размера превращается
- * в новую физическую ширину, а не в множитель.
+ * карточек Ozon. Здесь остаётся только своя геометрия: мышь меняет экранную
+ * долю зоны печати, а физический размер в миллиметрах задают отдельно и
+ * только для отчёта.
  */
 export function PrintStage({
   template,
@@ -93,12 +124,19 @@ export function PrintStage({
         onScale={(factor) => {
           const from = start.current;
           if (!from) return;
-          const ratio = from.heightMm / from.widthMm;
-          const widthMm = clamp(Math.round(from.widthMm * factor), MIN_MM, MAX_MM);
+          /*
+           * Тянем картинку, а не сантиметры.
+           *
+           * Раньше жест пересчитывал widthMm, и физический размер полз от
+           * каждого движения мыши: разложил макет красиво — производству
+           * ушёл случайный размер. Теперь миллиметры вводят руками и только
+           * для отчёта, а мышь меняет экранную долю зоны печати.
+           */
+          const base = currentView(from, template);
           onChange({
             ...from,
-            widthMm,
-            heightMm: Math.max(MIN_MM, Math.round(widthMm * ratio)),
+            viewWidth: clampView(base.width * factor),
+            viewHeight: clampView(base.height * factor),
           });
         }}
         onGestureEnd={() => {

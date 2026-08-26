@@ -470,6 +470,14 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
 
               {side && (
                 <>
+                  {/* Размер печати — запись для производства, а не масштаб
+                      картинки: макет раскладывают мышкой, а эти сантиметры
+                      уходят в отчёт и исполнителю. Раньше поля дёргали принт
+                      на макете, и одно действие всё время портило другое. */}
+                  <p className="text-xs text-gray-500">
+                    Размер печати для производства. На макет не влияет —
+                    картинку двигайте и тяните мышкой.
+                  </p>
                   <div className="grid grid-cols-2 gap-2">
                     <CmField
                       label="Ширина, см"
@@ -512,11 +520,11 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
                       }}
                       className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
                     />
-                    Сохранять пропорции
+                    Сохранять пропорции в сантиметрах
                   </label>
                   {!side.lockRatio && (
                     <p className="text-xs text-amber-700">
-                      Пропорции сняты — принт можно растянуть по одной оси.
+                      Пропорции сняты — ширину и высоту можно указать независимо.
                     </p>
                   )}
 

@@ -738,6 +738,14 @@ export interface ApprovalSideState {
   printHeightPx: number;
   widthMm: number;
   heightMm: number;
+  /**
+   * Экранный размер принта — доля зоны печати. Картинку тянут мышкой, а
+   * widthMm/heightMm остаются записью для отчёта: раньше эти два действия
+   * портили друг друга. 0 — согласование сохранено до правки, размер тогда
+   * берётся из миллиметров (см. printRect).
+   */
+  viewWidth: number;
+  viewHeight: number;
   lockRatio: boolean;
   x: number;
   y: number;

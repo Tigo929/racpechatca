@@ -35,6 +35,11 @@ function side(overrides: Partial<ApprovalSideState> = {}): ApprovalSideState {
     printHeightPx: 2400,
     widthMm: 280,
     heightMm: 350,
+    // 0 — «размер мышкой ещё не задан», как у согласований до разделения
+    // экранного и физического размера. Тесты, которым важен экранный размер,
+    // задают viewWidth/viewHeight явно.
+    viewWidth: 0,
+    viewHeight: 0,
     lockRatio: true,
     x: 0.5,
     y: 0.5,
@@ -176,5 +181,44 @@ describe('чтение состояния из базы', () => {
       parseSides({ FRONT: { templateKey: 'k', lockRatio: false } }).FRONT
         ?.lockRatio,
     ).toBe(false);
+  });
+});
+
+describe('размер на макете и размер для отчёта разведены', () => {
+  /*
+   * Раньше это была одна величина: ввёл «28 см» — картинка на макете прыгнула,
+   * потянул за угол — поехали сантиметры, уходящие производству. Владелец
+   * раскладывает макет глазом, а размер называет отдельно, и связь мешала
+   * обоим действиям.
+   */
+  it('миллиметры не двигают картинку, если экранный размер задан', () => {
+    const withView = side({ viewWidth: 0.5, viewHeight: 0.4 });
+    const before = printRect(withView, TEMPLATE);
+
+    // Меняем только физический размер — на макете не должно измениться ничего.
+    const after = printRect({ ...withView, widthMm: 100, heightMm: 120 }, TEMPLATE);
+
+    expect(after).toEqual(before);
+  });
+
+  it('экранный размер считается долей зоны печати', () => {
+    const rect = printRect(side({ viewWidth: 0.5, viewHeight: 0.25 }), TEMPLATE);
+    expect(rect.width).toBe(TEMPLATE.printAreaWidth * 0.5);
+    expect(rect.height).toBe(TEMPLATE.printAreaHeight * 0.25);
+  });
+
+  it('без экранного размера считаем по миллиметрам — старые согласования', () => {
+    // Ноль означает «сохранено до правки»: такие макеты обязаны выглядеть
+    // ровно как раньше, иначе согласованное с клиентом поедет задним числом.
+    const rect = printRect(side({ viewWidth: 0, viewHeight: 0 }), TEMPLATE);
+    expect(rect.width).toBe(280 * pxPerMm(TEMPLATE));
+    expect(rect.height).toBe(350 * pxPerMm(TEMPLATE));
+  });
+
+  it('DPI по-прежнему считается от миллиметров — это про качество печати', () => {
+    // Экранный размер к разрешению отношения не имеет: печатают сантиметры.
+    const a = estimateDpi(side({ viewWidth: 0.2, viewHeight: 0.2 }));
+    const b = estimateDpi(side({ viewWidth: 0.9, viewHeight: 0.9 }));
+    expect(a).toBe(b);
   });
 });

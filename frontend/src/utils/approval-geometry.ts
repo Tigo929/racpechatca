@@ -55,9 +55,20 @@ export function printRect(
   state: ApprovalSideState,
   template: MockupTemplate,
 ): RectPx {
+  /*
+   * Размер берём из доли зоны печати. Миллиметры сюда больше не входят: их
+   * задают для отчёта, и раньше ввод «28 см» дёргал картинку на макете.
+   *
+   * Ноль — согласование сохранено до этой правки: считаем по-старому, от
+   * миллиметров, чтобы прежние макеты выглядели как выглядели.
+   */
   const scale = pxPerMm(template);
-  const width = state.widthMm * scale;
-  const height = state.heightMm * scale;
+  const width = state.viewWidth
+    ? state.viewWidth * template.printAreaWidth
+    : state.widthMm * scale;
+  const height = state.viewHeight
+    ? state.viewHeight * template.printAreaHeight
+    : state.heightMm * scale;
   const centerX = template.printAreaX + state.x * template.printAreaWidth;
   const centerY = template.printAreaY + state.y * template.printAreaHeight;
   return { left: centerX - width / 2, top: centerY - height / 2, width, height };
