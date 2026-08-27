@@ -17,6 +17,7 @@ import {
   PRINT_LOCATION_LABELS,
 } from '../../constants';
 import type { AppUser, CreateOrderDto } from '../../types/index';
+import { FREE_PRESETS, FREE_PRICE_HINT } from './freePresets';
 
 const photoItemSchema = z.object({
   isFreePrice: z.boolean().optional(),
@@ -916,6 +917,26 @@ export function CreateOrderForm({ onClose }: Props) {
                     <div>
                       <label className={labelCls}>Название</label>
                       <input className={inputCls} placeholder="Кружка, баннер…" {...register(`tshirtItems.${idx}.name`)} />
+                      {/* Печать на вещи заказчика — самый частый случай свободной
+                          позиции. Кнопки ставят название одинаково от заказа
+                          к заказу: по нему потом ищут и считают такие работы. */}
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {FREE_PRESETS.map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            onClick={() =>
+                              setValue(`tshirtItems.${idx}.name`, preset, {
+                                shouldValidate: true,
+                                shouldDirty: true,
+                              })
+                            }
+                            className="rounded-md bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 hover:bg-violet-100"
+                          >
+                            {preset}
+                          </button>
+                        ))}
+                      </div>
                       {errors.tshirtItems?.[idx]?.name && (
                         <p className={errorCls}>{errors.tshirtItems[idx]?.name?.message}</p>
                       )}
@@ -927,6 +948,9 @@ export function CreateOrderForm({ onClose }: Props) {
                     <div>
                       <label className={labelCls}>Цена ₽ (итог)</label>
                       <input type="number" min={0} className={inputCls} {...register(`tshirtItems.${idx}.price`)} />
+                      {/* Поле выглядит как цена за штуку, а это итог: при
+                          количестве 3 и цене 900 в заказ уйдёт 900, не 2700. */}
+                      <p className="mt-1 text-xs text-gray-500">{FREE_PRICE_HINT}</p>
                     </div>
                   </div>
                 ) : (

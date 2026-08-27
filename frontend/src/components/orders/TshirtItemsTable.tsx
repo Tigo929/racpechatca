@@ -7,6 +7,7 @@ import { partnerSettingsApi } from '../../api/partnerSettings';
 import { computePositionSettlement } from '../../utils/settlement';
 import { useAuth } from '../../context/useAuth';
 import { usePersistentState } from '../../hooks/usePersistentState';
+import { FREE_PRESETS, FREE_PRICE_HINT } from './freePresets';
 import {
   TSHIRT_SIZE_LABELS,
   PRINT_LOCATION_LABELS,
@@ -100,11 +101,6 @@ function TshirtRows({ state, onChange }: { state: EditState; onChange: (s: EditS
  * набирать название руками каждый раз значит рано или поздно написать его
  * иначе — а по нему потом искать в отчётах.
  */
-const FREE_PRESETS = [
-  'Нанесение принта на изделие заказчика',
-  'Печать на изделии заказчика',
-];
-
 function FreeRows({ state, onChange }: { state: FreeState; onChange: (s: FreeState) => void }) {
   return (
     <>
@@ -134,7 +130,7 @@ function FreeRows({ state, onChange }: { state: FreeState; onChange: (s: FreeSta
         {/* Подпись не украшение: поле выглядит как цена за штуку, а это
             итог. При количестве 3 и цене 900 в заказ уйдёт 900, не 2700. */}
         <p className="mt-1 text-xs text-gray-500">
-          Договорная сумма за всю позицию — на количество не умножается.
+          {FREE_PRICE_HINT}
         </p>
       </Row>
     </>
