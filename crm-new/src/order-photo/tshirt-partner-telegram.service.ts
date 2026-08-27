@@ -20,6 +20,7 @@ import { buildPartnerCaption, buildPartnerButtons } from 'src/order-photo/partne
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 import { settleOrder, settlePosition } from 'src/partner/partner-settlement';
 import { getTechSpecPaths } from 'src/partner/tech-spec-paths';
+import { settlementPositions } from 'src/partner/settlement-positions';
 
 const PRINT_LOCATION_LABELS: Record<EnumPrintLocation, string> = {
   FRONT: 'Грудь',
@@ -287,14 +288,7 @@ export class TshirtPartnerTelegramService {
   ): Promise<string> {
     const settings = await this.partnerSettings.get();
     const settlement = settleOrder(
-      order.tshirtItems.map((i) => ({
-        pricePosition: i.pricePosition,
-        designCost: i.designCost,
-        quantity: i.quantity,
-        thermalCost: i.thermalCost,
-        blankCost: i.blankCost,
-        clientItem: i.clientItem,
-      })),
+      settlementPositions(order),
       settings.partnerRateBasisPoints,
     );
 

@@ -9,6 +9,7 @@ import {
   sheetCostKopecks,
 } from 'src/order-photo/photo-material';
 import { settleOrder } from 'src/partner/partner-settlement';
+import { settlementPositions } from 'src/partner/settlement-positions';
 
 const MONTH_LABELS = [
   'Январь',
@@ -92,7 +93,13 @@ type OrderRow = {
   deliveryCost: number | null;
   deliveryMethod: string;
   productCategory: string;
-  items: { formatPaper: string; quantity: number }[];
+  items: {
+    formatPaper: string;
+    quantity: number;
+    pricePosition: number;
+    printOnClientItem: boolean;
+    thermalCost: number;
+  }[];
   tshirtItems: {
     pricePosition: number;
     quantity: number;
@@ -196,7 +203,10 @@ function addOrder(b: PnlRaw, order: OrderRow, s: CostSettings): void {
       goodsRevenue - Math.ceil(kopecks / 100) - salary + deliveryProfit;
   } else if (order.productCategory === 'TSHIRT') {
     // Партнёру уходит стоимость материалов плюс его доля от маржи.
-    const reward = settleOrder(order.tshirtItems, s.partnerRateBasisPoints).reward;
+    const reward = settleOrder(
+      settlementPositions(order),
+      s.partnerRateBasisPoints,
+    ).reward;
     b.tshirtCount += 1;
     b.tshirtRevenue += total;
     b.tshirtContractorCost += reward;
@@ -360,7 +370,17 @@ export class ReportsService {
           productCategory: true,
           // Позиции нужны для себестоимости: бумага по формату, партнёр по
           // футболкам, подрядчик по холстам. Без них считать нечем.
-          items: { select: { formatPaper: true, quantity: true } },
+          items: {
+            select: {
+              formatPaper: true,
+              quantity: true,
+              // Печать на изделии заказчика — тоже работа партнёра, и её
+              // вознаграждение входит в себестоимость футболочного заказа.
+              pricePosition: true,
+              printOnClientItem: true,
+              thermalCost: true,
+            },
+          },
           tshirtItems: {
             select: {
               pricePosition: true,

@@ -39,8 +39,14 @@ const EMPTY: EditState = {
   quantity: '1', price: '500', clientItem: false, designUrl: '',
 };
 
-type FreeState = { name: string; quantity: string; price: string };
-const EMPTY_FREE: FreeState = { name: '', quantity: '1', price: '0' };
+type FreeState = {
+  name: string;
+  quantity: string;
+  price: string;
+  /** Печать на изделии заказчика — включает позицию в расчёт с партнёром. */
+  printOnClientItem: boolean;
+};
+const EMPTY_FREE: FreeState = { name: '', quantity: '1', price: '0', printOnClientItem: false };
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -112,7 +118,7 @@ function FreeRows({ state, onChange }: { state: FreeState; onChange: (s: FreeSta
             <button
               key={preset}
               type="button"
-              onClick={() => onChange({ ...state, name: preset })}
+              onClick={() => onChange({ ...state, name: preset, printOnClientItem: true })}
               className="rounded-md bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 hover:bg-violet-100"
             >
               {preset}
@@ -132,6 +138,20 @@ function FreeRows({ state, onChange }: { state: FreeState; onChange: (s: FreeSta
         <p className="mt-1 text-xs text-gray-500">
           {FREE_PRICE_HINT}
         </p>
+      </Row>
+      <Row label="Изделие заказчика">
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            className="mt-0.5 w-4 h-4 accent-violet-600"
+            checked={state.printOnClientItem}
+            onChange={(e) => onChange({ ...state, printOnClientItem: e.target.checked })}
+          />
+          <span className="text-xs text-gray-600">
+            Печатаем на вещи клиента: заготовку не покупаем, но партнёру
+            платим за плёнку и его долю от маржи.
+          </span>
+        </label>
       </Row>
     </>
   );
@@ -275,6 +295,7 @@ export function TshirtItemsTable({ order }: Props) {
         quantity: Number(newFreeItem.quantity) || 1,
         price: Number(newFreeItem.price) || 0,
         isFreePrice: true,
+        printOnClientItem: newFreeItem.printOnClientItem,
       });
     } else {
       addMutation.mutate(toPayload(newItem));
@@ -289,6 +310,7 @@ export function TshirtItemsTable({ order }: Props) {
         formatPaper: editFreeState.name.trim(),
         quantity: Number(editFreeState.quantity) || 1,
         price: Number(editFreeState.price) || 0,
+        printOnClientItem: editFreeState.printOnClientItem,
       },
     });
   };
@@ -440,7 +462,7 @@ export function TshirtItemsTable({ order }: Props) {
                     </>
                   ) : (
                     <>
-                      <button onClick={() => { setEditingFreeId(item.id); setEditFreeState({ name: item.formatPaper, quantity: String(item.quantity), price: String(item.price) }); }}
+                      <button onClick={() => { setEditingFreeId(item.id); setEditFreeState({ name: item.formatPaper, quantity: String(item.quantity), price: String(item.price), printOnClientItem: item.printOnClientItem ?? false }); }}
                         className="p-1 text-gray-400 hover:text-indigo-600"><Pencil size={13} /></button>
                       <button onClick={() => deleteFreeMutation.mutate(item.id)} disabled={deleteFreeMutation.isPending}
                         className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={13} /></button>

@@ -4,9 +4,12 @@ import { EnumExpenseCategory, EnumRole } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   OrderSettlement,
-  SettlementPosition,
   settleOrder,
 } from './partner-settlement';
+import {
+  OrderPositionsSource,
+  settlementPositions,
+} from './settlement-positions';
 
 const SETTINGS_ID = 'default';
 
@@ -18,14 +21,6 @@ export interface UpdatePartnerSettingsDto {
   maxLinkTemplate?: string;
 }
 
-type TshirtItemForSettlement = {
-  pricePosition: number;
-  designCost: number;
-  quantity: number;
-  thermalCost: number;
-  blankCost: number;
-  clientItem: boolean;
-};
 
 /** Клиент Prisma или транзакция — методы работают в обоих контекстах. */
 type Db = PrismaService | Prisma.TransactionClient;
@@ -57,26 +52,16 @@ export class PartnerSettingsService {
     });
   }
 
-  private toPositions(
-    items: TshirtItemForSettlement[],
-  ): SettlementPosition[] {
-    return items.map((i) => ({
-      pricePosition: i.pricePosition,
-      designCost: i.designCost,
-      quantity: i.quantity,
-      thermalCost: i.thermalCost,
-      blankCost: i.blankCost,
-      clientItem: i.clientItem,
-    }));
-  }
-
-  /** Расчёт с партнёром по позициям заказа при текущей ставке. */
+  /** Расчёт с партнёром по заказу при текущей ставке. */
   async settleForItems(
-    items: TshirtItemForSettlement[],
+    order: OrderPositionsSource,
     db: Db = this.prisma,
   ): Promise<OrderSettlement> {
     const settings = await this.get(db);
-    return settleOrder(this.toPositions(items), settings.partnerRateBasisPoints);
+    return settleOrder(
+      settlementPositions(order),
+      settings.partnerRateBasisPoints,
+    );
   }
 
   /**
@@ -94,7 +79,7 @@ export class PartnerSettingsService {
     params: {
       orderId: string;
       orderNumber: string;
-      items: TshirtItemForSettlement[];
+      order: OrderPositionsSource;
       isPaid: boolean;
       actingUserId: string;
       /** Дата признания выручки по заказу: sentAt, иначе createdAt. */
@@ -119,7 +104,7 @@ export class PartnerSettingsService {
 
     const settings = await this.get(tx);
     const settlement = settleOrder(
-      this.toPositions(params.items),
+      settlementPositions(params.order),
       settings.partnerRateBasisPoints,
     );
 

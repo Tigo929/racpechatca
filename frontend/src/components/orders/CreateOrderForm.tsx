@@ -31,6 +31,10 @@ const tshirtItemSchema = z.object({
   // Позиция со свободной ценой: вместо цвета/размера — произвольное название.
   freePrice: z.boolean().optional(),
   name: z.string().optional(),
+  // Печать на изделии заказчика: заготовку не покупаем, но партнёру платим
+  // за плёнку и его долю — расчёт без этого признака считает такую работу
+  // чистой прибылью владельца.
+  printOnClientItem: z.boolean().optional(),
   color: z.string().min(1, 'Укажите цвет'),
   size: z.enum(['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']),
   printLocation: z.enum(['FRONT', 'BACK', 'FRONT_BACK', 'BY_TZ']),
@@ -70,6 +74,7 @@ const freeItemSchema = z.object({
   name: z.string(),
   quantity: z.coerce.number().int().positive(),
   price: z.coerce.number().int().min(0),
+  printOnClientItem: z.boolean().optional(),
   clientItem: z.boolean().optional(),
 });
 
@@ -439,6 +444,7 @@ export function CreateOrderForm({ onClose }: Props) {
           typePaper: 'GLOSS',
           quantity: i.quantity,
           price: i.price,
+          printOnClientItem: i.printOnClientItem ?? false,
         })),
       });
       return;
@@ -473,6 +479,7 @@ export function CreateOrderForm({ onClose }: Props) {
         quantity: r.quantity,
         price: r.price,
         isFreePrice: true,
+        printOnClientItem: r.printOnClientItem ?? false,
       }));
       mutation.mutate({
         ...base,
@@ -925,12 +932,18 @@ export function CreateOrderForm({ onClose }: Props) {
                           <button
                             key={preset}
                             type="button"
-                            onClick={() =>
+                            onClick={() => {
                               setValue(`tshirtItems.${idx}.name`, preset, {
                                 shouldValidate: true,
                                 shouldDirty: true,
-                              })
-                            }
+                              });
+                              // Обе заготовки — про изделие заказчика, поэтому
+                              // признак ставится вместе с названием: иначе его
+                              // забывают, и партнёру не начисляется ничего.
+                              setValue(`tshirtItems.${idx}.printOnClientItem`, true, {
+                                shouldDirty: true,
+                              });
+                            }}
                             className="rounded-md bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 hover:bg-violet-100"
                           >
                             {preset}
@@ -952,6 +965,17 @@ export function CreateOrderForm({ onClose }: Props) {
                           количестве 3 и цене 900 в заказ уйдёт 900, не 2700. */}
                       <p className="mt-1 text-xs text-gray-500">{FREE_PRICE_HINT}</p>
                     </div>
+                    <label className="col-span-3 flex items-center gap-2.5 p-2.5 rounded-lg border border-gray-200 cursor-pointer hover:border-violet-300 transition-colors">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-violet-600"
+                        {...register(`tshirtItems.${idx}.printOnClientItem`)}
+                      />
+                      <span className="text-sm text-gray-700">
+                        Печать на изделии заказчика — заготовку не покупаем,
+                        партнёру платим за плёнку и его долю
+                      </span>
+                    </label>
                   </div>
                 ) : (
                   <>

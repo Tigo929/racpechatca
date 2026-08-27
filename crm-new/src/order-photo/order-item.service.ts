@@ -10,12 +10,14 @@ import DtoUpdateItemOrder from './dto/update-item.dto';
 import DtoCreateItemOrder from './dto/create-item-order.dto';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
 import { calcItemPricePosition } from './order-pricing';
+import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 
 @Injectable()
 export class OrderItemService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly financialIntegrity: OrderFinancialIntegrityService,
+    private readonly partnerSettings: PartnerSettingsService,
   ) {}
 
   async getItemById(
@@ -58,6 +60,17 @@ export class OrderItemService {
       const quantity = dto.quantity ?? item.quantity;
       const price = dto.price ?? item.price;
 
+      // Признак печати на изделии заказчика меняет состав расчёта с партнёром,
+      // поэтому вместе с ним пересматриваем и снимок себестоимости плёнки:
+      // включили — берём текущую из настроек, выключили — обнуляем.
+      const printOnClientItem = dto.printOnClientItem ?? item.printOnClientItem;
+      let thermalCost = item.thermalCost;
+      if (printOnClientItem !== item.printOnClientItem) {
+        thermalCost = printOnClientItem
+          ? (await this.partnerSettings.get(tx)).thermalTransferCost
+          : 0;
+      }
+
       await tx.itemPhoto.update({
         where: { id: idItem },
         data: {
@@ -66,6 +79,8 @@ export class OrderItemService {
           quantity,
           price,
           isFreePrice: itemFreePrice,
+          printOnClientItem,
+          thermalCost,
           pricePosition: calcItemPricePosition(price, quantity, 0, freePrice),
         },
       });
@@ -101,6 +116,14 @@ export class OrderItemService {
       const itemFreePrice = dto.isFreePrice ?? false;
       const effectiveFreePrice = orderExists.isFreePrice || itemFreePrice;
 
+      // Печать на изделии заказчика: заготовку не покупаем, но термоперенос
+      // и доля партнёра остаются. Себестоимость снимаем сейчас — тем же
+      // правилом, что при создании заказа.
+      const printOnClientItem = dto.printOnClientItem ?? false;
+      const thermalCost = printOnClientItem
+        ? (await this.partnerSettings.get(tx)).thermalTransferCost
+        : 0;
+
       await tx.itemPhoto.create({
         data: {
           formatPaper: dto.formatPaper,
@@ -108,6 +131,8 @@ export class OrderItemService {
           quantity: dto.quantity,
           price: dto.price,
           isFreePrice: itemFreePrice,
+          printOnClientItem,
+          thermalCost,
           pricePosition: calcItemPricePosition(
             dto.price,
             dto.quantity,

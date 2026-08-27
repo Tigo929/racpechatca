@@ -6,6 +6,7 @@ import {
 import { settleOrder } from './partner-settlement';
 import { toPartnerStatus } from './partner-status';
 import { getTechSpecPaths } from './tech-spec-paths';
+import { settlementPositions } from './settlement-positions';
 
 // Человекочитаемые метки — дублируем к кодам, чтобы производство не ошиблось.
 const PRINT_LOCATION_LABELS: Record<EnumPrintLocation, string> = {
@@ -99,14 +100,7 @@ export function buildPartnerOrderPayload(
   // Расчёт с партнёром: сколько он зарабатывает с этого заказа. Считаем тем же
   // модулем, что и внутренний учёт, — цифры у обеих сторон совпадают.
   const settlement = settleOrder(
-    order.tshirtItems.map((i) => ({
-      pricePosition: i.pricePosition,
-      designCost: i.designCost,
-      quantity: i.quantity,
-      thermalCost: i.thermalCost,
-      blankCost: i.blankCost,
-      clientItem: i.clientItem,
-    })),
+    settlementPositions(order),
     partnerRateBasisPoints,
   );
 

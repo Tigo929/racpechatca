@@ -255,17 +255,32 @@ export class OrderPhotoService {
         }
       }
 
+      // Себестоимость печати по умолчанию — из настроек партнёра; в позиции
+      // можно переопределить. Снимок хранится на позиции, чтобы расчёт не
+      // «поехал» при последующем изменении настроек.
+      const partnerDefaults =
+        productCategory === EnumProductCategory.TSHIRT
+          ? await this.partnerSettings.get(tx)
+          : null;
       // Позиции считаем независимо от категории: заказ может содержать и обычные
       // позиции, и свободные (произвольные «название — цена»). Свободная цена
       // позиции = её цене (кол-во не умножается).
       const photoCreate = (dto.items ?? []).map((e) => {
         const itemFree = e.isFreePrice ?? freePrice;
+        // Печать на изделии заказчика — работа партнёра, просто без заготовки.
+        // Термоперенос снимаем из настроек здесь же: если взять его в момент
+        // расчёта, изменение умолчаний задним числом сдвинет уже закрытые заказы.
+        const printOnClientItem = e.printOnClientItem ?? false;
         return {
           formatPaper: e.formatPaper,
           typePaper: e.typePaper,
           quantity: e.quantity,
           price: e.price,
           isFreePrice: itemFree,
+          printOnClientItem,
+          thermalCost: printOnClientItem
+            ? (partnerDefaults?.thermalTransferCost ?? 70)
+            : 0,
           pricePosition: calcItemPricePosition(
             e.price,
             e.quantity,
@@ -274,13 +289,6 @@ export class OrderPhotoService {
           ),
         };
       });
-      // Себестоимость печати по умолчанию — из настроек партнёра; в позиции
-      // можно переопределить. Снимок хранится на позиции, чтобы расчёт не
-      // «поехал» при последующем изменении настроек.
-      const partnerDefaults =
-        productCategory === EnumProductCategory.TSHIRT
-          ? await this.partnerSettings.get(tx)
-          : null;
       const tshirtCreate = (dto.tshirtItems ?? []).map((e) => {
         // Дизайн — часть цены (carve-out), а не надбавка: ограничиваем его
         // суммой позиции, чтобы «моя доля» не превысила цену футболки.
@@ -1553,7 +1561,9 @@ export class OrderPhotoService {
         await this.partnerSettings.syncRewardExpense(tx, {
           orderId: id,
           orderNumber: lockedOrder.numberOrder,
-          items: lockedOrder.tshirtItems,
+          // Весь заказ, а не только футболки: печать на изделии заказчика
+          // заводится свободной позицией, и партнёру за неё тоже причитается.
+          order: lockedOrder,
           isPaid: newStatus === EnumStatus.PAID,
           actingUserId: userId,
           // Тот же принцип, что в отчётах: выручка признаётся по дате отправки,

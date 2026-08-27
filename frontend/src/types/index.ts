@@ -68,6 +68,8 @@ export interface ItemPhoto {
   price: number;
   pricePosition: number;
   isFreePrice?: boolean;
+  /** Печать на изделии заказчика: заготовку не покупаем, партнёру платим. */
+  printOnClientItem?: boolean;
 }
 
 export interface OrderExecutor {
@@ -172,6 +174,8 @@ export interface CreateItemDto {
   quantity: number;
   price: number;
   isFreePrice?: boolean;
+  /** Печать на изделии заказчика: включает позицию в расчёт с партнёром. */
+  printOnClientItem?: boolean;
 }
 
 export interface CreateTshirtItemDto {
@@ -269,6 +273,7 @@ export interface UpdateItemDto {
   quantity?: number;
   price?: number;
   isFreePrice?: boolean;
+  printOnClientItem?: boolean;
 }
 
 /**

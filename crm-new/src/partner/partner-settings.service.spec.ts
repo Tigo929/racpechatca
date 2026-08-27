@@ -53,7 +53,7 @@ describe('авто-расход «Вознаграждение партнёру�
       {
         orderId: 'order-1',
         orderNumber: '20260724-097',
-        items,
+        order: { tshirtItems: items },
         isPaid: true,
         actingUserId: 'admin-1',
         revenueDate: JULY,
@@ -104,7 +104,7 @@ describe('авто-расход «Вознаграждение партнёру�
     await service.syncRewardExpense(tx as never, {
       orderId: 'order-1',
       orderNumber: '20260724-097',
-      items,
+      order: { tshirtItems: items },
       isPaid: false,
       actingUserId: 'admin-1',
       revenueDate: JULY,
@@ -120,7 +120,7 @@ describe('авто-расход «Вознаграждение партнёру�
     await service.syncRewardExpense(tx as never, {
       orderId: 'order-1',
       orderNumber: '20260724-098',
-      items: [{ ...items[0]!, clientItem: true }],
+      order: { tshirtItems: [{ ...items[0]!, clientItem: true }] },
       isPaid: true,
       actingUserId: 'admin-1',
       revenueDate: JULY,

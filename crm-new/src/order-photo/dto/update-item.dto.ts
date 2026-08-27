@@ -38,4 +38,13 @@ export default class DtoUpdateItemOrder {
   @IsBoolean()
   @IsOptional()
   isFreePrice?: boolean;
+
+  /**
+   * Печать на изделии заказчика. Признак можно и снять: тогда позиция уходит
+   * из расчёта с партнёром, а снимок себестоимости плёнки обнуляется — иначе
+   * в базе осталась бы цифра, которая ни на что не влияет, но сбивает с толку.
+   */
+  @IsBoolean()
+  @IsOptional()
+  printOnClientItem?: boolean;
 }
