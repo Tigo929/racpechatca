@@ -49,6 +49,10 @@ import { hasTechSpecFiles } from 'src/partner/tech-spec-paths';
 import { GulianOutboxService } from 'src/gulian/gulian-outbox.service';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 import {
+  hasProductionItems,
+  NO_PRODUCTION_ITEMS_MESSAGE,
+} from './tshirt-production-items';
+import {
   buildLeadNotification,
   pickLeadResponders,
 } from './lead-notification';
@@ -1357,8 +1361,8 @@ export class OrderPhotoService {
           'Сначала прикрепите ТЗ-фото, затем переводите заказ в «Отправлен».',
         );
       }
-      if ((order.tshirtItems?.length ?? 0) === 0) {
-        throw new BadRequestException('В заказе нет позиций-футболок.');
+      if (!hasProductionItems(order)) {
+        throw new BadRequestException(NO_PRODUCTION_ITEMS_MESSAGE);
       }
     }
 
@@ -1692,8 +1696,8 @@ export class OrderPhotoService {
         'Сначала прикрепите ТЗ-фото, затем отправляйте исполнителю.',
       );
     }
-    if ((order.tshirtItems?.length ?? 0) === 0) {
-      throw new BadRequestException('В заказе нет позиций-футболок.');
+    if (!hasProductionItems(order)) {
+      throw new BadRequestException(NO_PRODUCTION_ITEMS_MESSAGE);
     }
 
     await this.tshirtPartnerTelegram.sendOrder(id);

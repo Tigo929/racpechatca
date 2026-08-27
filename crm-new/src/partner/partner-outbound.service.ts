@@ -4,6 +4,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { NO_PRODUCTION_ITEMS_MESSAGE } from 'src/order-photo/tshirt-production-items';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -56,7 +57,7 @@ export class PartnerOutboundService {
       );
     }
     if (order.tshirtItems.length === 0) {
-      throw new BadRequestException('В заказе нет позиций-футболок');
+      throw new BadRequestException(NO_PRODUCTION_ITEMS_MESSAGE);
     }
     if (!hasTechSpecFiles(order)) {
       throw new BadRequestException(

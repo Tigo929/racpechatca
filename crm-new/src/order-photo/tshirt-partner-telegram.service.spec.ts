@@ -21,6 +21,99 @@ describe('TshirtPartnerTelegramService', () => {
     await fs.rm(uploadDir, { recursive: true, force: true });
   });
 
+  it('печать по изделию заказчика: футболок в заказе нет, работа — свободной позицией', async () => {
+    /*
+     * Заказ без единой позиции-футболки. Раньше он вообще не доходил до
+     * отправки: система отвечала «В заказе нет позиций-футболок», хотя
+     * работа есть — клиент принёс своё изделие, мы наносим принт.
+     *
+     * Проверяем и то, что состав попал в отчёт: без этого исполнитель
+     * получал заказ с пустым списком и шёл переспрашивать.
+     */
+    const orderId = 'order-tolko-nanesenie';
+    const jpeg = await sharp({
+      create: { width: 4, height: 4, channels: 3, background: '#fff' },
+    })
+      .jpeg()
+      .toBuffer();
+    await fs.writeFile(path.join(uploadDir, 'tz.jpg'), jpeg);
+
+    const order = {
+      id: orderId,
+      numberOrder: '20260827-001',
+      tshirtModel: null,
+      techSpecPhotoPath: 'tz.jpg',
+      techSpecPhotoPaths: ['tz.jpg'],
+      tshirtItems: [],
+      items: [
+        {
+          formatPaper: 'Нанесение принта на изделие заказчика',
+          typePaper: 'MATTE',
+          quantity: 3,
+          price: 900,
+          // Свободная цена: количество в сумму не умножается — 900, не 2700.
+          pricePosition: 900,
+          isFreePrice: true,
+        },
+      ],
+    };
+
+    const prisma = {
+      orderPhoto: {
+        findUnique: jest.fn().mockResolvedValue(order),
+        update: jest.fn().mockResolvedValue(order),
+      },
+    };
+    const telegram = {
+      sendPhoto: jest.fn().mockResolvedValue({ messageId: 11 }),
+      sendDocument: jest.fn().mockResolvedValue({ messageId: 11 }),
+    };
+    const partnerSettings = {
+      get: jest.fn().mockResolvedValue({ partnerRateBasisPoints: 3000 }),
+    };
+    const stickerLinks = {
+      buildStickerUrl: jest.fn().mockReturnValue('https://crm.example.test/s.pdf'),
+    };
+    const config = {
+      get: jest.fn((key: string) => {
+        const values: Record<string, string> = {
+          TSHIRT_PARTNER_TELEGRAM_CHAT_ID: '-1001',
+          UPLOAD_DIR: uploadDir,
+        };
+        return values[key];
+      }),
+    };
+
+    const service = new TshirtPartnerTelegramService(
+      prisma as never,
+      telegram as never,
+      partnerSettings as never,
+      stickerLinks as never,
+      config as never,
+    );
+
+    await service.sendOrder(orderId);
+
+    expect(telegram.sendPhoto).toHaveBeenCalledTimes(1);
+    const caption = telegram.sendPhoto.mock.calls[0][4] as string;
+
+    // Заголовок обязан сказать, что заготовку искать не надо.
+    expect(caption).toContain('Заказ на нанесение принта');
+    // Состав работы — в отчёте, а не «спросите у менеджера».
+    expect(caption).toContain('Нанесение принта на изделие заказчика');
+    // Цена договорная и на количество не множится: 900, а не 2700.
+    expect(caption).toContain('900 ₽');
+    expect(caption).not.toContain('2 700 ₽');
+
+    expect(prisma.orderPhoto.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          partnerSyncStatus: EnumPartnerSyncStatus.SENT,
+        }),
+      }),
+    );
+  });
+
   it('заказ на нанесение принта: заготовку исполнителю не считаем и говорим об этом словами', async () => {
     /*
      * Давальческая позиция — «только нанесение»: футболку привозит клиент.

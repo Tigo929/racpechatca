@@ -47,7 +47,7 @@ const EXT_CONTENT_TYPE: Record<string, string> = {
 };
 
 type TshirtOrderWithItems = Prisma.OrderPhotoGetPayload<{
-  include: { tshirtItems: true };
+  include: { tshirtItems: true; items: true };
 }>;
 
 interface TechSpecAttachment {
@@ -91,7 +91,7 @@ export class TshirtPartnerTelegramService {
   async sendOrder(orderId: string): Promise<void> {
     const order = await this.prisma.orderPhoto.findUnique({
       where: { id: orderId },
-      include: { tshirtItems: true },
+      include: { tshirtItems: true, items: true },
     });
     if (!order) return;
 
@@ -328,8 +328,28 @@ export class TshirtPartnerTelegramService {
 
     // Заголовок по составу: если все позиции давальческие, это заказ на
     // нанесение, а не на футболку — исполнителю это видно с первой строки.
+    /*
+     * Заказ на нанесение — это либо все позиции давальческие, либо футболок
+     * в нём нет вовсе: работа записана свободной позицией («печать по
+     * изделию заказчика»). Во втором случае прежняя проверка давала «Заказ
+     * на футболку», и исполнитель шёл искать несуществующую заготовку.
+     */
     const allClientItems =
-      order.tshirtItems.length > 0 && order.tshirtItems.every((i) => i.clientItem);
+      (order.tshirtItems.length > 0 &&
+        order.tshirtItems.every((i) => i.clientItem)) ||
+      (order.tshirtItems.length === 0 && (order.items?.length ?? 0) > 0);
+
+    /*
+     * Свободные позиции — это работы без готовой футболки: печать по изделию
+     * заказчика и подобное. Их не было в отчёте вовсе: он собирался только из
+     * позиций-футболок, и такой заказ уходил исполнителю с пустым составом.
+     * Цену тут не делим — она договорная, и количество в неё не умножается.
+     */
+    const freeItems = (order.items ?? []).map(
+      (item, index) =>
+        `${order.tshirtItems.length + index + 1}) ${escapeHtml(item.formatPaper)}` +
+        ` ×${item.quantity} — <b>${money(item.pricePosition)}</b>`,
+    );
 
     return [
       `🧾 <b>${allClientItems ? 'Заказ на нанесение принта' : 'Заказ на футболку'}</b>`,
@@ -345,6 +365,7 @@ export class TshirtPartnerTelegramService {
         : []),
       '',
       ...items,
+      ...(freeItems.length ? ['', '<b>Работы без нашей футболки</b>', ...freeItems] : []),
       '',
       '<b>Расчёт для исполнителя</b>',
       `Без дизайна: <b>${money(

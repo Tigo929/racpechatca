@@ -92,12 +92,37 @@ function TshirtRows({ state, onChange }: { state: EditState; onChange: (s: EditS
 }
 
 /** Поля свободной (произвольной) позиции. */
+/**
+ * Готовые названия для свободной позиции.
+ *
+ * Печать по изделию заказчика — постоянная работа, а не разовая: клиент
+ * приносит своё, мы наносим принт. Позиции-футболки в таком заказе нет, и
+ * набирать название руками каждый раз значит рано или поздно написать его
+ * иначе — а по нему потом искать в отчётах.
+ */
+const FREE_PRESETS = [
+  'Нанесение принта на изделие заказчика',
+  'Печать на изделии заказчика',
+];
+
 function FreeRows({ state, onChange }: { state: FreeState; onChange: (s: FreeState) => void }) {
   return (
     <>
       <Row label="Название">
         <input className={inputCls} placeholder="Кружка с принтом, баннер…" value={state.name}
           onChange={(e) => onChange({ ...state, name: e.target.value })} />
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {FREE_PRESETS.map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => onChange({ ...state, name: preset })}
+              className="rounded-md bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 hover:bg-violet-100"
+            >
+              {preset}
+            </button>
+          ))}
+        </div>
       </Row>
       <Row label="Кол-во">
         <input type="number" min={1} className={inputCls} value={state.quantity}
@@ -106,6 +131,11 @@ function FreeRows({ state, onChange }: { state: FreeState; onChange: (s: FreeSta
       <Row label="Цена ₽ (итог)">
         <input type="number" min={0} className={inputCls} value={state.price}
           onChange={(e) => onChange({ ...state, price: e.target.value })} />
+        {/* Подпись не украшение: поле выглядит как цена за штуку, а это
+            итог. При количестве 3 и цене 900 в заказ уйдёт 900, не 2700. */}
+        <p className="mt-1 text-xs text-gray-500">
+          Договорная сумма за всю позицию — на количество не умножается.
+        </p>
       </Row>
     </>
   );
