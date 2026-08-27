@@ -16,7 +16,10 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { MarketplaceAccessGuard } from './marketplace-access.guard';
 import { EnumRole } from 'src/generated/prisma/enums';
 import { MarketplaceAccountService } from './marketplace-account.service';
-import { OzonCatalogTemplateService } from './ozon-catalog-template.service';
+import {
+  OzonCatalogTemplateService,
+  toTemplateView,
+} from './ozon-catalog-template.service';
 import { OzonPrintService } from './ozon-print.service';
 import { OzonImportService } from './ozon-import.service';
 import { OzonCatalogService } from './ozon/ozon-catalog.service';
@@ -45,8 +48,10 @@ export class OzonCatalogController {
   ) {}
 
   @Get(':accountId/template')
-  getTemplate(@Param('accountId', ParseUUIDPipe) accountId: string) {
-    return this.templates.getOrCreate(accountId);
+  async getTemplate(@Param('accountId', ParseUUIDPipe) accountId: string) {
+    // Через toTemplateView, а не напрямую: список складов хранится в BigInt,
+    // а его JSON.stringify не переживает — ответ ушёл бы пятисотой.
+    return toTemplateView(await this.templates.getOrCreate(accountId));
   }
 
   @Patch(':accountId/template')

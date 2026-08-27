@@ -2,7 +2,6 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { EnumOzonSyncStatus } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OzonProductCatalogService } from './ozon/ozon-product-catalog.service';
-import { OzonService } from './ozon/ozon.service';
 import { MarketplaceAccountService } from './marketplace-account.service';
 import { OzonCatalogTemplateService } from './ozon-catalog-template.service';
 import {
@@ -16,6 +15,8 @@ import {
   IMPORT_BATCH_SIZE,
   type VariantDimensions,
 } from './ozon/ozon-attributes';
+import { resolveDefaultWarehouses } from './ozon/ozon-default-warehouses';
+import { OzonWarehouseService } from './ozon/ozon-warehouse.service';
 
 /**
  * Публикация принтов в Ozon и слежение за судьбой асинхронной загрузки.
@@ -43,7 +44,7 @@ export class OzonImportService {
     private readonly templates: OzonCatalogTemplateService,
     private readonly catalog: OzonCatalogService,
     private readonly products: OzonProductCatalogService,
-    private readonly ozon: OzonService,
+    private readonly warehouses: OzonWarehouseService,
   ) {}
 
   /** Отправляет выбранные принты в Ozon: режет варианты на пачки ≤100 и создаёт по батчу на каждую. */
@@ -276,28 +277,49 @@ export class OzonImportService {
     const toFill = variants.filter((v) => !alreadyStocked.includes(v));
     if (!toFill.length) return;
 
-    const info = await this.ozon.checkConnection(creds);
-    const warehouseId = info.warehouses?.[0]?.id;
-    if (!warehouseId) {
-      this.logger.warn(
-        'Остаток не проставлен: в кабинете не видно ни одного склада FBS',
+    // Куда писать остаток, решает шаблон. Раньше здесь брался
+    // `warehouses[0]` — первый склад из ответа площадки, молча: у продавца
+    // с несколькими складами товар оказывался доступен только в одном
+    // городе, и объяснения этому в интерфейсе не было.
+    const known = await this.warehouses.list(marketplaceAccountId, creds);
+    const choice = resolveDefaultWarehouses(
+      template.defaultWarehouseIds.map(Number),
+      known.warehouses.map((w) => ({
+        warehouseId: w.id,
+        name: w.name,
+        isEditable: w.isEditable,
+        disabledReason: w.disabledReason,
+        archived: false,
+      })),
+    );
+    for (const warning of choice.warnings) this.logger.warn(warning);
+    if (!choice.targets.length) return;
+
+    // Позиция считается закрытой, только когда остаток принят на КАЖДОМ
+    // выбранном складе. Иначе товар, доехавший до одного города из трёх,
+    // молча ушёл бы из очереди повторов и остался бы наполовину доступным.
+    const acceptedOn = new Map<string, number>();
+    const failed: string[] = [];
+    for (const warehouseId of choice.targets) {
+      const results = await this.products.updateStocks(
+        creds,
+        warehouseId,
+        toFill.map((v) => ({ offerId: v.offerId, stock: template.defaultStock })),
       );
-      return;
+      for (const r of results) {
+        if (r.updated) {
+          acceptedOn.set(r.offerId, (acceptedOn.get(r.offerId) ?? 0) + 1);
+        } else {
+          failed.push(`${r.offerId} → склад ${warehouseId}: ${r.error ?? 'без причины'}`);
+        }
+      }
     }
 
-    const results = await this.products.updateStocks(
-      creds,
-      warehouseId,
-      toFill.map((v) => ({ offerId: v.offerId, stock: template.defaultStock })),
-    );
-
     const okIds: string[] = [];
-    const failed: string[] = [];
-    for (const r of results) {
-      const variant = toFill.find((v) => v.offerId === r.offerId);
-      if (!variant) continue;
-      if (r.updated) okIds.push(variant.id);
-      else failed.push(`${r.offerId}: ${r.error ?? 'без причины'}`);
+    for (const variant of toFill) {
+      if ((acceptedOn.get(variant.offerId) ?? 0) === choice.targets.length) {
+        okIds.push(variant.id);
+      }
     }
 
     if (okIds.length) await this.markStockApplied(okIds);

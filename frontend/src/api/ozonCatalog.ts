@@ -53,6 +53,11 @@ export interface OzonCatalogTemplate {
   defaultStock: number;
   /** «Цена до скидки» новой карточки. */
   defaultOldPrice: number;
+  /**
+   * Склады, на которые проставляется остаток после публикации.
+   * Пустой список — прежнее поведение: первый доступный склад.
+   */
+  defaultWarehouseIds: number[];
 }
 
 export type UpdateOzonCatalogTemplateDto = Partial<

@@ -152,4 +152,19 @@ export class DtoUpdateOzonCatalogTemplate {
   @Min(0)
   @Type(() => Number)
   defaultOldPrice?: number;
+
+  /**
+   * Склады, на которые проставляется остаток после публикации.
+   *
+   * Пустой список — прежнее поведение (первый доступный склад). Значения
+   * приходят числами: идентификаторы кабинета шестнадцатизначные, но
+   * укладываются в точное целое JavaScript, и весь остальной обмен по
+   * складам уже идёт числами.
+   */
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  @Type(() => Number)
+  defaultWarehouseIds?: number[];
 }

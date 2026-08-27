@@ -52,6 +52,7 @@ export interface UpdateOzonCatalogTemplateInput {
   defaultPrice?: number;
   defaultStock?: number;
   defaultOldPrice?: number;
+  defaultWarehouseIds?: number[];
 }
 
 @Injectable()
@@ -78,14 +79,38 @@ export class OzonCatalogTemplateService {
     dto: UpdateOzonCatalogTemplateInput,
   ) {
     await this.getOrCreate(marketplaceAccountId);
-    return this.prisma.ozonCatalogTemplate.update({
+    const { defaultWarehouseIds, ...rest } = dto;
+    const updated = await this.prisma.ozonCatalogTemplate.update({
       where: { marketplaceAccountId },
       data: {
-        ...dto,
+        ...rest,
         sizeDimensions: dto.sizeDimensions
           ? (dto.sizeDimensions as unknown as Prisma.InputJsonValue)
           : undefined,
+        // Идентификаторы складов приходят числами, а хранятся BigInt:
+        // шестнадцать знаков в 32 бита не помещаются.
+        ...(defaultWarehouseIds
+          ? { defaultWarehouseIds: defaultWarehouseIds.map(BigInt) }
+          : {}),
       },
     });
+    return toTemplateView(updated);
   }
+}
+
+/**
+ * Шаблон для интерфейса.
+ *
+ * BigInt не переживает JSON: `JSON.stringify` на нём падает, и ответ ушёл бы
+ * пятисотой. Наружу отдаём числа — идентификаторы кабинета шестнадцатизначные,
+ * но укладываются в точное целое JavaScript, и весь остальной обмен по складам
+ * уже идёт числами.
+ */
+export function toTemplateView<T extends { defaultWarehouseIds: bigint[] }>(
+  template: T,
+): Omit<T, 'defaultWarehouseIds'> & { defaultWarehouseIds: number[] } {
+  return {
+    ...template,
+    defaultWarehouseIds: template.defaultWarehouseIds.map(Number),
+  };
 }

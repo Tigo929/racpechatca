@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, Settings2 } from 'lucide-react';
 import { AttributeAutocomplete } from './AttributeAutocomplete';
 import { PhotoUpload } from './PhotoUpload';
 import { ozonCatalogApi, type OzonCatalogTemplate } from '../../api/ozonCatalog';
+import { ozonProductCatalogApi } from '../../api/ozonProductCatalog';
 import { getErrorMessage } from '../../utils/get-error-message';
 
 /**
@@ -34,6 +35,83 @@ function labelField(key: Field): keyof OzonCatalogTemplate {
 }
 function dictField(key: Field): keyof OzonCatalogTemplate {
   return `${key}DictionaryValueId` as keyof OzonCatalogTemplate;
+}
+
+/**
+ * Склады, на которые уходит остаток после публикации.
+ *
+ * Раньше выбора не было вовсе: остаток писался на первый склад из ответа
+ * площадки. У продавца с несколькими складами товар оказывался доступен
+ * только в одном городе, и понять причину по интерфейсу было нельзя.
+ *
+ * Ничего не отмечено — остаётся прежнее поведение. Это сказано словами,
+ * а не оставлено на догадку: пустой список галочек сам по себе читается
+ * как «остаток не проставляется», а это неправда.
+ */
+function WarehousePicker({
+  accountId,
+  selected,
+  onChange,
+}: {
+  accountId: string;
+  selected: number[];
+  onChange: (ids: number[]) => void;
+}) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['ozon-warehouses', accountId],
+    queryFn: () => ozonProductCatalogApi.warehouses(accountId),
+    enabled: Boolean(accountId),
+  });
+
+  const toggle = (id: number) =>
+    onChange(
+      selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id],
+    );
+
+  return (
+    <div>
+      <span className="text-xs font-medium text-gray-700">Склады по умолчанию</span>
+      {isLoading && <p className="mt-1 text-[11px] text-gray-500">Загрузка складов…</p>}
+      {data?.syncError && (
+        <p className="mt-1 text-[11px] text-amber-700">
+          Ozon не отдал список складов, показан прежний снимок: {data.syncError}
+        </p>
+      )}
+      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1.5">
+        {(data?.warehouses ?? []).map((w) => (
+          <label
+            key={w.id}
+            className={`flex items-center gap-2 text-sm ${
+              w.isEditable ? 'cursor-pointer text-gray-700' : 'cursor-not-allowed text-gray-400'
+            }`}
+            title={w.disabledReason ?? undefined}
+          >
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-amber-600"
+              checked={selected.includes(w.id)}
+              disabled={!w.isEditable}
+              onChange={() => toggle(w.id)}
+            />
+            <span>{w.name}</span>
+            {!w.isEditable && (
+              <span className="text-[11px]">— {w.disabledReason ?? 'недоступен'}</span>
+            )}
+          </label>
+        ))}
+      </div>
+      {data && data.warehouses.length === 0 && (
+        <p className="mt-1 text-[11px] text-amber-700">
+          В кабинете не видно ни одного склада — остаток проставить некуда.
+        </p>
+      )}
+      <span className="mt-1.5 block text-[11px] text-gray-500">
+        {selected.length === 0
+          ? 'Ничего не отмечено — остаток уйдёт на первый доступный склад, как раньше. Отметьте склады, чтобы товар появился в нескольких городах.'
+          : `Остаток ${selected.length === 1 ? 'уйдёт на выбранный склад' : `уйдёт на все ${selected.length} выбранных склада`}. Новый склад из синхронизации сам не включается — его нужно отметить.`}
+      </span>
+    </div>
+  );
 }
 
 export function TemplateSettings({ accountId }: { accountId: string }) {
@@ -142,6 +220,15 @@ export function TemplateSettings({ accountId }: { accountId: string }) {
                   вообще. 0 — не проставлять.
                 </span>
               </label>
+              <div className="sm:col-span-3">
+                <WarehousePicker
+                  accountId={accountId}
+                  selected={effective.defaultWarehouseIds ?? []}
+                  onChange={(ids) =>
+                    setDraft((d) => ({ ...d, defaultWarehouseIds: ids }))
+                  }
+                />
+              </div>
             </div>
           )}
 
