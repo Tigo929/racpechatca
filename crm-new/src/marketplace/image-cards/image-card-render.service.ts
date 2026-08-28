@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import sharp from 'sharp';
 import {
   placementRect,
@@ -51,6 +51,18 @@ const JPEG_QUALITY = 92;
  */
 const WHITE_THRESHOLD = 242;
 
+/** Ниже этого значения пиксель считается прозрачным, а не рисунком. */
+const ALPHA_VISIBLE = 16;
+
+/**
+ * Доля рисунка, после которой чистка считается ошибочной.
+ *
+ * 90%, а не 100%: у белого принта почти всегда есть мягкие края и тонкая
+ * серая обводка, которые порог не задевает, — требовать ровно ста процентов
+ * значило бы не поймать ни одного настоящего случая.
+ */
+const ERASE_LIMIT = 0.9;
+
 export interface CardTemplateSnapshot {
   canvasWidth: number;
   canvasHeight: number;
@@ -83,6 +95,8 @@ interface RawImage {
 
 @Injectable()
 export class ImageCardRenderService {
+  private readonly logger = new Logger(ImageCardRenderService.name);
+
   /**
    * Разобранные шаблоны в сырых пикселях.
    *
@@ -203,14 +217,35 @@ export class ImageCardRenderService {
       .toBuffer({ resolveWithObject: true });
 
     const channels = info.channels;
+    let visibleBefore = 0;
+    let erased = 0;
     for (let i = 0; i < data.length; i += channels) {
+      if (data[i + 3] > ALPHA_VISIBLE) visibleBefore += 1;
       if (
         data[i] >= WHITE_THRESHOLD &&
         data[i + 1] >= WHITE_THRESHOLD &&
         data[i + 2] >= WHITE_THRESHOLD
       ) {
+        if (data[i + 3] > ALPHA_VISIBLE) erased += 1;
         data[i + 3] = 0;
       }
+    }
+
+    /*
+     * Чистка, которая стёрла почти всё, стёрла не фон, а сам рисунок.
+     *
+     * Так выглядит белый принт на прозрачном фоне — макеты под тёмные
+     * футболки сделаны именно так. Раньше на выходе получалась пустая
+     * картинка, и в готовой карточке футболка оказывалась без принта,
+     * причём молча: в редакторе исходник по-прежнему выглядел правильно.
+     * Возвращаем файл нетронутым — пустая карточка хуже неочищенной.
+     */
+    if (visibleBefore > 0 && erased / visibleBefore >= ERASE_LIMIT) {
+      this.logger.warn(
+        `Чистка белого фона убрала бы ${Math.round((erased / visibleBefore) * 100)}% рисунка — ` +
+          'похоже, принт сам белый. Оставляю картинку как есть.',
+      );
+      return input;
     }
 
     // Промежуточный файл, который тут же читают обратно: жать его сильно

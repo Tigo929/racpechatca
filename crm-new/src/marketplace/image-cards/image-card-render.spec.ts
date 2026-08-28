@@ -181,6 +181,37 @@ describe('удаление белого фона', () => {
     expect(data[4 * 4]).toBeGreaterThan(200);
   });
 
+  it('белый принт на прозрачном фоне не стирается целиком', async () => {
+    /*
+     * Настоящий случай из макетов «надписи»: рисунок белый, фон прозрачный.
+     * Чистка по порогу съедала его полностью, и в готовой карточке футболка
+     * оказывалась пустой — причём молча: в редакторе исходник выглядел
+     * правильно, и понять, куда делся принт, было нельзя.
+     */
+    const raw = Buffer.alloc(8 * 4, 0); // всё прозрачное
+    for (let x = 2; x < 6; x += 1) {
+      raw[x * 4] = 255;
+      raw[x * 4 + 1] = 255;
+      raw[x * 4 + 2] = 255;
+      raw[x * 4 + 3] = 255; // белые непрозрачные точки — сам рисунок
+    }
+    const input = await sharp(raw, {
+      raw: { width: 8, height: 1, channels: 4 },
+    })
+      .png()
+      .toBuffer();
+
+    const cleaned = await render.removeWhiteBackground(input);
+    const { data } = await sharp(cleaned)
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    // Рисунок на месте: пустая карточка хуже неочищенной.
+    expect(data[2 * 4 + 3]).toBe(255);
+    expect(data[5 * 4 + 3]).toBe(255);
+  });
+
   it('серый фон не трогаем — порог не должен съедать рисунок', async () => {
     const grey = await sharp({
       create: {

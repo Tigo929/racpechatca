@@ -118,7 +118,15 @@ export class ImageCardGenerationService {
           shirtColor: template.shirtColor,
           status: reasons.length > 0 ? 'REVIEW_REQUIRED' : 'GENERATED',
           transform: { ...DEFAULT_TRANSFORM },
-          removeWhiteBackground: settings.removeWhiteBackground ?? true,
+          /*
+           * По умолчанию ВЫКЛЮЧЕНО — как и обещает описание самой чистки
+           * и умолчание колонки в базе. Здесь стояло `?? true`, и это
+           * противоречие стоило дорого: белый принт на прозрачном фоне
+           * («надписи», макеты под тёмные футболки) вычищался целиком.
+           * В редакторе человек видел исходный файл и принт, а в списке
+           * и в готовой карточке — пустую футболку.
+           */
+          removeWhiteBackground: settings.removeWhiteBackground ?? false,
           note: describe(reasons),
         });
       }
