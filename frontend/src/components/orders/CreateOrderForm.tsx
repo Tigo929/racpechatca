@@ -17,7 +17,7 @@ import {
   PRINT_LOCATION_LABELS,
 } from '../../constants';
 import type { AppUser, CreateOrderDto } from '../../types/index';
-import { FREE_PRESETS, FREE_PRICE_HINT } from './freePresets';
+import { CLIENT_ITEM_PRINT_NAME, FREE_PRICE_HINT } from './freePresets';
 
 const photoItemSchema = z.object({
   isFreePrice: z.boolean().optional(),
@@ -924,32 +924,6 @@ export function CreateOrderForm({ onClose }: Props) {
                     <div>
                       <label className={labelCls}>Название</label>
                       <input className={inputCls} placeholder="Кружка, баннер…" {...register(`tshirtItems.${idx}.name`)} />
-                      {/* Печать на вещи заказчика — самый частый случай свободной
-                          позиции. Кнопки ставят название одинаково от заказа
-                          к заказу: по нему потом ищут и считают такие работы. */}
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {FREE_PRESETS.map((preset) => (
-                          <button
-                            key={preset}
-                            type="button"
-                            onClick={() => {
-                              setValue(`tshirtItems.${idx}.name`, preset, {
-                                shouldValidate: true,
-                                shouldDirty: true,
-                              });
-                              // Обе заготовки — про изделие заказчика, поэтому
-                              // признак ставится вместе с названием: иначе его
-                              // забывают, и партнёру не начисляется ничего.
-                              setValue(`tshirtItems.${idx}.printOnClientItem`, true, {
-                                shouldDirty: true,
-                              });
-                            }}
-                            className="rounded-md bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 hover:bg-violet-100"
-                          >
-                            {preset}
-                          </button>
-                        ))}
-                      </div>
                       {errors.tshirtItems?.[idx]?.name && (
                         <p className={errorCls}>{errors.tshirtItems[idx]?.name?.message}</p>
                       )}
@@ -969,7 +943,22 @@ export function CreateOrderForm({ onClose }: Props) {
                       <input
                         type="checkbox"
                         className="w-4 h-4 accent-violet-600"
-                        {...register(`tshirtItems.${idx}.printOnClientItem`)}
+                        {...register(`tshirtItems.${idx}.printOnClientItem`, {
+                          onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                            // Название подставляем только в пустое поле:
+                            // затирать написанное человеком нельзя.
+                            if (
+                              e.target.checked &&
+                              !(getValues(`tshirtItems.${idx}.name`) ?? '').trim()
+                            ) {
+                              setValue(
+                                `tshirtItems.${idx}.name`,
+                                CLIENT_ITEM_PRINT_NAME,
+                                { shouldValidate: true, shouldDirty: true },
+                              );
+                            }
+                          },
+                        })}
                       />
                       <span className="text-sm text-gray-700">
                         Печать на изделии заказчика — заготовку не покупаем,

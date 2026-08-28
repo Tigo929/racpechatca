@@ -7,7 +7,7 @@ import { partnerSettingsApi } from '../../api/partnerSettings';
 import { computePositionSettlement } from '../../utils/settlement';
 import { useAuth } from '../../context/useAuth';
 import { usePersistentState } from '../../hooks/usePersistentState';
-import { FREE_PRESETS, FREE_PRICE_HINT } from './freePresets';
+import { CLIENT_ITEM_PRINT_NAME, FREE_PRICE_HINT } from './freePresets';
 import {
   TSHIRT_SIZE_LABELS,
   PRINT_LOCATION_LABELS,
@@ -103,9 +103,10 @@ function TshirtRows({ state, onChange }: { state: EditState; onChange: (s: EditS
  * Готовые названия для свободной позиции.
  *
  * Печать по изделию заказчика — постоянная работа, а не разовая: клиент
- * приносит своё, мы наносим принт. Позиции-футболки в таком заказе нет, и
- * набирать название руками каждый раз значит рано или поздно написать его
- * иначе — а по нему потом искать в отчётах.
+ * приносит своё, мы наносим принт. Позиции-футболки в таком заказе нет,
+ * поэтому заводится она здесь. Название подставляет галочка ниже: набирать
+ * его руками каждый раз значит рано или поздно написать иначе, а по нему
+ * потом искать в отчётах.
  */
 function FreeRows({ state, onChange }: { state: FreeState; onChange: (s: FreeState) => void }) {
   return (
@@ -113,18 +114,6 @@ function FreeRows({ state, onChange }: { state: FreeState; onChange: (s: FreeSta
       <Row label="Название">
         <input className={inputCls} placeholder="Кружка с принтом, баннер…" value={state.name}
           onChange={(e) => onChange({ ...state, name: e.target.value })} />
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {FREE_PRESETS.map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              onClick={() => onChange({ ...state, name: preset, printOnClientItem: true })}
-              className="rounded-md bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 hover:bg-violet-100"
-            >
-              {preset}
-            </button>
-          ))}
-        </div>
       </Row>
       <Row label="Кол-во">
         <input type="number" min={1} className={inputCls} value={state.quantity}
@@ -145,7 +134,18 @@ function FreeRows({ state, onChange }: { state: FreeState; onChange: (s: FreeSta
             type="checkbox"
             className="mt-0.5 w-4 h-4 accent-violet-600"
             checked={state.printOnClientItem}
-            onChange={(e) => onChange({ ...state, printOnClientItem: e.target.checked })}
+            onChange={(e) =>
+              onChange({
+                ...state,
+                printOnClientItem: e.target.checked,
+                // Название подставляем только в пустое поле: затирать
+                // написанное человеком нельзя.
+                name:
+                  e.target.checked && !state.name.trim()
+                    ? CLIENT_ITEM_PRINT_NAME
+                    : state.name,
+              })
+            }
           />
           <span className="text-xs text-gray-600">
             Печатаем на вещи клиента: заготовку не покупаем, но партнёру
