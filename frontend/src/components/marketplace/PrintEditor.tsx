@@ -7,7 +7,12 @@ import {
   type ColorGroupDraft, type PrintDraft,
 } from './printDraft';
 import { TSHIRT_SIZE_LABELS } from '../../constants';
-import type { EnumTshirtGender } from '../../api/ozonCatalog';
+import toast from 'react-hot-toast';
+import {
+  ozonCatalogApi,
+  type EnumTshirtGender,
+  type OzonAttributeValueOption,
+} from '../../api/ozonCatalog';
 import type { EnumTshirtSize } from '../../types/index';
 
 /**
@@ -28,6 +33,84 @@ const PATTERN_ATTRIBUTE_ID = 9437;
 
 const field = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500';
 const fieldSm = 'w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500';
+
+/**
+ * Чёрный и белый — двумя кнопками.
+ *
+ * Мы печатаем на двух цветах, а цвет всё равно набирался в поле руками:
+ * человек вводил «чёрный», ждал подсказку словаря и выбирал её. Каждая
+ * карточка — это лишний набор текста там, где вариантов ровно два.
+ *
+ * Идентификаторы словаря НЕ зашиты в код: кнопка спрашивает их у площадки
+ * тем же запросом, которым работает подсказка. Зашитое число молча
+ * разошлось бы с кабинетом при первом же изменении справочника, и карточки
+ * уходили бы в Ozon с чужим цветом — ошибка, которую увидишь только
+ * на модерации.
+ *
+ * Поле ввода рядом остаётся: у карточек прошлых лет цвет бывает другой,
+ * и убрать поле значило бы лишить их возможности редактирования (§15
+ * прямо запрещает трогать прежние цвета вслепую).
+ */
+const COLOR_PRESETS = [
+  { code: 'black', title: 'Чёрная', query: 'Черный', swatch: 'bg-gray-900' },
+  { code: 'white', title: 'Белая', query: 'Белый', swatch: 'bg-white border-gray-300' },
+] as const;
+
+function ColorPresetButtons({
+  accountId,
+  active,
+  onPick,
+}: {
+  accountId: string;
+  active: string;
+  onPick: (option: OzonAttributeValueOption) => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const pick = async (preset: (typeof COLOR_PRESETS)[number]) => {
+    setBusy(preset.code);
+    try {
+      const options = await ozonCatalogApi.searchAttributeValue(
+        accountId,
+        COLOR_ATTRIBUTE_ID,
+        preset.query,
+      );
+      // Точное совпадение, а не первая строка ответа: по запросу «Черный»
+      // словарь возвращает и «Черный меланж», и «Черно-белый».
+      const exact =
+        options.find(
+          (o) => o.value.trim().toLowerCase().replace('ё', 'е') === preset.query.toLowerCase(),
+        ) ?? options[0];
+      if (exact) onPick(exact);
+      else toast.error(`В словаре кабинета не нашёлся цвет «${preset.query}»`);
+    } catch {
+      toast.error('Не удалось спросить цвет у Ozon — введите вручную');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="mb-1.5 flex flex-wrap gap-1.5">
+      {COLOR_PRESETS.map((preset) => (
+        <button
+          key={preset.code}
+          type="button"
+          disabled={busy !== null}
+          onClick={() => void pick(preset)}
+          className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+            active === preset.code
+              ? 'border-amber-500 bg-amber-50 text-amber-900'
+              : 'border-gray-200 text-gray-700 hover:border-amber-300'
+          } ${busy !== null ? 'opacity-60' : ''}`}
+        >
+          <span className={`h-3 w-3 rounded-full border ${preset.swatch}`} aria-hidden="true" />
+          {busy === preset.code ? 'Спрашиваю Ozon…' : preset.title}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function ColorGroupRow({
   group, onChange, onRemove, accountId, removable, slug, name,
@@ -51,6 +134,18 @@ export function ColorGroupRow({
     <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3 space-y-2">
       <div className="flex items-start gap-2">
         <div className="flex-1">
+          <ColorPresetButtons
+            accountId={accountId}
+            active={group.colorCode}
+            onPick={(option) =>
+              onChange({
+                ...group,
+                colorLabel: option.value,
+                colorDictionaryValueId: option.id,
+                colorCode: colorCodeFor(option.value),
+              })
+            }
+          />
           <AttributeAutocomplete
             accountId={accountId}
             attributeId={COLOR_ATTRIBUTE_ID}
