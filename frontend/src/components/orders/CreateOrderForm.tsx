@@ -282,6 +282,8 @@ export function CreateOrderForm({ onClose }: Props) {
   const isUrgent = useWatch({ control, name: 'isUrgent' }) ?? false;
   const freePrice = useWatch({ control, name: 'freePrice' });
   const needsDesign = useWatch({ control, name: 'needsDesign' });
+  const designCostWatch = useWatch({ control, name: 'designDevelopmentCost' });
+  const extraItemsWatch = useWatch({ control, name: 'extraItems' });
   const photoItemsWatch = useWatch({ control, name: 'items' });
   const tshirtItemsWatch = useWatch({ control, name: 'tshirtItems' });
   const canvasItemsWatch = useWatch({ control, name: 'canvasItems' });
@@ -405,15 +407,27 @@ export function CreateOrderForm({ onClose }: Props) {
     const isProductionDelivery = deliveryMethodWatch === 'PRODUCTION_MSK';
     const deliveryOwn = isProductionDelivery ? (canvasPricing?.delivery.cost ?? 0) : 0;
     const deliveryCharged = Number(deliveryCostWatch ?? 0) || 0;
-    const clientTotal = revenue + deliveryCharged;
+    // Свободные позиции (багет, упаковка) — договорная цена без себестоимости:
+    // подрядчику за них не платят, значит вся сумма в прибыль.
+    const extra = (extraItemsWatch ?? [])
+      .filter((i) => (i?.name ?? '').trim())
+      .reduce((sum, i) => sum + (Number(i?.price ?? 0) || 0), 0);
+    // Разработка дизайна — тоже 100% прибыль владельца.
+    const design = needsDesign ? Number(designCostWatch ?? 0) || 0 : 0;
+
+    const clientTotal = revenue + deliveryCharged + extra + design;
     const owed = cost + deliveryOwn;
     return {
       revenue,
       cost,
       deliveryOwn,
       deliveryCharged,
+      extra,
+      design,
       clientTotal,
       owed,
+      // Свободные позиции и дизайн идут в прибыль целиком — себестоимости
+      // у них нет.
       profit: clientTotal - owed,
     };
   })();

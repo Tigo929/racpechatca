@@ -116,7 +116,17 @@ export function CanvasItemsTable({ order }: Props) {
     order.deliveryMethod === 'PRODUCTION_MSK' ? (pricing?.delivery.cost ?? 0) : 0;
   const deliveryCharged =
     order.deliveryMethod === 'PRODUCTION_MSK' ? (order.deliveryCost ?? 0) : 0;
-  const myProfit = totals.profit + deliveryCharged - deliveryOwnCost;
+  /*
+   * Разработка дизайна — 100% в прибыль владельца.
+   *
+   * Это его собственная работа, а не позиция производства: подрядчику
+   * за неё ничего не платят, себестоимости у неё нет. Раньше сумма входила
+   * в чек клиента (в «Сумму заказа»), но в «Мою прибыль» не попадала —
+   * заработок занижался ровно на неё.
+   */
+  const designCost = order.designDevelopmentCost ?? 0;
+  const myProfit =
+    totals.profit + deliveryCharged - deliveryOwnCost + designCost;
 
   const invalidate = (updated: OrderPhoto) => {
     qc.setQueryData(['order', order.id], updated);
@@ -494,7 +504,13 @@ export function CanvasItemsTable({ order }: Props) {
             </div>
           </div>
 
-          <div className="mt-2 border-t border-gray-100 pt-2">
+          <div className="mt-2 border-t border-gray-100 pt-2 space-y-1">
+            {designCost > 0 && (
+              <div className="flex justify-between text-gray-500">
+                <span>Разработка дизайна (100% ваши)</span>
+                <span className="tabular-nums">{money(designCost)}</span>
+              </div>
+            )}
             <div
               className={`flex justify-between font-semibold ${
                 myProfit >= 0 ? 'text-emerald-700' : 'text-red-600'

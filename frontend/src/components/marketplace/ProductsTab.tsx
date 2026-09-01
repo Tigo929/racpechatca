@@ -446,14 +446,23 @@ function BulkCreateForm({ accountId, defaults }: { accountId: string; defaults: 
     `ozon-draft-bulk-prefix-${accountId}`,
     '',
   );
-
   /*
-   * Код строки = префикс + её номер (нумерация с 1, как у людей, не с 0).
-   * Пустой префикс — прежнее поведение: код берётся из строки или из
-   * названия на сервере, и ничего не навязывается.
+   * Одно из двух, а не оба сразу.
+   *
+   * Раньше поле общего кода и поле кода у каждой строки виднелись
+   * одновременно — непонятно, что победит, и лишнее место. Теперь это
+   * переключатель: либо общий код с автонумерацией, либо свой у каждой
+   * строки. По умолчанию свой — прежнее поведение, ничего не навязано.
    */
+  const [codeMode, setCodeMode] = usePersistentState<'own' | 'shared'>(
+    `ozon-draft-bulk-codemode-${accountId}`,
+    'own',
+  );
+  const sharedCode = codeMode === 'shared';
+
+  /* Код строки = префикс + её номер (с 1). Только в режиме общего кода. */
   const codeFor = (index: number) =>
-    prefix.trim() ? `${prefix.trim()}${index + 1}` : '';
+    sharedCode && prefix.trim() ? `${prefix.trim()}${index + 1}` : '';
 
   const payloads = drafts.map((d, i) => {
     const auto = codeFor(i);
@@ -516,31 +525,44 @@ function BulkCreateForm({ accountId, defaults }: { accountId: string; defaults: 
 
   return (
     <div className="space-y-3">
-      <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
-        <label className="block">
-          <span className="text-xs font-semibold text-gray-700">
-            Общий код принтов (необязательно)
-          </span>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="text-gray-500">Код принтов:</span>
+        <div className="inline-flex rounded-lg border border-gray-200 p-0.5">
+          <button
+            type="button"
+            onClick={() => setCodeMode('own')}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              !sharedCode ? 'bg-amber-500 text-white' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Свой у строки
+          </button>
+          <button
+            type="button"
+            onClick={() => setCodeMode('shared')}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              sharedCode ? 'bg-amber-500 text-white' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Общий с нумерацией
+          </button>
+        </div>
+
+        {sharedCode && (
           <input
-            className={`mt-1 w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500`}
+            className="w-40 rounded-lg border border-gray-200 px-2.5 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             value={prefix}
             onChange={(e) => setPrefix(e.target.value)}
             placeholder="ai-music-"
+            aria-label="Общий код принтов"
           />
-        </label>
-        <p className="mt-1.5 text-[11px] leading-relaxed text-gray-500">
-          Номер приписывается сам по порядку строк:{' '}
-          {prefix.trim() ? (
-            <span className="font-mono text-gray-700">
-              {[1, 2, 3]
-                .map((n) => `${prefix.trim()}${n}`)
-                .join(', ')}…
-            </span>
-          ) : (
-            <>оставьте пустым — тогда код берётся из строки или из названия.</>
-          )}{' '}
-          Поле «Код принта» у строк при этом скрыто — код задаёт формула.
-        </p>
+        )}
+
+        {sharedCode && prefix.trim() && (
+          <span className="font-mono text-xs text-gray-500">
+            → {prefix.trim()}1, {prefix.trim()}2…
+          </span>
+        )}
       </div>
 
       {drafts.map((d, idx) => (
@@ -571,7 +593,7 @@ function BulkCreateForm({ accountId, defaults }: { accountId: string; defaults: 
             draft={d}
             onChange={(next) => update(d.key, next)}
             accountId={accountId}
-            hideSlug={Boolean(prefix.trim())}
+            hideSlug={sharedCode}
           />
         </div>
       ))}
