@@ -107,6 +107,10 @@ const baseSchema = z.object({
   needsDesign: z.boolean().optional(),
   designDevelopmentCost: z.coerce.number().int().min(0).optional(),
   freeItems: z.array(freeItemSchema).optional(),
+  // Свободные позиции РЯДОМ с холстами (не вместо них): багет, упаковка,
+  // подвес. Отдельный массив от freeItems, который относится к режиму
+  // «весь заказ по свободной цене».
+  extraItems: z.array(freeItemSchema).optional(),
   items: z.array(photoItemSchema).optional(),
   tshirtItems: z.array(tshirtItemSchema).optional(),
   canvasItems: z.array(canvasItemSchema).optional(),
@@ -197,6 +201,7 @@ const EMPTY_ORDER_FORM = {
   needsDesign: false,
   designDevelopmentCost: 0,
   freeItems: [{ name: '', quantity: 1, price: 0 }],
+  extraItems: [],
   items: [{ isFreePrice: false, formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }],
   tshirtItems: [{
     freePrice: false, name: '',
@@ -310,11 +315,13 @@ export function CreateOrderForm({ onClose }: Props) {
       setValue('items', []);
       setValue('tshirtItems', []);
       setValue('canvasItems', []);
+      setValue('extraItems', []);
       return;
     }
     if (productCategory === 'TSHIRT') {
       setValue('items', []);
       setValue('canvasItems', []);
+      setValue('extraItems', []);
       if ((getValues('tshirtItems')?.length ?? 0) === 0) {
         setValue('tshirtItems', [{
           freePrice: false, name: '',
@@ -338,6 +345,7 @@ export function CreateOrderForm({ onClose }: Props) {
     } else {
       setValue('tshirtItems', []);
       setValue('canvasItems', []);
+      setValue('extraItems', []);
       if ((getValues('items')?.length ?? 0) === 0) {
         setValue('items', [{ isFreePrice: false, formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }]);
       }
@@ -347,6 +355,7 @@ export function CreateOrderForm({ onClose }: Props) {
   const photoFields = useFieldArray({ control, name: 'items' });
   const tshirtFields = useFieldArray({ control, name: 'tshirtItems' });
   const canvasFields = useFieldArray({ control, name: 'canvasItems' });
+  const extraFields = useFieldArray({ control, name: 'extraItems' });
   const deliveryMethodWatch = useWatch({ control, name: 'deliveryMethod' });
   const deliveryCostWatch = useWatch({ control, name: 'deliveryCost' });
 
@@ -514,11 +523,27 @@ export function CreateOrderForm({ onClose }: Props) {
               clientPrice: r.clientPrice,
             },
       );
+      // Свободные позиции рядом с холстами — как items (свободная цена):
+      // цена = итог позиции, количество на неё не умножается.
+      const extraItems = (data.extraItems ?? [])
+        .filter((i) => i.name.trim())
+        .map((i) => ({
+          formatPaper: i.name.trim(),
+          typePaper: 'GLOSS' as const,
+          quantity: i.quantity,
+          price: i.price,
+          isFreePrice: true,
+        }));
       mutation.mutate({
         ...base,
         productCategory: 'CANVAS',
         executorId: undefined,
         canvasItems,
+        items: extraItems.length ? extraItems : undefined,
+        // «Разработка дизайна» — свободная сумма, входит в чек клиента.
+        designDevelopmentCost: data.needsDesign
+          ? data.designDevelopmentCost || 0
+          : undefined,
       });
       return;
     }
@@ -1192,9 +1217,60 @@ export function CreateOrderForm({ onClose }: Props) {
         </div>
       )}
 
-      {/* Требуется разработать дизайн — только футболки. Свободная сумма
+      {/* Свободные позиции рядом с холстами: багет, упаковка, подвес, доставка
+          курьером. Цена договорная — итог за позицию, на количество не
+          умножается. Отдельно от самих холстов, у которых своя математика. */}
+      {productCategory === 'CANVAS' && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900">Свободные позиции</h3>
+            <button type="button"
+              onClick={() => extraFields.append({ name: '', quantity: 1, price: 0 })}
+              className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
+              <Plus size={14} aria-hidden="true" /> Добавить
+            </button>
+          </div>
+          {extraFields.fields.length === 0 && (
+            <p className="text-xs text-gray-400">
+              Необязательно. Багет, упаковка, подвес, курьер — договорной суммой.
+            </p>
+          )}
+          <div className="space-y-3">
+            {extraFields.fields.map((field, idx) => (
+              <div key={field.id} className="grid grid-cols-[1fr_70px_100px_36px] gap-2 items-end">
+                <div>
+                  {idx === 0 && <label className={labelCls}>Название</label>}
+                  <input className={inputCls} placeholder="Багет, упаковка…"
+                    {...register(`extraItems.${idx}.name`)} />
+                </div>
+                <div>
+                  {idx === 0 && <label className={labelCls}>Кол-во</label>}
+                  <input type="number" min={1} className={inputCls}
+                    {...register(`extraItems.${idx}.quantity`)} />
+                </div>
+                <div>
+                  {idx === 0 && <label className={labelCls}>Цена ₽ (итог)</label>}
+                  <input type="number" min={0} className={inputCls}
+                    {...register(`extraItems.${idx}.price`)} />
+                </div>
+                <button type="button" onClick={() => extraFields.remove(idx)}
+                  className="p-2 text-gray-400 hover:text-red-500" aria-label="Убрать позицию">
+                  <Trash2 size={14} aria-hidden="true" />
+                </button>
+              </div>
+            ))}
+          </div>
+          {extraFields.fields.length > 0 && (
+            <p className="mt-1.5 text-[11px] text-gray-500">
+              Договорная сумма за позицию — на количество не умножается.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Требуется разработать дизайн — футболки и холсты. Свободная сумма
           входит в чек клиента и служит базой премии менеджера по оформлению. */}
-      {productCategory === 'TSHIRT' && (
+      {(productCategory === 'TSHIRT' || productCategory === 'CANVAS') && (
         <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 space-y-2">
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input type="checkbox" {...register('needsDesign')} className="w-4 h-4 accent-amber-600" />
