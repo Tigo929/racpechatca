@@ -1120,7 +1120,7 @@ export function CreateOrderForm({ onClose }: Props) {
                         {(canvasPricing?.sizes ?? []).map((size) => (
                           <option key={size.key} value={size.key}>{size.label}</option>
                         ))}
-                        <option value="">Нестандартный размер…</option>
+                        <option value="">Своя цена (указать производителя)…</option>
                       </select>
                       {!row?.sizeKey && (
                         /* Размера нет в прайсе — описываем словами и вводим
@@ -1140,7 +1140,7 @@ export function CreateOrderForm({ onClose }: Props) {
                           <option value="COTTON">Хлопок</option>
                         </select>
                       ) : (
-                        <input type="number" min={0} className={inputCls} placeholder="Подрядчик ₽/шт"
+                        <input type="number" min={0} className={inputCls} placeholder="Производитель ₽/шт"
                           {...register(`canvasItems.${idx}.contractorPrice`)} />
                       )}
                     </div>
