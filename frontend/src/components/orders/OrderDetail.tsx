@@ -48,6 +48,27 @@ const underlineEveryChar = (text: string): string =>
 const pvzHighlight = (text: string): string =>
   `**${underlineEveryChar(text)}**`;
 
+/**
+ * Реквизиты для перевода — одинаково в предоплате и в остатке, во всех
+ * категориях. Один паттерн, чтобы телефон и получатель не разъезжались
+ * между сообщениями.
+ *
+ * Телефон — отдельной строкой БЕЗ отступа. Отступ был не украшением:
+ * пробелы в начале мешали Telegram распознать номер, и во вставленном
+ * сообщении он оставался обычным текстом. Без них клиент тапает по
+ * номеру и получает «Скопировать» — то, ради чего всё и затевалось.
+ * (Копирование в одно нажатие даёт только моноширинный тег, а он
+ * работает лишь у сообщений, отправленных ботом, — здесь текст
+ * вставляют руками.)
+ */
+function paymentRequisiteLines(): string[] {
+  return [
+    `📲 Реквизиты для перевода (${businessConfig.payment.label}):`,
+    businessConfig.payment.phone,
+    businessConfig.payment.recipient,
+  ];
+}
+
 function pvzReminder(deliveryMethod: string): string[] {
   if (deliveryMethod === "YANDEX_PVZ") {
     return [
@@ -171,9 +192,7 @@ function generateConfirmationText(order: OrderPhoto): string {
       ? ["", "📍 Самовывоз: адрес пришлём, когда заказ возьмут в работу"]
       : []),
     "",
-    `📲 Реквизиты для перевода (${businessConfig.payment.label}):`,
-    `   ${businessConfig.payment.phone}`,
-    `   ${businessConfig.payment.recipient}`,
+    ...paymentRequisiteLines(),
     "",
     "👉 Как только внесёте предоплату, пришлите, пожалуйста, чек.",
     "",
@@ -263,9 +282,7 @@ function generateReadyText(order: OrderPhoto): string {
       ? ["", "📍 Самовывоз: адрес пришлём, когда заказ возьмут в работу"]
       : []),
     "",
-    `📲 Реквизиты для перевода (${businessConfig.payment.label}):`,
-    `   ${businessConfig.payment.phone}`,
-    `   ${businessConfig.payment.recipient}`,
+    ...paymentRequisiteLines(),
     "",
     // При самовывозе платить переводом необязательно — в подтверждении
     // заказа клиенту так и обещали «остаток при получении». Требовать
