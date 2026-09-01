@@ -30,6 +30,26 @@ async function pass(body: Record<string, unknown>): Promise<DtoCreateLead> {
 }
 
 describe('заявка с сайта: приём полей', () => {
+  /*
+   * Бумага — то самое место, где заказ расходился с тем, что выбрал клиент:
+   * в позицию жёстко проставлялся глянец. Проверяем и приём значения,
+   * и то, что старые заявки без поля по-прежнему проходят: валидатор
+   * настроен на forbidNonWhitelisted, и ошибка здесь отбивает заявку целиком.
+   */
+  it('бумага, выбранная на сайте, доходит до CRM', async () => {
+    const dto = await pass({ ...base, paperType: 'MATTE' });
+    expect(dto.paperType).toBe('MATTE');
+  });
+
+  it('заявка без бумаги принимается по-прежнему', async () => {
+    const dto = await pass({ ...base });
+    expect(dto.paperType).toBeUndefined();
+  });
+
+  it('чужое значение бумаги заявку не ломает молча', async () => {
+    await expect(pass({ ...base, paperType: 'ГЛЯНЕЦ' })).rejects.toThrow();
+  });
+
   it('комментарий клиента доходит до CRM', async () => {
     const dto = await pass({ ...base, comment: 'Нужно к пятнице' });
     expect(dto.comment).toBe('Нужно к пятнице');

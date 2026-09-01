@@ -602,6 +602,7 @@ export class OrderPhotoService {
         dto.unitPrice ? `Цена за шт: ${dto.unitPrice} ₽` : null,
         money.pricePosition ? `Итого: ${money.pricePosition} ₽` : null,
         dto.delivery ? `Получение: ${dto.delivery === 'yandex_pvz' ? 'Яндекс ПВЗ' : 'Самовывоз'}` : null,
+        dto.paperType ? `Бумага: ${dto.paperType === 'MATTE' ? 'матовая' : 'глянцевая'}` : null,
         dto.photosArchiveUrl ? `Архив фото: ${dto.photosArchiveUrl}` : null,
         dto.photosCount != null ? `Фото: ${dto.photosCount} шт` : null,
         dto.photosFailed ? 'Фото загружались, но архив не сохранился' : null,
@@ -1960,7 +1961,11 @@ function buildLeadPosition(
         {
           formatPaper:
             dto.productName?.trim() || dto.productSlug?.trim() || 'Заявка с сайта',
-          typePaper: 'GLOSS' as const,
+          // Бумага из заявки. Раньше здесь стоял жёсткий GLOSS: клиент
+          // выбирал матовую, а в позиции заказа неизменно оказывался
+          // глянец, и печатали не то, что заказывали.
+          typePaper:
+            dto.paperType === 'MATTE' ? ('MATTE' as const) : ('GLOSS' as const),
           quantity: money.quantity,
           price: money.unitPrice,
           pricePosition: money.pricePosition,

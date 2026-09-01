@@ -97,6 +97,17 @@ export class DtoCreateLead {
   @IsIn(['yandex_pvz', 'pickup'])
   delivery?: 'yandex_pvz' | 'pickup';
 
+  /**
+   * Бумага, выбранная клиентом на сайте.
+   *
+   * Поле необязательное: заявки со старой версии сайта его не присылают,
+   * а валидатор настроен на forbidNonWhitelisted — обязательное поле
+   * отбило бы их целиком. Ничего не пришло — остаётся глянец, как было.
+   */
+  @IsOptional()
+  @IsIn(['GLOSS', 'MATTE'])
+  paperType?: 'GLOSS' | 'MATTE';
+
   @IsOptional()
   @IsUrl({ require_protocol: true })
   @MaxLength(600)
