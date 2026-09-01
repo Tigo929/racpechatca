@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2, X } from 'lucide-react';
 import { AttributeAutocomplete } from './AttributeAutocomplete';
 import { PhotoUpload } from './PhotoUpload';
@@ -128,6 +128,44 @@ export function ColorGroupRow({
     onChange({ ...group, sizes: has ? group.sizes.filter((s) => s !== size) : [...group.sizes, size] });
   };
 
+  /*
+   * Подставляем идентификатор словаря для предзаполненного цвета.
+   *
+   * Новая строка открывается с чёрным (см. emptyColorGroup), но у чёрного
+   * должен быть ещё и id из словаря КОНКРЕТНОГО кабинета — зашить его нельзя.
+   * Достаём его один раз при появлении строки тем же запросом, что и кнопка
+   * цвета: у группы есть код и подпись, но нет id. Молча — это не действие
+   * пользователя, а достройка умолчания; при отказе сети остаётся кнопка.
+   */
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  useEffect(() => {
+    if (group.colorDictionaryValueId || !group.colorCode) return;
+    const preset = COLOR_PRESETS.find((c) => c.code === group.colorCode);
+    if (!preset) return;
+    let cancelled = false;
+    void ozonCatalogApi
+      .searchAttributeValue(accountId, COLOR_ATTRIBUTE_ID, preset.query)
+      .then((options) => {
+        if (cancelled) return;
+        const exact =
+          options.find(
+            (o) => o.value.trim().toLowerCase().replace('ё', 'е') === preset.query.toLowerCase(),
+          ) ?? options[0];
+        if (exact) {
+          onChangeRef.current({ ...group, colorDictionaryValueId: exact.id });
+        }
+      })
+      .catch(() => {
+        /* сеть недоступна — цвет выберут кнопкой, ошибку там и покажем */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Один раз на код цвета: пока id не подставлен и код не сменили.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountId, group.colorCode, group.colorDictionaryValueId]);
+
   const firstSize = group.sizes[0] ?? 'S';
 
   return (
@@ -215,11 +253,18 @@ export function ColorGroupRow({
 }
 
 export function PrintEditor({
-  draft, onChange, accountId,
+  draft, onChange, accountId, hideSlug = false,
 }: {
   draft: PrintDraft;
   onChange: (d: PrintDraft) => void;
   accountId: string;
+  /**
+   * Скрыть поле «Код принта».
+   *
+   * В массовом режиме код задаёт общий префикс с автонумерацией, и ручное
+   * поле у каждой строки только сбивало бы с толку: непонятно, что победит.
+   */
+  hideSlug?: boolean;
 }) {
   const set = <K extends keyof PrintDraft>(key: K, value: PrintDraft[K]) => onChange({ ...draft, [key]: value });
 
@@ -293,7 +338,7 @@ export function PrintEditor({
           <span className="text-xs font-medium text-gray-600">Название товара</span>
           <input className={`mt-1 ${field}`} value={draft.name} onChange={(e) => set('name', e.target.value)} placeholder="Футболка с принтом «…»" />
         </label>
-        <label className="block">
+        <label className={hideSlug ? 'hidden' : 'block'}>
           <span className="text-xs font-medium text-gray-600">Код принта</span>
           <input className={`mt-1 ${field}`} value={draft.slug} onChange={(e) => set('slug', e.target.value)} placeholder="JDM-1-1" />
           <span className="mt-1 block text-[11px] text-gray-400">

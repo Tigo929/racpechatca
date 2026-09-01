@@ -31,13 +31,22 @@ export interface ColorGroupDraft {
 }
 
 /** Новая цветовая партия: размеры по умолчанию, фото и цвет — пустые. */
+/**
+ * Новая цветовая группа начинается с чёрного размера M.
+ *
+ * Так продавец заводит принты чаще всего, и три клика на каждой карточке
+ * складываются в сотни на партии. Значения правятся: цвет — кнопкой рядом,
+ * размеры — тумблерами. Идентификатор словаря Ozon для чёрного не зашит
+ * (у кабинетов он разный) — его подставляет кнопка «Чёрная» при открытии
+ * строки, см. ColorPresetButtons.
+ */
 export function emptyColorGroup(): ColorGroupDraft {
   return {
-    colorLabel: '',
+    colorLabel: 'Чёрный',
     colorDictionaryValueId: 0,
-    colorCode: '',
+    colorCode: 'black',
     mainPhotoUrl: '',
-    sizes: [...DEFAULT_SIZES],
+    sizes: ['M'],
   };
 }
 

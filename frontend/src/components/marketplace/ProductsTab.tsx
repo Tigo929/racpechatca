@@ -434,6 +434,31 @@ function BulkCreateForm({ accountId, defaults }: { accountId: string; defaults: 
     `ozon-draft-bulk-${accountId}`,
     () => [emptyPrintDraft()],
   );
+  /*
+   * Общий код на всю партию.
+   *
+   * Раньше код принта набирали у каждой строки отдельно, и на десяти
+   * принтах это десять раз «ai-music-1», «ai-music-2» руками — с гарантией
+   * однажды пропустить номер или задвоить. Здесь код вводится один раз,
+   * а номер приписывается по позиции строки.
+   */
+  const [prefix, setPrefix] = usePersistentState<string>(
+    `ozon-draft-bulk-prefix-${accountId}`,
+    '',
+  );
+
+  /*
+   * Код строки = префикс + её номер (нумерация с 1, как у людей, не с 0).
+   * Пустой префикс — прежнее поведение: код берётся из строки или из
+   * названия на сервере, и ничего не навязывается.
+   */
+  const codeFor = (index: number) =>
+    prefix.trim() ? `${prefix.trim()}${index + 1}` : '';
+
+  const payloads = drafts.map((d, i) => {
+    const auto = codeFor(i);
+    return draftToPayload(auto ? { ...d, slug: auto } : d, defaults);
+  });
 
   // Та же развилка, что в одиночном создании: отказ отправки — это результат,
   // а не ошибка. Плюс список обновляем и при отказе создания: часть принтов
@@ -442,7 +467,7 @@ function BulkCreateForm({ accountId, defaults }: { accountId: string; defaults: 
     mutationFn: async (publish: boolean) => {
       const created = await ozonCatalogApi.createPrintsBulk(
         accountId,
-        drafts.map((d) => draftToPayload(d, defaults)),
+        payloads,
       );
       if (!publish || !created.length) {
         return { count: created.length, publishError: null as string | null };
@@ -483,12 +508,41 @@ function BulkCreateForm({ accountId, defaults }: { accountId: string; defaults: 
 
   // Ошибки собираем с номером строки: в списке из десяти принтов «не указана
   // цена» без номера ничего не говорит.
-  const allErrors = drafts.flatMap((d, i) =>
-    draftErrors(d, defaults).map((e) => `Принт #${i + 1}: ${e}`),
-  );
+  const allErrors = drafts.flatMap((d, i) => {
+    const auto = codeFor(i);
+    const checked = auto ? { ...d, slug: auto } : d;
+    return draftErrors(checked, defaults).map((e) => `Принт #${i + 1}: ${e}`);
+  });
 
   return (
     <div className="space-y-3">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+        <label className="block">
+          <span className="text-xs font-semibold text-gray-700">
+            Общий код принтов (необязательно)
+          </span>
+          <input
+            className={`mt-1 w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500`}
+            value={prefix}
+            onChange={(e) => setPrefix(e.target.value)}
+            placeholder="ai-music-"
+          />
+        </label>
+        <p className="mt-1.5 text-[11px] leading-relaxed text-gray-500">
+          Номер приписывается сам по порядку строк:{' '}
+          {prefix.trim() ? (
+            <span className="font-mono text-gray-700">
+              {[1, 2, 3]
+                .map((n) => `${prefix.trim()}${n}`)
+                .join(', ')}…
+            </span>
+          ) : (
+            <>оставьте пустым — тогда код берётся из строки или из названия.</>
+          )}{' '}
+          Поле «Код принта» у строк при этом скрыто — код задаёт формула.
+        </p>
+      </div>
+
       {drafts.map((d, idx) => (
         <div key={d.key} className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -507,7 +561,18 @@ function BulkCreateForm({ accountId, defaults }: { accountId: string; defaults: 
               )}
             </div>
           </div>
-          <PrintEditor draft={d} onChange={(next) => update(d.key, next)} accountId={accountId} />
+          {codeFor(idx) && (
+            <p className="text-xs text-gray-500">
+              Код этого принта:{' '}
+              <span className="font-mono text-gray-800">{codeFor(idx)}</span>
+            </p>
+          )}
+          <PrintEditor
+            draft={d}
+            onChange={(next) => update(d.key, next)}
+            accountId={accountId}
+            hideSlug={Boolean(prefix.trim())}
+          />
         </div>
       ))}
 
