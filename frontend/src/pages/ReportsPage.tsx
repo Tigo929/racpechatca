@@ -16,11 +16,19 @@ const MONTH_LABELS_FULL = ['Январь', 'Февраль', 'Март', 'Апр
 /** Деньги, но «—» вместо «0 ₽» — чтобы пустые ячейки не шумели. */
 const money = (n: number): string => (n !== 0 ? fmt(n) : '—');
 /**
- * Все расходы периода: себестоимость заказов, операционные расходы и
- * НАЧИСЛЕННАЯ зарплата. Именно начисленная: месяц без выплат иначе выглядит
- * сверхприбыльным, хотя работа сделана и долг перед сотрудниками вырос.
+ * Себестоимость: деньги, ушедшие подрядчикам и на материалы. Оплачены
+ * из денег клиента, не из кармана владельца, — поэтому отдельной колонкой,
+ * а не в «Расходах» (вариант A по решению владельца).
  */
-const spent = (m: PnlMetrics): number => m.totalExpenses + m.salaryAccrued;
+const cost = (m: PnlMetrics): number => m.cogs;
+
+/**
+ * Расходы бизнеса: только СВОИ деньги владельца — операционка плюс
+ * НАЧИСЛЕННАЯ зарплата. Начисленная, а не выплаченная: месяц без выплат
+ * иначе выглядит сверхприбыльным, хотя долг перед сотрудниками вырос.
+ * Себестоимость (подрядчики, материалы) сюда НЕ входит — она своя колонка.
+ */
+const spent = (m: PnlMetrics): number => m.operatingExpenses + m.salaryAccrued;
 
 // ── Таблица «период × продукты» ──────────────────────────────────────────────
 
@@ -46,7 +54,7 @@ function ProductCell({ count, revenue, profit }: { count: number; revenue: numbe
 }
 
 function PnlRow({ label, m, isTotal, onClick, selected }: { label: string; m: PnlMetrics; isTotal?: boolean; onClick?: () => void; selected?: boolean }) {
-  const active = m.orderCount > 0 || spent(m) > 0;
+  const active = m.orderCount > 0 || spent(m) > 0 || cost(m) > 0;
   const base = isTotal ? 'bg-gray-50 font-bold border-t-2 border-gray-300' : `border-b border-gray-100 ${onClick ? 'cursor-pointer' : ''} ${selected ? 'bg-blue-50' : 'hover:bg-gray-50'}`;
   return (
     <tr className={`${base} text-sm`} onClick={onClick}>
@@ -55,6 +63,7 @@ function PnlRow({ label, m, isTotal, onClick, selected }: { label: string; m: Pn
       <ProductCell count={m.tshirtCount} revenue={m.tshirtRevenue} profit={m.tshirtProfit} />
       <ProductCell count={m.canvasCount} revenue={m.canvasRevenue} profit={m.canvasProfit} />
       <Cell value={money(m.totalRevenue)} />
+      <Cell value={money(cost(m))} dim={cost(m) === 0} />
       <Cell value={money(spent(m))} neg={spent(m) > 0} dim={spent(m) === 0} />
       <Cell value={active ? fmt(m.netProfit) : '—'} highlight={active && m.netProfit > 0} neg={m.netProfit < 0} />
     </tr>
@@ -84,6 +93,7 @@ function PnlTable({ firstCol, rows, total, onRowClick, selectedKey }: { firstCol
               </span>
             </th>
             <th className="py-3 px-3 text-right">Выручка</th>
+            <th className="py-3 px-3 text-right">Себестоимость</th>
             <th className="py-3 px-3 text-right">Расходы</th>
             <th className="py-3 px-3 text-right">Прибыль</th>
           </tr>
@@ -183,7 +193,7 @@ function StatCard({ label, value, hint, tone }: { label: string; value: string; 
 function MonthSummary({ m, monthLabel }: { m: PnlMetrics; monthLabel: string }) {
   const positive = m.netProfit >= 0;
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
       <div className={`rounded-xl p-4 border ${positive ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
         <p className={`text-xs uppercase tracking-wide mb-1 ${positive ? 'text-green-600' : 'text-red-600'}`}>
           {positive ? 'В плюсе' : 'В минусе'} · {monthLabel}
@@ -192,8 +202,8 @@ function MonthSummary({ m, monthLabel }: { m: PnlMetrics; monthLabel: string }) 
         <p className={`text-xs mt-0.5 ${positive ? 'text-green-600/80' : 'text-red-600/80'}`}>маржа {m.margin}%</p>
       </div>
       <StatCard label="Выручка" value={fmt(m.totalRevenue)} hint="оборот за месяц" />
-      <StatCard label="Заказов" value={String(m.orderCount)} hint={`Фото ${m.photoCount} · Футболки ${m.tshirtCount} · Холсты ${m.canvasCount}`} />
-      <StatCard label="Расходы" value={fmt(spent(m))} hint="ордера + зарплата" tone="neg" />
+      <StatCard label="Себестоимость" value={fmt(cost(m))} hint="подрядчики + материалы" />
+      <StatCard label="Расходы" value={fmt(spent(m))} hint="ваши: зарплата, реклама" tone="neg" />
     </div>
   );
 }
@@ -472,7 +482,20 @@ export function ReportsPage() {
                 onRowClick={(key) => setMonth(Number(key))}
                 selectedKey={String(month)}
               />
-              <p className="text-xs text-gray-400 px-5 py-3">Заработок = выручка за товар − себестоимость (бумага, подрядчики) − начисленная зарплата − расходы бизнеса + заработок на доставке. Себестоимость считается по самим заказам, поэтому закупки материалов в расход второй раз не идут. Заказ попадает в период по дате оплаты клиентом.</p>
+              <div className="px-5 py-3 space-y-1.5">
+                <p className="text-xs text-gray-500">
+                  <span className="font-medium text-gray-700">Себестоимость</span> — деньги подрядчикам и на материалы: оплачены из денег клиента,
+                  прошли насквозь. В «Расходы» они больше не попадают.{' '}
+                  <span className="font-medium text-gray-700">Расходы</span> — только ваши деньги: зарплата, реклама, оборудование, упаковка.
+                </p>
+                <p className="text-xs text-gray-500">
+                  Прибыль = выручка − себестоимость − расходы − начисленная зарплата + заработок на доставке. Заказ попадает в период по дате оплаты клиентом.
+                </p>
+                <p className="text-xs text-gray-400">
+                  Футболки печатает: <span className="font-medium text-gray-600">{report.contractors.tshirt}</span> ·
+                  холсты: <span className="font-medium text-gray-600">{report.contractors.canvas}</span>. Изменить имена — в Настройках.
+                </p>
+              </div>
             </div>
 
             {/* Детализация выбранного месяца */}

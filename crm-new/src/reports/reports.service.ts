@@ -52,7 +52,7 @@ const MONTH_LABELS = [
  */
 
 /** Сырые накопленные суммы за период (до вычисления производных метрик). */
-interface PnlRaw {
+export interface PnlRaw {
   orderCount: number;
   photoCount: number;
   tshirtCount: number;
@@ -70,6 +70,7 @@ interface PnlRaw {
   marketing: number; // операц. — реклама
   partnerShare: number; // операц. — доля Гриши (партнёр)
   partnerReward: number; // операц. — вознаграждение партнёру за футболки
+  canvasContractorPaid: number; // справочно — выплачено подрядчику по холстам (в прибыль НЕ идёт: себестоимость уже из заказов)
   other: number; // операц. — прочее
   salaryPaid: number; // зарплата выплаченная (справочно, в прибыль не идёт)
 
@@ -134,7 +135,7 @@ function deliveryPaidFor(method: string, s: CostSettings): number {
   if (method === 'PRODUCTION_MSK') return s.canvasDeliveryCost;
   return 0;
 }
-type ExpenseRow = { createdAt: Date; amount: number; category: string };
+export type ExpenseRow = { createdAt: Date; amount: number; category: string };
 type SalaryRow = { createdAt: Date; amount: number };
 
 /**
@@ -145,7 +146,7 @@ function recognitionDate(o: OrderRow): Date {
   return o.clientPaidAt ?? o.sentAt ?? o.createdAt;
 }
 
-function emptyBucket(): PnlRaw {
+export function emptyBucket(): PnlRaw {
   return {
     orderCount: 0,
     photoCount: 0,
@@ -164,6 +165,7 @@ function emptyBucket(): PnlRaw {
     marketing: 0,
     partnerShare: 0,
     partnerReward: 0,
+    canvasContractorPaid: 0,
     other: 0,
     salaryPaid: 0,
     photoMaterialKopecks: 0,
@@ -230,7 +232,7 @@ function addOrder(b: PnlRaw, order: OrderRow, s: CostSettings): void {
  * партнёру и подрядчик по холстам вообще трижды. Суммы сохраняются, чтобы
  * было видно движение денег и можно было сверить формулу с фактом закупок.
  */
-function addExpense(b: PnlRaw, e: ExpenseRow): void {
+export function addExpense(b: PnlRaw, e: ExpenseRow): void {
   switch (e.category) {
     case 'MATERIALS_PHOTO':
       b.materialsPhoto += e.amount;
@@ -254,7 +256,13 @@ function addExpense(b: PnlRaw, e: ExpenseRow): void {
       b.partnerReward += e.amount;
       break;
     case 'CANVAS_CONTRACTOR':
-      b.canvasContractorCost += e.amount;
+      // Себестоимость холстов уже посчитана из самих заказов
+      // (canvasContractorCost в addOrder). Этот авто-расход — та же сумма,
+      // и прибавлять её к себестоимости значит вычесть подрядчика дважды:
+      // из-за этого прибыль по холстам занижалась. Держим отдельно как
+      // «сколько выплачено», в прибыль не пускаем — ровно как partnerReward
+      // для футболок.
+      b.canvasContractorPaid += e.amount;
       break;
     default:
       b.other += e.amount;
@@ -272,7 +280,7 @@ function sumBuckets(buckets: PnlRaw[]): PnlRaw {
 }
 
 /** Добавляет производные метрики (чистая выручка, прибыль, маржа, средний чек). */
-function finalize(b: PnlRaw) {
+export function finalize(b: PnlRaw) {
   // Выручка за товар: доставка вынесена, на ней зарабатываем отдельно.
   const netRevenue = b.totalRevenue - b.deliveryCost;
   // Себестоимость — по заказам, а не по закупкам (см. addExpense).
@@ -440,7 +448,17 @@ export class ReportsService {
     }));
     const totals = finalize(sumBuckets(buckets));
 
-    return { year, months, totals };
+    // Имена подрядчиков — для подписи в отчёте «кто печатает».
+    const settingsRow = await this.prisma.partnerSettings.findUnique({
+      where: { id: 'default' },
+      select: { partnerName: true, canvasContractorName: true },
+    });
+    const contractors = {
+      tshirt: settingsRow?.partnerName ?? 'Партнёр',
+      canvas: settingsRow?.canvasContractorName ?? 'Производство холстов',
+    };
+
+    return { year, months, totals, contractors };
   }
 
   async getWeeklyReport(year: number, month: number) {

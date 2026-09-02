@@ -25,6 +25,12 @@ export class DtoUpdatePartnerSettings {
   @MaxLength(60)
   partnerName?: string;
 
+  /** Кто печатает холсты — показываем в отчёте. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  canvasContractorName?: string;
+
   /** Шаблон ссылки на переписку в MAX: {phone} / {phone_plus}. */
   @IsOptional()
   @IsString()

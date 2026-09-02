@@ -501,10 +501,18 @@ export interface MonthData extends PnlMetrics {
   label: string;
 }
 
+export interface Contractors {
+  /** Кто печатает футболки. */
+  tshirt: string;
+  /** Кто делает холсты. */
+  canvas: string;
+}
+
 export interface MonthlyReport {
   year: number;
   months: MonthData[];
   totals: PnlMetrics;
+  contractors: Contractors;
 }
 
 export interface WeekData extends PnlMetrics {
@@ -673,6 +681,8 @@ export interface PartnerSettings {
   blankTshirtCost: number;
   partnerRateBasisPoints: number;
   partnerName: string;
+  /** Кто печатает холсты — показывается в отчёте. */
+  canvasContractorName: string;
   /** Шаблон ссылки на переписку в MAX: {phone} / {phone_plus}. */
   maxLinkTemplate: string;
   /** Себестоимость фотопечати: коробка бумаги и сколько в ней листов. */
