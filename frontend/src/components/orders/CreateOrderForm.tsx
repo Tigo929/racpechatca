@@ -1100,6 +1100,12 @@ export function CreateOrderForm({ onClose }: Props) {
               const contractor = row?.sizeKey
                 ? (priced?.cost[row.material ?? 'SYNTHETIC'] ?? 0)
                 : Number(row?.contractorPrice ?? 0) || 0;
+              // Розница подрядчика из прайса — чтобы показать, откуда берётся
+              // «должен»: это она минус договорная скидка.
+              const retail = row?.sizeKey
+                ? (priced?.retail[row.material ?? 'SYNTHETIC'] ?? 0)
+                : 0;
+              const discountPct = Math.round((canvasPricing?.discountBasisPoints ?? 0) / 100);
               const revenue = client * qty;
               const cost = contractor * qty;
               const profit = revenue - cost;
@@ -1163,6 +1169,12 @@ export function CreateOrderForm({ onClose }: Props) {
                         {row?.sizeKey ? 'Должен производству' : 'Подрядчик'}
                       </p>
                       <p className="font-semibold text-gray-800 tabular-nums">{cost.toLocaleString('ru-RU')} ₽</p>
+                      {row?.sizeKey && retail > 0 && (
+                        <p className="mt-0.5 text-[10px] leading-tight text-gray-400 tabular-nums">
+                          прайс {retail.toLocaleString('ru-RU')} ₽ − {discountPct}%
+                          {qty > 1 ? ` × ${qty}` : ''}
+                        </p>
+                      )}
                     </div>
                     <div className={`rounded-lg bg-white border px-3 py-2 ${profit >= 0 ? 'border-emerald-100' : 'border-red-100'}`}>
                       <p className="text-gray-400">Маржа</p>
