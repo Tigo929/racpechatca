@@ -18,6 +18,7 @@ import { usersApi } from "../../api/users";
 import {
   businessConfig,
   formatOrderNumberForClient,
+  formatPaymentPhoneForClient,
   resolvePickupAddress,
 } from "../../config/business";
 import { COMMUNICATION_LABELS, DELIVERY_LABELS } from "../../constants";
@@ -55,16 +56,20 @@ const pvzHighlight = (text: string): string =>
  *
  * Телефон — отдельной строкой БЕЗ отступа. Отступ был не украшением:
  * пробелы в начале мешали Telegram распознать номер, и во вставленном
- * сообщении он оставался обычным текстом. Без них клиент тапает по
- * номеру и получает «Скопировать» — то, ради чего всё и затевалось.
- * (Копирование в одно нажатие даёт только моноширинный тег, а он
- * работает лишь у сообщений, отправленных ботом, — здесь текст
- * вставляют руками.)
+ * сообщении он оставался обычным текстом.
+ *
+ * В Telegram номер дополнительно берётся в обратные кавычки — тем же
+ * правилом, что и номер заказа. Моноширинный блок копируется одним
+ * нажатием, а реквизиты перевода как раз копируют, а не читают. Раньше
+ * здесь стояла оговорка, что разметка работает только у ботов; номер
+ * заказа давно печатается так же и работает, так что оговорка неверна.
+ * В каналах без разметки (Авито, Ozon, MAX) кавычки показались бы как
+ * есть, поэтому там номер остаётся обычным текстом.
  */
-function paymentRequisiteLines(): string[] {
+function paymentRequisiteLines(order: { communicationPlatform?: string }): string[] {
   return [
     `📲 Реквизиты для перевода (${businessConfig.payment.label}):`,
-    businessConfig.payment.phone,
+    formatPaymentPhoneForClient(order),
     businessConfig.payment.recipient,
   ];
 }
@@ -192,7 +197,7 @@ function generateConfirmationText(order: OrderPhoto): string {
       ? ["", "📍 Самовывоз: адрес пришлём, когда заказ возьмут в работу"]
       : []),
     "",
-    ...paymentRequisiteLines(),
+    ...paymentRequisiteLines(order),
     "",
     "👉 Как только внесёте предоплату, пришлите, пожалуйста, чек.",
     "",
@@ -282,7 +287,7 @@ function generateReadyText(order: OrderPhoto): string {
       ? ["", "📍 Самовывоз: адрес пришлём, когда заказ возьмут в работу"]
       : []),
     "",
-    ...paymentRequisiteLines(),
+    ...paymentRequisiteLines(order),
     "",
     // При самовывозе платить переводом необязательно — в подтверждении
     // заказа клиенту так и обещали «остаток при получении». Требовать

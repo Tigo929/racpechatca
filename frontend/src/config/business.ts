@@ -49,6 +49,24 @@ export function formatOrderNumberForClient(order: {
     : order.numberOrder;
 }
 
+/**
+ * Телефон реквизитов для сообщения клиенту.
+ *
+ * Правило то же, что у номера заказа: в Telegram обратные кавычки делают
+ * текст моноширинным, и такой блок копируется одним нажатием — клиенту
+ * не нужно выделять номер пальцем в чате. В каналах без разметки (Авито,
+ * Ozon, MAX) кавычки показались бы как есть, поэтому там номер остаётся
+ * обычным текстом: Telegram и без того подсвечивает телефоны сам, а лишние
+ * символы в реквизитах перевода — прямой путь к ошибке при наборе.
+ */
+export function formatPaymentPhoneForClient(order: {
+  communicationPlatform?: string;
+}): string {
+  return order.communicationPlatform === 'TELEGRAM'
+    ? `\`${businessConfig.payment.phone}\``
+    : businessConfig.payment.phone;
+}
+
 const izmailovskySevenPickupAddress = 'Измайловский проезд, 7к2, подъезд 1';
 
 /**
