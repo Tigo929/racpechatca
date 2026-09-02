@@ -66,6 +66,8 @@ export interface RenderSheetInput {
   version: number;
   shirtColor: string;
   shirtSizeLabel: string;
+  /** Печать на изделии заказчика: своей футболки в заказе нет. */
+  clientItem?: boolean;
   comment: string | null;
   date: Date;
   sides: RenderSideInput[];
@@ -271,11 +273,19 @@ export class ApprovalRenderService {
 
     parts.push(line(PADDING, INFO_TOP - 62, SHEET_W - PADDING, INFO_TOP - 62));
 
-    const rows: [string, string][] = [
-      ['Заказ №', input.numberOrder],
-      ['Цвет футболки', input.shirtColor],
-      ['Размер футболки', input.shirtSizeLabel],
-    ];
+    const rows: [string, string][] = input.clientItem
+      ? [
+          ['Заказ №', input.numberOrder],
+          // Изделие принёс клиент — цвет и размер футболки тут ни при чём,
+          // на них печатник ориентироваться не должен.
+          ['Изделие', 'Заказчика'],
+          ['Работа', 'Нанесение принта'],
+        ]
+      : [
+          ['Заказ №', input.numberOrder],
+          ['Цвет футболки', input.shirtColor],
+          ['Размер футболки', input.shirtSizeLabel],
+        ];
     for (const side of input.sides) {
       rows.push([
         SIDE_LABELS[side.side],

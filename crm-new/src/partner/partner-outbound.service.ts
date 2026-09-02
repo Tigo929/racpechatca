@@ -4,7 +4,10 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { NO_PRODUCTION_ITEMS_MESSAGE } from 'src/order-photo/tshirt-production-items';
+import {
+  hasProductionItems,
+  NO_PRODUCTION_ITEMS_MESSAGE,
+} from 'src/order-photo/tshirt-production-items';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -48,7 +51,9 @@ export class PartnerOutboundService {
   async sendOrder(orderId: string) {
     const order = await this.prisma.orderPhoto.findUnique({
       where: { id: orderId },
-      include: { tshirtItems: true },
+      // items тоже: печать на изделии заказчика — свободная позиция, а не
+      // футболка, и без неё заказ выглядел бы «пустым» для партнёра.
+      include: { tshirtItems: true, items: true },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
     if (order.productCategory !== EnumProductCategory.TSHIRT) {
@@ -56,7 +61,11 @@ export class PartnerOutboundService {
         'Партнёру отправляются только заказы с футболками',
       );
     }
-    if (order.tshirtItems.length === 0) {
+    // Работа для партнёра есть, если в заказе хоть что-то печатается: своя
+    // футболка ИЛИ печать на изделии заказчика (свободная позиция). Раньше
+    // проверялись только футболки, и заказ «нанесение на изделие клиента»
+    // не уходил исполнителю — печатать-то есть что, а система не пускала.
+    if (!hasProductionItems(order)) {
       throw new BadRequestException(NO_PRODUCTION_ITEMS_MESSAGE);
     }
     if (!hasTechSpecFiles(order)) {

@@ -49,6 +49,16 @@ export interface PartnerOrderForPayload {
     // Изделие клиента (клиент принёс своё) — со склада партнёра НЕ списывается.
     clientItem: boolean;
   }[];
+  // Свободные позиции. Партнёру нужны только «печать на изделии заказчика»:
+  // футболки нашей нет, а печатать надо. Остальные свободные (кружка, багет)
+  // партнёра не касаются.
+  items?: {
+    formatPaper: string;
+    quantity: number;
+    pricePosition: number;
+    printOnClientItem: boolean;
+    thermalCost: number;
+  }[] | null;
 }
 
 /**
@@ -108,18 +118,38 @@ export function buildPartnerOrderPayload(
     order_number: order.numberOrder,
     status: toPartnerStatus(order.status),
     note: order.note ?? null,
-    items: order.tshirtItems.map((i) => ({
-      color: i.color,
-      size: i.size,
-      print_location: i.printLocation,
-      print_location_label: PRINT_LOCATION_LABELS[i.printLocation] ?? null,
-      print_type: i.printType,
-      print_type_label: PRINT_TYPE_LABELS[i.printType] ?? null,
-      quantity: i.quantity,
-      price_per_piece: i.price,
-      line_total: i.price * i.quantity,
-      client_item: i.clientItem,
-    })),
+    items: [
+      ...order.tshirtItems.map((i) => ({
+        color: i.color,
+        size: i.size,
+        print_location: i.printLocation,
+        print_location_label: PRINT_LOCATION_LABELS[i.printLocation] ?? null,
+        print_type: i.printType,
+        print_type_label: PRINT_TYPE_LABELS[i.printType] ?? null,
+        quantity: i.quantity,
+        price_per_piece: i.price,
+        line_total: i.price * i.quantity,
+        client_item: i.clientItem,
+      })),
+      // Печать на изделии заказчика: цвета и размера нет (изделие принёс
+      // клиент), поэтому поля футболки пустые, а client_item всегда true —
+      // со склада партнёра ничего не списывается.
+      ...(order.items ?? [])
+        .filter((i) => i.printOnClientItem)
+        .map((i) => ({
+          color: null,
+          size: null,
+          print_location: null,
+          print_location_label: 'Изделие заказчика',
+          print_type: null,
+          print_type_label: i.formatPaper,
+          quantity: i.quantity,
+          // Свободная цена: итог за позицию, на количество не умножается.
+          price_per_piece: i.pricePosition,
+          line_total: i.pricePosition,
+          client_item: true,
+        })),
+    ],
     // Складская сводка для списания заготовок на стороне партнёра.
     stock: {
       total_quantity: totalQuantity,
