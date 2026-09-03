@@ -110,9 +110,15 @@ services:
     environment:
       CRM_BASE_URL: http://backend:3000
       CRM_LEAD_TOKEN: ${CRM_LEAD_TOKEN}
+      # Тем же секретом подписывает тело сайт: на сервере включён
+      # строгий режим, и неподписанный запрос отбивается.
+      CRM_LEAD_SIGNING_SECRET: ${CRM_LEAD_SIGNING_SECRET:-}
       TG_API_ID: ${TG_API_ID}
       TG_API_HASH: ${TG_API_HASH}
       GREETER_SESSION: /session/tg_greeter
+      # Тот же прокси, что у бота: напрямую Telegram с этого сервера
+      # недоступен — ни api.telegram.org, ни серверы MTProto.
+      TELEGRAM_PROXY_URL: ${TELEGRAM_PROXY_URL:-}
     volumes:
       # Сессия лежит на диске сервера, а не в образе: пересборка контейнера
       # не должна требовать повторного входа с кодом из Telegram.

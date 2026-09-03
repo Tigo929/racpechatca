@@ -1,2 +1,7 @@
 telethon>=1.36
 httpx>=0.27
+# Прокси для Telethon. Именно python-socks, а не PySocks: у современного
+# Telethon поддержка прокси завязана на него, а с PySocks он молча пишет
+# «proxy argument will be ignored» и идёт напрямую — то есть никуда,
+# потому что с этого сервера Telegram напрямую недоступен.
+python-socks[asyncio]>=2.4

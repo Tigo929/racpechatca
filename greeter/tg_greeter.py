@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import random
@@ -38,6 +39,8 @@ from telethon.errors import (
 )
 
 from greeting_text import render
+from proxy_config import describe, parse_proxy
+from signing import sign
 
 BASE_DIR = Path(__file__).resolve().parent
 MESSAGE_PATH = Path(os.getenv("GREETER_MESSAGE_PATH", BASE_DIR / "message.txt"))
@@ -45,9 +48,14 @@ SESSION_PATH = Path(os.getenv("GREETER_SESSION", "/session/tg_greeter"))
 
 CRM_URL = os.getenv("CRM_BASE_URL", "http://backend:3000").rstrip("/")
 CRM_TOKEN = os.getenv("CRM_LEAD_TOKEN", "")
+#: Секрет подписи тела — тот же, которым подписывает сайт.
+CRM_SIGNING_SECRET = os.getenv("CRM_LEAD_SIGNING_SECRET", "")
 
 API_ID = int(os.getenv("TG_API_ID", "0"))
 API_HASH = os.getenv("TG_API_HASH", "")
+#: Тот же прокси, через который ходит бот CRM: напрямую Telegram
+#: с этого сервера недоступен.
+PROXY_URL = os.getenv("TELEGRAM_PROXY_URL", "")
 
 #: Как часто спрашивать очередь.
 #:
@@ -101,15 +109,28 @@ class Crm:
         )
 
     async def pending(self, limit: int = 10) -> list[dict]:
+        # У GET тела нет, но подпись всё равно нужна: в строгом режиме
+        # сервер отбивает неподписанный запрос независимо от метода.
         response = await self._client.get(
-            "/order-photo/greeting/pending", params={"limit": limit}
+            "/order-photo/greeting/pending",
+            params={"limit": limit},
+            headers=sign(CRM_SIGNING_SECRET, ""),
         )
         response.raise_for_status()
         return response.json().get("items", [])
 
     async def mark(self, order_id: str, status: str) -> None:
+        # Тело сериализуем сами и его же подписываем: если отдать json=
+        # библиотеке, она может расставить пробелы иначе, и подпись
+        # перестанет совпадать с тем, что дойдёт до сервера.
+        body = json.dumps({"id": order_id, "status": status}, separators=(",", ":"))
         response = await self._client.post(
-            "/order-photo/greeting/mark", json={"id": order_id, "status": status}
+            "/order-photo/greeting/mark",
+            content=body,
+            headers={
+                "Content-Type": "application/json",
+                **sign(CRM_SIGNING_SECRET, body),
+            },
         )
         response.raise_for_status()
 
@@ -164,7 +185,10 @@ async def main() -> int:
         raise Fatal("TG_API_ID / TG_API_HASH не заданы")
 
     crm = Crm()
-    client = TelegramClient(str(SESSION_PATH), API_ID, API_HASH)
+    client = TelegramClient(
+        str(SESSION_PATH), API_ID, API_HASH, proxy=parse_proxy(PROXY_URL)
+    )
+    log.info("Соединение: %s", describe(PROXY_URL))
     await client.connect()
 
     if not await client.is_user_authorized():

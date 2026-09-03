@@ -24,9 +24,12 @@ from pathlib import Path
 
 from telethon import TelegramClient
 
+from proxy_config import describe, parse_proxy
+
 SESSION_PATH = Path(os.getenv("GREETER_SESSION", "/session/tg_greeter"))
 API_ID = int(os.getenv("TG_API_ID", "0"))
 API_HASH = os.getenv("TG_API_HASH", "")
+PROXY_URL = os.getenv("TELEGRAM_PROXY_URL", "")
 
 
 async def main() -> int:
@@ -35,7 +38,10 @@ async def main() -> int:
         return 1
 
     SESSION_PATH.parent.mkdir(parents=True, exist_ok=True)
-    client = TelegramClient(str(SESSION_PATH), API_ID, API_HASH)
+    print(f"Соединение: {describe(PROXY_URL)}")
+    client = TelegramClient(
+        str(SESSION_PATH), API_ID, API_HASH, proxy=parse_proxy(PROXY_URL)
+    )
 
     # start() сам спросит номер, код и пароль 2FA, если они нужны.
     await client.start()
