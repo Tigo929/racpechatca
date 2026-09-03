@@ -93,6 +93,38 @@ services:
     command: >
       sh -c "npx prisma migrate deploy && node dist/src/main"
 
+  # Первое сообщение клиенту, оставившему заявку с телеграмом.
+  #
+  # Отдельный контейнер, а не часть backend: внутри работает сессия личного
+  # аккаунта Telegram. У CRM такого доступа нет и быть не должно — она умеет
+  # только отдать очередь и записать итог.
+  #
+  # Образ собирается на сервере из каталога greeter/: он крошечный (python
+  # + telethon), а гнать сессию через CI и реестр нельзя.
+  greeter:
+    build: ./greeter
+    restart: always
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      CRM_BASE_URL: http://backend:3000
+      CRM_LEAD_TOKEN: ${CRM_LEAD_TOKEN}
+      TG_API_ID: ${TG_API_ID}
+      TG_API_HASH: ${TG_API_HASH}
+      GREETER_SESSION: /session/tg_greeter
+    volumes:
+      # Сессия лежит на диске сервера, а не в образе: пересборка контейнера
+      # не должна требовать повторного входа с кодом из Telegram.
+      - greeter_session:/session
+    networks:
+      - internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   frontend:
     # Собирается из исходников в CI. Раньше образ делался из готового dist,
     # которого нет в git, — панель приходилось собирать локально и заливать
@@ -125,6 +157,7 @@ volumes:
   pgdata:
   # ТЗ-фото (согласованные макеты) бэкенд пишет в /app/uploads. Том объявлен
   # здесь — иначе docker compose не парсит проект (backend ссылается на uploads).
+  greeter_session:
   uploads:
 
 networks:

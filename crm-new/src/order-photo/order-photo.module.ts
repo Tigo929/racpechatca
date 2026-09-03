@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { OrderPhotoService } from './order-photo.service';
+import { ClientGreetingService } from './client-greeting.service';
 import { OrderItemService } from './order-item.service';
 import { TshirtItemService } from './tshirt-item.service';
 import { CanvasItemService } from './canvas-item.service';
@@ -22,6 +23,7 @@ import { SiteLeadTokenGuard } from './site-lead-token.guard';
   controllers: [LeadController, OrderPhotoController],
   providers: [
     OrderPhotoService,
+    ClientGreetingService,
     OrderItemService,
     TshirtItemService,
     CanvasItemService,
