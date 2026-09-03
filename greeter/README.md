@@ -19,7 +19,7 @@
 ## Как работает
 
 1. CRM принимает заявку с сайта и ставит `clientGreetedAt = NULL`.
-2. Воркер раз в 20 секунд спрашивает `GET /order-photo/greeting/pending`.
+2. Воркер раз в 5 секунд спрашивает `GET /order-photo/greeting/pending`.
 3. Отправляет сообщение и возвращает итог в `POST /order-photo/greeting/mark`.
 
 Состояние живёт в CRM, а не в воркере. Перезапуск контейнера ничего не теряет
@@ -111,7 +111,7 @@ docker compose -f docker-compose.prod.yml logs -f greeter
 
 | Переменная | По умолчанию | Что делает |
 |---|---|---|
-| `GREETER_POLL_SECONDS` | 20 | как часто спрашивать очередь |
+| `GREETER_POLL_SECONDS` | 5 | как часто спрашивать очередь |
 | `GREETER_SEND_DELAY` | 25 | пауза между сообщениями, с |
 | `GREETER_SEND_JITTER` | 15 | случайная добавка к паузе, с |
 | `GREETER_PEER_FLOOD_PAUSE` | 21600 | пауза после `PEER_FLOOD`, с |

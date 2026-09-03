@@ -49,8 +49,13 @@ CRM_TOKEN = os.getenv("CRM_LEAD_TOKEN", "")
 API_ID = int(os.getenv("TG_API_ID", "0"))
 API_HASH = os.getenv("TG_API_HASH", "")
 
-#: Как часто спрашивать очередь. Заявок единицы в день — чаще незачем.
-POLL_SECONDS = float(os.getenv("GREETER_POLL_SECONDS", "20"))
+#: Как часто спрашивать очередь.
+#:
+#: Пять секунд, а не «раз в минуту»: человек только что нажал «отправить»
+#: и смотрит в экран. Сообщение через полчаса он прочтёт уже как рассылку,
+#: а не как ответ на своё действие. Запрос идёт к соседнему контейнеру
+#: по внутренней сети — стоит он практически ничего.
+POLL_SECONDS = float(os.getenv("GREETER_POLL_SECONDS", "5"))
 #: Пауза между сообщениями внутри одной пачки.
 SEND_DELAY = float(os.getenv("GREETER_SEND_DELAY", "25"))
 SEND_JITTER = float(os.getenv("GREETER_SEND_JITTER", "15"))
