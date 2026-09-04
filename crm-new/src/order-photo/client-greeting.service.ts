@@ -39,10 +39,10 @@ export interface PendingGreeting {
   name: string | null;
   /** Направление заказа: под него выбирается текст сообщения. */
   category: string;
-  /** Что заказали — «Фото 10×15 с полями». Пусто, если позиции нет. */
-  product: string | null;
-  /** Тираж. Ноль означает, что позиции в заказе нет. */
-  quantity: number;
+  /** Все позиции заказа — их человек и должен узнать в сообщении. */
+  items: { title: string; quantity: number }[];
+  /** Сумма заказа, ₽. Ноль — если позиций нет. */
+  total: number;
   createdAt: Date;
 }
 
@@ -80,12 +80,15 @@ export class ClientGreetingService {
         note: true,
         createdAt: true,
         productCategory: true,
+        totalOrder: true,
         // Позиция нужна ради названия товара и тиража: письмо «ваш заказ
         // 10 фото в стиле Polaroid» человек читает как ответ на своё
         // действие, а «вы оставили заявку» — как рассылку.
-        items: { select: { formatPaper: true, quantity: true }, take: 1 },
-        tshirtItems: { select: { color: true, size: true, quantity: true }, take: 1 },
-        canvasItems: { select: { formatCanvas: true, quantity: true }, take: 1 },
+        // Все позиции, а не первая: в заказе может быть несколько форматов,
+        // и человек должен узнать в сообщении именно то, что заказывал.
+        items: { select: { formatPaper: true, quantity: true } },
+        tshirtItems: { select: { color: true, size: true, quantity: true } },
+        canvasItems: { select: { formatCanvas: true, quantity: true } },
       },
     });
 
@@ -100,21 +103,29 @@ export class ClientGreetingService {
         );
         continue;
       }
-      const photo = row.items[0];
-      const tshirt = row.tshirtItems[0];
-      const canvas = row.canvasItems[0];
+      const items = [
+        ...row.items.map((i) => ({
+          title: i.formatPaper.trim(),
+          quantity: i.quantity,
+        })),
+        ...row.canvasItems.map((i) => ({
+          title: i.formatCanvas.trim(),
+          quantity: i.quantity,
+        })),
+        ...row.tshirtItems.map((i) => ({
+          title: `Футболка ${i.color}, размер ${i.size}`,
+          quantity: i.quantity,
+        })),
+      ].filter((i) => i.title);
+
       ready.push({
         id: row.id,
         numberOrder: row.numberOrder,
         username,
         name: clientNameFromNote(row.note),
         category: row.productCategory,
-        product:
-          photo?.formatPaper?.trim() ||
-          canvas?.formatCanvas?.trim() ||
-          (tshirt ? `футболка ${tshirt.color}, ${tshirt.size}` : null) ||
-          null,
-        quantity: photo?.quantity ?? canvas?.quantity ?? tshirt?.quantity ?? 0,
+        items,
+        total: row.totalOrder ?? 0,
         createdAt: row.createdAt,
       });
     }

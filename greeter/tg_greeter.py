@@ -253,8 +253,8 @@ async def main() -> int:
                     template,
                     item.get("name"),
                     item["numberOrder"],
-                    item.get("product"),
-                    item.get("quantity") or 0,
+                    item.get("items"),
+                    item.get("total"),
                 )
 
                 try:

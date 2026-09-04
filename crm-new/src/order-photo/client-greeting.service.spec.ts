@@ -17,6 +17,7 @@ describe('ClientGreetingService', () => {
     note: '🆕 Заявка с сайта\nИмя: Пётр\nТелефон: +7 900 000-00-00',
     createdAt: new Date('2026-09-02T10:00:00Z'),
     productCategory: 'PHOTO',
+    totalOrder: 2490,
     items: [{ formatPaper: 'Фото 10×15 с полями', quantity: 10 }],
     tshirtItems: [],
     canvasItems: [],
@@ -52,25 +53,44 @@ describe('ClientGreetingService', () => {
     expect(item.numberOrder).toBe('1043');
   });
 
-  it('отдаёт товар и тираж — без них сообщение читается как рассылка', async () => {
+  it('отдаёт позиции и сумму — без них сообщение читается как рассылка', async () => {
     const { service } = make([row()]);
     const [item] = await service.pending(20);
 
     expect(item.category).toBe('PHOTO');
-    expect(item.product).toBe('Фото 10×15 с полями');
-    expect(item.quantity).toBe(10);
+    expect(item.items).toEqual([
+      { title: 'Фото 10×15 с полями', quantity: 10 },
+    ]);
+    expect(item.total).toBe(2490);
   });
 
-  it('заказ без позиции отдаётся с пустым товаром, а не пропускается', async () => {
-    // Обращение без товара — тоже заявка, здороваться с ним надо.
-    const { service } = make([row({ items: [] })]);
+  it('отдаёт ВСЕ позиции, а не первую', async () => {
+    // В заказе бывает несколько форматов, и человек должен узнать
+    // в сообщении именно то, что заказывал, а не половину.
+    const { service } = make([
+      row({
+        items: [
+          { formatPaper: 'Polaroid', quantity: 20 },
+          { formatPaper: 'Фото 10×15', quantity: 50 },
+        ],
+      }),
+    ]);
     const [item] = await service.pending(20);
 
-    expect(item.product).toBeNull();
-    expect(item.quantity).toBe(0);
+    expect(item.items).toHaveLength(2);
+    expect(item.items[1]).toEqual({ title: 'Фото 10×15', quantity: 50 });
   });
 
-  it('у холста товар берётся из своей позиции', async () => {
+  it('заказ без позиций отдаётся с пустым списком, а не пропускается', async () => {
+    // Обращение без товара — тоже заявка, здороваться с ним надо.
+    const { service } = make([row({ items: [], totalOrder: 0 })]);
+    const [item] = await service.pending(20);
+
+    expect(item.items).toEqual([]);
+    expect(item.total).toBe(0);
+  });
+
+  it('у холста позиция берётся из своей таблицы', async () => {
     const { service } = make([
       row({
         productCategory: 'CANVAS',
@@ -81,7 +101,7 @@ describe('ClientGreetingService', () => {
     const [item] = await service.pending(20);
 
     expect(item.category).toBe('CANVAS');
-    expect(item.product).toBe('Холст 30×40');
+    expect(item.items).toEqual([{ title: 'Холст 30×40', quantity: 1 }]);
   });
 
   it('заявку без имени отдаёт — здороваться можно и без него', async () => {

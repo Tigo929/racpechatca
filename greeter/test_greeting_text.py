@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Проверки текста первого сообщения. Запуск: python -m unittest discover greeter"""
+"""Текст первого сообщения. Запуск: python -m unittest test_greeting_text"""
 
 import unittest
 
-from greeting_text import greeting_for, order_line, render
-
-TEMPLATE = "{greeting}\n\nВы оставили заявку — номер обращения {number}."
+from greeting_text import greeting_for, items_list, money, render
 
 
 class TestGreeting(unittest.TestCase):
@@ -15,78 +13,72 @@ class TestGreeting(unittest.TestCase):
     def test_без_имени(self):
         # Главное, ради чего обращение вынесено отдельной меткой:
         # «Здравствуйте, !» клиент читает как поломку.
-        self.assertEqual(greeting_for(None), "Здравствуйте!")
-        self.assertEqual(greeting_for(""), "Здравствуйте!")
-        self.assertEqual(greeting_for("   "), "Здравствуйте!")
+        for empty in (None, "", "   "):
+            self.assertEqual(greeting_for(empty), "Здравствуйте!")
 
     def test_имя_с_пробелами(self):
         self.assertEqual(greeting_for("  Анна  "), "Здравствуйте, Анна!")
 
 
+class TestItemsList(unittest.TestCase):
+    def test_одна_позиция(self):
+        out = items_list([{"title": "Фото 10×15 с полями", "quantity": 10}])
+        self.assertEqual(out, "• Фото 10×15 с полями — 10 шт.")
+
+    def test_несколько_позиций_каждая_со_своей_строки(self):
+        out = items_list([
+            {"title": "Polaroid", "quantity": 20},
+            {"title": "Фото 10×15", "quantity": 50},
+        ])
+        self.assertEqual(out.split(chr(10)), ["• Polaroid — 20 шт.", "• Фото 10×15 — 50 шт."])
+
+    def test_без_позиций_строка_не_пустая(self):
+        # Пустое место посреди сообщения выглядит как сбой вёрстки.
+        for empty in (None, [], [{"title": "  ", "quantity": 5}]):
+            self.assertTrue(items_list(empty).startswith("•"))
+
+    def test_без_тиража_без_хвоста(self):
+        self.assertEqual(items_list([{"title": "Холст 30×40", "quantity": 0}]), "• Холст 30×40")
+
+
+class TestMoney(unittest.TestCase):
+    def test_разряды_разделены(self):
+        self.assertEqual(money(1350), "1 350")
+        self.assertEqual(money(12490), "12 490")
+
+    def test_маленькая_сумма(self):
+        self.assertEqual(money(630), "630")
+
+    def test_ноль_это_прочерк(self):
+        # «Сумма заказа: 0 ₽» — обещание бесплатной работы.
+        for empty in (0, None, -5):
+            self.assertEqual(money(empty), "—")
+
+
 class TestRender(unittest.TestCase):
-    def test_подставляет_обращение_и_номер(self):
-        out = render(TEMPLATE, "Пётр", "1043")
-        self.assertIn("Здравствуйте, Пётр!", out)
-        self.assertIn("номер обращения 1043.", out)
-        self.assertNotIn("{", out)
-
-    def test_без_имени_текст_остаётся_целым(self):
-        out = render(TEMPLATE, None, "1043")
-        self.assertIn("Здравствуйте!", out)
-        self.assertIn("1043", out)
-        self.assertNotIn("{", out)
-
-    def test_метка_name_отдельно(self):
-        self.assertEqual(render("привет, {name}", "Пётр", "1"), "привет, Пётр")
-        self.assertEqual(render("привет, {name}", None, "1"), "привет, ")
-
-
-class TestOrderLine(unittest.TestCase):
-    """
-    Строка заказа — то, что отличает ответ на действие от рассылки.
-    Пустых мест в ней быть не должно ни при каком наборе данных.
-    """
+    TEMPLATE = (
+        "{greeting} Получили заявку."
+        + chr(10) * 2
+        + "{{СПИСОК_ТОВАРОВ}}"
+        + chr(10) * 2
+        + "Сумма: {{СУММА}} ₽"
+    )
 
     def test_полные_данные(self):
-        self.assertEqual(
-            order_line("20260904-035", "Фото 10×15 с полями", 10),
-            "Ваш заказ 20260904-035 — Фото 10×15 с полями, 10 шт.",
+        out = render(
+            self.TEMPLATE, "Пётр", "035",
+            [{"title": "Фото 10×15", "quantity": 10}], 2490,
         )
-
-    def test_без_тиража(self):
-        self.assertEqual(
-            order_line("035", "Холст 30×40", 0), "Ваш заказ 035 — Холст 30×40."
-        )
-
-    def test_без_позиции(self):
-        # Обращение без товара: остаётся один номер, и это нормально.
-        self.assertEqual(order_line("035", None, 0), "Ваш заказ 035.")
-        self.assertEqual(order_line("035", "   ", 5), "Ваш заказ 035.")
-
-    def test_нигде_не_остаётся_пустот(self):
-        for product in (None, "", "  ", "Фото"):
-            for qty in (0, 1, 10):
-                line = order_line("035", product, qty)
-                self.assertNotIn(" — ,", line)
-                # Именно нулевой тираж, а не любая цифра ноль:
-                # «10 шт.» тоже содержит «0 шт».
-                self.assertNotIn(", 0 шт", line)
-                self.assertTrue(line.endswith("."))
-
-
-class TestRenderFull(unittest.TestCase):
-    TEMPLATE = "{greeting}" + chr(10) * 2 + "{order}" + chr(10) * 2 + "Пришлите фотографии."
-
-    def test_все_метки_подставлены(self):
-        out = render(self.TEMPLATE, "Пётр", "035", "Фото 10×15", 10)
         self.assertIn("Здравствуйте, Пётр!", out)
-        self.assertIn("Ваш заказ 035 — Фото 10×15, 10 шт.", out)
+        self.assertIn("• Фото 10×15 — 10 шт.", out)
+        self.assertIn("Сумма: 2 490 ₽", out)
         self.assertNotIn("{", out)
 
     def test_пустые_данные_не_ломают_текст(self):
         out = render(self.TEMPLATE, None, "035", None, 0)
         self.assertIn("Здравствуйте!", out)
-        self.assertIn("Ваш заказ 035.", out)
+        self.assertIn("•", out)
+        self.assertIn("—", out)
         self.assertNotIn("{", out)
 
 
