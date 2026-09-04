@@ -16,6 +16,10 @@ describe('ClientGreetingService', () => {
     urlCommunication: 'https://t.me/petrov',
     note: '🆕 Заявка с сайта\nИмя: Пётр\nТелефон: +7 900 000-00-00',
     createdAt: new Date('2026-09-02T10:00:00Z'),
+    productCategory: 'PHOTO',
+    items: [{ formatPaper: 'Фото 10×15 с полями', quantity: 10 }],
+    tshirtItems: [],
+    canvasItems: [],
     ...over,
   });
 
@@ -46,6 +50,38 @@ describe('ClientGreetingService', () => {
     expect(item.username).toBe('petrov');
     expect(item.name).toBe('Пётр');
     expect(item.numberOrder).toBe('1043');
+  });
+
+  it('отдаёт товар и тираж — без них сообщение читается как рассылка', async () => {
+    const { service } = make([row()]);
+    const [item] = await service.pending(20);
+
+    expect(item.category).toBe('PHOTO');
+    expect(item.product).toBe('Фото 10×15 с полями');
+    expect(item.quantity).toBe(10);
+  });
+
+  it('заказ без позиции отдаётся с пустым товаром, а не пропускается', async () => {
+    // Обращение без товара — тоже заявка, здороваться с ним надо.
+    const { service } = make([row({ items: [] })]);
+    const [item] = await service.pending(20);
+
+    expect(item.product).toBeNull();
+    expect(item.quantity).toBe(0);
+  });
+
+  it('у холста товар берётся из своей позиции', async () => {
+    const { service } = make([
+      row({
+        productCategory: 'CANVAS',
+        items: [],
+        canvasItems: [{ formatCanvas: 'Холст 30×40', quantity: 1 }],
+      }),
+    ]);
+    const [item] = await service.pending(20);
+
+    expect(item.category).toBe('CANVAS');
+    expect(item.product).toBe('Холст 30×40');
   });
 
   it('заявку без имени отдаёт — здороваться можно и без него', async () => {

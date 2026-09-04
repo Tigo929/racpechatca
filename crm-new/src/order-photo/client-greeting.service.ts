@@ -37,6 +37,12 @@ export interface PendingGreeting {
   numberOrder: string;
   username: string;
   name: string | null;
+  /** Направление заказа: под него выбирается текст сообщения. */
+  category: string;
+  /** Что заказали — «Фото 10×15 с полями». Пусто, если позиции нет. */
+  product: string | null;
+  /** Тираж. Ноль означает, что позиции в заказе нет. */
+  quantity: number;
   createdAt: Date;
 }
 
@@ -73,6 +79,13 @@ export class ClientGreetingService {
         urlCommunication: true,
         note: true,
         createdAt: true,
+        productCategory: true,
+        // Позиция нужна ради названия товара и тиража: письмо «ваш заказ
+        // 10 фото в стиле Polaroid» человек читает как ответ на своё
+        // действие, а «вы оставили заявку» — как рассылку.
+        items: { select: { formatPaper: true, quantity: true }, take: 1 },
+        tshirtItems: { select: { color: true, size: true, quantity: true }, take: 1 },
+        canvasItems: { select: { formatCanvas: true, quantity: true }, take: 1 },
       },
     });
 
@@ -87,11 +100,21 @@ export class ClientGreetingService {
         );
         continue;
       }
+      const photo = row.items[0];
+      const tshirt = row.tshirtItems[0];
+      const canvas = row.canvasItems[0];
       ready.push({
         id: row.id,
         numberOrder: row.numberOrder,
         username,
         name: clientNameFromNote(row.note),
+        category: row.productCategory,
+        product:
+          photo?.formatPaper?.trim() ||
+          canvas?.formatCanvas?.trim() ||
+          (tshirt ? `футболка ${tshirt.color}, ${tshirt.size}` : null) ||
+          null,
+        quantity: photo?.quantity ?? canvas?.quantity ?? tshirt?.quantity ?? 0,
         createdAt: row.createdAt,
       });
     }

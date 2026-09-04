@@ -43,7 +43,7 @@ from proxy_config import describe, parse_proxy
 from signing import sign
 
 BASE_DIR = Path(__file__).resolve().parent
-MESSAGE_PATH = Path(os.getenv("GREETER_MESSAGE_PATH", BASE_DIR / "message.txt"))
+MESSAGE_DIR = Path(os.getenv("GREETER_MESSAGE_DIR", BASE_DIR))
 SESSION_PATH = Path(os.getenv("GREETER_SESSION", "/session/tg_greeter"))
 
 CRM_URL = os.getenv("CRM_BASE_URL", "http://backend:3000").rstrip("/")
@@ -79,21 +79,46 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 log = logging.getLogger("greeter")
-# Telethon на INFO печатает служебное каждые несколько секунд — лишний шум.
-logging.getLogger("telethon").setLevel(logging.WARNING)
+# Telethon и httpx на INFO печатают по строке на каждое действие. При опросе
+# раз в пять секунд это семнадцать тысяч строк в сутки — в них тонет
+# единственное, ради чего журнал и нужен: кому написали и с каким итогом.
+for noisy in ("telethon", "httpx", "httpcore"):
+    logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
 class Fatal(Exception):
     """Настройки неверны — работать нельзя, перезапуск не поможет."""
 
 
-def load_message() -> str:
-    if not MESSAGE_PATH.exists():
-        raise Fatal(f"нет файла {MESSAGE_PATH}")
-    text = MESSAGE_PATH.read_text(encoding="utf-8").strip()
-    if not text:
-        raise Fatal(f"{MESSAGE_PATH} пуст")
-    return text
+def load_templates() -> dict[str, str]:
+    """
+    Тексты по направлениям.
+
+    У фотопечати, холста и футболки разный следующий шаг: у одних нужны
+    фотографии, у других макет, у третьих — показать кадрирование. Одно
+    сообщение на всех заставляло бы человека догадываться, что от него
+    хотят, а догадываться он не станет — просто не ответит.
+
+    Общий message.txt — запасной: на случай направления, под которое
+    текста ещё не написали. Без него новая категория молча осталась бы
+    без приветствия.
+    """
+    templates: dict[str, str] = {}
+    for key, filename in (
+        ("PHOTO", "message-photo.txt"),
+        ("CANVAS", "message-canvas.txt"),
+        ("TSHIRT", "message-tshirt.txt"),
+        ("", "message.txt"),
+    ):
+        path = MESSAGE_DIR / filename
+        if path.exists():
+            text = path.read_text(encoding="utf-8").strip()
+            if text:
+                templates[key] = text
+
+    if "" not in templates:
+        raise Fatal(f"нет запасного текста {MESSAGE_DIR / 'message.txt'}")
+    return templates
 
 
 class Crm:
@@ -180,7 +205,7 @@ async def send_one(client: TelegramClient, username: str, text: str) -> str:
 
 
 async def main() -> int:
-    template = load_message()
+    templates = load_templates()
     if not API_ID or not API_HASH:
         raise Fatal("TG_API_ID / TG_API_HASH не заданы")
 
@@ -201,6 +226,7 @@ async def main() -> int:
     log.info("Аккаунт: %s [id %s]", me.username or me.first_name, me.id)
     log.info("CRM: %s", CRM_URL)
     log.info("Пауза между сообщениями: %.0f–%.0f с", SEND_DELAY, SEND_DELAY + SEND_JITTER)
+    log.info("Тексты: %s", ", ".join(sorted(k or "общий" for k in templates)))
     log.info("Жду заявки...")
 
     try:
@@ -220,7 +246,16 @@ async def main() -> int:
             log.info("В очереди: %d", len(queue))
             for index, item in enumerate(queue):
                 username = item["username"]
-                text = render(template, item.get("name"), item["numberOrder"])
+                # Нет текста под направление — берём общий, а не пропускаем:
+                # молчание хуже неточной формулировки.
+                template = templates.get(item.get("category", ""), templates[""])
+                text = render(
+                    template,
+                    item.get("name"),
+                    item["numberOrder"],
+                    item.get("product"),
+                    item.get("quantity") or 0,
+                )
 
                 try:
                     status = await send_one(client, username, text)
