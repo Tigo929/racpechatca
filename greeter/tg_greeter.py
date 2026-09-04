@@ -255,6 +255,8 @@ async def main() -> int:
                     item["numberOrder"],
                     item.get("items"),
                     item.get("total"),
+                    item.get("deliveryMethod"),
+                    item.get("deliveryCost"),
                 )
 
                 try:

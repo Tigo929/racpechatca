@@ -41,7 +41,11 @@ export interface PendingGreeting {
   category: string;
   /** Все позиции заказа — их человек и должен узнать в сообщении. */
   items: { title: string; quantity: number }[];
-  /** Сумма заказа, ₽. Ноль — если позиций нет. */
+  /** Стоимость доставки, ₽. Ноль — самовывоз. */
+  deliveryCost: number;
+  /** Способ получения: под него подбирается строка в сообщении. */
+  deliveryMethod: string;
+  /** Итог заказа вместе с доставкой, ₽ — ровно то, что заплатит клиент. */
   total: number;
   createdAt: Date;
 }
@@ -81,6 +85,8 @@ export class ClientGreetingService {
         createdAt: true,
         productCategory: true,
         totalOrder: true,
+        deliveryCost: true,
+        deliveryMethod: true,
         // Позиция нужна ради названия товара и тиража: письмо «ваш заказ
         // 10 фото в стиле Polaroid» человек читает как ответ на своё
         // действие, а «вы оставили заявку» — как рассылку.
@@ -125,6 +131,8 @@ export class ClientGreetingService {
         name: clientNameFromNote(row.note),
         category: row.productCategory,
         items,
+        deliveryCost: row.deliveryCost ?? 0,
+        deliveryMethod: row.deliveryMethod,
         total: row.totalOrder ?? 0,
         createdAt: row.createdAt,
       });

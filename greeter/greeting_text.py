@@ -62,17 +62,39 @@ def money(total: int | None) -> str:
     return f"{value:,}".replace(",", " ")
 
 
+def delivery_line(method: str | None, cost: int | None) -> str:
+    """
+    Строка доставки — своя для каждого способа.
+
+    Пустую строку возвращать нельзя: в тексте останется дыра между
+    списком товаров и суммой, и человек прочтёт её как сбой. Поэтому
+    у самовывоза своя формулировка, а не отсутствие строки.
+    """
+    value = int(cost or 0)
+    if value > 0:
+        return f"🚚 Доставка в пункт выдачи Яндекса: {money(value)} ₽"
+    if (method or "").upper() == "YANDEX_PVZ":
+        # Способ выбран, а цена нулевая — считать это бесплатной доставкой
+        # нельзя: скорее всего заказ заведён до того, как цену стали
+        # проставлять. Обещать бесплатно то, что стоит денег, дороже.
+        return "🚚 Доставка в пункт выдачи Яндекса — стоимость уточним"
+    return "🏠 Самовывоз — бесплатно"
+
+
 def render(
     template: str,
     name: str | None,
     number: str,
     items: list[dict] | None = None,
     total: int | None = 0,
+    delivery_method: str | None = None,
+    delivery_cost: int | None = 0,
 ) -> str:
     """Готовый текст сообщения. Неизвестные метки остаются как есть."""
     return (
         template.replace("{greeting}", greeting_for(name))
         .replace("{{СПИСОК_ТОВАРОВ}}", items_list(items))
+        .replace("{{ДОСТАВКА}}", delivery_line(delivery_method, delivery_cost))
         .replace("{{СУММА}}", money(total))
         .replace("{{НОМЕР}}", number)
         .replace("{name}", (name or "").strip())

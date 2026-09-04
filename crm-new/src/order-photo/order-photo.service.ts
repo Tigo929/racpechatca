@@ -10,6 +10,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import DtoCreateOrder from './dto/create-order.dto';
 import { calcItemPricePosition } from './order-pricing';
 import { LeadMoneyError, resolveLeadMoney } from './lead-pricing';
+import { leadDeliveryCost } from './lead-delivery';
 import {
   buildCommunicationUrl,
   validateCommunicationValue,
@@ -566,6 +567,7 @@ export class OrderPhotoService {
         dto.delivery === 'yandex_pvz'
           ? EnumDeliveryMethod.YANDEX_PVZ
           : EnumDeliveryMethod.PICKUP;
+      const deliveryCost = leadDeliveryCost(deliveryMethod);
       // Цену считает сайт (в его форме поля цены нет — клиент её не задаёт),
       // но CRM не принимает числа на веру: сверяем «цена × тираж = итог» и
       // сумму позиции считаем сами. Расхождение — отказ, потому что дальше по
@@ -641,8 +643,14 @@ export class OrderPhotoService {
           communicationPlatform,
           urlCommunication,
           deliveryMethod,
-          deliveryCost: 0,
-          totalOrder: total,
+          // Доставка считается сразу, а не дописывается менеджером при
+          // подтверждении: клиенту тут же уходит сообщение с суммой, и она
+          // обязана совпадать с тем, что он заплатит. Назвать 1 350 ₽,
+          // а потом добавить 300 ₽ хуже, чем сразу сказать 1 650 ₽.
+          deliveryCost,
+          // Итог по тому же правилу, что и у заказа, заведённого менеджером:
+          // позиции плюс доставка.
+          totalOrder: total + deliveryCost,
           productCategory: dto.productCategory ?? EnumProductCategory.PHOTO,
           note: noteLines.join('\n'),
           // Позицию заводим сразу: иначе администратору пришлось бы переносить

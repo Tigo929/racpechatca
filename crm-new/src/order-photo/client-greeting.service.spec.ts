@@ -17,7 +17,9 @@ describe('ClientGreetingService', () => {
     note: '🆕 Заявка с сайта\nИмя: Пётр\nТелефон: +7 900 000-00-00',
     createdAt: new Date('2026-09-02T10:00:00Z'),
     productCategory: 'PHOTO',
-    totalOrder: 2490,
+    totalOrder: 2790,
+    deliveryCost: 300,
+    deliveryMethod: 'YANDEX_PVZ',
     items: [{ formatPaper: 'Фото 10×15 с полями', quantity: 10 }],
     tshirtItems: [],
     canvasItems: [],
@@ -61,7 +63,9 @@ describe('ClientGreetingService', () => {
     expect(item.items).toEqual([
       { title: 'Фото 10×15 с полями', quantity: 10 },
     ]);
-    expect(item.total).toBe(2490);
+    expect(item.total).toBe(2790);
+    expect(item.deliveryCost).toBe(300);
+    expect(item.deliveryMethod).toBe('YANDEX_PVZ');
   });
 
   it('отдаёт ВСЕ позиции, а не первую', async () => {
@@ -83,11 +87,14 @@ describe('ClientGreetingService', () => {
 
   it('заказ без позиций отдаётся с пустым списком, а не пропускается', async () => {
     // Обращение без товара — тоже заявка, здороваться с ним надо.
-    const { service } = make([row({ items: [], totalOrder: 0 })]);
+    const { service } = make([
+      row({ items: [], totalOrder: 0, deliveryCost: 0, deliveryMethod: 'PICKUP' }),
+    ]);
     const [item] = await service.pending(20);
 
     expect(item.items).toEqual([]);
     expect(item.total).toBe(0);
+    expect(item.deliveryCost).toBe(0);
   });
 
   it('у холста позиция берётся из своей таблицы', async () => {

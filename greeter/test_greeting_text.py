@@ -3,7 +3,7 @@
 
 import unittest
 
-from greeting_text import greeting_for, items_list, money, render
+from greeting_text import delivery_line, greeting_for, items_list, money, render
 
 
 class TestGreeting(unittest.TestCase):
@@ -55,11 +55,37 @@ class TestMoney(unittest.TestCase):
             self.assertEqual(money(empty), "—")
 
 
+class TestDeliveryLine(unittest.TestCase):
+    def test_яндекс_с_ценой(self):
+        self.assertEqual(
+            delivery_line("YANDEX_PVZ", 300),
+            "🚚 Доставка в пункт выдачи Яндекса: 300 ₽",
+        )
+
+    def test_самовывоз_бесплатно(self):
+        self.assertEqual(delivery_line("PICKUP", 0), "🏠 Самовывоз — бесплатно")
+
+    def test_яндекс_без_цены_не_обещает_бесплатно(self):
+        # Заказ мог быть заведён до того, как цену стали проставлять.
+        # Обещать бесплатно то, что стоит денег, дороже, чем уточнить.
+        out = delivery_line("YANDEX_PVZ", 0)
+        self.assertIn("уточним", out)
+        self.assertNotIn("бесплатно", out)
+
+    def test_строка_никогда_не_пустая(self):
+        # Пустая строка оставила бы дыру между списком и суммой.
+        for method in (None, "", "PICKUP", "YANDEX_PVZ", "ЧТО-ТО"):
+            for cost in (None, 0, 300):
+                self.assertTrue(delivery_line(method, cost).strip())
+
+
 class TestRender(unittest.TestCase):
     TEMPLATE = (
         "{greeting} Получили заявку."
         + chr(10) * 2
         + "{{СПИСОК_ТОВАРОВ}}"
+        + chr(10) * 2
+        + "{{ДОСТАВКА}}"
         + chr(10) * 2
         + "Сумма: {{СУММА}} ₽"
     )
@@ -67,12 +93,22 @@ class TestRender(unittest.TestCase):
     def test_полные_данные(self):
         out = render(
             self.TEMPLATE, "Пётр", "035",
-            [{"title": "Фото 10×15", "quantity": 10}], 2490,
+            [{"title": "Фото 10×15", "quantity": 10}], 2790,
+            "YANDEX_PVZ", 300,
         )
         self.assertIn("Здравствуйте, Пётр!", out)
         self.assertIn("• Фото 10×15 — 10 шт.", out)
-        self.assertIn("Сумма: 2 490 ₽", out)
+        self.assertIn("Доставка в пункт выдачи Яндекса: 300 ₽", out)
+        self.assertIn("Сумма: 2 790 ₽", out)
         self.assertNotIn("{", out)
+
+    def test_сумма_включает_доставку(self):
+        # Главное правило: названная сумма равна тому, что человек заплатит.
+        out = render(
+            self.TEMPLATE, "Пётр", "035",
+            [{"title": "Фото", "quantity": 10}], 2490 + 300, "YANDEX_PVZ", 300,
+        )
+        self.assertIn("Сумма: 2 790 ₽", out)
 
     def test_пустые_данные_не_ломают_текст(self):
         out = render(self.TEMPLATE, None, "035", None, 0)
