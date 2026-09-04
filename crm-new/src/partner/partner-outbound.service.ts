@@ -4,7 +4,10 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { NO_PRODUCTION_ITEMS_MESSAGE } from 'src/order-photo/tshirt-production-items';
+import {
+  NO_PRODUCTION_ITEMS_MESSAGE,
+  hasProductionItems,
+} from 'src/order-photo/tshirt-production-items';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -48,7 +51,10 @@ export class PartnerOutboundService {
   async sendOrder(orderId: string) {
     const order = await this.prisma.orderPhoto.findUnique({
       where: { id: orderId },
-      include: { tshirtItems: true },
+      // Свободные позиции нужны наравне с футболочными: печать по изделию
+      // заказчика заводится именно ими, и без них проверка ниже считает
+      // такой заказ пустым.
+      include: { tshirtItems: true, items: true },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
     if (order.productCategory !== EnumProductCategory.TSHIRT) {
@@ -56,7 +62,21 @@ export class PartnerOutboundService {
         'Партнёру отправляются только заказы с футболками',
       );
     }
-    if (order.tshirtItems.length === 0) {
+    /*
+     * Работа есть, если в заказе ЛЮБАЯ позиция — футболочная или свободная.
+     *
+     * Раньше здесь стояла своя проверка на `tshirtItems.length`, и заказ
+     * на печать по изделию заказчика отправить было нельзя: футболку
+     * приносит клиент, позиции-футболки в таком заказе нет по определению.
+     * Общий помощник для этого и написан — просто это место его не
+     * использовало, ровно как предупреждает комментарий в нём самом.
+     *
+     * Полезной нагрузке отсутствие футболочных позиций не мешает: сумма
+     * заказа, расчёт с партнёром и ссылки на макет собираются из заказа
+     * целиком, а складская сводка у такого заказа пустая — заготовки
+     * со склада партнёра списывать и не нужно.
+     */
+    if (!hasProductionItems(order)) {
       throw new BadRequestException(NO_PRODUCTION_ITEMS_MESSAGE);
     }
     if (!hasTechSpecFiles(order)) {

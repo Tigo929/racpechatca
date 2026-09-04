@@ -34,9 +34,16 @@ type EditState = {
   designUrl: string;
 };
 
+/**
+ * Значения по умолчанию для новой позиции-футболки.
+ *
+ * Чёрная M за 1500 — то, что заказывают чаще всего. Умолчание, совпадающее
+ * с типовым заказом, экономит четыре клика на каждой позиции; редкий случай
+ * поправить всё равно придётся руками, но он редкий.
+ */
 const EMPTY: EditState = {
-  color: 'Белый', size: 'M', printLocation: 'FRONT',
-  quantity: '1', price: '500', clientItem: false, designUrl: '',
+  color: 'Чёрный', size: 'M', printLocation: 'FRONT',
+  quantity: '1', price: '1500', clientItem: false, designUrl: '',
 };
 
 type FreeState = {
@@ -193,10 +200,13 @@ function PositionMoney({
     <div className="mx-3 mb-3 rounded-lg border border-gray-100 bg-gray-50/70 p-3 text-xs space-y-1">
       {line('Выручка позиции', money(item.pricePosition))}
       {item.designCost > 0 && line('− дизайн (мой)', money(item.designCost))}
-      {line(`− термоперенос (${item.quantity} шт.)`, money(s.thermal))}
-      {item.clientItem
-        ? line('− футболка', 'изделие клиента', 'muted')
-        : line(`− футболка (${item.quantity} шт.)`, money(s.blanks))}
+      {/*
+        Материалы — термоперенос и заготовка — из разбора убраны: они
+        занимали половину блока, а решение по ним не принимается здесь.
+        Их цена задаётся в настройках и одинакова для всех позиций.
+        Остаётся то, ради чего в блок и смотрят: сколько ушло партнёру
+        и сколько осталось нам.
+      */}
       {line('Делимая маржа', money(s.margin))}
       {line(`Партнёру (${rateBasisPoints / 100}% + материалы)`, money(s.reward))}
       <div className="border-t border-gray-200 pt-1 mt-1">
