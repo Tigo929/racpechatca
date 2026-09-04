@@ -62,6 +62,13 @@ export class DtoUpdatePartnerSettings {
   @Max(100000)
   canvasDeliveryPrice?: number;
 
+  /** Цена доставки Яндекс ПВЗ для клиента (по умолчанию 300). */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100000)
+  deliveryPriceYandexPvz?: number;
+
   /**
    * Кого всегда упоминать в общем чате при заявке с сайта — через запятую.
    * Дежурный менеджер тегается сам; это список сверх него, чтобы владелец

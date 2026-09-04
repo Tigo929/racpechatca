@@ -227,6 +227,7 @@ interface FormState {
   canvasContractorName: string;
   maxLinkTemplate: string;
   leadMentionUsernames: string;
+  deliveryPriceYandexPvz: string;
 }
 
 function toForm(s: PartnerSettings): FormState {
@@ -238,6 +239,7 @@ function toForm(s: PartnerSettings): FormState {
     canvasContractorName: s.canvasContractorName,
     maxLinkTemplate: s.maxLinkTemplate,
     leadMentionUsernames: s.leadMentionUsernames ?? '',
+    deliveryPriceYandexPvz: String(s.deliveryPriceYandexPvz),
   };
 }
 
@@ -292,6 +294,7 @@ export default function SettingsPage() {
       canvasContractorName: form.canvasContractorName.trim(),
       maxLinkTemplate: form.maxLinkTemplate.trim(),
       leadMentionUsernames: form.leadMentionUsernames.trim(),
+      deliveryPriceYandexPvz: Math.max(0, Math.round(Number(form.deliveryPriceYandexPvz)) || 0),
     });
   };
 
@@ -328,6 +331,15 @@ export default function SettingsPage() {
                   value={form.blankTshirtCost}
                   onChange={(e) => setForm({ ...form, blankTshirtCost: e.target.value })}
                 />
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Доставка Яндекс ПВЗ клиенту, ₽</span>
+                <input
+                  type="number" min={0} className={`mt-1 ${field}`}
+                  value={form.deliveryPriceYandexPvz}
+                  onChange={(e) => setForm({ ...form, deliveryPriceYandexPvz: e.target.value })}
+                />
+                <span className="mt-1 block text-xs text-gray-400">Ставится по умолчанию и в заявке с сайта, и при ручном выборе Яндекс ПВЗ.</span>
               </label>
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">Ставка партнёра, %</span>

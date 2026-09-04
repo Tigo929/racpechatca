@@ -690,6 +690,8 @@ export interface PartnerSettings {
   photoSheetsPerBox: number;
   /** Сколько платим перевозчику — клиенту называем больше, разница наш заработок. */
   deliveryCostYandexPvz: number;
+  /** Цена доставки Яндекс ПВЗ для клиента (по умолчанию 300). */
+  deliveryPriceYandexPvz: number;
   deliveryCostOzonPvz: number;
   /** Кого всегда тегать в общем чате при заявке с сайта (через запятую). */
   leadMentionUsernames: string;

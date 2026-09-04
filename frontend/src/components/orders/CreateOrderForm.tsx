@@ -392,6 +392,16 @@ export function CreateOrderForm({ onClose }: Props) {
     setValue('deliveryCost', canvasPricing.delivery.price);
   }, [deliveryMethodWatch, canvasPricing, getValues, setValue]);
 
+  /*
+   * Выбрали Яндекс ПВЗ — цену клиенту ставим из настроек (по умолчанию 300).
+   * Только в пустое поле: если менеджер уже вписал сумму, не перебиваем.
+   */
+  useEffect(() => {
+    if (deliveryMethodWatch !== 'YANDEX_PVZ' || !settings) return;
+    if (Number(getValues('deliveryCost')) > 0) return;
+    setValue('deliveryCost', settings.deliveryPriceYandexPvz);
+  }, [deliveryMethodWatch, settings, getValues, setValue]);
+
   const canvasTotals = (() => {
     let revenue = 0;
     let cost = 0;
