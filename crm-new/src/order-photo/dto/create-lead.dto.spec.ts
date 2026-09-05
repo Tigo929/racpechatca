@@ -120,3 +120,36 @@ describe('заявка с сайта: контакт клиента', () => {
     await expect(pass({ ...base, phone: '123' })).rejects.toThrow();
   });
 });
+
+/**
+ * Края холста.
+ *
+ * Поле обязано пережить whitelist: именно так однажды терялся комментарий
+ * клиента — DTO о поле не знал, и оно молча исчезало по дороге. Здесь цена
+ * ошибки та же, только вместо текста пропадёт указание печатнику, что
+ * делать с краями кадра.
+ */
+describe('края холста в заявке с сайта', () => {
+  it('оба варианта доезжают до сервиса', async () => {
+    for (const edge of ['GALLERY', 'WHITE'] as const) {
+      const out = (await pipe.transform({ ...base, canvasEdge: edge }, meta)) as {
+        canvasEdge?: string;
+      };
+      expect(out.canvasEdge).toBe(edge);
+    }
+  });
+
+  it('выдуманный вариант заявку не проходит', async () => {
+    // Молча принять «SILVER» значило бы завести заказ с краями, которых
+    // мы не делаем, и узнать об этом от печатника.
+    await expect(
+      pipe.transform({ ...base, canvasEdge: 'SILVER' }, meta),
+    ).rejects.toThrow();
+  });
+
+  it('без поля заявка принимается', async () => {
+    // Заявки со страниц без выбора краёв обязаны продолжать работать.
+    const out = (await pipe.transform({ ...base }, meta)) as { canvasEdge?: string };
+    expect(out.canvasEdge).toBeUndefined();
+  });
+});

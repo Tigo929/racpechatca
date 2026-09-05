@@ -622,6 +622,16 @@ export class OrderPhotoService {
         dto.canvasFrame && dto.canvasFrame !== 'NONE'
           ? `Багет: ${CANVAS_FRAME_LABELS[dto.canvasFrame] ?? dto.canvasFrame}`
           : null,
+        // Края печатнику нужны всегда, включая вариант по умолчанию:
+        // строка «Края: изображение на торцах» — это подтверждение, что
+        // клиент выбирал, а не что поле забыли заполнить.
+        dto.canvasEdge
+          ? `Края: ${
+              dto.canvasEdge === 'WHITE'
+                ? 'белые, кадр целиком на лицевой стороне'
+                : 'изображение продолжается на торцах'
+            }`
+          : null,
         dto.canvasCrop
           ? `Кадр клиента: ${dto.canvasCrop.width}×${dto.canvasCrop.height} px, смещение ${dto.canvasCrop.x};${dto.canvasCrop.y}`
           : null,
