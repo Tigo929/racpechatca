@@ -205,8 +205,8 @@ const EMPTY_ORDER_FORM = {
   items: [{ isFreePrice: false, formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }],
   tshirtItems: [{
     freePrice: false, name: '',
-    color: 'Белый', size: 'M', printLocation: 'FRONT',
-    quantity: 1, price: 500, clientItem: false,
+    color: 'Чёрный', size: 'M', printLocation: 'FRONT',
+    quantity: 1, price: 1500, clientItem: false,
   }],
   canvasItems: [{
     sizeKey: '30x40',
@@ -327,8 +327,8 @@ export function CreateOrderForm({ onClose }: Props) {
       if ((getValues('tshirtItems')?.length ?? 0) === 0) {
         setValue('tshirtItems', [{
           freePrice: false, name: '',
-          color: 'Белый', size: 'M', printLocation: 'FRONT',
-          quantity: 1, price: 500, clientItem: false,
+          color: 'Чёрный', size: 'M', printLocation: 'FRONT',
+          quantity: 1, price: 1500, clientItem: false,
         }]);
       }
     } else if (productCategory === 'CANVAS') {
@@ -938,8 +938,8 @@ export function CreateOrderForm({ onClose }: Props) {
             <button type="button"
               onClick={() => tshirtFields.append({
                 freePrice: false, name: '',
-                color: 'Белый', size: 'M', printLocation: 'FRONT',
-                quantity: 1, price: 500, clientItem: false,
+                color: 'Чёрный', size: 'M', printLocation: 'FRONT',
+                quantity: 1, price: 1500, clientItem: false,
               })}
               className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
               <Plus size={14} /> Добавить
