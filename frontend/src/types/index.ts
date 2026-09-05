@@ -99,6 +99,12 @@ export interface OrderPhoto {
   designDevelopmentCost?: number;
   /** Плата за срочность: входит в чек клиента, но не в базу зарплаты. */
   urgencyFee?: number;
+  /**
+   * Фактически внесённая клиентом предоплата (₽). Пока null — остаток
+   * считается как ориентир 50% от суммы; после записи реальной суммы
+   * остаток = totalOrder − prepaidAmount (см. computePrepayment).
+   */
+  prepaidAmount?: number | null;
   totalOrder: number;
   status: EnumStatus;
   note?: string;
@@ -261,6 +267,11 @@ export interface UpdateOrderDto {
   note?: string;
   isUrgent?: boolean;
   tshirtModel?: string;
+  /**
+   * Фактически внесённая клиентом предоплата (₽). Записывается реальной суммой;
+   * дальше остаток = totalOrder − prepaidAmount и не «уезжает» при правках.
+   */
+  prepaidAmount?: number | null;
 }
 
 export interface UpdateStatusDto {

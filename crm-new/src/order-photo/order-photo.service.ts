@@ -1844,6 +1844,15 @@ export class OrderPhotoService {
         note: dto.note ?? order.note,
         isUrgent,
         tshirtModel: dto.tshirtModel ?? order.tshirtModel,
+        // Предоплата записывается реальной суммой и дальше не пересчитывается:
+        // меняется только остаток при правках заказа (см. computePrepayment).
+        // null — снять запись (вернуться к ориентиру 50%); undefined — не трогать.
+        prepaidAmount:
+          dto.prepaidAmount === undefined
+            ? order.prepaidAmount
+            : dto.prepaidAmount === null
+              ? null
+              : Math.max(0, dto.prepaidAmount),
       },
     });
     // Доставка/дизайн влияют на сумму → подгоняем невыплаченные начисления.

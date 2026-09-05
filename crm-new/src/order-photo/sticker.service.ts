@@ -18,6 +18,7 @@ import {
   EnumRole,
   EnumTshirtSize,
 } from 'src/generated/prisma/enums';
+import { computePrepayment } from './prepayment';
 
 /**
  * Соцсети на клиентском стикере. Меняются здесь — попадут на все новые стикеры.
@@ -140,8 +141,8 @@ export class StickerService {
 
     const isPickup = order.deliveryMethod === EnumDeliveryMethod.PICKUP;
     const total = order.totalOrder ?? 0;
-    // Предоплата 50% (как в тексте подтверждения клиенту); остаток при получении.
-    const rest = total - Math.ceil(total * 0.5);
+    // Остаток от ФАКТИЧЕСКОЙ предоплаты (если внесена), иначе ориентир 50%.
+    const rest = computePrepayment(total, order.prepaidAmount).balanceDue;
 
     const qrOptions = SOCIAL_LINKS.map(
       (s) =>
@@ -366,7 +367,7 @@ export class StickerService {
 
     const isPickup = order.deliveryMethod === EnumDeliveryMethod.PICKUP;
     const total = order.totalOrder ?? 0;
-    const rest = total - Math.ceil(total * 0.5); // остаток после предоплаты 50%
+    const rest = computePrepayment(total, order.prepaidAmount).balanceDue;
 
     // Уровень коррекции L — намеренно самый низкий. На этикетке 58 мм три кода
     // помещаются только мелкими, и крупные модули важнее избыточности: голова

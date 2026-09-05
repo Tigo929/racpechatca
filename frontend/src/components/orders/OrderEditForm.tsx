@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Check, X } from 'lucide-react';
 import type { UpdateOrderDto } from '../../types/index';
+import { computePrepayment } from '../../utils/prepayment';
 
 interface Props {
   form: UpdateOrderDto;
@@ -10,16 +11,22 @@ interface Props {
   isPending: boolean;
   /** Дизайн — свободная сумма только для футболок. У фото секцию не показываем. */
   productCategory: 'PHOTO' | 'TSHIRT' | 'CANVAS';
+  /** Текущая сумма заказа — чтобы сразу показать остаток от внесённой предоплаты. */
+  orderTotal: number;
 }
 
 const inputCls = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent';
 const labelCls = 'text-xs text-gray-500 mb-1';
 
-export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, productCategory }: Props) {
+export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, productCategory, orderTotal }: Props) {
   const set = (patch: Partial<UpdateOrderDto>) => onChange({ ...form, ...patch });
   // «Нужен дизайн» — включён, если у заказа уже есть сумма дизайна. Выключение
   // обнуляет сумму, чтобы дизайн ушёл из чека.
   const [designEnabled, setDesignEnabled] = useState((form.designDevelopmentCost ?? 0) > 0);
+  // Предоплата зафиксирована реальной суммой? Если да — остаток считаем от неё,
+  // а не от «50% суммы», и он не «уезжает» при правках заказа.
+  const prepaidRecorded = form.prepaidAmount !== null && form.prepaidAmount !== undefined;
+  const prepay = computePrepayment(orderTotal, form.prepaidAmount);
 
   return (
     <div className="space-y-4">
@@ -132,6 +139,56 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, pro
               onChange={e => set({ urgencyFee: Number(e.target.value) })}
             />
           </div>
+        )}
+      </div>
+
+      {/* Предоплата. Записываем реальную внесённую сумму один раз; дальше
+          остаток считается как «сумма заказа − предоплата» и не пересчитывается
+          на 50% при каждой правке. Работает для всех категорий одинаково. */}
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 space-y-2">
+        <label className="flex items-center gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={prepaidRecorded}
+            onChange={e => {
+              // Включили — фиксируем текущий ориентир (50% суммы) как стартовое
+              // значение, которое можно поправить. Выключили — вернулись к «50%».
+              set({ prepaidAmount: e.target.checked ? prepay.prepaid : null });
+            }}
+            className="w-4 h-4 accent-emerald-600"
+          />
+          <span className="text-sm font-medium text-gray-800">Клиент внёс предоплату</span>
+        </label>
+        {prepaidRecorded ? (
+          <div>
+            <p className={labelCls}>Внесённая предоплата, ₽</p>
+            <input
+              type="number"
+              min={0}
+              className={inputCls}
+              value={form.prepaidAmount ?? 0}
+              onChange={e => set({ prepaidAmount: Math.max(0, Number(e.target.value)) })}
+            />
+            <p className="text-xs mt-1 font-medium">
+              {prepay.balanceDue < 0 ? (
+                <span className="text-red-600">
+                  Переплата к возврату: {Math.abs(prepay.balanceDue).toLocaleString('ru-RU')} ₽
+                </span>
+              ) : prepay.balanceDue === 0 ? (
+                <span className="text-emerald-700">Заказ оплачен полностью</span>
+              ) : (
+                <span className="text-gray-600">
+                  Останется доплатить: {prepay.balanceDue.toLocaleString('ru-RU')} ₽
+                  <span className="text-gray-400"> (сумма заказа {orderTotal.toLocaleString('ru-RU')} ₽)</span>
+                </span>
+              )}
+            </p>
+          </div>
+        ) : (
+          <p className="text-xs text-gray-500">
+            Пока не отмечено — остаток считается как 50% от суммы заказа
+            ({prepay.prepaid.toLocaleString('ru-RU')} ₽).
+          </p>
         )}
       </div>
 

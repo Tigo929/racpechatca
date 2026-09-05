@@ -73,4 +73,15 @@ export class DtoUpdateOrder {
   @IsOptional()
   @MaxLength(255)
   tshirtModel?: string;
+
+  /**
+   * Фактически внесённая клиентом предоплата (рублей). Записывается один раз
+   * реальной суммой; остаток дальше считается как «сумма заказа − предоплата»,
+   * а не как 50% от текущей суммы. См. computePrepayment.
+   */
+  @IsInt()
+  @IsOptional()
+  @Type(() => Number)
+  @Min(0)
+  prepaidAmount?: number;
 }

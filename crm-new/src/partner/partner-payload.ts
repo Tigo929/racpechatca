@@ -7,6 +7,7 @@ import { settleOrder } from './partner-settlement';
 import { toPartnerStatus } from './partner-status';
 import { getTechSpecPaths } from './tech-spec-paths';
 import { settlementPositions } from './settlement-positions';
+import { computePrepayment } from 'src/order-photo/prepayment';
 
 // Человекочитаемые метки — дублируем к кодам, чтобы производство не ошиблось.
 const PRINT_LOCATION_LABELS: Record<EnumPrintLocation, string> = {
@@ -32,6 +33,7 @@ export interface PartnerOrderForPayload {
   note: string | null;
   status: string;
   totalOrder: number | null;
+  prepaidAmount: number | null;
   deliveryMethod: string;
   techSpecPhotoPath: string | null;
   techSpecPhotoPaths?: string[] | null;
@@ -75,8 +77,8 @@ export function buildPartnerOrderPayload(
   partnerRateBasisPoints: number,
 ) {
   const total = order.totalOrder ?? 0;
-  const prepaid = Math.ceil(total * 0.5); // предоплата 50% (округление вверх)
-  const balanceDue = total - prepaid;
+  // Фактическая предоплата, если зафиксирована; иначе ориентир 50%.
+  const { prepaid, balanceDue } = computePrepayment(total, order.prepaidAmount);
   const isPickup = order.deliveryMethod === EnumDeliveryMethod.PICKUP;
   const base = baseUrl.replace(/\/+$/, '');
   const techSpecUrls = getTechSpecPaths(order).map((_, index) =>

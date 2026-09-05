@@ -111,8 +111,10 @@ function generateConfirmationText(order: OrderPhoto): string {
   const canvasItems = order.canvasItems ?? [];
   const delivery = order.deliveryCost ?? 0;
   const total = order.totalOrder ?? 0;
-  const prepay = Math.ceil(total * 0.5);
-  const rest = total - prepay;
+  const { prepaid: prepay, balanceDue: rest, recorded } = computePrepayment(
+    total,
+    order.prepaidAmount,
+  );
 
   const lines: string[] = [];
   items.forEach((i) => {
@@ -160,9 +162,21 @@ function generateConfirmationText(order: OrderPhoto): string {
    * глагола нет, и непонятно, платить сейчас или потом. Для клиента это
    * самое важное место сообщения, и гадать он тут не должен.
    */
-  const restLabel = isPickup
-    ? `👉 При получении — остаток: ${rest.toLocaleString("ru-RU")} ₽`
-    : `👉 Когда пришлём фото доставки — остаток: ${rest.toLocaleString("ru-RU")} ₽`;
+  // Как называем первый платёж: если менеджер записал реальную внесённую
+  // сумму — так и пишем; пока не записана — прежний ориентир «50%».
+  const prepayLabel = recorded
+    ? `👉 Внесена предоплата: ${prepay.toLocaleString("ru-RU")} ₽`
+    : `👉 Сейчас — предоплата 50%: ${prepay.toLocaleString("ru-RU")} ₽`;
+  // Остаток. Ноль — заказ закрыт; минус — клиент переплатил (например, убрали
+  // позицию после предоплаты), и это возврат, а не «доплата с минусом».
+  const restLabel =
+    rest < 0
+      ? `↩️ Переплата к возврату: ${Math.abs(rest).toLocaleString("ru-RU")} ₽`
+      : rest === 0
+        ? "✅ Заказ оплачен полностью"
+        : isPickup
+          ? `👉 При получении — остаток: ${rest.toLocaleString("ru-RU")} ₽`
+          : `👉 Когда пришлём фото доставки — остаток: ${rest.toLocaleString("ru-RU")} ₽`;
 
   return [
     "✅ Отлично, ваш заказ подтверждён!",
@@ -181,7 +195,7 @@ function generateConfirmationText(order: OrderPhoto): string {
     `📦 Итого к оплате: ${total.toLocaleString("ru-RU")} ₽`,
     separator,
     "💳 Оплата в два этапа:",
-    `👉 Сейчас — предоплата 50%: ${prepay.toLocaleString("ru-RU")} ₽`,
+    prepayLabel,
     restLabel,
     ...(isPickup && pickupAddr ? ["", `📍 Самовывоз: ${pickupAddr}`] : []),
     // Холсты забирают у подрядчика: свой график и своё условие выдачи —
@@ -211,8 +225,10 @@ function generateReadyText(order: OrderPhoto): string {
   const canvasItems = order.canvasItems ?? [];
   const delivery = order.deliveryCost ?? 0;
   const total = order.totalOrder ?? 0;
-  const prepay = Math.ceil(total * 0.5);
-  const rest = total - prepay;
+  const { prepaid: prepay, balanceDue: rest, recorded } = computePrepayment(
+    total,
+    order.prepaidAmount,
+  );
 
   const lines: string[] = [];
   items.forEach((i) => {
@@ -274,8 +290,14 @@ function generateReadyText(order: OrderPhoto): string {
     // которых платить не нужно — она уже оплачена. Теперь заголовок про
     // оплату целиком, а строки сами говорят, что внесено и что осталось.
     "💳 Оплата:",
-    `👉 Предоплата 50% — ${prepay.toLocaleString("ru-RU")} ₽, уже внесена`,
-    `👉 Осталось доплатить — ${rest.toLocaleString("ru-RU")} ₽`,
+    recorded
+      ? `👉 Предоплата — ${prepay.toLocaleString("ru-RU")} ₽, уже внесена`
+      : `👉 Предоплата 50% — ${prepay.toLocaleString("ru-RU")} ₽, уже внесена`,
+    rest < 0
+      ? `↩️ Переплата к возврату — ${Math.abs(rest).toLocaleString("ru-RU")} ₽`
+      : rest === 0
+        ? "✅ Заказ оплачен полностью"
+        : `👉 Осталось доплатить — ${rest.toLocaleString("ru-RU")} ₽`,
     ...(isPickup && pickupAddr ? ["", `📍 Самовывоз: ${pickupAddr}`] : []),
     // Заказ уже готов, поэтому здесь только часы работы. Срок изготовления
     // и «заберёте после фото готовой работы» — условия из подтверждения
@@ -305,6 +327,7 @@ import { getStalledDays } from "../../utils/stalled";
 import { ordersApi } from "../../api/orders";
 import { partnerSettingsApi } from "../../api/partnerSettings";
 import { computeSettlement } from "../../utils/settlement";
+import { computePrepayment } from "../../utils/prepayment";
 import { computePaperUsage } from "../../utils/photo-material";
 import { StatusStepper } from "./StatusStepper";
 import { ItemsTable } from "./ItemsTable";
@@ -576,6 +599,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       designDevelopmentCost: order.designDevelopmentCost ?? 0,
       isUrgent: order.isUrgent ?? false,
       urgencyFee: order.urgencyFee ?? 0,
+      prepaidAmount: order.prepaidAmount ?? null,
       note: order.note,
     });
     setEditing(true);
@@ -1127,6 +1151,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           onCancel={() => setEditing(false)}
           isPending={updateMutation.isPending}
           productCategory={order.productCategory}
+          orderTotal={order.totalOrder ?? 0}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
