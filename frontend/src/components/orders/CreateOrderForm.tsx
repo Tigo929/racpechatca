@@ -1048,23 +1048,11 @@ export function CreateOrderForm({ onClose }: Props) {
                       </div>
                     </div>
 
-                    {/* Себестоимость печати — по умолчанию из настроек; пусто = взять умолчание.
-                        Влияет на расчёт с партнёром, но не на чек клиента. */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className={labelCls}>Термоперенос ₽</label>
-                        <input type="number" min={0} className={inputCls}
-                          placeholder={String(settings?.thermalTransferCost ?? 70)}
-                          {...register(`tshirtItems.${idx}.thermalCost`)} />
-                      </div>
-                      <div>
-                        <label className={labelCls}>Футболка ₽</label>
-                        <input type="number" min={0} className={inputCls}
-                          placeholder={String(settings?.blankTshirtCost ?? 260)}
-                          {...register(`tshirtItems.${idx}.blankCost`)} />
-                      </div>
-                    </div>
-                    {/* «Изделие клиента» (давальческая) скрыта: по умолчанию
+                    {/* Термоперенос и себестоимость футболки в форме не
+                        показываем: их подставляет сервер из настроек партнёра,
+                        а лишние поля занимали место и путали. На расчёт с
+                        партнёром они по-прежнему влияют — просто из умолчаний.
+                        «Изделие клиента» (давальческая) тоже скрыта: по умолчанию
                         заготовку предоставляет партнёр, расчёт считается полностью
                         и одинаково. Режим можно вернуть, когда понадобится. */}
                   </>
