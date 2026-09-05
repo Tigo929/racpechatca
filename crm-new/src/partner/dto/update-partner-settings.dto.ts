@@ -25,6 +25,12 @@ export class DtoUpdatePartnerSettings {
   @MaxLength(60)
   partnerName?: string;
 
+  /** Кто печатает холсты — показываем в отчёте. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  canvasContractorName?: string;
+
   /** Шаблон ссылки на переписку в MAX: {phone} / {phone_plus}. */
   @IsOptional()
   @IsString()
@@ -55,6 +61,13 @@ export class DtoUpdatePartnerSettings {
   @Min(0)
   @Max(100000)
   canvasDeliveryPrice?: number;
+
+  /** Цена доставки Яндекс ПВЗ для клиента (по умолчанию 300). */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100000)
+  deliveryPriceYandexPvz?: number;
 
   /**
    * Кого всегда упоминать в общем чате при заявке с сайта — через запятую.

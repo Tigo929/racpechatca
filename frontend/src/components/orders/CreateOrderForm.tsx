@@ -205,8 +205,8 @@ const EMPTY_ORDER_FORM = {
   items: [{ isFreePrice: false, formatPaper: '', typePaper: 'GLOSS', quantity: 1, price: 10 }],
   tshirtItems: [{
     freePrice: false, name: '',
-    color: 'Белый', size: 'M', printLocation: 'FRONT',
-    quantity: 1, price: 500, clientItem: false,
+    color: 'Чёрный', size: 'M', printLocation: 'FRONT',
+    quantity: 1, price: 1500, clientItem: false,
   }],
   canvasItems: [{
     sizeKey: '30x40',
@@ -327,8 +327,8 @@ export function CreateOrderForm({ onClose }: Props) {
       if ((getValues('tshirtItems')?.length ?? 0) === 0) {
         setValue('tshirtItems', [{
           freePrice: false, name: '',
-          color: 'Белый', size: 'M', printLocation: 'FRONT',
-          quantity: 1, price: 500, clientItem: false,
+          color: 'Чёрный', size: 'M', printLocation: 'FRONT',
+          quantity: 1, price: 1500, clientItem: false,
         }]);
       }
     } else if (productCategory === 'CANVAS') {
@@ -391,6 +391,16 @@ export function CreateOrderForm({ onClose }: Props) {
     if (Number(getValues('deliveryCost')) > 0) return;
     setValue('deliveryCost', canvasPricing.delivery.price);
   }, [deliveryMethodWatch, canvasPricing, getValues, setValue]);
+
+  /*
+   * Выбрали Яндекс ПВЗ — цену клиенту ставим из настроек (по умолчанию 300).
+   * Только в пустое поле: если менеджер уже вписал сумму, не перебиваем.
+   */
+  useEffect(() => {
+    if (deliveryMethodWatch !== 'YANDEX_PVZ' || !settings) return;
+    if (Number(getValues('deliveryCost')) > 0) return;
+    setValue('deliveryCost', settings.deliveryPriceYandexPvz);
+  }, [deliveryMethodWatch, settings, getValues, setValue]);
 
   const canvasTotals = (() => {
     let revenue = 0;
@@ -928,8 +938,8 @@ export function CreateOrderForm({ onClose }: Props) {
             <button type="button"
               onClick={() => tshirtFields.append({
                 freePrice: false, name: '',
-                color: 'Белый', size: 'M', printLocation: 'FRONT',
-                quantity: 1, price: 500, clientItem: false,
+                color: 'Чёрный', size: 'M', printLocation: 'FRONT',
+                quantity: 1, price: 1500, clientItem: false,
               })}
               className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
               <Plus size={14} /> Добавить
@@ -1038,23 +1048,11 @@ export function CreateOrderForm({ onClose }: Props) {
                       </div>
                     </div>
 
-                    {/* Себестоимость печати — по умолчанию из настроек; пусто = взять умолчание.
-                        Влияет на расчёт с партнёром, но не на чек клиента. */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className={labelCls}>Термоперенос ₽</label>
-                        <input type="number" min={0} className={inputCls}
-                          placeholder={String(settings?.thermalTransferCost ?? 70)}
-                          {...register(`tshirtItems.${idx}.thermalCost`)} />
-                      </div>
-                      <div>
-                        <label className={labelCls}>Футболка ₽</label>
-                        <input type="number" min={0} className={inputCls}
-                          placeholder={String(settings?.blankTshirtCost ?? 260)}
-                          {...register(`tshirtItems.${idx}.blankCost`)} />
-                      </div>
-                    </div>
-                    {/* «Изделие клиента» (давальческая) скрыта: по умолчанию
+                    {/* Термоперенос и себестоимость футболки в форме не
+                        показываем: их подставляет сервер из настроек партнёра,
+                        а лишние поля занимали место и путали. На расчёт с
+                        партнёром они по-прежнему влияют — просто из умолчаний.
+                        «Изделие клиента» (давальческая) тоже скрыта: по умолчанию
                         заготовку предоставляет партнёр, расчёт считается полностью
                         и одинаково. Режим можно вернуть, когда понадобится. */}
                   </>
@@ -1100,6 +1098,12 @@ export function CreateOrderForm({ onClose }: Props) {
               const contractor = row?.sizeKey
                 ? (priced?.cost[row.material ?? 'SYNTHETIC'] ?? 0)
                 : Number(row?.contractorPrice ?? 0) || 0;
+              // Розница подрядчика из прайса — чтобы показать, откуда берётся
+              // «должен»: это она минус договорная скидка.
+              const retail = row?.sizeKey
+                ? (priced?.retail[row.material ?? 'SYNTHETIC'] ?? 0)
+                : 0;
+              const discountPct = Math.round((canvasPricing?.discountBasisPoints ?? 0) / 100);
               const revenue = client * qty;
               const cost = contractor * qty;
               const profit = revenue - cost;
@@ -1163,6 +1167,12 @@ export function CreateOrderForm({ onClose }: Props) {
                         {row?.sizeKey ? 'Должен производству' : 'Подрядчик'}
                       </p>
                       <p className="font-semibold text-gray-800 tabular-nums">{cost.toLocaleString('ru-RU')} ₽</p>
+                      {row?.sizeKey && retail > 0 && (
+                        <p className="mt-0.5 text-[10px] leading-tight text-gray-400 tabular-nums">
+                          прайс {retail.toLocaleString('ru-RU')} ₽ − {discountPct}%
+                          {qty > 1 ? ` × ${qty}` : ''}
+                        </p>
+                      )}
                     </div>
                     <div className={`rounded-lg bg-white border px-3 py-2 ${profit >= 0 ? 'border-emerald-100' : 'border-red-100'}`}>
                       <p className="text-gray-400">Маржа</p>

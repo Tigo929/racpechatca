@@ -50,7 +50,7 @@ export class PartnerApiController {
   async getOrder(@Param('idOrder') idOrder: string) {
     const order = await this.prisma.orderPhoto.findUnique({
       where: { id: idOrder },
-      include: { tshirtItems: true },
+      include: { tshirtItems: true, items: true },
     });
     if (!order || order.productCategory !== EnumProductCategory.TSHIRT) {
       throw new NotFoundException('Заказ не найден');

@@ -224,8 +224,10 @@ interface FormState {
   blankTshirtCost: string;
   ratePercent: string;
   partnerName: string;
+  canvasContractorName: string;
   maxLinkTemplate: string;
   leadMentionUsernames: string;
+  deliveryPriceYandexPvz: string;
 }
 
 function toForm(s: PartnerSettings): FormState {
@@ -234,8 +236,10 @@ function toForm(s: PartnerSettings): FormState {
     blankTshirtCost: String(s.blankTshirtCost),
     ratePercent: (s.partnerRateBasisPoints / 100).toString(),
     partnerName: s.partnerName,
+    canvasContractorName: s.canvasContractorName,
     maxLinkTemplate: s.maxLinkTemplate,
     leadMentionUsernames: s.leadMentionUsernames ?? '',
+    deliveryPriceYandexPvz: String(s.deliveryPriceYandexPvz),
   };
 }
 
@@ -287,8 +291,10 @@ export default function SettingsPage() {
       blankTshirtCost: blank,
       partnerRateBasisPoints: Math.round(pct * 100),
       partnerName: form.partnerName.trim(),
+      canvasContractorName: form.canvasContractorName.trim(),
       maxLinkTemplate: form.maxLinkTemplate.trim(),
       leadMentionUsernames: form.leadMentionUsernames.trim(),
+      deliveryPriceYandexPvz: Math.max(0, Math.round(Number(form.deliveryPriceYandexPvz)) || 0),
     });
   };
 
@@ -327,6 +333,15 @@ export default function SettingsPage() {
                 />
               </label>
               <label className="block">
+                <span className="text-sm font-medium text-gray-700">Доставка Яндекс ПВЗ клиенту, ₽</span>
+                <input
+                  type="number" min={0} className={`mt-1 ${field}`}
+                  value={form.deliveryPriceYandexPvz}
+                  onChange={(e) => setForm({ ...form, deliveryPriceYandexPvz: e.target.value })}
+                />
+                <span className="mt-1 block text-xs text-gray-400">Ставится по умолчанию и в заявке с сайта, и при ручном выборе Яндекс ПВЗ.</span>
+              </label>
+              <label className="block">
                 <span className="text-sm font-medium text-gray-700">Ставка партнёра, %</span>
                 <input
                   type="number" min={0} max={100} step="0.01" className={`mt-1 ${field}`}
@@ -341,6 +356,16 @@ export default function SettingsPage() {
                   value={form.partnerName}
                   onChange={(e) => setForm({ ...form, partnerName: e.target.value })}
                 />
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Кто печатает холсты</span>
+                <input
+                  type="text" className={`mt-1 ${field}`}
+                  placeholder="Производство холстов"
+                  value={form.canvasContractorName}
+                  onChange={(e) => setForm({ ...form, canvasContractorName: e.target.value })}
+                />
+                <span className="mt-1 block text-xs text-gray-400">Показывается в отчёте рядом с себестоимостью холстов.</span>
               </label>
               <label className="block sm:col-span-2">
                 <span className="text-sm font-medium text-gray-700">Кого тегать в Telegram по заявкам с сайта</span>

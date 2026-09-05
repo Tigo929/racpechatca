@@ -360,9 +360,14 @@ export class ApprovalService {
 
     const order = await this.prisma.orderPhoto.findUnique({
       where: { id: approval.orderId },
-      select: { numberOrder: true },
+      select: {
+        numberOrder: true,
+        // Печать на изделии заказчика — свободная позиция с этим признаком.
+        items: { select: { printOnClientItem: true } },
+      },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
+    const clientItem = order.items.some((i) => i.printOnClientItem);
 
     const templates = await this.prisma.mockupTemplate.findMany({
       where: { key: { in: filled.map((f) => f.state.templateKey) } },
@@ -397,6 +402,7 @@ export class ApprovalService {
       version: approval.version,
       shirtColor: approval.shirtColor,
       shirtSizeLabel: SIZE_LABELS[approval.shirtSize] ?? approval.shirtSize,
+      clientItem,
       comment: approval.comment,
       date: new Date(),
       sides: renderSides,

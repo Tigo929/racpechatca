@@ -18,6 +18,8 @@ export interface UpdatePartnerSettingsDto {
   blankTshirtCost?: number;
   partnerRateBasisPoints?: number;
   partnerName?: string;
+  canvasContractorName?: string;
+  deliveryPriceYandexPvz?: number;
   maxLinkTemplate?: string;
 }
 
@@ -47,7 +49,9 @@ export class PartnerSettingsService {
         blankTshirtCost: dto.blankTshirtCost,
         partnerRateBasisPoints: dto.partnerRateBasisPoints,
         partnerName: dto.partnerName?.trim() || undefined,
+        canvasContractorName: dto.canvasContractorName?.trim() || undefined,
         maxLinkTemplate: dto.maxLinkTemplate?.trim() || undefined,
+        deliveryPriceYandexPvz: dto.deliveryPriceYandexPvz,
       },
     });
   }
