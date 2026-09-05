@@ -136,8 +136,10 @@ export function ItemsTable({ order }: Props) {
         )}
       </div>
 
-      <div className="border border-gray-100 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      {/* overflow-x-auto: на узком экране широкая таблица прокручивается внутри
+          карточки, а не растягивает всю модалку вбок (иначе «всё не помещается»). */}
+      <div className="border border-gray-100 rounded-xl overflow-x-auto">
+        <table className="w-full min-w-[460px] text-sm">
           <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>
               <th scope="col" className="px-4 py-2 text-left">{freePrice ? 'Название' : 'Формат'}</th>

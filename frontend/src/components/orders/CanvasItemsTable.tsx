@@ -302,8 +302,10 @@ export function CanvasItemsTable({ order }: Props) {
         )}
       </div>
 
-      <div className="border border-gray-100 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      {/* overflow-x-auto: широкая таблица прокручивается внутри карточки,
+          а не растягивает модалку вбок на узком экране. */}
+      <div className="border border-gray-100 rounded-xl overflow-x-auto">
+        <table className="w-full min-w-[520px] text-sm">
           <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>
               <th scope="col" className="px-4 py-2 text-left">

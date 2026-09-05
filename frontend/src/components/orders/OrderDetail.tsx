@@ -1232,14 +1232,61 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   })()}
                 </div>
               )}
-              <div className="sm:col-span-2 pt-2 border-t border-gray-100 flex justify-end">
-                <div className="text-right">
-                  <p className="text-xs text-gray-500">Сумма заказа</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {(order.totalOrder ?? 0).toLocaleString()} ₽
-                  </p>
-                </div>
-              </div>
+              {/* Оплата: сумма, внесённая предоплата и остаток. Показываем прямо
+                  в карточке, чтобы фичу было видно без входа в «Изменить».
+                  Остаток считается от реальной предоплаты (см. computePrepayment):
+                  при правках заказа он не «уезжает» на 50% от новой суммы. */}
+              {(() => {
+                const total = order.totalOrder ?? 0;
+                const { prepaid, balanceDue, recorded } = computePrepayment(
+                  total,
+                  order.prepaidAmount,
+                );
+                return (
+                  <div className="sm:col-span-2 pt-3 border-t border-gray-100">
+                    <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-3 space-y-1.5 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500">Сумма заказа</span>
+                        <span className="text-xl font-bold text-gray-900">
+                          {total.toLocaleString("ru-RU")} ₽
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500">
+                          {recorded ? "Предоплата внесена" : "Предоплата (ориентир 50%)"}
+                        </span>
+                        <span className={`font-semibold ${recorded ? "text-emerald-700" : "text-gray-400"}`}>
+                          {prepaid.toLocaleString("ru-RU")} ₽
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500">
+                          {balanceDue < 0 ? "К возврату клиенту" : "Остаток к доплате"}
+                        </span>
+                        <span
+                          className={`font-semibold ${
+                            balanceDue < 0
+                              ? "text-red-600"
+                              : balanceDue === 0
+                                ? "text-emerald-700"
+                                : "text-gray-900"
+                          }`}
+                        >
+                          {balanceDue === 0
+                            ? "оплачен полностью"
+                            : `${Math.abs(balanceDue).toLocaleString("ru-RU")} ₽`}
+                        </span>
+                      </div>
+                      {!recorded && (
+                        <p className="text-xs text-gray-400 pt-1">
+                          Нажмите «Изменить» → «Клиент внёс предоплату», чтобы записать
+                          реальную сумму. Тогда остаток перестанет пересчитываться на 50%.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </>
           )}
           {!isAdmin && order.note && (

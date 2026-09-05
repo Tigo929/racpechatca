@@ -680,13 +680,13 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/ItemsTable.tsx": {
-    "mtime": 1784234826.737881,
-    "ast_hash": "e18721636a50af101c635f580069a5a1",
+    "mtime": 1788613035.3796363,
+    "ast_hash": "fdcce6a1e21fca5a9a03f6d41b125089",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderDetail.tsx": {
-    "mtime": 1788611474.4373229,
-    "ast_hash": "7f0f8fc47dfe8566f2e5d4bb59e0a624",
+    "mtime": 1788612911.2849028,
+    "ast_hash": "7654bfa64000ebdd09831406a18e5923",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderEditForm.tsx": {
@@ -1415,8 +1415,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/CanvasItemsTable.tsx": {
-    "mtime": 1788276218.89905,
-    "ast_hash": "dc74cca494b3af75f3bf357b88b2fd65",
+    "mtime": 1788613044.288579,
+    "ast_hash": "1d73da1feeaa812d1e0c5a4000298bd0",
     "semantic_hash": ""
   },
   "frontend/src/config/photo-formats.ts": {
