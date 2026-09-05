@@ -503,6 +503,22 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
   };
 
   const [clientStickerLoading, setClientStickerLoading] = useState(false);
+  // Подсветка зоны, когда над ней тащат файл.
+  const [techDragOver, setTechDragOver] = useState(false);
+
+  /*
+   * Приём файлов, перетащенных мышкой в зону ТЗ.
+   *
+   * Тот же обработчик, что у выбора через кнопку: фильтруем по типу
+   * (картинка/PDF), пустой набор игнорируем. Раньше файл можно было
+   * только выбрать кликом — теперь ещё и бросить на область.
+   */
+  const acceptTechFiles = (fileList: FileList | null) => {
+    const files = Array.from(fileList ?? []).filter(
+      (f) => f.type.startsWith('image/') || f.type === 'application/pdf',
+    );
+    if (files.length > 0) uploadPhotoMutation.mutate(files);
+  };
   const handlePrintClientSticker = async () => {
     try {
       setClientStickerLoading(true);
@@ -965,7 +981,27 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
               );
             })()}
 
-          {/* ТЗ-файлы (согласованный макет и уточнения) */}
+          {/* ТЗ-файлы (согласованный макет и уточнения).
+              Зона принимает файл и кликом по кнопке, и перетаскиванием мышкой. */}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setTechDragOver(true); }}
+            onDragLeave={(e) => { e.preventDefault(); setTechDragOver(false); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              setTechDragOver(false);
+              acceptTechFiles(e.dataTransfer.files);
+            }}
+            className={`rounded-xl border-2 border-dashed p-3 transition-colors ${
+              techDragOver
+                ? 'border-indigo-500 bg-indigo-50'
+                : 'border-gray-200 bg-gray-50/40'
+            }`}
+          >
+          <p className="mb-2 text-xs text-gray-500">
+            {techDragOver
+              ? 'Отпустите — файл прикрепится'
+              : 'Перетащите сюда файл ТЗ или выберите кнопкой ниже (картинка или PDF)'}
+          </p>
           <div className="flex items-center gap-3 flex-wrap">
             <label className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 cursor-pointer transition-colors">
               <Paperclip size={13} aria-hidden="true" />
@@ -977,8 +1013,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 className="hidden"
                 disabled={uploadPhotoMutation.isPending}
                 onChange={(e) => {
-                  const files = Array.from(e.target.files ?? []);
-                  if (files.length > 0) uploadPhotoMutation.mutate(files);
+                  acceptTechFiles(e.target.files);
                   e.target.value = "";
                 }}
               />
@@ -1004,6 +1039,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             {uploadPhotoMutation.isPending && (
               <span className="text-xs text-gray-500">Загрузка…</span>
             )}
+          </div>
           </div>
 
           {/* Статус Telegram-отправки */}
