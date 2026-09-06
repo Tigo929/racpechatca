@@ -24,6 +24,7 @@ import {
 import { COMMUNICATION_LABELS, DELIVERY_LABELS } from "../../constants";
 import { GulianSyncBlock } from './GulianSyncBlock';
 import { DispatchToExecutorModal } from './DispatchToExecutorModal';
+import { GreetingCopyButton } from './GreetingCopyButton';
 import { ApprovalsBlock } from '../approval/ApprovalsBlock';
 
 /**
@@ -1159,6 +1160,17 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             label="Платформа общения"
             value={COMMUNICATION_LABELS[order.communicationPlatform]}
           />
+          {/*
+            Первое сообщение уходит само только в телеграм — у остальных
+            площадок написать первым нельзя. Здесь менеджер копирует ровно
+            тот же текст и отправляет руками, чтобы клиент на MAX получил
+            то же самое, что клиент на телеграме.
+          */}
+          {order.communicationPlatform !== 'TELEGRAM' && (
+            <div className="sm:col-span-2">
+              <GreetingCopyButton orderId={order.id} />
+            </div>
+          )}
           {/* Строки, которые правятся, открывают правку сами. Кнопка
               «Изменить» стоит в шапке карточки, а эти поля — под списком
               позиций: доскроллив сюда, приходилось искать дорогу обратно

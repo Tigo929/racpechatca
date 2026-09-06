@@ -64,6 +64,17 @@ export const ordersApi = {
     return data;
   },
 
+  /**
+   * Текст первого сообщения клиенту — тот же, что отправляет воркер
+   * в телеграм. Нужен там, где написать автоматически нельзя.
+   */
+  getGreetingText: async (orderId: string): Promise<string> => {
+    const { data } = await api.get<{ text: string }>(
+      `/order-photo/${orderId}/greeting-text`,
+    );
+    return data.text;
+  },
+
   getById: async (id: string): Promise<OrderPhoto> => {
     const { data } = await api.get<OrderPhoto>(`/order-photo/${id}`);
     return data;

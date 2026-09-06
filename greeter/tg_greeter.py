@@ -246,18 +246,26 @@ async def main() -> int:
             log.info("В очереди: %d", len(queue))
             for index, item in enumerate(queue):
                 username = item["username"]
-                # Нет текста под направление — берём общий, а не пропускаем:
-                # молчание хуже неточной формулировки.
-                template = templates.get(item.get("category", ""), templates[""])
-                text = render(
-                    template,
-                    item.get("name"),
-                    item["numberOrder"],
-                    item.get("items"),
-                    item.get("total"),
-                    item.get("deliveryMethod"),
-                    item.get("deliveryCost"),
-                )
+                # Текст собирает CRM: тот же самый нужен менеджеру в панели,
+                # когда клиент оставил не телеграм. Две сборки одного текста
+                # разошлись бы при первой правке — и клиенты получали бы
+                # разные сообщения в зависимости от того, кто отправил.
+                text = (item.get("text") or "").strip()
+                if not text:
+                    # Запасной путь: воркер новее бэкенда или наоборот.
+                    # Промолчать здесь хуже, чем написать по своему шаблону.
+                    log.warning("Заказ %s: CRM не прислала текст, собираю сам",
+                                item["numberOrder"])
+                    template = templates.get(item.get("category", ""), templates[""])
+                    text = render(
+                        template,
+                        item.get("name"),
+                        item["numberOrder"],
+                        item.get("items"),
+                        item.get("total"),
+                        item.get("deliveryMethod"),
+                        item.get("deliveryCost"),
+                    )
 
                 try:
                     status = await send_one(client, username, text)

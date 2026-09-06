@@ -6,6 +6,7 @@ import {
   telegramUsernameFromUrl,
   type GreetingStatus,
 } from './client-greeting';
+import { renderGreeting } from './greeting-message';
 
 /**
  * Очередь первых сообщений клиентам с сайта.
@@ -48,6 +49,14 @@ export interface PendingGreeting {
   /** Итог заказа вместе с доставкой, ₽ — ровно то, что заплатит клиент. */
   total: number;
   createdAt: Date;
+  /**
+   * Готовый текст сообщения.
+   *
+   * Собирает его CRM, а не воркер: тот же текст нужен менеджеру в панели,
+   * когда клиент оставил не телеграм и написать автоматически нельзя. Две
+   * сборки одного текста разошлись бы при первой правке.
+   */
+  text: string;
 }
 
 @Injectable()
@@ -124,20 +133,73 @@ export class ClientGreetingService {
         })),
       ].filter((i) => i.title);
 
-      ready.push({
-        id: row.id,
-        numberOrder: row.numberOrder,
-        username,
+      const data = {
         name: clientNameFromNote(row.note),
+        numberOrder: row.numberOrder,
         category: row.productCategory,
         items,
         deliveryCost: row.deliveryCost ?? 0,
         deliveryMethod: row.deliveryMethod,
         total: row.totalOrder ?? 0,
+      };
+
+      ready.push({
+        id: row.id,
+        username,
         createdAt: row.createdAt,
+        text: renderGreeting(data),
+        ...data,
       });
     }
     return ready;
+  }
+
+  /**
+   * Текст сообщения для конкретного заказа — для панели.
+   *
+   * Автоматически пишем только в телеграм: MAX, почта и голый телефон
+   * так не открываются. Раньше менеджер сочинял такому клиенту сообщение
+   * сам, и оно отличалось от того, что получают остальные. Здесь он
+   * копирует ровно тот же текст, который отправил бы воркер.
+   */
+  async textFor(id: string): Promise<string | null> {
+    const row = await this.prisma.orderPhoto.findUnique({
+      where: { id },
+      select: {
+        numberOrder: true,
+        note: true,
+        productCategory: true,
+        totalOrder: true,
+        deliveryCost: true,
+        deliveryMethod: true,
+        items: { select: { formatPaper: true, quantity: true } },
+        tshirtItems: { select: { color: true, size: true, quantity: true } },
+        canvasItems: { select: { formatCanvas: true, quantity: true } },
+      },
+    });
+    if (!row) return null;
+
+    const items = [
+      ...row.items.map((i) => ({ title: i.formatPaper.trim(), quantity: i.quantity })),
+      ...row.canvasItems.map((i) => ({
+        title: i.formatCanvas.trim(),
+        quantity: i.quantity,
+      })),
+      ...row.tshirtItems.map((i) => ({
+        title: `Футболка ${i.color}, размер ${i.size}`,
+        quantity: i.quantity,
+      })),
+    ].filter((i) => i.title);
+
+    return renderGreeting({
+      name: clientNameFromNote(row.note),
+      numberOrder: row.numberOrder,
+      category: row.productCategory,
+      items,
+      deliveryCost: row.deliveryCost ?? 0,
+      deliveryMethod: row.deliveryMethod,
+      total: row.totalOrder ?? 0,
+    });
   }
 
   /**

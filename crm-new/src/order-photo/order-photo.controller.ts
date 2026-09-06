@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -22,6 +23,7 @@ import { OrderPhotoService } from './order-photo.service';
 import { OrderItemService } from './order-item.service';
 import { TshirtItemService } from './tshirt-item.service';
 import { CanvasItemService } from './canvas-item.service';
+import { ClientGreetingService } from './client-greeting.service';
 import { StickerService } from './sticker.service';
 import { DailyPlanService } from './daily-plan.service';
 import { ReviewReminderService } from './review-reminder.service';
@@ -74,6 +76,7 @@ export class OrderPhotoController {
     private readonly reviewReminderService: ReviewReminderService,
     private readonly tshirtPartnerTelegram: TshirtPartnerTelegramService,
     private readonly shipmentLeadService: ShipmentLeadService,
+    private readonly greeting: ClientGreetingService,
   ) {}
 
   // ── Admin: отправить «план дня» в рабочий чат прямо сейчас ──────────────────
@@ -161,6 +164,21 @@ export class OrderPhotoController {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
     res.end(buffer);
+  }
+
+  // ── Текст первого сообщения клиенту: скопировать и отправить руками ────────
+  // Нужен там, где автоматически написать нельзя: MAX, почта, только телефон.
+
+  @Get(':idOrder/greeting-text')
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  async getGreetingText(
+    @Param('idOrder') idOrder: string,
+  ): Promise<{ text: string }> {
+    const text = await this.greeting.textFor(idOrder);
+    if (text === null) {
+      throw new NotFoundException('Заказ не найден');
+    }
+    return { text };
   }
 
   // ── Обе роли: клиентский PDF-стикер на пакет (58×40 мм) ─────────────────────
