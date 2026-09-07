@@ -472,6 +472,19 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
     return { quantity: qty, totalPayoutRub, unitPayoutRub, mode };
   }, [order?.tshirtItems, partnerSettings]);
 
+  // Отправлять исполнителю можно любой заказ, где есть что печатать: как
+  // структурные футболки, так и работы, записанные свободной позицией
+  // (двухсторонний принт, печать на изделии заказчика и т.п.). Раньше окно
+  // отправки открывалось только при наличии tshirtPayout (а он считался
+  // ТОЛЬКО из tshirtItems), поэтому заказ из одних свободных позиций отправить
+  // было нельзя — кнопка «молчала».
+  const canDispatch =
+    (order?.tshirtItems?.length ?? 0) > 0 || (order?.items?.length ?? 0) > 0;
+  // У свободных позиций точную выплату партнёру фронт не считает (нет
+  // термопереноса в данных) — авторитетную сумму собирает сервер в сообщение
+  // Telegram. Поэтому в окне для них показываем «по составу», а не число.
+  const hasFreePositions = (order?.items?.length ?? 0) > 0;
+
   const updateMutation = useMutation({
     mutationFn: (dto: UpdateOrderDto) => ordersApi.update(orderId, dto),
     onSuccess: (updated) => {
@@ -1132,10 +1145,11 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
         </div>
       )}
 
-      {showDispatchModal && tshirtPayout && order && (
+      {showDispatchModal && order && canDispatch && (
         <DispatchToExecutorModal
           orderNumber={String(order.numberOrder ?? order.id)}
           payout={tshirtPayout}
+          hasFreePositions={hasFreePositions}
           isResend={(order as any).executorSentAt != null}
           isPending={sendTshirtTelegramMutation.isPending}
           onConfirm={() => { setShowDispatchModal(false); sendTshirtTelegramMutation.mutate(); }}

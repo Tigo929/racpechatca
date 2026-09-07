@@ -11734,11 +11734,11 @@
     {
       "label": ".constructor()",
       "file_type": "code",
-      "source_file": "crm-new/src/marketplace/ozon/ozon.service.ts",
-      "source_location": "L49",
+      "source_file": "crm-new/src/marketplace/ozon/ozon-warehouse.service.ts",
+      "source_location": "L52",
       "_callable": true,
       "_origin": "ast",
-      "id": "crm_new_src_marketplace_ozon_ozon_service_ozonservice_constructor",
+      "id": "crm_new_src_marketplace_ozon_ozon_warehouse_service_ozonwarehouseservice_constructor",
       "community": 142,
       "community_name": "OzonApiClient",
       "norm_label": ".constructor()"
@@ -12719,7 +12719,7 @@
       "label": "DispatchToExecutorModal()",
       "file_type": "code",
       "source_file": "frontend/src/components/orders/DispatchToExecutorModal.tsx",
-      "source_location": "L23",
+      "source_location": "L26",
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_src_components_orders_dispatchtoexecutormodal_dispatchtoexecutormodal",
@@ -12731,7 +12731,7 @@
       "label": "rub()",
       "file_type": "code",
       "source_file": "frontend/src/components/orders/DispatchToExecutorModal.tsx",
-      "source_location": "L19",
+      "source_location": "L22",
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_src_components_orders_dispatchtoexecutormodal_rub",
@@ -13566,18 +13566,6 @@
       "community": 167,
       "community_name": ".createOrder",
       "norm_label": ".createorder()"
-    },
-    {
-      "label": ".updateOrder()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L1782",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updateorder",
-      "community": 167,
-      "community_name": ".createOrder",
-      "norm_label": ".updateorder()"
     },
     {
       "label": "buildPartnerButtons()",
@@ -15090,6 +15078,18 @@
       "community": 28,
       "community_name": "MarketplaceAccountService",
       "norm_label": ".checkconnection()"
+    },
+    {
+      "label": ".constructor()",
+      "file_type": "code",
+      "source_file": "crm-new/src/marketplace/ozon/ozon.service.ts",
+      "source_location": "L49",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_marketplace_ozon_ozon_service_ozonservice_constructor",
+      "community": 28,
+      "community_name": "MarketplaceAccountService",
+      "norm_label": ".constructor()"
     },
     {
       "label": ".tryWarehouses()",
@@ -17444,6 +17444,18 @@
       "norm_label": "isexternalproductioncategory()"
     },
     {
+      "label": "needsShipmentStatus()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/order-photo.service.ts",
+      "source_location": "L154",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_order_photo_service_needsshipmentstatus",
+      "community": 46,
+      "community_name": "OrderPhotoService",
+      "norm_label": "needsshipmentstatus()"
+    },
+    {
       "label": ".assignExecutor()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
@@ -17576,6 +17588,54 @@
       "norm_label": ".setreviewleft()"
     },
     {
+      "label": ".syncCanvasContractorExpense()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/order-photo.service.ts",
+      "source_location": "L1653",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_synccanvascontractorexpense",
+      "community": 46,
+      "community_name": "OrderPhotoService",
+      "norm_label": ".synccanvascontractorexpense()"
+    },
+    {
+      "label": ".updateOrder()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/order-photo.service.ts",
+      "source_location": "L1782",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updateorder",
+      "community": 46,
+      "community_name": "OrderPhotoService",
+      "norm_label": ".updateorder()"
+    },
+    {
+      "label": ".updateStatusOrder()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/order-photo.service.ts",
+      "source_location": "L1282",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updatestatusorder",
+      "community": 46,
+      "community_name": "OrderPhotoService",
+      "norm_label": ".updatestatusorder()"
+    },
+    {
+      "label": "earnsStaffSalary()",
+      "file_type": "code",
+      "source_file": "crm-new/src/salary/salary-calculation.ts",
+      "source_location": "L18",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_salary_salary_calculation_earnsstaffsalary",
+      "community": 46,
+      "community_name": "OrderPhotoService",
+      "norm_label": "earnsstaffsalary()"
+    },
+    {
       "label": "resolveLeadMoney()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/lead-pricing.ts",
@@ -17660,42 +17720,6 @@
       "norm_label": "fulldate()"
     },
     {
-      "label": "needsShipmentStatus()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L154",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_order_photo_service_needsshipmentstatus",
-      "community": 48,
-      "community_name": "salary-integrity.spec.ts",
-      "norm_label": "needsshipmentstatus()"
-    },
-    {
-      "label": ".syncCanvasContractorExpense()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L1653",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_synccanvascontractorexpense",
-      "community": 48,
-      "community_name": "salary-integrity.spec.ts",
-      "norm_label": ".synccanvascontractorexpense()"
-    },
-    {
-      "label": ".updateStatusOrder()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/order-photo.service.ts",
-      "source_location": "L1282",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_order_photo_service_orderphotoservice_updatestatusorder",
-      "community": 48,
-      "community_name": "salary-integrity.spec.ts",
-      "norm_label": ".updatestatusorder()"
-    },
-    {
       "label": "calculateManagerSalarySnapshot()",
       "file_type": "code",
       "source_file": "crm-new/src/salary/salary-calculation.ts",
@@ -17718,18 +17742,6 @@
       "community": 48,
       "community_name": "salary-integrity.spec.ts",
       "norm_label": "calculatesalarysnapshot()"
-    },
-    {
-      "label": "earnsStaffSalary()",
-      "file_type": "code",
-      "source_file": "crm-new/src/salary/salary-calculation.ts",
-      "source_location": "L18",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_salary_salary_calculation_earnsstaffsalary",
-      "community": 48,
-      "community_name": "salary-integrity.spec.ts",
-      "norm_label": "earnsstaffsalary()"
     },
     {
       "label": "createOrderService()",
@@ -20982,18 +20994,6 @@
       "community": 86,
       "community_name": "ozon-warehouse.service.ts",
       "norm_label": "towarehousestates()"
-    },
-    {
-      "label": ".constructor()",
-      "file_type": "code",
-      "source_file": "crm-new/src/marketplace/ozon/ozon-warehouse.service.ts",
-      "source_location": "L52",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_marketplace_ozon_ozon_warehouse_service_ozonwarehouseservice_constructor",
-      "community": 86,
-      "community_name": "ozon-warehouse.service.ts",
-      "norm_label": ".constructor()"
     },
     {
       "label": ".editableIds()",
@@ -31574,26 +31574,26 @@
       "norm_label": "@nestjs/config"
     },
     {
-      "label": "eslint",
+      "label": "globals",
       "file_type": "code",
-      "source_file": "frontend/package.json",
-      "source_location": "L31",
+      "source_file": "crm-new/package.json",
+      "source_location": "L70",
       "_origin": "ast",
-      "id": "frontend_package_devdependencies_eslint",
+      "id": "crm_new_package_devdependencies_globals",
       "community": 181,
-      "community_name": "eslint",
-      "norm_label": "eslint"
+      "community_name": "globals",
+      "norm_label": "globals"
     },
     {
-      "label": "eslint",
+      "label": "globals",
       "file_type": "concept",
-      "source_file": "frontend/package.json",
-      "source_location": "L31",
+      "source_file": "crm-new/package.json",
+      "source_location": "L70",
       "_origin": "ast",
-      "id": "frontend_package_json_eslint",
+      "id": "crm_new_package_json_globals",
       "community": 181,
-      "community_name": "eslint",
-      "norm_label": "eslint"
+      "community_name": "globals",
+      "norm_label": "globals"
     },
     {
       "label": "passport-jwt",
@@ -32863,22 +32863,22 @@
     {
       "label": "@eslint/js",
       "file_type": "code",
-      "source_file": "crm-new/package.json",
-      "source_location": "L55",
+      "source_file": "frontend/package.json",
+      "source_location": "L25",
       "_origin": "ast",
-      "id": "crm_new_package_devdependencies_eslint_js",
-      "community": 207,
+      "id": "frontend_package_devdependencies_eslint_js",
+      "community": 204,
       "community_name": "@eslint/js",
       "norm_label": "@eslint/js"
     },
     {
       "label": "@eslint/js",
       "file_type": "concept",
-      "source_file": "crm-new/package.json",
-      "source_location": "L55",
+      "source_file": "frontend/package.json",
+      "source_location": "L25",
       "_origin": "ast",
-      "id": "crm_new_package_json_eslint_js",
-      "community": 207,
+      "id": "frontend_package_json_eslint_js",
+      "community": 204,
       "community_name": "@eslint/js",
       "norm_label": "@eslint/js"
     },
@@ -34907,15 +34907,15 @@
       "norm_label": "devdependencies"
     },
     {
-      "label": "@eslint/js",
+      "label": "eslint",
       "file_type": "code",
       "source_file": "frontend/package.json",
-      "source_location": "L25",
+      "source_location": "L31",
       "_origin": "ast",
-      "id": "frontend_package_devdependencies_eslint_js",
+      "id": "frontend_package_devdependencies_eslint",
       "community": 33,
       "community_name": "devDependencies",
-      "norm_label": "@eslint/js"
+      "norm_label": "eslint"
     },
     {
       "label": "eslint-plugin-react-hooks",
@@ -35017,15 +35017,15 @@
       "norm_label": "eslint-plugin-react-hooks"
     },
     {
-      "label": "@eslint/js",
+      "label": "eslint",
       "file_type": "concept",
       "source_file": "frontend/package.json",
-      "source_location": "L25",
+      "source_location": "L31",
       "_origin": "ast",
-      "id": "frontend_package_json_eslint_js",
+      "id": "frontend_package_json_eslint",
       "community": 33,
       "community_name": "devDependencies",
-      "norm_label": "@eslint/js"
+      "norm_label": "eslint"
     },
     {
       "label": "globals",
@@ -39824,6 +39824,17 @@
       "norm_label": "eslint-config-prettier"
     },
     {
+      "label": "@eslint/js",
+      "file_type": "code",
+      "source_file": "crm-new/package.json",
+      "source_location": "L55",
+      "_origin": "ast",
+      "id": "crm_new_package_devdependencies_eslint_js",
+      "community": 65,
+      "community_name": "devDependencies",
+      "norm_label": "@eslint/js"
+    },
+    {
       "label": "eslint-plugin-prettier",
       "file_type": "code",
       "source_file": "crm-new/package.json",
@@ -39833,17 +39844,6 @@
       "community": 65,
       "community_name": "devDependencies",
       "norm_label": "eslint-plugin-prettier"
-    },
-    {
-      "label": "globals",
-      "file_type": "code",
-      "source_file": "crm-new/package.json",
-      "source_location": "L70",
-      "_origin": "ast",
-      "id": "crm_new_package_devdependencies_globals",
-      "community": 65,
-      "community_name": "devDependencies",
-      "norm_label": "globals"
     },
     {
       "label": "@nestjs/schematics",
@@ -39934,15 +39934,15 @@
       "norm_label": "eslint"
     },
     {
-      "label": "globals",
+      "label": "@eslint/js",
       "file_type": "concept",
       "source_file": "crm-new/package.json",
-      "source_location": "L70",
+      "source_location": "L55",
       "_origin": "ast",
-      "id": "crm_new_package_json_globals",
+      "id": "crm_new_package_json_eslint_js",
       "community": 65,
       "community_name": "devDependencies",
-      "norm_label": "globals"
+      "norm_label": "@eslint/js"
     },
     {
       "label": "@types/node",
@@ -53286,7 +53286,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/orders/DispatchToExecutorModal.tsx",
-      "source_location": "L62",
+      "source_location": "L68",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_dispatchtoexecutormodal_dispatchtoexecutormodal",
@@ -53467,7 +53467,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "frontend/src/components/orders/OrderDetail.tsx",
-      "source_location": "L1241",
+      "source_location": "L1255",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_orderdetail_orderdetail",
@@ -53503,7 +53503,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "frontend/src/components/orders/OrderDetail.tsx",
-      "source_location": "L499",
+      "source_location": "L512",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_orderdetail_orderdetail",
@@ -53515,7 +53515,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "frontend/src/components/orders/OrderDetail.tsx",
-      "source_location": "L655",
+      "source_location": "L668",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_orderdetail_orderdetail",
@@ -53527,7 +53527,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "frontend/src/components/orders/OrderDetail.tsx",
-      "source_location": "L672",
+      "source_location": "L685",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_orderdetail_orderdetail",
@@ -53538,7 +53538,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/orders/OrderDetail.tsx",
-      "source_location": "L731",
+      "source_location": "L744",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_orderdetail_orderdetail",
@@ -53550,7 +53550,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/orders/OrderDetail.tsx",
-      "source_location": "L732",
+      "source_location": "L745",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_orderdetail_orderdetail",
@@ -53563,7 +53563,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "frontend/src/components/orders/OrderDetail.tsx",
-      "source_location": "L829",
+      "source_location": "L842",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_orderdetail_orderdetail",
@@ -53575,7 +53575,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "frontend/src/components/orders/OrderDetail.tsx",
-      "source_location": "L876",
+      "source_location": "L889",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_orderdetail_orderdetail",
@@ -117477,7 +117477,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/orders/DispatchToExecutorModal.tsx",
-      "source_location": "L19",
+      "source_location": "L22",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_dispatchtoexecutormodal",
@@ -117488,7 +117488,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/orders/DispatchToExecutorModal.tsx",
-      "source_location": "L23",
+      "source_location": "L26",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_orders_dispatchtoexecutormodal",
@@ -134109,5 +134109,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "f0dc91b2a1a92e58508aac067c42318faece0339"
+  "built_at_commit": "63ed8af3bc5b7541bb4129e833175c96aea26e99"
 }

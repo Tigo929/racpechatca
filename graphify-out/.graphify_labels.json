@@ -180,7 +180,7 @@
   "178": "helmet",
   "179": "@nestjs/mapped-types",
   "180": "@nestjs/config",
-  "181": "eslint",
+  "181": "globals",
   "182": "passport-jwt",
   "183": "@nestjs/jwt",
   "184": "@eslint/eslintrc",
@@ -203,5 +203,5 @@
   "201": "@types/jest",
   "202": "tailwindcss",
   "203": "@types/pdfkit",
-  "207": "@eslint/js"
+  "204": "@eslint/js"
 }

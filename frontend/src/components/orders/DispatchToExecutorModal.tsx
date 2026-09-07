@@ -9,7 +9,10 @@ type PayoutInfo = {
 
 type Props = {
   orderNumber: string;
-  payout: PayoutInfo;
+  /** null — заказ без структурных футболок: точную выплату считает сервер. */
+  payout: PayoutInfo | null;
+  /** В заказе есть свободные позиции — их сумма исполнителю идёт «по составу». */
+  hasFreePositions?: boolean;
   isResend: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -23,6 +26,7 @@ function rub(n: number) {
 export function DispatchToExecutorModal({
   orderNumber,
   payout,
+  hasFreePositions = false,
   isResend,
   onConfirm,
   onCancel,
@@ -52,20 +56,38 @@ export function DispatchToExecutorModal({
         </p>
 
         <div className="bg-gray-50 rounded-xl p-4 space-y-2 mb-6">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Количество</span>
-            <span className="font-semibold">{payout.quantity} шт.</span>
-          </div>
-          {payout.unitPayoutRub != null && payout.mode === "per_unit" && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Выплата за единицу</span>
-              <span className="font-semibold">{rub(payout.unitPayoutRub)}</span>
-            </div>
+          {payout ? (
+            <>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Количество</span>
+                <span className="font-semibold">{payout.quantity} шт.</span>
+              </div>
+              {payout.unitPayoutRub != null && payout.mode === "per_unit" && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Выплата за единицу</span>
+                  <span className="font-semibold">{rub(payout.unitPayoutRub)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm border-t border-gray-200 pt-2 mt-2">
+                <span className="text-gray-700 font-medium">Выплата за футболки</span>
+                <span className="font-bold text-gray-900">{rub(payout.totalPayoutRub)}</span>
+              </div>
+              {hasFreePositions && (
+                <p className="text-xs text-gray-500 pt-1">
+                  Плюс свободные позиции — сумма по составу заказа, она в
+                  сообщении Telegram.
+                </p>
+              )}
+            </>
+          ) : (
+            // Заказ из одних свободных позиций (например, двухсторонний принт
+            // или печать на изделии заказчика): структурных футболок нет,
+            // выплату по составу собирает сервер и кладёт в сообщение Telegram.
+            <p className="text-sm text-gray-600">
+              Заказ из свободных позиций. Состав и сумма исполнителю уйдут в
+              сообщении Telegram — CRM соберёт их из позиций заказа.
+            </p>
           )}
-          <div className="flex justify-between text-sm border-t border-gray-200 pt-2 mt-2">
-            <span className="text-gray-700 font-medium">Общая выплата</span>
-            <span className="font-bold text-gray-900">{rub(payout.totalPayoutRub)}</span>
-          </div>
         </div>
 
         <div className="flex gap-3">

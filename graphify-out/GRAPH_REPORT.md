@@ -1,7 +1,7 @@
-# Graph Report - raspechatka  (2026-09-05)
+# Graph Report - raspechatka  (2026-09-07)
 
 ## Corpus Check
-- 476 files · ~253,866 words
+- 476 files · ~254,098 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `f0dc91b2`
+- Built from commit: `63ed8af3`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -192,7 +192,7 @@
 - helmet
 - @nestjs/mapped-types
 - @nestjs/config
-- eslint
+- globals
 - passport-jwt
 - @nestjs/jwt
 - @eslint/eslintrc
@@ -359,7 +359,7 @@ Cohesion: 0.10
 Nodes (20): compilerOptions, allowImportingTsExtensions, erasableSyntaxOnly, lib, module, moduleDetection, moduleResolution, noEmit (+12 more)
 
 ### Community 28 - "MarketplaceAccountService"
-Cohesion: 0.12
+Cohesion: 0.11
 Nodes (14): ACCOUNT_INCLUDE, AccountRow, CreateAccountInput, MarketplaceAccountService, MarketplaceAccountView, Injectable, UpdateAccountInput, OzonService (+6 more)
 
 ### Community 29 - "OzonCredentials"
@@ -380,7 +380,7 @@ Nodes (11): PartnerAdminController, Controller, Get, Param, Post, Res, UploadedF
 
 ### Community 33 - "devDependencies"
 Cohesion: 0.11
-Nodes (19): eslint-plugin-react-hooks, devDependencies, @eslint/js, eslint-plugin-react-hooks, globals, @tailwindcss/vite, @types/node, @types/react (+11 more)
+Nodes (19): eslint-plugin-react-hooks, devDependencies, eslint, eslint-plugin-react-hooks, globals, @tailwindcss/vite, @types/node, @types/react (+11 more)
 
 ### Community 34 - "get-error-message.ts"
 Cohesion: 0.06
@@ -432,15 +432,15 @@ Nodes (21): OzonActionView, OzonCatalogProduct, OzonContentRating, OzonDemand, O
 
 ### Community 46 - "OrderPhotoService"
 Cohesion: 0.08
-Nodes (18): DtoAllOrdersforQuery, IsEnum, IsIn, IsInt, IsOptional, IsString, Matches, Max (+10 more)
+Nodes (20): DtoAllOrdersforQuery, IsEnum, IsIn, IsInt, IsOptional, IsString, Matches, Max (+12 more)
 
 ### Community 47 - "order-photo.service.ts"
 Cohesion: 0.07
 Nodes (28): DtoAssignExecutor, IsOptional, IsString, IsUUID, IsEnum, UpdateStatus, LeadMoneyError, LeadMoneyInput (+20 more)
 
 ### Community 48 - "salary-integrity.spec.ts"
-Cohesion: 0.09
-Nodes (20): FinancialClient, needsShipmentStatus(), calculateManagerSalarySnapshot(), calculateSalarySnapshot(), earnsStaffSalary(), ManagerSalarySnapshot, SalarySnapshot, AccrualByIdRow (+12 more)
+Cohesion: 0.11
+Nodes (18): FinancialClient, calculateManagerSalarySnapshot(), calculateSalarySnapshot(), ManagerSalarySnapshot, SalarySnapshot, AccrualByIdRow, AsyncMock, createOrderService() (+10 more)
 
 ### Community 49 - "ReportsPage.tsx"
 Cohesion: 0.10
@@ -508,7 +508,7 @@ Nodes (6): Аудит финансов, кода и продакшена — 202
 
 ### Community 65 - "devDependencies"
 Cohesion: 0.09
-Nodes (23): devDependencies, eslint, eslint-config-prettier, eslint-plugin-prettier, globals, @nestjs/schematics, @nestjs/testing, prisma (+15 more)
+Nodes (23): devDependencies, eslint, eslint-config-prettier, @eslint/js, eslint-plugin-prettier, @nestjs/schematics, @nestjs/testing, prisma (+15 more)
 
 ### Community 66 - "AvitoPage.tsx"
 Cohesion: 0.22
@@ -815,7 +815,7 @@ Cohesion: 0.18
 Nodes (16): DELIVERY_STEPS, NOTE_STEP, OPTIONAL, PHOTO_SCENARIO, TSHIRT_SCENARIO, ProductDefinition, PRODUCTS, AnswerValue (+8 more)
 
 ### Community 167 - ".createOrder"
-Cohesion: 0.35
+Cohesion: 0.38
 Nodes (7): buildCommunicationUrl(), buildMaxUrl(), DEFAULT_MAX_LINK_TEMPLATE, formatPhoneForDisplay(), normalizePhone(), validateCommunicationValue(), calcCanvasMoney()
 
 ### Community 168 - "partner-telegram-format.ts"

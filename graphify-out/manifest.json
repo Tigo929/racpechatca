@@ -685,8 +685,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderDetail.tsx": {
-    "mtime": 1788612911.2849028,
-    "ast_hash": "7654bfa64000ebdd09831406a18e5923",
+    "mtime": 1788765693.9226358,
+    "ast_hash": "c2bffdb4fdffe9a231012e8064c2aad4",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderEditForm.tsx": {
@@ -1255,8 +1255,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/DispatchToExecutorModal.tsx": {
-    "mtime": 1785349859.740971,
-    "ast_hash": "a85201e8bc61397ddb2b1a805ed7d810",
+    "mtime": 1788765715.4027307,
+    "ast_hash": "fd66de99bde235bf04540f5698dc5a44",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/GulianSyncBlock.tsx": {
