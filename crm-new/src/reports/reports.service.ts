@@ -90,6 +90,8 @@ type OrderRow = {
   sentAt: Date | null;
   createdAt: Date;
   clientPaidAt: Date | null;
+  completedAt: Date | null;
+  statusChangedAt: Date | null;
   totalOrder: number | null;
   deliveryCost: number | null;
   deliveryMethod: string;
@@ -139,11 +141,46 @@ export type ExpenseRow = { createdAt: Date; amount: number; category: string };
 type SalaryRow = { createdAt: Date; amount: number };
 
 /**
- * Дата, по которой заказ попадает в отчёт: оплата клиента. Для старых
- * заказов без неё — отправка, затем создание.
+ * Признан ли заказ выручкой: он ОТДАН КЛИЕНТУ или ОПЛАЧЕН.
+ *
+ * Раньше отчёт считал заказ, только пока он прямо сейчас в SENT или PAID. Но
+ * SENT у футболок и холстов — это «передали производителю» (партнёру/подрядчику),
+ * а не отгрузка клиенту. После этого заказ уходит в «В работе»/«Готов»/«Отгрузка
+ * создана» — уже не SENT и ещё не PAID — и ПРОПАДАЛ из отчёта до отметки
+ * «Оплачен». У фото SENT, наоборот, означает отгрузку клиенту, поэтому там
+ * SENT выручкой является.
+ *
+ * Момент признания — по решению владельца: заказ отдан клиенту (отгрузка
+ * создана / выполнен / завершён / у фото — отправлен) ИЛИ оплачен.
+ */
+export function isRevenueRealized(status: string, category: string): boolean {
+  if (
+    status === EnumStatus.PAID ||
+    status === EnumStatus.COMPLETED ||
+    status === EnumStatus.DONE ||
+    status === EnumStatus.SHIPMENT_CREATED
+  ) {
+    return true;
+  }
+  return (
+    status === EnumStatus.SENT && category === EnumProductCategory.PHOTO
+  );
+}
+
+/**
+ * Дата, по которой заказ попадает в отчёт: оплата клиента, иначе момент, когда
+ * заказ отдали клиенту (завершён/отгружен), иначе отправка, иначе создание.
+ * Порядок ДОЛЖЕН совпадать с periodWhere в fetchPeriod, иначе SQL-фильтр
+ * периода и раскладка по месяцам разъедутся.
  */
 function recognitionDate(o: OrderRow): Date {
-  return o.clientPaidAt ?? o.sentAt ?? o.createdAt;
+  return (
+    o.clientPaidAt ??
+    o.completedAt ??
+    o.statusChangedAt ??
+    o.sentAt ??
+    o.createdAt
+  );
 }
 
 export function emptyBucket(): PnlRaw {
@@ -348,28 +385,54 @@ export class ReportsService {
    */
   private async fetchPeriod(start: Date, endExclusive: Date) {
     const inPeriod = { gte: start, lt: endExclusive };
+    // Порядок дат ДОЛЖЕН совпадать с recognitionDate: первое непустое — дата
+    // признания. Иначе SQL-фильтр периода и раскладка по месяцам разъедутся.
     const periodWhere = [
       { clientPaidAt: inPeriod },
-      { clientPaidAt: null, sentAt: inPeriod },
-      { clientPaidAt: null, sentAt: null, createdAt: inPeriod },
+      { clientPaidAt: null, completedAt: inPeriod },
+      { clientPaidAt: null, completedAt: null, statusChangedAt: inPeriod },
+      {
+        clientPaidAt: null,
+        completedAt: null,
+        statusChangedAt: null,
+        sentAt: inPeriod,
+      },
+      {
+        clientPaidAt: null,
+        completedAt: null,
+        statusChangedAt: null,
+        sentAt: null,
+        createdAt: inPeriod,
+      },
     ];
     const [orders, expenses, salaryPayments] = await Promise.all([
       this.prisma.orderPhoto.findMany({
+        // Выручка = заказ отдан клиенту ИЛИ оплачен (см. isRevenueRealized).
+        // Раньше учитывался только текущий статус SENT|PAID, из-за чего заказы
+        // футболок/холстов пропадали между передачей производителю и оплатой.
         where: {
-          OR: [
+          AND: [
             {
-              status: EnumStatus.SENT,
-              productCategory: { not: EnumProductCategory.CANVAS },
-              OR: periodWhere,
+              OR: [
+                { status: EnumStatus.PAID },
+                { status: EnumStatus.COMPLETED },
+                { status: EnumStatus.DONE },
+                { status: EnumStatus.SHIPMENT_CREATED },
+                // SENT — отгрузка клиенту только у фото; у футболок/холстов это
+                // передача производителю и выручкой ещё не является.
+                {
+                  status: EnumStatus.SENT,
+                  productCategory: EnumProductCategory.PHOTO,
+                },
+              ],
             },
-            {
-              status: EnumStatus.PAID,
-              OR: periodWhere,
-            },
+            { OR: periodWhere },
           ],
         },
         select: {
           sentAt: true,
+          completedAt: true,
+          statusChangedAt: true,
           createdAt: true,
           clientPaidAt: true,
           totalOrder: true,
