@@ -1,7 +1,7 @@
 # Graph Report - raspechatka  (2026-09-08)
 
 ## Corpus Check
-- 479 files · ~256,317 words
+- 479 files · ~256,349 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `75ebb637`
+- Built from commit: `93ee570b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -77,7 +77,7 @@
 - OzonApiClient
 - package.json
 - approval-render.service.ts
-- ImageCardBatchService
+- DtoBulkCards
 - exclude
 - Аудит финансов, кода и продакшена — 2026-07-09
 - devDependencies
@@ -100,7 +100,7 @@
 - image-card-template.service.ts
 - ozon-attributes.ts
 - @nestjs/cli
-- image-card-batch.service.ts
+- ImageCardBatchService
 - ozon-warehouse.service.ts
 - ApprovalService
 - daily-plan.service.ts
@@ -187,7 +187,7 @@
 - archiver
 - bwip-js
 - class-validator
-- @eslint/js
+- class-transformer
 - lead-notification.ts
 - helmet
 - @nestjs/mapped-types
@@ -211,7 +211,7 @@
 - pg
 - uuid
 - web-push
-- bcryptjs
+- source-map-support
 - @types/jest
 - tailwindcss
 - @types/pdfkit
@@ -256,7 +256,7 @@ Nodes (12): TasksController, Body, Controller, Delete, Get, Param, Patch, Post (
 
 ### Community 2 - "dependencies"
 Cohesion: 0.22
-Nodes (9): class-transformer, dependencies, class-transformer, reflect-metadata, roboto-fontface, rxjs, reflect-metadata, roboto-fontface (+1 more)
+Nodes (9): bcryptjs, dependencies, bcryptjs, reflect-metadata, roboto-fontface, rxjs, reflect-metadata, roboto-fontface (+1 more)
 
 ### Community 3 - "DtoUpdateUser"
 Cohesion: 0.06
@@ -494,9 +494,9 @@ Nodes (7): concurrently, devDependencies, concurrently, name, private, scripts, 
 Cohesion: 0.09
 Nodes (31): DPI_ACCEPTABLE, DPI_GOOD, estimateDpi(), formatCm(), formatSizeCm(), isCalibrated(), isOutsidePrintArea(), PrintAreaCalibration (+23 more)
 
-### Community 62 - "ImageCardBatchService"
-Cohesion: 0.18
-Nodes (3): ImageCardBatchService, summarize(), Injectable
+### Community 62 - "DtoBulkCards"
+Cohesion: 0.33
+Nodes (6): DtoBulkCards, ArrayMaxSize, ArrayNotEmpty, IsArray, IsIn, IsUUID
 
 ### Community 63 - "exclude"
 Cohesion: 0.25
@@ -508,7 +508,7 @@ Nodes (6): Аудит финансов, кода и продакшена — 202
 
 ### Community 65 - "devDependencies"
 Cohesion: 0.09
-Nodes (23): devDependencies, eslint, eslint-config-prettier, eslint-plugin-prettier, @nestjs/schematics, @nestjs/testing, prisma, source-map-support (+15 more)
+Nodes (23): devDependencies, eslint, eslint-config-prettier, @eslint/js, eslint-plugin-prettier, @nestjs/schematics, @nestjs/testing, prisma (+15 more)
 
 ### Community 66 - "AvitoPage.tsx"
 Cohesion: 0.22
@@ -570,9 +570,9 @@ Nodes (27): DtoCreateImageCardTemplate, DtoRect, DtoUpdateImageCardTemplate, IsB
 Cohesion: 0.10
 Nodes (26): buildExtraImages(), buildImportItem(), CatalogTemplateForImport, chunk(), COLOR_CODE_BY_LABEL, DEFAULT_SIZES, dictAttr(), dictListAttr() (+18 more)
 
-### Community 85 - "image-card-batch.service.ts"
-Cohesion: 0.12
-Nodes (21): DtoCreateImageCardBatch, ArrayMaxSize, IsArray, IsBoolean, IsIn, IsOptional, IsString, IsUUID (+13 more)
+### Community 85 - "ImageCardBatchService"
+Cohesion: 0.08
+Nodes (24): DtoCreateImageCardBatch, ArrayMaxSize, IsArray, IsBoolean, IsIn, IsOptional, IsString, IsUUID (+16 more)
 
 ### Community 86 - "ozon-warehouse.service.ts"
 Cohesion: 0.12
@@ -743,8 +743,8 @@ Cohesion: 0.17
 Nodes (11): DtoUpdateOzonCatalogTemplate, ArrayMaxSize, IsArray, IsBoolean, IsInt, IsObject, IsOptional, IsString (+3 more)
 
 ### Community 145 - "image-card-generation.service.ts"
-Cohesion: 0.08
-Nodes (24): CARD_MODES, CardMode, BULK_ACTIONS, BulkAction, DtoBulkCards, ArrayMaxSize, ArrayNotEmpty, IsArray (+16 more)
+Cohesion: 0.10
+Nodes (18): CARD_MODES, CardMode, BULK_ACTIONS, BulkAction, CARD_MANUAL_STATUSES, CardManualStatus, DtoUpdateImageCard, IsBoolean (+10 more)
 
 ### Community 146 - "ТЗ: раздел «Печать на холсте» на raspechatkaa.ru"
 Cohesion: 0.10

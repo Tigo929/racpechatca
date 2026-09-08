@@ -693,9 +693,13 @@ export class OrderPhotoService {
         take: limit,
         skip: (page - 1) * limit,
         // Активные заказы сверху, оплаченные/закрытые — вниз. closedAt пуст у
-        // активных (nulls first), внутри каждой группы — по дате создания.
+        // активных (nulls first). Внутри активных срочные поднимаются наверх
+        // (isUrgent desc: true раньше false), а дальше — по дате создания.
+        // Порядок ключей важен: closedAt ПЕРВЫМ, иначе срочный, но уже
+        // оплаченный заказ всплыл бы выше активной работы.
         orderBy: [
           { closedAt: { sort: 'asc', nulls: 'first' } },
+          { isUrgent: 'desc' },
           { createdAt: 'asc' },
         ],
         include: {
