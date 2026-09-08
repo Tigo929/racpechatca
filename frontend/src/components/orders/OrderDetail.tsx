@@ -106,6 +106,44 @@ function formatPhotoItemLine(order: OrderPhoto, item: PhotoOrderItem): string {
   return `• ${item.formatPaper} (${type}) × ${item.quantity} шт — ${item.pricePosition.toLocaleString("ru-RU")} ₽`;
 }
 
+/** Месяцы в родительном падеже — для «11–12 сентября». */
+const RU_MONTHS_GENITIVE = [
+  "января", "февраля", "марта", "апреля", "мая", "июня",
+  "июля", "августа", "сентября", "октября", "ноября", "декабря",
+];
+
+function addDays(base: Date, days: number): Date {
+  const d = new Date(base);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+/**
+ * Строка со сроком изготовления для сообщения-подтверждения.
+ *
+ * Логика по просьбе владельца: день оформления НЕ считается — отсчёт со
+ * следующего дня. Обычный заказ готов через businessConfig.production.days
+ * дней, клиенту называем диапазон в один день запаса (+days…+days+1), например
+ * «11–12 сентября». Срочный заказ сюда не попадает: его срок держит на
+ * контроле менеджер, а не автоформула, — чтобы не обещать клиенту жёсткую дату
+ * там, где всё решается вручную.
+ */
+function productionTermLine(order: OrderPhoto): string {
+  if (order.isUrgent) {
+    return "⏱ Срочный заказ — точную дату готовности подтвердит менеджер.";
+  }
+  const base = order.createdAt ? new Date(order.createdAt) : new Date();
+  if (Number.isNaN(base.getTime())) return "";
+  const days = businessConfig.production.days;
+  const start = addDays(base, days);
+  const end = addDays(base, days + 1);
+  const term =
+    start.getMonth() === end.getMonth()
+      ? `${start.getDate()}–${end.getDate()} ${RU_MONTHS_GENITIVE[start.getMonth()]}`
+      : `${start.getDate()} ${RU_MONTHS_GENITIVE[start.getMonth()]} – ${end.getDate()} ${RU_MONTHS_GENITIVE[end.getMonth()]}`;
+  return `⏳ Срок изготовления: ${term} (день оформления не в счёт, отсчёт со следующего дня).`;
+}
+
 function generateConfirmationText(order: OrderPhoto): string {
   const items = order.items ?? [];
   const tshirtItems = order.tshirtItems ?? [];
@@ -211,6 +249,8 @@ function generateConfirmationText(order: OrderPhoto): string {
     ...(isPickup && !pickupAddr
       ? ["", "📍 Самовывоз: адрес пришлём, когда заказ возьмут в работу"]
       : []),
+    "",
+    productionTermLine(order),
     "",
     ...paymentRequisiteLines(order),
     "",
