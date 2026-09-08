@@ -386,6 +386,9 @@ export class OrderPhotoService {
           urgencyFee,
           note: dto.note,
           isUrgent,
+          // Заказ с маркетплейса на печать принта — включает статус
+          // «Разработка макета» и «Дизайнер принта» на карточке.
+          isMarketplacePrint: dto.isMarketplacePrint ?? false,
           tshirtModel: dto.tshirtModel,
           productCategory,
           executorId: dto.executorId ?? undefined,

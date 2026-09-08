@@ -1,16 +1,16 @@
 # Graph Report - raspechatka  (2026-09-08)
 
 ## Corpus Check
-- 483 files · ~258,785 words
+- 484 files · ~259,235 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3783 nodes · 7849 edges · 202 communities (151 shown, 51 thin omitted)
+- 3783 nodes · 7849 edges · 203 communities (152 shown, 51 thin omitted)
 - Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 322 edges (avg confidence: 0.79)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7ce95cec`
+- Built from commit: `d2e76a59`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -132,7 +132,7 @@
 - TelegramStickerLinkService
 - passport
 - pdf-lib
-- CanvasProductionController
+- PartnerSettingsService
 - tg_greeter.py
 - .updateStatusOrder
 - ТЗ: семантика и структура страниц raspechatkaa.ru
@@ -170,7 +170,7 @@
 - TelegramService
 - sharp
 - undici
-- reflect-metadata
+- DtoUpdateCanvasItem
 - roboto-fontface
 - jest
 - DtoUpdateOrder
@@ -180,7 +180,7 @@
 - eslint
 - .createOrder
 - StripPricesInterceptor
-- PartnerSettingsService
+- DtoUpdatePartnerSettings
 - PartnerApiController
 - eslint-config-prettier
 - @eslint/eslintrc
@@ -200,9 +200,10 @@
 - prettier
 - typescript-eslint
 - @types/multer
-- eslint
+- @nestjs/common
 - @types/passport-jwt
 - typescript
+- eslint-plugin-react-refresh
 - client-greeting.service.ts
 - tsconfig-paths
 - pdfkit
@@ -241,7 +242,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (202 total, 51 thin omitted)
+## Communities (203 total, 51 thin omitted)
 
 ### Community 0 - "DtoCreateOzonPrint"
 Cohesion: 0.09
@@ -377,7 +378,7 @@ Nodes (15): PartnerAdminController, Controller, Get, Param, Post, Res, UploadedF
 
 ### Community 33 - "devDependencies"
 Cohesion: 0.11
-Nodes (19): eslint-plugin-react-hooks, eslint-plugin-react-refresh, devDependencies, eslint-plugin-react-hooks, eslint-plugin-react-refresh, globals, @tailwindcss/vite, @types/node (+11 more)
+Nodes (19): eslint-plugin-react-hooks, devDependencies, eslint, eslint-plugin-react-hooks, globals, @tailwindcss/vite, @types/node, @types/react (+11 more)
 
 ### Community 34 - "getErrorMessage"
 Cohesion: 0.08
@@ -660,12 +661,12 @@ Cohesion: 0.09
 Nodes (18): DtoPartnerStatus, IsString, Body, Patch, FLOW_RANK, FROM_PARTNER, fromPartnerStatus(), mapPartnerStage() (+10 more)
 
 ### Community 118 - "TelegramStickerLinkService"
-Cohesion: 0.15
+Cohesion: 0.16
 Nodes (8): TelegramStickerController, Controller, Get, Param, Query, Res, TelegramStickerLinkService, Injectable
 
-### Community 121 - "CanvasProductionController"
-Cohesion: 0.33
-Nodes (4): CanvasProductionController, Controller, Get, UseGuards
+### Community 121 - "PartnerSettingsService"
+Cohesion: 0.09
+Nodes (12): CanvasProductionController, Controller, Get, UseGuards, GulianOutboxService, Injectable, PartnerSettingsService, AnyMock (+4 more)
 
 ### Community 122 - "tg_greeter.py"
 Cohesion: 0.18
@@ -712,8 +713,8 @@ Cohesion: 0.10
 Nodes (24): SIDES, APPROVAL_MAX_BYTES, AuthenticatedRequest, AuthenticatedUser, ROLES_KEY, JwtAuthGuard, Injectable, RolesGuard (+16 more)
 
 ### Community 136 - ".get"
-Cohesion: 0.10
-Nodes (15): CanvasItemService, canvasMoney(), Injectable, DtoUpdateCanvasItem, IsIn, IsInt, IsOptional, IsString (+7 more)
+Cohesion: 0.12
+Nodes (9): CanvasItemService, canvasMoney(), Injectable, OrderFinancialIntegrityService, Injectable, OrderItemService, Injectable, Injectable (+1 more)
 
 ### Community 137 - "Выкатка: репозиторий → сервер"
 Cohesion: 0.29
@@ -787,6 +788,10 @@ Nodes (13): calcCanvasUnitPrice(), calcCanvasUrgencyFee(), CANVAS_FRAME_LABELS, 
 Cohesion: 0.16
 Nodes (9): buildPartnerButtons(), logger, proxyDispatcher(), resetTelegramProxyCache(), telegramFetch(), telegramFormData(), describeTelegramError(), TelegramService (+1 more)
 
+### Community 159 - "DtoUpdateCanvasItem"
+Cohesion: 0.22
+Nodes (8): DtoUpdateCanvasItem, IsIn, IsInt, IsOptional, IsString, MaxLength, Min, Type
+
 ### Community 162 - "DtoUpdateOrder"
 Cohesion: 0.17
 Nodes (11): DtoUpdateOrder, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Matches, MaxLength (+3 more)
@@ -796,8 +801,8 @@ Cohesion: 0.15
 Nodes (7): ApprovalRenderService, Injectable, CALIBRATION, ALLOWED_IMAGE, ApprovalStorageService, SavedImage, Injectable
 
 ### Community 165 - "partner-outbound.service.ts"
-Cohesion: 0.13
-Nodes (11): GulianOutboxService, Injectable, hasProductionItems(), NO_PRODUCTION_ITEMS_MESSAGE, OrderWithProductionItems, PartnerOutboundService, Injectable, getTechSpecPathAt() (+3 more)
+Cohesion: 0.18
+Nodes (9): hasProductionItems(), NO_PRODUCTION_ITEMS_MESSAGE, OrderWithProductionItems, PartnerOutboundService, Injectable, getTechSpecPathAt(), getTechSpecPaths(), hasTechSpecFiles() (+1 more)
 
 ### Community 167 - ".createOrder"
 Cohesion: 0.38
@@ -807,9 +812,9 @@ Nodes (7): buildCommunicationUrl(), buildMaxUrl(), DEFAULT_MAX_LINK_TEMPLATE, fo
 Cohesion: 0.50
 Nodes (3): strip(), StripPricesInterceptor, Injectable
 
-### Community 169 - "PartnerSettingsService"
-Cohesion: 0.06
-Nodes (21): OrderFinancialIntegrityService, Injectable, DtoUpdatePartnerSettings, IsInt, IsOptional, IsString, Max, MaxLength (+13 more)
+### Community 169 - "DtoUpdatePartnerSettings"
+Cohesion: 0.11
+Nodes (13): DtoUpdatePartnerSettings, IsInt, IsOptional, IsString, Max, MaxLength, Min, PartnerSettingsController (+5 more)
 
 ### Community 170 - "PartnerApiController"
 Cohesion: 0.32
@@ -839,7 +844,7 @@ Nodes (33): clientNameFromNote(), GREETING_STATUSES, GreetingStatus, isGreetingS
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Roles()` connect `Roles` to `tasks.controller.ts`, `DtoUpdateUser`, `scenario.controller.ts`, `ApprovalController`, `DtoCreateExpense`, `ozon-product-catalog.controller.ts`, `reports.service.ts`, `AvitoService`, `TechSpecStorageService`, `OzonPhotoStorageService`, `SalaryService`, `scenario.registry.ts`, `PartnerSettingsService`, `ozon-orders.service.ts`, `order-photo.controller.ts`, `ImageCardBatchController`, `marketplace.module.ts`, `image-card-batch.controller.ts`, `MarketplaceController`, `MockupService`, `AvitoController`, `OzonCatalogController`, `OzonProductCatalogController`, `CanvasProductionController`?**
+- **Why does `Roles()` connect `Roles` to `tasks.controller.ts`, `DtoUpdateUser`, `scenario.controller.ts`, `ApprovalController`, `DtoCreateExpense`, `ozon-product-catalog.controller.ts`, `reports.service.ts`, `AvitoService`, `TechSpecStorageService`, `OzonPhotoStorageService`, `SalaryService`, `scenario.registry.ts`, `DtoUpdatePartnerSettings`, `ozon-orders.service.ts`, `order-photo.controller.ts`, `ImageCardBatchController`, `marketplace.module.ts`, `image-card-batch.controller.ts`, `MarketplaceController`, `MockupService`, `AvitoController`, `OzonCatalogController`, `OzonProductCatalogController`, `PartnerSettingsService`?**
   _High betweenness centrality (0.259) - this node is a cross-community bridge._
 - **Why does `BatchView()` connect `Param` to `getErrorMessage`?**
   _High betweenness centrality (0.230) - this node is a cross-community bridge._

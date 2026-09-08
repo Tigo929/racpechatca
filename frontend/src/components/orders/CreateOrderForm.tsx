@@ -98,6 +98,10 @@ const baseSchema = z.object({
   deliveryCost: z.coerce.number().int().min(0),
   note: z.string().optional(),
   isUrgent: z.boolean().optional(),
+  // Режим «заказ с маркетплейса» (только футболки): печать индивидуального
+  // принта с Ozon и т.п. Прячет срочность, доставку, цену и «нужен дизайн» —
+  // деньги считаются на площадке, а CRM ведёт производство и макет.
+  marketplace: z.boolean().optional(),
   // Плата за срочность: входит в чек клиента, но не в базу зарплаты.
   urgencyFee: z.coerce.number().int().min(0).optional(),
   executorId: z.string().optional(),
@@ -195,6 +199,7 @@ const EMPTY_ORDER_FORM = {
   deliveryMethod: 'PICKUP',
   deliveryCost: 0,
   isUrgent: false,
+  marketplace: false,
   urgencyFee: 0,
   executorId: '',
   freePrice: false,
@@ -280,6 +285,10 @@ export function CreateOrderForm({ onClose }: Props) {
   const productCategory = useWatch({ control, name: 'productCategory' });
   const communicationPlatform = useWatch({ control, name: 'communicationPlatform' });
   const isUrgent = useWatch({ control, name: 'isUrgent' }) ?? false;
+  const marketplace = useWatch({ control, name: 'marketplace' }) ?? false;
+  // Режим маркетплейса действует только на футболках. В нём часть полей формы
+  // скрыта — деньги и доставку ведёт площадка, CRM отвечает за макет.
+  const marketMode = productCategory === 'TSHIRT' && marketplace;
   const freePrice = useWatch({ control, name: 'freePrice' });
   const needsDesign = useWatch({ control, name: 'needsDesign' });
   const designCostWatch = useWatch({ control, name: 'designDevelopmentCost' });
@@ -455,6 +464,10 @@ export function CreateOrderForm({ onClose }: Props) {
   });
 
   const onSubmit = (data: FormValues) => {
+    // Режим маркетплейса (футболки): деньги и доставку ведёт площадка. В CRM
+    // такой заказ без цены, без срочности, без доставки — только производство
+    // и макет. Флаг isMarketplacePrint включает статус «Разработка макета».
+    const isMarketplace = data.productCategory === 'TSHIRT' && (data.marketplace ?? false);
     if (data.freePrice) {
       // Свободные строки «название — цена» сохраняем как позиции (формат = название).
       const freeItems = (data.freeItems ?? []).filter((i) => i.name.trim());
@@ -500,13 +513,15 @@ export function CreateOrderForm({ onClose }: Props) {
       // позиции (items с isFreePrice): цена = итог, кол-во не умножается.
       const tshirtItems = rows.filter((r) => !r.freePrice).map((r) => ({
         color: r.color, size: r.size, printLocation: r.printLocation,
-        quantity: r.quantity, price: r.price, clientItem: r.clientItem,
+        // Маркетплейс: цены в CRM нет — позиция производственная, деньги на площадке.
+        quantity: r.quantity, price: isMarketplace ? 0 : r.price, clientItem: r.clientItem,
         // Дизайн больше не часть позиции футболки — его заводят отдельной
         // свободной позицией. Пусто/0 → сервер берёт себестоимость из настроек.
         thermalCost: r.thermalCost || undefined,
         blankCost: r.blankCost || undefined,
       }));
-      const items = rows.filter((r) => r.freePrice).map((r) => ({
+      // В режиме маркетплейса свободных позиций нет (поле скрыто).
+      const items = isMarketplace ? [] : rows.filter((r) => r.freePrice).map((r) => ({
         formatPaper: (r.name ?? '').trim(),
         typePaper: 'GLOSS' as const,
         quantity: r.quantity,
@@ -523,9 +538,23 @@ export function CreateOrderForm({ onClose }: Props) {
         tshirtItems: tshirtItems.length ? tshirtItems : undefined,
         items: items.length ? items : undefined,
         // «Разработка дизайна» — свободная сумма, входит в чек клиента.
-        designDevelopmentCost: data.needsDesign
-          ? data.designDevelopmentCost || 0
-          : undefined,
+        // В режиме маркетплейса макет делается в «Дизайнере принта», не здесь.
+        designDevelopmentCost:
+          !isMarketplace && data.needsDesign
+            ? data.designDevelopmentCost || 0
+            : undefined,
+        // Маркетплейс: без срочности и доставки, источник — Ozon, и флаг,
+        // который включает статус «Разработка макета» на карточке заказа.
+        ...(isMarketplace
+          ? {
+              isUrgent: false,
+              urgencyFee: 0,
+              deliveryMethod: 'PICKUP' as const,
+              deliveryCost: 0,
+              sourceOrder: 'OZON' as const,
+              isMarketplacePrint: true,
+            }
+          : {}),
       });
       return;
     }
@@ -673,6 +702,32 @@ export function CreateOrderForm({ onClose }: Props) {
         </div>
       </div>
 
+      {/* Заказ с маркетплейса — только футболки. Включает режим печати
+          индивидуального принта (Ozon и т.п.): срочность, доставку, цену и
+          «нужен дизайн» прячем — этим занимается площадка, CRM ведёт макет. */}
+      {productCategory === 'TSHIRT' && (
+        <label
+          className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-colors ${
+            marketplace
+              ? 'border-amber-300 bg-amber-50/60'
+              : 'border-gray-200 hover:border-amber-200'
+          }`}
+        >
+          <input
+            type="checkbox"
+            {...register('marketplace')}
+            className="w-4 h-4 accent-amber-600"
+          />
+          <span className="text-sm font-medium text-gray-800">
+            Заказ с маркетплейса
+          </span>
+          <span className="text-xs text-gray-400 ml-auto">
+            печать принта (Ozon и т.п.)
+          </span>
+        </label>
+      )}
+
+      {!marketMode && (
       <div>
         <label className={labelCls}>Срочность заказа</label>
         <div className="grid grid-cols-2 gap-3">
@@ -711,6 +766,7 @@ export function CreateOrderForm({ onClose }: Props) {
           </div>
         )}
       </div>
+      )}
 
       <div>
         <label className={labelCls}>
@@ -738,6 +794,7 @@ export function CreateOrderForm({ onClose }: Props) {
         {errors.urlCommunication && <p className={errorCls}>{errors.urlCommunication.message}</p>}
       </div>
 
+      {!marketMode && (
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelCls}>Способ доставки</label>
@@ -760,6 +817,7 @@ export function CreateOrderForm({ onClose }: Props) {
           {errors.deliveryCost && <p className={errorCls}>{errors.deliveryCost.message}</p>}
         </div>
       </div>
+      )}
 
       {/* Внешние продукты печатает подрядчик — своего исполнителя на них не назначаем. */}
       {productCategory === 'PHOTO' && (
@@ -962,11 +1020,14 @@ export function CreateOrderForm({ onClose }: Props) {
                   </button>
                 </div>
 
-                {/* Чекбокс свободной цены — первое поле позиции */}
+                {/* Чекбокс свободной цены — первое поле позиции. В режиме
+                    маркетплейса скрыт: там цены нет вовсе. */}
+                {!marketMode && (
                 <label className="flex items-center gap-2.5 p-2.5 rounded-lg border border-gray-200 cursor-pointer hover:border-amber-300 transition-colors">
                   <input type="checkbox" {...register(`tshirtItems.${idx}.freePrice`)} className="w-4 h-4 accent-amber-600" />
                   <span className="text-sm text-gray-700">Свободная цена — произвольная позиция (название и цена)</span>
                 </label>
+                )}
 
                 {isFree ? (
                   <div className="grid grid-cols-[1fr_80px_120px] gap-3">
@@ -1041,10 +1102,12 @@ export function CreateOrderForm({ onClose }: Props) {
                           <label className={labelCls}>Кол-во</label>
                           <input type="number" min={1} className={inputCls} {...register(`tshirtItems.${idx}.quantity`)} />
                         </div>
+                        {!marketMode && (
                         <div>
                           <label className={labelCls}>Цена ₽ (за всё)</label>
                           <input type="number" min={0} className={inputCls} {...register(`tshirtItems.${idx}.price`)} />
                         </div>
+                        )}
                       </div>
                     </div>
 
@@ -1293,8 +1356,9 @@ export function CreateOrderForm({ onClose }: Props) {
       )}
 
       {/* Требуется разработать дизайн — футболки и холсты. Свободная сумма
-          входит в чек клиента и служит базой премии менеджера по оформлению. */}
-      {(productCategory === 'TSHIRT' || productCategory === 'CANVAS') && (
+          входит в чек клиента и служит базой премии менеджера по оформлению.
+          В режиме маркетплейса скрыт: макет делается в «Дизайнере принта». */}
+      {((productCategory === 'TSHIRT' && !marketMode) || productCategory === 'CANVAS') && (
         <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 space-y-2">
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input type="checkbox" {...register('needsDesign')} className="w-4 h-4 accent-amber-600" />

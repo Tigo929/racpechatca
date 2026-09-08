@@ -247,6 +247,11 @@ export interface CreateOrderDto {
   /** Ручной итог заказа (если задан) — вместо расчёта из позиций. */
   customTotal?: number;
   isUrgent?: boolean;
+  /**
+   * Заказ с маркетплейса на печать индивидуального принта (Ozon и т.п.).
+   * Включает статус «Разработка макета» и режим формы без цены/доставки.
+   */
+  isMarketplacePrint?: boolean;
   /** Модель футболки — производственные данные для исполнителя-партнёра. */
   tshirtModel?: string;
   items?: CreateItemDto[];
