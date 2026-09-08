@@ -1320,8 +1320,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/nginx-routes.spec.ts": {
-    "mtime": 1787655638.2074227,
-    "ast_hash": "87ba50ca14fb5b83a7cf0dd93af7d2d9",
+    "mtime": 1788869675.6077757,
+    "ast_hash": "a8c5b9c2be3e310d998f8d0c68fa5a4e",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/canvas-item.service.ts": {
@@ -1725,8 +1725,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval.controller.ts": {
-    "mtime": 1787655638.195649,
-    "ast_hash": "385dbb22955728d37f3821bc1ab8ebf4",
+    "mtime": 1788869557.009666,
+    "ast_hash": "6c8255d911539dafd918b48d6217252d",
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval.module.ts": {
@@ -1755,8 +1755,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/approval/mockup.controller.ts": {
-    "mtime": 1787655638.197421,
-    "ast_hash": "194d79776042a2057b6679417b194b64",
+    "mtime": 1788869568.8994899,
+    "ast_hash": "9fcdc0a00e934415edefa5103bb66ec0",
     "semantic_hash": ""
   },
   "crm-new/src/approval/mockup.service.ts": {
@@ -1810,8 +1810,8 @@
     "semantic_hash": ""
   },
   "frontend/src/api/approvals.ts": {
-    "mtime": 1787655638.2123158,
-    "ast_hash": "2df29d4c745c57184c5bce46cfd0b70e",
+    "mtime": 1788869495.6382113,
+    "ast_hash": "470e98d56f9bb5893e0b0d63ebdfda34",
     "semantic_hash": ""
   },
   "frontend/src/api/canvasProduction.ts": {

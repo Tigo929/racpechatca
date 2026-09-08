@@ -31,7 +31,10 @@ import {
  * только администратору: калибровка задаёт связь сантиметров с пикселями, и
  * сбитая рамка тихо испортит все последующие макеты.
  */
-@Controller('mockup-templates')
+// Префикс order-photo-* — чтобы маршрут доходил до бэкенда и через домен сайта
+// raspechatkaa.ru (его nginx пропускает order-photo, а «mockup-templates» — нет).
+// Подробнее см. комментарий в approval.controller.ts.
+@Controller(['order-photo-mockup-templates', 'mockup-templates'])
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class MockupController {
   constructor(private readonly mockups: MockupService) {}

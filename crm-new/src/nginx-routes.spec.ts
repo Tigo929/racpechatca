@@ -34,10 +34,15 @@ function collectControllerRoutes(dir: string): string[] {
     }
     if (!entry.endsWith('.ts') || entry.endsWith('.spec.ts')) continue;
     const source = readFileSync(full, 'utf8');
-    for (const match of source.matchAll(/@Controller\(\s*'([^']*)'\s*\)/g)) {
-      const route = match[1];
-      // @Controller() без аргумента — корневой маршрут, префикса не имеет.
-      if (route) routes.push(route);
+    // Поддерживаем и @Controller('x'), и @Controller(['x', 'y']): контроллер
+    // может слушать несколько префиксов сразу (например, старый и новый путь
+    // на время выкатки). Берём аргумент целиком и вынимаем все строки в нём.
+    for (const match of source.matchAll(/@Controller\(\s*([^)]*)\)/g)) {
+      for (const literal of match[1].matchAll(/'([^']*)'/g)) {
+        const route = literal[1];
+        // @Controller() без аргумента — корневой маршрут, префикса не имеет.
+        if (route) routes.push(route);
+      }
     }
   }
   return routes;

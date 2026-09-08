@@ -1,16 +1,16 @@
 # Graph Report - raspechatka  (2026-09-08)
 
 ## Corpus Check
-- 479 files · ~256,614 words
+- 479 files · ~256,784 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3758 nodes · 7806 edges · 211 communities (159 shown, 52 thin omitted)
+- 3758 nodes · 7806 edges · 212 communities (161 shown, 51 thin omitted)
 - Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 320 edges (avg confidence: 0.79)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `86174106`
+- Built from commit: `213cc0eb`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -108,7 +108,7 @@
 - ImageCardStorageService
 - MarketplaceController
 - ts-node
-- DtoUpdateMockupTemplate
+- MockupService
 - .sendMessage
 - TshirtPartnerTelegramService
 - OzonCatalogController
@@ -143,7 +143,7 @@
 - DtoUpdateApproval
 - ApprovalController
 - describe
-- approval.service.ts
+- DtoCreateApproval
 - MarketplaceAccessGuard
 - PrismaService
 - ozon-product-catalog.controller.ts
@@ -174,7 +174,7 @@
 - CanvasPricingController
 - jest
 - DtoUpdateOrder
-- ApprovalStorageService
+- approval.service.ts
 - @nestjs/passport
 - partner-payload.ts
 - scenario-draft.service.ts
@@ -195,7 +195,7 @@
 - globals
 - passport-jwt
 - @nestjs/jwt
-- @eslint/eslintrc
+- DtoUpdateMockupTemplate
 - @nestjs/platform-express
 - prettier
 - @nestjs/throttler
@@ -220,8 +220,9 @@
 - TelegramPollingService
 - UnitEconomicsPanel.tsx
 - CardAnalytics.tsx
-- bcryptjs
-- eslint
+- archiver
+- @eslint/js
+- @eslint/js
 
 ## God Nodes (most connected - your core abstractions)
 1. `PrismaService` - 103 edges
@@ -250,7 +251,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (211 total, 52 thin omitted)
+## Communities (212 total, 51 thin omitted)
 
 ### Community 0 - "ozon-catalog.controller.ts"
 Cohesion: 0.05
@@ -262,7 +263,7 @@ Nodes (32): DtoCreateTask, IsInt, IsOptional, IsString, IsUUID, MaxLength, Min, 
 
 ### Community 2 - "dependencies"
 Cohesion: 0.22
-Nodes (9): archiver, dependencies, archiver, reflect-metadata, roboto-fontface, rxjs, reflect-metadata, roboto-fontface (+1 more)
+Nodes (9): bcryptjs, dependencies, bcryptjs, reflect-metadata, roboto-fontface, rxjs, reflect-metadata, roboto-fontface (+1 more)
 
 ### Community 3 - "DtoUpdateUser"
 Cohesion: 0.06
@@ -386,7 +387,7 @@ Nodes (9): PartnerAdminController, Controller, Get, Param, Post, Res, UploadedFi
 
 ### Community 33 - "devDependencies"
 Cohesion: 0.11
-Nodes (19): eslint-plugin-react-hooks, devDependencies, @eslint/js, eslint-plugin-react-hooks, globals, @tailwindcss/vite, @types/node, @types/react (+11 more)
+Nodes (19): eslint-plugin-react-hooks, devDependencies, eslint, eslint-plugin-react-hooks, globals, @tailwindcss/vite, @types/node, @types/react (+11 more)
 
 ### Community 34 - "getErrorMessage"
 Cohesion: 0.06
@@ -497,8 +498,8 @@ Cohesion: 0.25
 Nodes (7): concurrently, devDependencies, concurrently, name, private, scripts, dev
 
 ### Community 61 - "approval-render.service.ts"
-Cohesion: 0.09
-Nodes (31): DPI_ACCEPTABLE, DPI_GOOD, estimateDpi(), formatCm(), formatSizeCm(), isCalibrated(), isOutsidePrintArea(), PrintAreaCalibration (+23 more)
+Cohesion: 0.11
+Nodes (28): DPI_ACCEPTABLE, DPI_GOOD, estimateDpi(), formatCm(), formatSizeCm(), isCalibrated(), isOutsidePrintArea(), PrintAreaCalibration (+20 more)
 
 ### Community 62 - "scenario.mapping.ts"
 Cohesion: 0.35
@@ -514,7 +515,7 @@ Nodes (6): Аудит финансов, кода и продакшена — 202
 
 ### Community 65 - "devDependencies"
 Cohesion: 0.09
-Nodes (23): devDependencies, eslint, eslint-config-prettier, @eslint/js, eslint-plugin-prettier, @nestjs/schematics, @nestjs/testing, prisma (+15 more)
+Nodes (23): devDependencies, eslint, eslint-config-prettier, @eslint/eslintrc, eslint-plugin-prettier, @nestjs/schematics, @nestjs/testing, prisma (+15 more)
 
 ### Community 66 - "AvitoPage.tsx"
 Cohesion: 0.22
@@ -600,9 +601,9 @@ Nodes (5): ImageCardProcessorService, parseSnapshot(), Injectable, ImageCardStor
 Cohesion: 0.08
 Nodes (22): DtoCreateMarketplaceAccount, IsEnum, IsString, MaxLength, MinLength, DtoUpdateMarketplaceAccount, IsBoolean, IsOptional (+14 more)
 
-### Community 93 - "DtoUpdateMockupTemplate"
-Cohesion: 0.09
-Nodes (23): DtoCreateMockupTemplate, DtoUpdateMockupTemplate, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Matches (+15 more)
+### Community 93 - "MockupService"
+Cohesion: 0.10
+Nodes (14): MockupController, Body, Controller, Delete, Get, Param, Patch, Post (+6 more)
 
 ### Community 94 - ".sendMessage"
 Cohesion: 0.29
@@ -700,9 +701,9 @@ Nodes (16): ApprovalController, parseSide(), Body, Controller, Delete, Get, Para
 Cohesion: 0.22
 Nodes (9): describe_code_type(), describe_next(), main(), Человеческое название способа доставки кода., Чем можно переслать, если не дошло., describe(), Строка для лога — без логина и пароля., Строка для лога не должна содержать логин и пароль. (+1 more)
 
-### Community 132 - "approval.service.ts"
-Cohesion: 0.13
-Nodes (12): approvalInclude, SIZE_LABELS, ALLOWED_IMAGE, SavedImage, UploadedImage, DtoCreateApproval, IsEnum, IsOptional (+4 more)
+### Community 132 - "DtoCreateApproval"
+Cohesion: 0.33
+Nodes (5): DtoCreateApproval, IsEnum, IsOptional, IsString, IsUUID
 
 ### Community 133 - "MarketplaceAccessGuard"
 Cohesion: 0.47
@@ -808,6 +809,10 @@ Nodes (3): CanvasPricingController, Controller, Get
 Cohesion: 0.17
 Nodes (11): DtoUpdateOrder, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Matches, MaxLength (+3 more)
 
+### Community 163 - "approval.service.ts"
+Cohesion: 0.12
+Nodes (10): ApprovalRenderService, Injectable, CALIBRATION, approvalInclude, SIZE_LABELS, ALLOWED_IMAGE, ApprovalStorageService, SavedImage (+2 more)
+
 ### Community 165 - "partner-payload.ts"
 Cohesion: 0.13
 Nodes (14): hasProductionItems(), NO_PRODUCTION_ITEMS_MESSAGE, OrderWithProductionItems, PartnerOutboundService, Injectable, buildPartnerOrderPayload(), PartnerOrderForPayload, PartnerOrderPayload (+6 more)
@@ -848,6 +853,10 @@ Nodes (7): TgUpdate, constantTimeEqual(), TelegramWebhookController, Body, Contr
 Cohesion: 0.26
 Nodes (7): buildLeadNotification(), escape(), LeadForNotification, NotifiableUser, pickLeadResponders(), toMention(), isUniqueViolation()
 
+### Community 184 - "DtoUpdateMockupTemplate"
+Cohesion: 0.22
+Nodes (11): DtoCreateMockupTemplate, DtoUpdateMockupTemplate, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Matches (+3 more)
+
 ### Community 193 - "client-greeting.service.ts"
 Cohesion: 0.15
 Nodes (16): clientNameFromNote(), GREETING_STATUSES, GreetingStatus, isGreetingStatus(), ClientGreetingService, PendingGreeting, Injectable, telegramUsernameFromUrl() (+8 more)
@@ -875,12 +884,12 @@ Nodes (4): CardAnalytics(), money(), PERIODS, sumFor()
 ## Knowledge Gaps
 - **815 isolated node(s):** `$schema`, `collection`, `sourceRoot`, `deleteOutDir`, `name` (+810 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **52 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **51 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Roles()` connect `Roles` to `ozon-catalog.controller.ts`, `tasks.controller.ts`, `ApprovalController`, `DtoUpdateUser`, `ozon-product-catalog.controller.ts`, `DtoCreateExpense`, `reports.service.ts`, `AvitoService`, `PartnerAdminController`, `marketplace.module.ts`, `salary.controller.ts`, `DtoUpdatePartnerSettings`, `ScenarioController`, `scenario.controller.ts`, `order-photo.controller.ts`, `ImageCardBatchController`, `image-card-template.service.ts`, `MarketplaceController`, `DtoUpdateMockupTemplate`, `.sendMessage`, `OzonCatalogController`, `OzonProductCatalogController`?**
+- **Why does `Roles()` connect `Roles` to `ozon-catalog.controller.ts`, `tasks.controller.ts`, `ApprovalController`, `DtoUpdateUser`, `ozon-product-catalog.controller.ts`, `DtoCreateExpense`, `reports.service.ts`, `AvitoService`, `PartnerAdminController`, `marketplace.module.ts`, `salary.controller.ts`, `DtoUpdatePartnerSettings`, `ScenarioController`, `DtoUpdateMockupTemplate`, `scenario.controller.ts`, `order-photo.controller.ts`, `ImageCardBatchController`, `image-card-template.service.ts`, `MarketplaceController`, `MockupService`, `.sendMessage`, `OzonCatalogController`, `OzonProductCatalogController`?**
   _High betweenness centrality (0.262) - this node is a cross-community bridge._
 - **Why does `BatchView()` connect `ApprovalController` to `getErrorMessage`?**
   _High betweenness centrality (0.233) - this node is a cross-community bridge._

@@ -39,7 +39,16 @@ const SIDES: Record<string, EnumApprovalSide> = {
  * и менеджер по оформлению. Исполнителю согласование не нужно — он получает
  * уже утверждённое ТЗ.
  */
-@Controller('approvals')
+// Префикс order-photo-approvals, а не approvals: заказ-CRM открывают и через
+// домен сайта raspechatkaa.ru, чей nginx проксирует на бэкенд только известные
+// префиксы (order-photo, auth, …). «approvals» туда добавить забыли, и запрос
+// падал в сайт с 404. Префикс order-photo-* nginx домена уже пропускает (по
+// маске order-photo), и с order-photo/:idOrder он НЕ конфликтует — это отдельный
+// путь. Так согласование работает на обоих доменах без правки сервера.
+// Два префикса: order-photo-approvals — рабочий (проходит через nginx домена
+// сайта); approvals — старый, оставлен для совместимости на время выкатки и для
+// прямого доступа по sslip. Массив путей регистрирует оба.
+@Controller(['order-photo-approvals', 'approvals'])
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
 export class ApprovalController {
