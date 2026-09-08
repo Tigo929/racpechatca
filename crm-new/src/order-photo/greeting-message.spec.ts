@@ -35,6 +35,11 @@ describe('первое сообщение клиенту', () => {
     expect(renderGreeting(base)).toContain('Доставка Яндекс ПВЗ — 300 ₽');
   });
 
+  it('в тексте есть номер заказа', () => {
+    // Номер нужен клиенту, чтобы сослаться на заказ в переписке.
+    expect(renderGreeting(base)).toContain('№1043');
+  });
+
   it('самовывоз назван бесплатным, а не пропущен', () => {
     // Пустая строка оставила бы дыру между списком и суммой.
     const text = renderGreeting({ ...base, deliveryMethod: 'PICKUP', deliveryCost: 0 });

@@ -1,16 +1,16 @@
-# Graph Report - raspechatka  (2026-09-07)
+# Graph Report - raspechatka  (2026-09-08)
 
 ## Corpus Check
-- 479 files · ~256,281 words
+- 479 files · ~256,317 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3755 nodes · 7801 edges · 204 communities (152 shown, 52 thin omitted)
+- 3755 nodes · 7801 edges · 205 communities (153 shown, 52 thin omitted)
 - Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 320 edges (avg confidence: 0.79)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `eb51e430`
+- Built from commit: `75ebb637`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -176,7 +176,7 @@
 - DtoUpdateOrder
 - ApprovalStorageService
 - @nestjs/passport
-- class-transformer
+- partner-payload.ts
 - scenario.registry.ts
 - .createOrder
 - StripPricesInterceptor
@@ -211,6 +211,7 @@
 - pg
 - uuid
 - web-push
+- bcryptjs
 - @types/jest
 - tailwindcss
 - @types/pdfkit
@@ -243,7 +244,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (204 total, 52 thin omitted)
+## Communities (205 total, 52 thin omitted)
 
 ### Community 0 - "DtoCreateOzonPrint"
 Cohesion: 0.06
@@ -255,7 +256,7 @@ Nodes (12): TasksController, Body, Controller, Delete, Get, Param, Patch, Post (
 
 ### Community 2 - "dependencies"
 Cohesion: 0.22
-Nodes (9): bcryptjs, dependencies, bcryptjs, reflect-metadata, roboto-fontface, rxjs, reflect-metadata, roboto-fontface (+1 more)
+Nodes (9): class-transformer, dependencies, class-transformer, reflect-metadata, roboto-fontface, rxjs, reflect-metadata, roboto-fontface (+1 more)
 
 ### Community 3 - "DtoUpdateUser"
 Cohesion: 0.06
@@ -654,8 +655,8 @@ Cohesion: 0.50
 Nodes (3): Get, Param, Query
 
 ### Community 117 - "partner-api.controller.ts"
-Cohesion: 0.06
-Nodes (36): hasProductionItems(), NO_PRODUCTION_ITEMS_MESSAGE, OrderWithProductionItems, DtoPartnerStatus, IsString, PartnerApiController, Body, Controller (+28 more)
+Cohesion: 0.09
+Nodes (22): DtoPartnerStatus, IsString, PartnerApiController, Body, Controller, Get, Param, Patch (+14 more)
 
 ### Community 118 - "order-photo.module.ts"
 Cohesion: 0.13
@@ -800,6 +801,10 @@ Nodes (3): CanvasPricingController, Controller, Get
 ### Community 162 - "DtoUpdateOrder"
 Cohesion: 0.17
 Nodes (11): DtoUpdateOrder, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Matches, MaxLength (+3 more)
+
+### Community 165 - "partner-payload.ts"
+Cohesion: 0.14
+Nodes (14): hasProductionItems(), NO_PRODUCTION_ITEMS_MESSAGE, OrderWithProductionItems, PartnerOutboundService, Injectable, buildPartnerOrderPayload(), PartnerOrderForPayload, PartnerOrderPayload (+6 more)
 
 ### Community 166 - "scenario.registry.ts"
 Cohesion: 0.05

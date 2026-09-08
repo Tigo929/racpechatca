@@ -2265,13 +2265,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/greeting-message.spec.ts": {
-    "mtime": 1788765837.6626563,
-    "ast_hash": "ab07e9ccce12169688635a82016e2131",
+    "mtime": 1788854938.748072,
+    "ast_hash": "65e3bf67cd9649ce9d91a7d0f9ddb580",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/greeting-message.ts": {
-    "mtime": 1788765837.6637006,
-    "ast_hash": "f8cbb26f93a8cef39d9d70109ef2ac42",
+    "mtime": 1788854865.0219808,
+    "ast_hash": "77c04d5d269024837d6d656c8de1d0f3",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/GreetingCopyButton.tsx": {
