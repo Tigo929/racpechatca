@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "frontend/src/App.tsx": {
-    "mtime": 1787245090.476624,
-    "ast_hash": "f4511d7284fcdd8fd2bbfa6c2bd6ec0b",
+    "mtime": 1788872794.7181964,
+    "ast_hash": "7d742f39c0c693db1c67df187c663eda",
     "semantic_hash": ""
   },
   "frontend/src/api/auth.ts": {
@@ -670,8 +670,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/layout/navigation.ts": {
-    "mtime": 1787245090.4756262,
-    "ast_hash": "fb7b7afd47faf31c78988e95c36c5f9f",
+    "mtime": 1788872812.133698,
+    "ast_hash": "aec052c467eff9b2b64cb41d29d5d862",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/CreateOrderForm.tsx": {
@@ -2277,6 +2277,26 @@
   "frontend/src/components/orders/GreetingCopyButton.tsx": {
     "mtime": 1788765837.6679416,
     "ast_hash": "f0fb75a5b9f1be784c8cb74abd136548",
+    "semantic_hash": ""
+  },
+  "frontend/src/config/features.ts": {
+    "mtime": 1788872633.7353253,
+    "ast_hash": "a645251f6229605f5fb93018220110be",
+    "semantic_hash": ""
+  },
+  "frontend/src/features/print-designer/PrintDesignerPage.tsx": {
+    "mtime": 1788872766.721766,
+    "ast_hash": "f43b83c1e90ea9cfaff58ccd59151f4c",
+    "semantic_hash": ""
+  },
+  "frontend/src/features/print-designer/engine.ts": {
+    "mtime": 1788872708.4224274,
+    "ast_hash": "a19a8972694472add0686d454a99f9b9",
+    "semantic_hash": ""
+  },
+  "frontend/src/features/print-designer/templates.ts": {
+    "mtime": 1788872660.8833282,
+    "ast_hash": "936808925d2350a25e99c743d569c7b6",
     "semantic_hash": ""
   }
 }

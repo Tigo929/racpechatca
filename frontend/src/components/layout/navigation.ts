@@ -10,9 +10,11 @@ import {
   Store,
   Users,
   Wallet,
+  Wand2,
   type LucideIcon,
 } from 'lucide-react';
 import type { EnumRole as Role } from '../../types/index';
+import { features } from '../../config/features';
 
 /**
  * Единственное место, где описана навигация CRM. Новый модуль — одна строка
@@ -76,6 +78,18 @@ export const NAV_GROUPS: NavGroup[] = [
         roles: AD_MGR,
         primary: true,
       },
+      // Дизайнер принта — за фиче-флагом. Выключил флаг — пункт и маршрут
+      // исчезают, ничего больше не трогая.
+      ...(features.printDesigner
+        ? [
+            {
+              to: '/crm/print-designer',
+              label: 'Дизайнер принта',
+              icon: Wand2,
+              roles: AD_MGR,
+            } as NavItem,
+          ]
+        : []),
       // Avito временно отключён (нет оборота — экономим на API). Код модуля,
       // страница и роут /crm/avito остаются в проекте — чтобы вернуть, просто
       // раскомментируйте этот пункт.

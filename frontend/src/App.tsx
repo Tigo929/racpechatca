@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './context/useAuth';
 import { ScrollToTop } from './components/ScrollToTop';
+import { features } from './config/features';
 
 // CRM-страницы грузим лениво — каждая попадает в свой чанк, начальный бандл меньше.
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
@@ -18,6 +19,10 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const MarketplacePage = lazy(() => import('./pages/MarketplacePage'));
 const ReportsPage = lazy(() =>
   import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage })),
+);
+// Модуль за флагом features.printDesigner — грузим лениво, отдельным чанком.
+const PrintDesignerPage = lazy(
+  () => import('./features/print-designer/PrintDesignerPage'),
 );
 
 const queryClient = new QueryClient({
@@ -101,6 +106,9 @@ function AppRoutes() {
         <Route path="/crm/avito" element={<CrmGate><OrderStaffRoute><AvitoPage /></OrderStaffRoute></CrmGate>} />
         {/* Задачи видят все: администратор ставит, исполнитель ведёт свои */}
         <Route path="/crm/tasks" element={<CrmGate><PrivateRoute><TasksPage /></PrivateRoute></CrmGate>} />
+        {features.printDesigner && (
+          <Route path="/crm/print-designer" element={<CrmGate><OrderStaffRoute><PrintDesignerPage /></OrderStaffRoute></CrmGate>} />
+        )}
         <Route path="/crm" element={<CrmGate><HomeRedirect /></CrmGate>} />
         <Route path="/crm/users" element={<CrmGate><AdminRoute><UsersPage /></AdminRoute></CrmGate>} />
         <Route path="/crm/salary" element={<CrmGate><AdminRoute><SalaryPage /></AdminRoute></CrmGate>} />
