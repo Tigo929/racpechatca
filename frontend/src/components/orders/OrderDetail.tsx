@@ -249,8 +249,11 @@ function generateConfirmationText(order: OrderPhoto): string {
     ...(isPickup && !pickupAddr
       ? ["", "📍 Самовывоз: адрес пришлём, когда заказ возьмут в работу"]
       : []),
-    "",
-    productionTermLine(order),
+    // Срок изготовления — только фото и холсты. У футболок его не показываем:
+    // печатает партнёр, и жёсткую дату здесь не обещаем.
+    ...(order.productCategory === "TSHIRT"
+      ? []
+      : ["", productionTermLine(order)]),
     "",
     ...paymentRequisiteLines(order),
     "",

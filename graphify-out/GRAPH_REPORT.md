@@ -1,16 +1,16 @@
-# Graph Report - raspechatka  (2026-09-08)
+# Graph Report - raspechatka  (2026-09-09)
 
 ## Corpus Check
-- 484 files · ~259,235 words
+- 484 files · ~259,263 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3783 nodes · 7849 edges · 203 communities (152 shown, 51 thin omitted)
+- 3783 nodes · 7849 edges · 203 communities (153 shown, 50 thin omitted)
 - Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 322 edges (avg confidence: 0.79)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d2e76a59`
+- Built from commit: `120d815c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -103,7 +103,7 @@
 - DtoCreateImageCardBatch
 - OzonApiClient
 - ApprovalService
-- salary.service.ts
+- DtoCreatePayment
 - supertest
 - ImageCardStorageService
 - MarketplaceController
@@ -127,7 +127,7 @@
 - render
 - index.ts
 - @nestjs/core
-- DtoCreatePaymentByAccruals
+- salary.service.ts
 - partner-api.controller.ts
 - TelegramStickerLinkService
 - passport
@@ -144,7 +144,7 @@
 - Param
 - describe
 - DtoBulkCards
-- .createBonus
+- SalaryController
 - PrismaService
 - scenario.controller.ts
 - .get
@@ -177,7 +177,7 @@
 - ApprovalStorageService
 - @nestjs/passport
 - partner-outbound.service.ts
-- eslint
+- eslint-plugin-prettier
 - .createOrder
 - StripPricesInterceptor
 - DtoUpdatePartnerSettings
@@ -242,7 +242,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (203 total, 51 thin omitted)
+## Communities (203 total, 50 thin omitted)
 
 ### Community 0 - "DtoCreateOzonPrint"
 Cohesion: 0.09
@@ -393,8 +393,8 @@ Cohesion: 0.12
 Nodes (13): OzonPhotoStorageService, Injectable, OzonPhotoController, Controller, Get, Param, Post, Req (+5 more)
 
 ### Community 37 - "SalaryService"
-Cohesion: 0.15
-Nodes (8): SalaryController, Controller, Delete, Get, Param, UseGuards, SalaryService, Injectable
+Cohesion: 0.16
+Nodes (5): Delete, Get, Param, SalaryService, Injectable
 
 ### Community 38 - "Интеграция с исполнителем-партнёром (печать футболок)"
 Cohesion: 0.12
@@ -506,7 +506,7 @@ Nodes (6): Аудит финансов, кода и продакшена — 202
 
 ### Community 65 - "devDependencies"
 Cohesion: 0.22
-Nodes (9): devDependencies, eslint-plugin-prettier, @types/express, @types/jest, @types/pdfkit, eslint-plugin-prettier, @types/express, @types/jest (+1 more)
+Nodes (9): devDependencies, eslint, @types/express, @types/jest, @types/pdfkit, eslint, @types/express, @types/jest (+1 more)
 
 ### Community 66 - "AvitoPage.tsx"
 Cohesion: 0.22
@@ -580,8 +580,8 @@ Nodes (24): humanize(), OzonApiClient, OzonApiError, OzonErrorBody, Injectable, 
 Cohesion: 0.11
 Nodes (13): Body, Patch, ApprovalService, Injectable, ApprovalSides, clamp(), filledSides(), MAX_PRINT_MM (+5 more)
 
-### Community 88 - "salary.service.ts"
-Cohesion: 0.20
+### Community 88 - "DtoCreatePayment"
+Cohesion: 0.25
 Nodes (7): DtoCreatePayment, IsInt, IsOptional, IsString, IsUUID, Min, Type
 
 ### Community 90 - "ImageCardStorageService"
@@ -652,8 +652,8 @@ Nodes (9): greeting_for(), money(), Обращение целиком, а не �
 Cohesion: 0.06
 Nodes (53): authApi, api, partnerSettingsApi, reportsApi, MySalaryBalance, shipmentLeadApi, tasksApi, TasksQuery (+45 more)
 
-### Community 116 - "DtoCreatePaymentByAccruals"
-Cohesion: 0.29
+### Community 116 - "salary.service.ts"
+Cohesion: 0.20
 Nodes (6): DtoCreatePaymentByAccruals, ArrayMinSize, IsArray, IsOptional, IsString, IsUUID
 
 ### Community 117 - "partner-api.controller.ts"
@@ -703,6 +703,10 @@ Nodes (9): describe_code_type(), describe_next(), main(), Человеческо
 ### Community 132 - "DtoBulkCards"
 Cohesion: 0.33
 Nodes (6): DtoBulkCards, ArrayMaxSize, ArrayNotEmpty, IsArray, IsIn, IsUUID
+
+### Community 133 - "SalaryController"
+Cohesion: 0.33
+Nodes (5): SalaryController, Body, Controller, Post, UseGuards
 
 ### Community 134 - "PrismaService"
 Cohesion: 0.07
@@ -797,7 +801,7 @@ Cohesion: 0.17
 Nodes (11): DtoUpdateOrder, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Matches, MaxLength (+3 more)
 
 ### Community 163 - "ApprovalStorageService"
-Cohesion: 0.15
+Cohesion: 0.14
 Nodes (7): ApprovalRenderService, Injectable, CALIBRATION, ALLOWED_IMAGE, ApprovalStorageService, SavedImage, Injectable
 
 ### Community 165 - "partner-outbound.service.ts"
@@ -839,12 +843,12 @@ Nodes (33): clientNameFromNote(), GREETING_STATUSES, GreetingStatus, isGreetingS
 ## Knowledge Gaps
 - **820 isolated node(s):** `$schema`, `collection`, `sourceRoot`, `deleteOutDir`, `name` (+815 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **51 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **50 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Roles()` connect `Roles` to `tasks.controller.ts`, `DtoUpdateUser`, `scenario.controller.ts`, `ApprovalController`, `DtoCreateExpense`, `ozon-product-catalog.controller.ts`, `reports.service.ts`, `AvitoService`, `TechSpecStorageService`, `OzonPhotoStorageService`, `SalaryService`, `scenario.registry.ts`, `DtoUpdatePartnerSettings`, `ozon-orders.service.ts`, `order-photo.controller.ts`, `ImageCardBatchController`, `marketplace.module.ts`, `image-card-batch.controller.ts`, `MarketplaceController`, `MockupService`, `AvitoController`, `OzonCatalogController`, `OzonProductCatalogController`, `PartnerSettingsService`?**
+- **Why does `Roles()` connect `Roles` to `tasks.controller.ts`, `DtoUpdateUser`, `SalaryController`, `scenario.controller.ts`, `ApprovalController`, `DtoCreateExpense`, `ozon-product-catalog.controller.ts`, `reports.service.ts`, `AvitoService`, `TechSpecStorageService`, `OzonPhotoStorageService`, `scenario.registry.ts`, `DtoUpdatePartnerSettings`, `ozon-orders.service.ts`, `order-photo.controller.ts`, `ImageCardBatchController`, `marketplace.module.ts`, `image-card-batch.controller.ts`, `MarketplaceController`, `MockupService`, `AvitoController`, `OzonCatalogController`, `OzonProductCatalogController`, `PartnerSettingsService`?**
   _High betweenness centrality (0.259) - this node is a cross-community bridge._
 - **Why does `BatchView()` connect `Param` to `getErrorMessage`?**
   _High betweenness centrality (0.230) - this node is a cross-community bridge._

@@ -685,8 +685,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderDetail.tsx": {
-    "mtime": 1788868132.9604046,
-    "ast_hash": "bbc193bbc83b54b6849922133874894e",
+    "mtime": 1788955820.4735408,
+    "ast_hash": "39996509d8cc400e1db70d95b60f8910",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderEditForm.tsx": {
@@ -730,8 +730,8 @@
     "semantic_hash": ""
   },
   "frontend/src/config/business.ts": {
-    "mtime": 1788868088.9196153,
-    "ast_hash": "45261d612e19a0bb1c80d1245efbefdb",
+    "mtime": 1788955813.0224247,
+    "ast_hash": "42f997740f71d1f84d92ee7dbbb551e0",
     "semantic_hash": ""
   },
   "frontend/src/constants.ts": {
