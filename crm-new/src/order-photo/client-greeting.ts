@@ -54,6 +54,44 @@ export function clientNameFromNote(note: string | null): string | null {
 }
 
 /**
+ * Телефон клиента из примечания.
+ *
+ * Нужен, чтобы написать тем, кто мессенджер не оставил. Telegram умеет
+ * находить человека по номеру — не только по никнейму, — и для клиента с
+ * одним лишь телефоном это единственный способ получить ответ сразу, а не
+ * через полчаса, когда до него дойдёт менеджер.
+ *
+ * Приводим к виду `+7XXXXXXXXXX`: Telegram принимает номер в международном
+ * формате, а люди пишут «8 900 …», «+7 (900) …» и «7900…». Разбирать эти
+ * варианты в воркере значило бы держать правила русского номера в двух
+ * местах.
+ *
+ * Не номер — возвращаем null. Позвонить по мусору всё равно нельзя, а
+ * попытка написать «не туда» хуже, чем не написать вовсе.
+ */
+const NEWLINE = String.fromCharCode(10);
+
+export function clientPhoneFromNote(note: string | null): string | null {
+  const line = (note ?? '')
+    .split(NEWLINE)
+    .map((s) => s.trim())
+    .find((s) => /^Телефон:\s*/i.test(s));
+  if (!line) return null;
+
+  const digits = line.replace(/^Телефон:\s*/i, '').replace(/\D/gu, '');
+  if (!digits) return null;
+
+  // 8 900… и 7 900… — один и тот же номер, записанный по-разному.
+  let national = digits;
+  if (national.length === 11 && (national.startsWith('8') || national.startsWith('7'))) {
+    national = national.slice(1);
+  }
+  if (national.length !== 10) return null;
+
+  return `+7${national}`;
+}
+
+/**
  * Итоги попытки, которые воркер вправе прислать.
  *
  * Список закрытый: свободная строка со временем превратилась бы в свалку
