@@ -685,8 +685,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderDetail.tsx": {
-    "mtime": 1788955820.4735408,
-    "ast_hash": "39996509d8cc400e1db70d95b60f8910",
+    "mtime": 1789053063.6122355,
+    "ast_hash": "263c1edb106628ac4364a80db09e61d0",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderEditForm.tsx": {
