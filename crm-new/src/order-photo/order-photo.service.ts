@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { leadDeliveryCost as deliveryCostForLead } from './free-delivery';
 import { PrismaService } from 'src/prisma/prisma.service';
 import DtoCreateOrder from './dto/create-order.dto';
 import { calcItemPricePosition } from './order-pricing';
@@ -570,12 +571,6 @@ export class OrderPhotoService {
       const deliveryMethod = isYandexPvz
         ? EnumDeliveryMethod.YANDEX_PVZ
         : EnumDeliveryMethod.PICKUP;
-      // Доставка Яндекс ПВЗ клиенту — по умолчанию из настроек (300).
-      // В форме сайта поля доставки нет, поэтому ставим сами; менеджер
-      // потом поправит, если с клиентом договорились иначе.
-      const leadDeliveryCost = isYandexPvz
-        ? leadSettings.deliveryPriceYandexPvz
-        : 0;
       // Цену считает сайт (в его форме поля цены нет — клиент её не задаёт),
       // но CRM не принимает числа на веру: сверяем «цена × тираж = итог» и
       // сумму позиции считаем сами. Расхождение — отказ, потому что дальше по
@@ -594,6 +589,18 @@ export class OrderPhotoService {
         throw err;
       }
       const total = money.pricePosition;
+
+      /*
+        Доставка считается ПОСЛЕ суммы позиций: от неё зависит, бесплатна ли
+        она. Сайт показывает клиенту итог до отправки заявки, и разойтись эти
+        числа не должны — иначе в подтверждении окажется не та сумма, которую
+        человеку называли.
+      */
+      const leadDeliveryCost = deliveryCostForLead({
+        yandexPvz: isYandexPvz,
+        positionsTotal: total,
+        price: leadSettings.deliveryPriceYandexPvz,
+      });
       // Пожелания клиента — вверху: их читают в первую очередь, а не ищут
       // среди технических строк вроде yclid и ссылок на архив.
       const clientComment = dto.comment?.trim() || dto.description?.trim() || '';
