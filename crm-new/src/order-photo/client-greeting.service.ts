@@ -3,7 +3,6 @@ import { EnumCommunication } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   clientNameFromNote,
-  clientPhoneFromNote,
   telegramUsernameFromUrl,
   type GreetingStatus,
 } from './client-greeting';
@@ -37,18 +36,7 @@ const SITE_LEAD_PREFIX = 'web-photo';
 export interface PendingGreeting {
   id: string;
   numberOrder: string;
-  /** Никнейм в Telegram, если клиент его оставил. */
-  username: string | null;
-  /**
-   * Телефон в международном виде — для тех, кто мессенджер не оставил.
-   *
-   * Telegram умеет находить человека по номеру, и для клиента с одним лишь
-   * телефоном это единственный способ получить ответ сразу, а не через
-   * полчаса, когда до него дойдёт менеджер. Работает не всегда: номер может
-   * быть не зарегистрирован, а настройки приватности — запрещать поиск.
-   * Тогда воркер честно вернёт `not_found`.
-   */
-  phone: string | null;
+  username: string;
   name: string | null;
   /** Направление заказа: под него выбирается текст сообщения. */
   category: string;
@@ -90,16 +78,9 @@ export class ClientGreetingService {
     const since = new Date(Date.now() - MAX_AGE_HOURS * 60 * 60 * 1000);
 
     const rows = await this.prisma.orderPhoto.findMany({
-      /*
-        Площадку больше не фильтруем.
-
-        Раньше брали только заявки с телеграмом: писать было некуда, если
-        клиент оставил один телефон. Теперь пишем и по номеру — значит, в
-        очередь входит всё, где есть хоть один способ достучаться, а
-        отсеиваем ниже, разобрав контакты.
-      */
       where: {
         clientGreetedAt: null,
+        communicationPlatform: EnumCommunication.TELEGRAM,
         externalRequestId: { startsWith: SITE_LEAD_PREFIX },
         createdAt: { gte: since },
       },
@@ -129,13 +110,11 @@ export class ClientGreetingService {
     const ready: PendingGreeting[] = [];
     for (const row of rows) {
       const username = telegramUsernameFromUrl(row.urlCommunication);
-      const phone = clientPhoneFromNote(row.note);
-      if (!username && !phone) {
-        // Ни никнейма, ни номера — писать физически некуда. Закрываем сразу,
-        // иначе заказ висел бы в очереди вечно и разбирался при каждом опросе.
+      if (!username) {
+        // Разобрать нечего — закрываем сразу, а не отдаём воркеру.
         await this.mark(row.id, 'not_found');
         this.logger.warn(
-          `Заказ ${row.numberOrder}: ни никнейма, ни телефона — писать некуда`,
+          `Заказ ${row.numberOrder}: никнейм не разобрался из «${row.urlCommunication}»`,
         );
         continue;
       }
@@ -167,7 +146,6 @@ export class ClientGreetingService {
       ready.push({
         id: row.id,
         username,
-        phone,
         createdAt: row.createdAt,
         text: renderGreeting(data),
         ...data,

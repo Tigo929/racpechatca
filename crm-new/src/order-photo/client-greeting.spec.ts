@@ -1,4 +1,8 @@
-import { clientNameFromNote, clientPhoneFromNote, isGreetingStatus, telegramUsernameFromUrl } from './client-greeting';
+import {
+  clientNameFromNote,
+  isGreetingStatus,
+  telegramUsernameFromUrl,
+} from './client-greeting';
 
 /**
  * Разбор данных для первого сообщения клиенту.
@@ -68,34 +72,5 @@ describe('итоги попытки', () => {
     expect(isGreetingStatus('sent')).toBe(true);
     expect(isGreetingStatus('privacy')).toBe(true);
     expect(isGreetingStatus('всё сломалось')).toBe(false);
-  });
-});
-
-/**
- * Телефон из примечания.
- *
- * По нему пишут тем, кто мессенджер не оставил. Ошибка здесь означает либо
- * молчание в ответ на заявку, либо сообщение постороннему человеку —
- * второе хуже, поэтому сомнительное считаем «не номером».
- */
-describe('телефон клиента из примечания', () => {
-  const note = (line: string) => `🆕 Заявка с сайта\n${line}`;
-
-  it('берёт номер и приводит к международному виду', () => {
-    expect(clientPhoneFromNote(note('Телефон: +7 900 000-00-00'))).toBe('+79000000000');
-    expect(clientPhoneFromNote(note('Телефон: 8 (900) 000 00 00'))).toBe('+79000000000');
-    expect(clientPhoneFromNote(note('Телефон: 79000000000'))).toBe('+79000000000');
-  });
-
-  it('без строки телефона возвращает null', () => {
-    expect(clientPhoneFromNote(note('Имя: Пётр'))).toBeNull();
-    expect(clientPhoneFromNote(null)).toBeNull();
-  });
-
-  it('мусор номером не считает', () => {
-    // Написать «не туда» хуже, чем не написать вовсе.
-    expect(clientPhoneFromNote(note('Телефон: не скажу'))).toBeNull();
-    expect(clientPhoneFromNote(note('Телефон: 12345'))).toBeNull();
-    expect(clientPhoneFromNote(note('Телефон: +1 202 555 0134'))).toBeNull();
   });
 });

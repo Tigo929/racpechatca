@@ -28,11 +28,6 @@ from pathlib import Path
 
 import httpx
 from telethon import TelegramClient
-from telethon.tl.functions.contacts import (
-    DeleteContactsRequest,
-    ImportContactsRequest,
-)
-from telethon.tl.types import InputPhoneContact
 from telethon.errors import (
     FloodWaitError,
     PeerFloodError,
@@ -168,60 +163,16 @@ class Crm:
         await self._client.aclose()
 
 
-async def find_by_phone(client: TelegramClient, phone: str, name: str | None):
-    """
-    Собеседник по номеру телефона.
-
-    Единственный способ написать тому, кто мессенджер не оставил. Telegram
-    ищет по номеру только через адресную книгу, поэтому номер приходится
-    сначала добавить в контакты, а сразу после отправки — удалить: чужие
-    номера в книге рабочего аккаунта не нужны никому.
-
-    Пустой ответ означает, что номер либо не зарегистрирован, либо человек
-    запретил находить себя по телефону. Различить эти случаи площадка не
-    даёт, и оба одинаково означают «написать не получится».
-    """
-    result = await client(
-        ImportContactsRequest(
-            [
-                InputPhoneContact(
-                    client_id=0,
-                    phone=phone,
-                    first_name=(name or "Клиент")[:64],
-                    last_name="",
-                )
-            ]
-        )
-    )
-    return result.users[0] if result.users else None
-
-
-async def send_one(client: TelegramClient, item: dict, text: str) -> str:
+async def send_one(client: TelegramClient, username: str, text: str) -> str:
     """
     Одно сообщение. Возвращает итог из закрытого списка, который знает CRM.
-
-    Никнейм предпочтительнее телефона: по нему человек находится всегда, а
-    по номеру — только если он зарегистрирован и разрешил себя искать.
-    Телефон — запасной путь для тех, кто мессенджер не оставил.
 
     Все отказы, кроме PeerFlood, закрывают заказ: писать человеку, который
     запретил сообщения от незнакомых, второй раз бессмысленно, а очередь
     от таких заказов надо чистить, иначе она встанет колом.
     """
-    username = (item.get("username") or "").strip()
-    phone = (item.get("phone") or "").strip()
-    imported = None
-
     try:
-        if username:
-            entity = await client.get_entity(username)
-        elif phone:
-            entity = await find_by_phone(client, phone, item.get("name"))
-            if entity is None:
-                return "not_found"
-            imported = entity
-        else:
-            return "not_found"
+        entity = await client.get_entity(username)
     except (UsernameNotOccupiedError, UsernameInvalidError, ValueError):
         return "not_found"
     except FloodWaitError as exc:
@@ -230,19 +181,8 @@ async def send_one(client: TelegramClient, item: dict, text: str) -> str:
         await asyncio.sleep(exc.seconds + 1)
         return "flood"
 
-    async def forget_contact() -> None:
-        """Убрать номер из адресной книги: он попал туда только ради поиска."""
-        if imported is None:
-            return
-        try:
-            await client(DeleteContactsRequest(id=[imported]))
-        except RPCError:
-            # Не удалилось — не повод считать сообщение неотправленным.
-            log.warning("  контакт не удалён из книги")
-
     try:
         await client.send_message(entity, text, link_preview=False)
-        await forget_contact()
         return "sent"
     except UserPrivacyRestrictedError:
         return "privacy"
@@ -305,7 +245,7 @@ async def main() -> int:
 
             log.info("В очереди: %d", len(queue))
             for index, item in enumerate(queue):
-                username = item.get("username") or item.get("phone") or "?"
+                username = item["username"]
                 # Текст собирает CRM: тот же самый нужен менеджеру в панели,
                 # когда клиент оставил не телеграм. Две сборки одного текста
                 # разошлись бы при первой правке — и клиенты получали бы
@@ -328,7 +268,7 @@ async def main() -> int:
                     )
 
                 try:
-                    status = await send_one(client, item, text)
+                    status = await send_one(client, username, text)
                 except PeerFloodError:
                     # Telegram ограничил массовые действия. Продолжать —
                     # значит продлить ограничение. Заказ не помечаем:

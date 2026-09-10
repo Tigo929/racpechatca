@@ -34,18 +34,13 @@ describe('ClientGreetingService', () => {
     return { service, findMany, update };
   }
 
-  it('спрашивает заявки сайта, которым ещё не писали, независимо от площадки', async () => {
-    /*
-     * Фильтра по площадке больше нет намеренно: писать умеем и по номеру,
-     * а значит отсеивать заявку до разбора контактов нельзя — так мы
-     * теряли всех, кто оставил один телефон.
-     */
+  it('спрашивает только заявки сайта с телеграмом, которым ещё не писали', async () => {
     const { service, findMany } = make([]);
     await service.pending(20);
 
     const where = findMany.mock.calls[0][0].where;
     expect(where.clientGreetedAt).toBeNull();
-    expect(where.communicationPlatform).toBeUndefined();
+    expect(where.communicationPlatform).toBe(EnumCommunication.TELEGRAM);
     expect(where.externalRequestId).toEqual({ startsWith: 'web-photo' });
     // Свежие: у фильтра по дате есть нижняя граница.
     expect(where.createdAt.gte).toBeInstanceOf(Date);
@@ -124,23 +119,10 @@ describe('ClientGreetingService', () => {
     expect(item.username).toBe('petrov');
   });
 
-  it('нечитаемый никнейм — не приговор, если есть телефон', async () => {
-    // Telegram находит человека и по номеру. Закрывать такую заявку значило
-    // бы молчать в ответ на заказ, который вполне можно подтвердить.
+  it('нечитаемый никнейм закрывает сразу, не отдавая воркеру', async () => {
+    // Иначе такой заказ висел бы в очереди вечно и разбирался при каждом
+    // опросе — очередь встала бы колом на первом же кривом контакте.
     const { service, update } = make([row({ urlCommunication: '+7 900 000-00-00' })]);
-    const items = await service.pending(20);
-
-    expect(items).toHaveLength(1);
-    expect(items[0].username).toBeNull();
-    expect(items[0].phone).toBe('+79000000000');
-    expect(update).not.toHaveBeenCalled();
-  });
-
-  it('ни никнейма, ни телефона — закрываем сразу', async () => {
-    // Иначе заказ висел бы в очереди вечно и разбирался при каждом опросе.
-    const { service, update } = make([
-      row({ urlCommunication: 'нет', note: '🆕 Заявка с сайта' }),
-    ]);
     const items = await service.pending(20);
 
     expect(items).toHaveLength(0);
@@ -150,15 +132,6 @@ describe('ClientGreetingService', () => {
         data: expect.objectContaining({ clientGreetStatus: 'not_found' }),
       }),
     );
-  });
-
-  it('телефон отдаётся вместе с никнеймом, когда есть оба', async () => {
-    // Воркер предпочтёт никнейм, но запасной путь у него должен быть.
-    const { service } = make([row()]);
-    const [item] = await service.pending(20);
-
-    expect(item.username).toBe('petrov');
-    expect(item.phone).toBe('+79000000000');
   });
 
   it('не запрашивает больше пятидесяти за раз', async () => {
