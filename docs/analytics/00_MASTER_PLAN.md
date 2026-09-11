@@ -973,7 +973,7 @@ lead_submitted != purchase
 Статус:
 
 ```text
-REVIEW
+DONE
 ```
 
 Цель:
@@ -1011,8 +1011,12 @@ visits 218 / users 151 / pageviews 1189 за 2026-09-05..11 без семпли�
 Статус:
 
 ```text
-TODO
+REVIEW — READY_FOR_LIVE_WRITE_TEST
 ```
+
+Фаза 1 выполнена 11.09.2026: транзакционная очередь MetrikaOrderOutbox,
+воркер, simple_orders, себестоимость из P&L; 730 тестов; живой POST не
+выполнялся. Отчёт — `06_CRM_TO_METRIKA.md` § 71.
 
 Цель:
 
@@ -1498,16 +1502,19 @@ vs
 Текущий этап проекта:
 
 ```text
-05_YANDEX_METRIKA_API — REVIEW: live smoke пройден 11.09.2026 (counter 200,
-13 целей, Reports API 218/151/1189 за 7 дней, GOALS_MANIFEST сверён).
-Токен на сервере пока отсутствует — показанный в чате подлежит отзыву,
-новый владелец кладёт в /opt/raspechatka/.env сам. DONE ставит ChatGPT.
+06_CRM_TO_METRIKA — REVIEW / READY_FOR_LIVE_WRITE_TEST (11.09.2026): очередь,
+воркер, snapshot, финансы из P&L и тесты готовы; один контрольный POST по
+заказу 20260815-050 ждёт нового токена на сервере и команды владельца
+«разрешаю live write». Отправка по расписанию — за рубильником
+YANDEX_METRIKA_ORDERS_SYNC_ENABLED (по умолчанию выключено).
 ```
 
-История: `00`, `01`, `02` (с FIX_01), `03`, `04` (с FIX_01) — DONE 11.09.2026.
-Ветки с кодом: CRM — `feature/analytics-foundation` (этапы 02–04, не слита
-в master); сайт — `feature/analytics-event-model` (этап 04, не выкладывается;
-слить в `feature/cms-admin` одновременно с этапом 06).
+История: `00`, `01`, `02` (с FIX_01), `03`, `04` (с FIX_01), `05` (live smoke
+11.09.2026) — DONE.
+Ветки с кодом: CRM — `feature/analytics-foundation` (этапы 02–06, не слита
+в master; master слит в ветку 11.09.2026 — Web Push); сайт —
+`feature/analytics-event-model` (этап 04, не выкладывается; слить в
+`feature/cms-admin` по плану rollout этапа 06, раздел 45).
 Запись backfill в боевую базу (`--apply`) не выполнялась — ждёт команды владельца.
 Справочники: `EVENT_CATALOG.md`, `GOALS_MANIFEST.md`.
 

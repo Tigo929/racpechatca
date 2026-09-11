@@ -288,6 +288,22 @@ CANCELLED, PROBLEM — вне цепочки
 
 ---
 
+# 5d. CRM → Метрика — состояние после этапа 06, фаза 1 (11.09.2026)
+
+| Факт | Подробности |
+|---|---|
+| Очередь | `MetrikaOrderOutbox`: строка появляется в той же транзакции, что смена статуса и `StatusHistory`; dedupe по `StatusHistory.id`; статусы pending/processing/delivered/failed/skipped |
+| Кто меняет статус | шесть мест: `updateStatusOrder` (панель), `ScenarioDraftService` (LEAD → NEW), `SalaryService` (выплата → PAID), `PartnerApiController`, `partner-status-poll`, `telegram-update`; постановка в очередь — в первых четырёх, два последних нормализованный статус не меняют |
+| Что уходит | `simple_orders` (merge_mode=SAVE), один заказ — один файл: `OrderPhoto.id`, `createdAt` в поясе счётчика, ClientID строкой, IN_PROGRESS/PAID/CANCELLED, `totalOrder`, себестоимость из `order-cogs.ts` (та же, что в P&L), RUB. Без имени/телефона/почты/note |
+| Что не уходит | заявки (LEAD), отклонённые заявки (LEAD → CANCELLED без принятия), заказы без ClientID (skipped/no_client_id) |
+| Рубильник | `YANDEX_METRIKA_ORDERS_SYNC_ENABLED` — по умолчанию выключено: очередь копится, наружу не уходит |
+| CLI | `npm run metrika:orders -- status \| preview --order <id> \| send --order <id> [--live] \| requeue` |
+| Себестоимость | вынесена в `reports/order-cogs.ts`; отчёт и Метрика считают одной функцией; в неё не входят зарплата и доставка перевозчику (в P&L они отдельными строками) |
+| Живой POST | не выполнялся; кандидат — заказ 20260815-050 (фото, PAID); ждёт токена и команды владельца |
+| Дрейф миграций | в боевой базе три миграции без файлов в репозитории (`20260531222621_add_yandex_request_id`, `20260531224724_add_delivery_info`, `20260728190000_add_gulian_transactional_outbox`); deploy их терпит |
+| master | ушёл вперёд (Web Push, 11.09.2026) — слит в `feature/analytics-foundation`; обратно не сливался |
+
+---
 # 6. Что уже готово из целевой картины
 
 - Сайт собирает всё нужное для атрибуции и доставляет в CRM — данные

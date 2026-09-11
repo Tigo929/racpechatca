@@ -5,8 +5,12 @@
 ## Статус
 
 ```text
-IN_PROGRESS
+REVIEW — READY_FOR_LIVE_WRITE_TEST
 ```
+
+Фаза 1 (реализация без production write) выполнена 11.09.2026 — отчёт в
+разделе 71. Живой POST не выполнялся: ждёт нового токена на сервере и
+команды владельца «разрешаю live write».
 
 > Исполнитель не имеет права самостоятельно ставить этапу `DONE`.
 > После выполнения этап переводится в `REVIEW`.
@@ -2033,3 +2037,349 @@ READY_FOR_LIVE_WRITE_TEST
 5. верни `EXECUTOR_REPORT_LIVE_WRITE`.
 
 Production branches не сливай без отдельной команды.
+
+---
+
+# 71. EXECUTOR_REPORT — фаза 1, 11.09.2026
+
+## 1. RESULT
+
+```text
+READY_FOR_LIVE_WRITE_TEST
+```
+
+Реализация без production write выполнена целиком: очередь, воркер, снимок
+заказа, финансы из P&L, тесты. Живой POST не выполнялся. Production не тронут.
+
+## 2. GIT
+
+```text
+repo:                    racpechatca
+branch:                  feature/analytics-foundation
+commit:                  12cb9d8 (этап 06), b24d2f2 (merge origin/master → ветка),
+                         далее — документы
+push:                    origin/feature/analytics-foundation
+git status:              чисто
+master touched:          no  (master слит В ветку, чтобы она осталась
+                         сливаемой: за день на master ушёл Web Push;
+                         обратного слияния не было)
+web production touched:  no  (сайт не менялся; feature/analytics-event-model
+                         не слита, browser purchase на бою по-прежнему есть)
+```
+
+## 3. API DECISION
+
+```text
+endpoint:          POST /cdp/api/v1/counter/111569944/data/simple_orders
+                   ?merge_mode=SAVE&delimiter_type=COMMA
+                   multipart/form-data, поле file (orders.csv)
+merge_mode:        SAVE — каждый раз уходит полный канонический снимок заказа
+format:            CSV, полный официальный заголовок:
+                   id,create_date_time,client_uniq_id,client_ids,emails,phones,
+                   order_status,revenue,cost,goals,currency
+                   заполняем id, create_date_time, client_ids, order_status,
+                   revenue, cost, currency=RUB; остальное пусто
+why simple_orders: у CRM нет сущности клиента; ClientID лежит прямо на
+                   OrderPhoto; один стабильный id обновляет заказ; не нужны
+                   contacts/product lists/status mapping. Товары не передаём.
+диагностика:       GET /cdp/api/v1/counter/111569944/last_uploadings (только чтение)
+проверено по документации: форматы дат CSV (yyyy-MM-dd HH:mm:ss — поддерживаемый),
+                   колонки simple_orders, ответ uploading{uploading_id,
+                   api_validation_status PASSED|FAILED, elements_count, …}
+```
+
+## 4. COUNTER TIMEZONE
+
+```text
+time_zone_name:    не читался — токена нет (см. § 11); в коде НЕ предполагается
+time_zone_offset:  —
+source:            воркер перед первой отправкой читает
+                   GET /management/v1/counter/111569944 → time_zone_name
+                   (IANA), проверяет через Intl, кэширует на процесс; пояс не
+                   прочитан или непригоден → строка ждёт повтора, отправки нет.
+                   Фактическое значение будет записано в отчёте фазы 2
+                   (`metrika:orders status` печатает пояс и смещение).
+```
+
+## 5. STATUS MAPPING
+
+```text
+CRM transition/state                      | normalized Metrika status | enqueue? | reason
+------------------------------------------+---------------------------+----------+------------------------------------------
+LEAD (создание заявки)                    | —                         | нет      | заявка — не заказ
+LEAD → NEW                                | IN_PROGRESS               | да       | первый момент «заявка стала заказом»
+NEW → APPROVAL_SENT/FOLDER…/IN_PROGRESS/  | IN_PROGRESS               | нет      | нормализованный статус не изменился
+   PRINTED/READY/SHIPMENT_CREATED/DONE/   |                           |          |
+   SENT/READY_FOR_REVIEW/COMPLETED/PROBLEM|                           |          |
+любой рабочий → PAID                      | PAID                      | да       | оплата
+любой рабочий → CANCELLED                 | CANCELLED                 | да       | отмена принятого заказа
+LEAD → CANCELLED                          | CANCELLED                 | ставится | воркер проверит право: без принятия —
+                                          |                           |          | skipped/not_eligible_rejected_lead
+CANCELLED → NEW (и любой рабочий)         | IN_PROGRESS               | да       | возврат в работу
+PAID → CANCELLED                          | CANCELLED                 | да       | отмена оплаченного
+PAID → рабочий                            | IN_PROGRESS               | да       | оплату сняли — заказ снова в работе
+NEW → LEAD (откат в заявку)               | —                         | нет      | в Метрике заказ остаётся как был:
+                                          |                           |          | это не отмена, врать нельзя
+```
+
+Отправляется всегда **текущее** нормализованное состояние заказа в момент
+обработки строки, а не то, ради чего строка появилась (устаревшая строка
+после повтора не перезапишет свежий статус).
+
+Точки постановки — все места CRM, где пишется StatusHistory и меняется статус:
+`OrderPhotoService.updateStatusOrder` (панель), `ScenarioDraftService`
+(оформление заказа из заявки: LEAD → NEW), `SalaryService` (выплата зарплаты
+переводит заказ в PAID), `PartnerApiController` (партнёр: in_progress/ready —
+обычно ничего не ставит, но покрывает возврат отменённого). Два писателя без
+постановки — по построению не меняют нормализованный статус: `partner-status-poll`
+исключает PAID/CANCELLED, `telegram-update` ставит только рабочие статусы и
+отказывает по отменённым.
+
+## 6. ELIGIBILITY
+
+```text
+accepted order definition:  текущий статус — любой рабочий или PAID (B); либо
+                            в StatusHistory есть переход С или В рабочий статус
+                            (A: читается по toStatus И fromStatus — заказ,
+                            заведённый руками сразу в NEW, строки «→ NEW» не
+                            имеет, но его отмена запишется как NEW → CANCELLED);
+                            либо заказ уже доставлялся в Метрику (C: есть
+                            строка очереди delivered)
+lead cancellation behavior: LEAD → CANCELLED без принятия → skipped,
+                            skipReason=not_eligible_rejected_lead; заказ в
+                            Метрике не создаётся
+no ClientID behavior:       skipped, skipReason=no_client_id; телефон/почта из
+                            note не используются; считается отдельно в CLI
+                            (skippedNoClientId)
+reopen behavior:            CANCELLED → NEW ставит IN_PROGRESS; тот же
+                            OrderPhoto.id, SAVE обновляет заказ; уникальных
+                            ограничений вида (orderId, status) нет — dedupe
+                            только по StatusHistory.id
+```
+
+Уточнение правила 21 по фактической модели: PROBLEM в StatusHistory — строка
+(telegram пишет toStatus='PROBLEM', а статус заказа ставит IN_PROGRESS);
+считается рабочим статусом принятого заказа.
+
+## 7. PAYLOAD
+
+Реальный заказ из копии базы (ClientID скрыт):
+
+```text
+id,create_date_time,client_uniq_id,client_ids,emails,phones,order_status,revenue,cost,goals,currency
+2a20a0df-8ff5-4711-acaa-8e9321dddfef,2026-08-15 18:40:12,,1786…(19 цифр),,,PAID,500,13,,RUB
+```
+
+(дата — в поясе Europe/Moscow, который в проверке подставлял фиктивный
+клиент; в бою пояс придёт из счётчика.)
+
+## 8. FINANCIAL MAPPING
+
+```text
+revenue source:    OrderPhoto.totalOrder — договорная сумма заказа целиком:
+                   позиции + доставка + дизайн + срочность; то, что платит клиент.
+                   Гипотеза «Yandex revenue = totalOrder» подтверждена кодом:
+                   отчёт кладёт totalOrder в оборот (PnlRaw.totalRevenue), а
+                   выручку признаёт по оплате (clientPaidAt → completedAt → …).
+                   Для Метрики revenue = сумма заказа, признание — статусом PAID.
+cost source:       себестоимость по заказу = ровно cogs P&L-отчёта:
+                   фото — бумага по формату (photo-material.ts, копейки → ceil ₽);
+                   футболки — вознаграждение партнёру (settleOrder(settlementPositions)):
+                   материалы + доля маржи; холсты — сумма contractorCostPosition.
+                   Зарплата и доставка перевозчику НЕ входят — в отчёте они тоже
+                   вне cogs (отдельные строки). ExpenseOrder не используется:
+                   в отчёте авто-расходы подрядчиков в себестоимость не идут
+                   (иначе двойной учёт).
+shared P&L logic:  crm-new/src/reports/order-cogs.ts — orderCostOfGoods(order,
+                   settings), costSettingsFrom(partnerSettings)
+refactor made:     формула вынесена из addOrder (reports.service.ts) в
+                   order-cogs.ts; addOrder и costSettings() теперь вызывают её.
+                   Числа не менялись — только место.
+parity result:     order-cogs.spec.ts: для фото/футболок/холстов cogs заказа ==
+                   то, что addOrder кладёт в bucket, и == finalize(b).cogs;
+                   существующие reports-pnl тесты зелёные.
+cost coverage:     ненадёжной считается себестоимость без позиций или для
+                   неизвестной категории → колонка cost пустая (не 0).
+                   На копии базы у 11 заказов с ClientID: 10 с позициями
+                   (cost надёжен), 1 заявка без позиций (LEAD, не отправляется).
+```
+
+## 9. OUTBOX
+
+```text
+model:                  MetrikaOrderOutbox (Prisma), миграция
+                        20260912090000_metrika_order_outbox — новая таблица,
+                        FK → OrderPhoto (cascade), индексы (status,nextAttemptAt),
+                        (orderId), unique(dedupeKey)
+поля:                   id, orderId, dedupeKey, sourceStatusHistoryId,
+                        targetMetrikaStatus, sentMetrikaStatus, status
+                        (pending|processing|delivered|failed|skipped), skipReason,
+                        attemptCount, nextAttemptAt, lockedAt, processedAt,
+                        lastError, responseCode, remoteUploadingId,
+                        apiValidationStatus, elementsCount, createdAt, updatedAt
+dedupe strategy:        dedupeKey = history:<StatusHistory.id> (unique);
+                        повтор — P2002, молча пропускается; ручные строки —
+                        manual:<uuid>
+source transition id:   StatusHistory.id (та же транзакция, что статус)
+locking:                UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED)
+                        RETURNING — как у GulianOutbox
+retry:                  60 с, 5 мин, 15 мин, 1 ч, 6 ч (далее 6 ч), максимум 20
+                        попыток — как у GulianOutbox; только на 429/5xx/сеть/
+                        таймаут; not_configured — пауза 1 ч без расхода попытки
+dead-letter/manual:     400, 401, 403, api_validation_status≠PASSED, заказ не
+                        найден → failed сразу; строка не удаляется;
+                        `metrika:orders requeue --order <id> | --all-failed`
+payload strategy:       B — очередь хранит intended status + переход, снимок
+                        строится из актуального заказа при отправке;
+                        create_date_time/id детерминированы
+```
+
+## 10. WORKER
+
+```text
+trigger/schedule:   setInterval 30 с + первый прогон через 5 с
+                    (как GulianOutboxProcessor); только при
+                    YANDEX_METRIKA_ORDERS_SYNC_ENABLED=true И настроенном клиенте
+batch size:         10 строк за прогон; 1 заказ = 1 upload
+timeout:            10 с на запрос (клиент), без повторов внутри клиента для POST
+success condition:  HTTP 200 и api_validation_status == PASSED →
+                    delivered, сохранены uploading_id, elements_count,
+                    sentMetrikaStatus, processedAt
+failure handling:   см. § 9; лог: orderId, статус, попытка, HTTP, мс,
+                    uploading_id, ClientID маской (4 цифры)
+switch:             YANDEX_METRIKA_ORDERS_SYNC_ENABLED (compose, .env.example);
+                    по умолчанию false — очередь копится, наружу не уходит.
+                    Контрольная отправка из CLI рубильник обходит намеренно.
+```
+
+## 11. SECURITY
+
+```text
+old token revoked:    unknown  (действие владельца; в чат не сообщалось)
+new token on server:  no       (ключей YANDEX_METRIKA_* в /opt/raspechatka/.env нет)
+client secret rotated: unknown
+token logged:         no
+PII sent:             ничего: ClientID, id заказа, дата, статус, сумма,
+                      себестоимость, RUB. Имя/телефон/почта/note/designNote —
+                      нет (колонки emails/phones/client_uniq_id пустые)
+```
+
+## 12. TESTS
+
+| Команда | Результат |
+|---|---|
+| `npx jest src/metrika/orders` | 74 passed: статусы и переходы (§54), eligibility A/B/C, CSV/экранирование (§57), ClientID 20 цифр (§55), даты/DST/детерминизм (§56), снимок/пропуски, постановка в tx + rollback (§59), воркер: PASSED, FAILED, 429/500/таймаут/сеть → retry (§60), 400/401/403 → failed, паузы 60→21600 с, 20 попыток, идемпотентность (§61), изоляция сбоев, рубильник |
+| `npx jest src/reports` | order-cogs паритет с addOrder/finalize (§58) + существующие P&L |
+| `npx jest src/metrika` | 93 passed (клиент: POST multipart, merge_mode=SAVE, без повторов на POST, 403 → offline_data, last_uploadings) |
+| `npx jest` (вся CRM) | **70 suites, 730 passed** |
+| `npm run build` | OK |
+| `npx tsc --noEmit` | без новых ошибок (те же 4 старых в двух spec-файлах master) |
+| Копия боевой базы `crm_stage06_test` на сервере (pg_dump crm), через SSH-туннель | `prisma migrate deploy` — 3 миграции применились; `analytics:backfill --apply` на копии — 11 ClientID; e2e-скрипт с фиктивным клиентом: постановка в транзакции, откат транзакции → строки нет, дубль по unique → пропуск, захват FOR UPDATE SKIP LOCKED, 503 → retry → delivered (attempts=2), skipped rejected_lead и no_client_id, processById на не-pending → null, counters; `metrika:orders status/preview` работают |
+| Запуск CRM (`node dist/src/main.js`) против копии | DI собрался: MetrikaOrdersModule initialized, воркер: «отправка выключена» |
+
+Живой POST в Метрику **не выполнялся** ни в одном тесте.
+
+## 13. LIVE WRITE
+
+```text
+executed:                    no
+candidate order:             20260815-050  (id 2a20a0df-8ff5-4711-acaa-8e9321dddfef)
+                             фото, PAID с 02.09.2026, создан 15.08.2026 15:40 UTC,
+                             ClientID есть (19 цифр), totalOrder 500, cost 13 ₽,
+                             история LEAD→NEW→SENT→PAID — реальный заказ,
+                             история не искажается
+candidate normalized status: PAID
+запасной кандидат:           20260909-091 (фото, NEW → IN_PROGRESS, создан
+                             09.09.2026, ClientID есть, 534 ₽ / cost 12 ₽)
+payload validation ready:    yes — `npm run metrika:orders -- preview --order 20260815-050`
+owner approval required:     yes
+где выполнять:               из checkout ветки с новым токеном в окружении
+                             процесса, DATABASE_URL → копия crm_stage06_test
+                             (там уже есть таблица очереди и ClientID), команда
+                             `npm run metrika:orders -- send --order 20260815-050 --live`
+                             — один POST, строка очереди ляжет в копию, бой не тронут
+```
+
+## 14. FILES_CHANGED
+
+| Файл | Что | Почему |
+|---|---|---|
+| `crm-new/prisma/schema.prisma` | модель `MetrikaOrderOutbox`, связь с OrderPhoto | § 28–30 |
+| `crm-new/prisma/migrations/20260912090000_metrika_order_outbox/` | новая таблица | § 30 |
+| `crm-new/src/metrika/orders/metrika-order-status.ts` (+spec) | нормализация статусов, переходы, eligibility | § 16–22 |
+| `crm-new/src/metrika/orders/metrika-order-csv.ts` (+spec) | CSV, экранирование, дата в поясе счётчика | § 11–15, 57 |
+| `crm-new/src/metrika/orders/metrika-order-payload.ts` (+spec) | снимок заказа, пропуски, маска ClientID | § 7–10, 23–27, 53 |
+| `crm-new/src/metrika/orders/metrika-order-outbox.service.ts` (+spec) | постановка в очередь в транзакции, dedupe, requeue, счётчики | § 28–31 |
+| `crm-new/src/metrika/orders/metrika-order-outbox-processor.service.ts` (+spec) | воркер: захват, снимок, POST, PASSED, retry, failed | § 33–36 |
+| `crm-new/src/metrika/orders/metrika-orders.module.ts` | модуль, фабрика воркера с рубильником | — |
+| `crm-new/src/metrika/metrika-api.client.ts` (+spec) | `uploadSimpleOrders` (POST multipart, без повторов), `getLastUploadings` | § 4, 38 |
+| `crm-new/src/metrika/metrika.types.ts` | time_zone_*, типы загрузок | § 11, 36 |
+| `crm-new/src/metrika/metrika.config.ts` | `metrikaOrdersSyncEnabledFromEnv` | § 40 |
+| `crm-new/src/reports/order-cogs.ts` (+spec) | себестоимость заказа — общая функция | § 25–26 |
+| `crm-new/src/reports/reports.service.ts` | addOrder/costSettings через order-cogs | § 26 |
+| `crm-new/src/order-photo/order-photo.service.ts` | постановка в очередь в транзакции updateStatusOrder | § 28 |
+| `crm-new/src/scenarios/scenario-draft.service.ts` | LEAD → NEW ставит IN_PROGRESS | § 17 |
+| `crm-new/src/salary/salary.service.ts` | выплата → PAID ставит PAID | § 18 |
+| `crm-new/src/partner/partner-api.controller.ts` | транзакция + постановка | § 22 |
+| модули order-photo, scenario, salary, partner | импорт MetrikaOrdersModule | — |
+| `crm-new/src/analytics/metrika-orders.ts`, `package.json` | CLI status/preview/send/requeue | § 38–39 |
+| spec-файлы salary/scenarios/order-photo | заглушка очереди в конструкторах | — |
+| `docker-compose.prod.yml`, `.env.example` | `YANDEX_METRIKA_ORDERS_SYNC_ENABLED` | § 40 |
+| `docs/analytics/06_CRM_TO_METRIKA.md`, `00_MASTER_PLAN.md`, `01_CURRENT_STATE.md` | этот отчёт, статусы, факты | § 64 |
+
+## 15. NEW FACTS DISCOVERED
+
+1. **Боевая база содержит три миграции, которых нет в репозитории**
+   (`20260531222621_add_yandex_request_id`, `20260531224724_add_delivery_info`,
+   `20260728190000_add_gulian_transactional_outbox`) — `prisma migrate status`
+   на копии показал их как «в базе, но не локально». Deploy это терпит
+   (применяет только недостающие), но при первом же `migrate diff`/resolve
+   нужно помнить о дрейфе.
+2. **master ушёл вперёд на 5 коммитов (Web Push, миграция
+   `20260911120000_web_push`)** — слит в ветку; конфликты только в модулях и
+   конструкторе OrderPhotoService. Ветка снова сливаема.
+3. Статус меняют **шесть** мест в CRM, не одно (панель, оформление из заявки,
+   выплата зарплаты, партнёрский API, опрос партнёра, Telegram-кнопки).
+   Постановка в очередь стоит в четырёх; два оставшихся нормализованный
+   статус не меняют по построению.
+4. Все 11 заказов с ClientID на текущий момент — фото; футболки и холсты с
+   ClientID появятся только с новыми заявками после выкладки этапа 04.
+5. В себестоимости отчёта нет доставки перевозчику и зарплаты — они отдельные
+   строки P&L; поэтому в Метрику `cost` = чистая себестоимость товара
+   (бумага / партнёр / подрядчик). Для этапов 07–08: «прибыль» Метрики
+   (revenue − cost) будет выше чистой прибыли CRM ровно на зарплату и
+   доставку — это ожидаемо и должно быть подписано в дашборде.
+6. Дата CSV: официально поддерживаемые форматы включают `yyyy-MM-dd HH:mm:ss`
+   (страница «Форматы даты и времени»); в примерах Яндекса — `dd.MM.yyyy HH:mm`.
+   Используем первый.
+
+## 16. DEVIATIONS
+
+1. § 11 «перед live write получить time_zone_name» — токена нет, пояс не
+   прочитан; в коде он читается перед первой отправкой и без него отправки
+   нет. Фактическое значение — в отчёте фазы 2.
+2. § 30 — набор полей расширен (`status`, `skipReason`, `sentMetrikaStatus`,
+   `responseCode`, `elementsCount`) по образцу GulianOutbox.
+3. § 40/45 — добавлен рубильник `YANDEX_METRIKA_ORDERS_SYNC_ENABLED`: без него
+   выкладка ветки с токеном в окружении начала бы отправлять заказы сама, до
+   контрольного теста.
+4. Слит origin/master в ветку (не наоборот) — иначе ветку нельзя было бы
+   выложить без конфликтов; master не менялся.
+
+## 17. OPEN ISSUES
+
+1. Токен: отозвать показанный, выпустить новый (metrika:read +
+   metrika:offline_data), положить в `/opt/raspechatka/.env` — владелец.
+2. Client Secret — перевыпустить (владелец).
+3. Явное разрешение «разрешаю live write» — владелец; после него один POST
+   по заказу 20260815-050 из копии базы.
+4. Копия `crm_stage06_test` на сервере оставлена для фазы 2 (данные боевые,
+   доступ только внутри сети контейнеров); после фазы 2 удалить.
+5. Три миграции в боевой базе без файлов в репозитории (факт 1) — не блокер,
+   но перед rollout проверить `prisma migrate status` на бою.
+
+## 18. QUESTIONS FOR REVIEWER
+
+```text
+none
+```
