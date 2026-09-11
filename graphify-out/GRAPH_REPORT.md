@@ -1,16 +1,16 @@
 # Graph Report - raspechatka  (2026-09-11)
 
 ## Corpus Check
-- 494 files · ~262,075 words
+- 494 files · ~262,164 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3831 nodes · 7953 edges · 208 communities (156 shown, 52 thin omitted)
+- 3831 nodes · 7953 edges · 206 communities (155 shown, 51 thin omitted)
 - Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 328 edges (avg confidence: 0.79)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7e7ff86d`
+- Built from commit: `c4e72c52`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -23,7 +23,7 @@
 - jest
 - DtoOzonArchive
 - App.tsx
-- TshirtItemsTable.tsx
+- DtoUpdateTshirtItem
 - Roles
 - System Map
 - DtoCreateExpense
@@ -69,12 +69,12 @@
 - Исправленные проблемы
 - crm-new/README.md
 - SettingsPage.tsx
-- partner-payload.ts
+- partner-outbound.service.ts
 - scripts
 - frontend/package.json
 - Architecture
 - Architecture
-- OzonApiClient
+- ozon-orders.service.ts
 - package.json
 - approval-render.service.ts
 - task-reminder-rules.ts
@@ -101,7 +101,7 @@
 - ozon-attributes.ts
 - @nestjs/cli
 - image-card-batch.service.ts
-- ozon-warehouse.service.ts
+- OzonApiClient
 - ApprovalService
 - ProductsTab.tsx
 - supertest
@@ -121,7 +121,7 @@
 - DtoUpdateOzonUnitEconomics
 - task-reminder.service.spec.ts
 - DtoUpdateItemOrder
-- typescript-eslint
+- @types/react
 - vite
 - AvitoPage.tsx
 - render
@@ -134,7 +134,6 @@
 - pdf-lib
 - DtoOzonUpdateCardText
 - tg_greeter.py
-- DtoUpdateMockupTemplate
 - ТЗ: семантика и структура страниц raspechatkaa.ru
 - TelegramService
 - DtoUpdateOzonPrint
@@ -145,7 +144,7 @@
 - describe
 - scenario.controller.ts
 - DailyPlanService
-- canvas-item.service.ts
+- canvas-production-price.ts
 - marketplace.module.ts
 - PrismaService
 - Выкатка: репозиторий → сервер
@@ -153,7 +152,7 @@
 - DtoBulkStock
 - 2. Что уже сделано (этап 2 — карточки товаров)
 - parse_proxy
-- salary.service.ts
+- DtoCreatePayment
 - nginx-routes.spec.ts
 - DtoUpdateOzonCatalogTemplate
 - DtoAssignExecutor
@@ -165,9 +164,8 @@
 - delivery_line
 - OrderDetail.tsx
 - items_list
-- DtoCreatePaymentByAccruals
+- salary.service.ts
 - canvas.pricing.ts
-- webpush.ts
 - ozon-default-warehouses.ts
 - undici
 - telegram-update.service.ts
@@ -176,7 +174,7 @@
 - DtoUpdateOrder
 - ApprovalStorageService
 - @nestjs/passport
-- .createBonus
+- SalaryController
 - PartnerApiController
 - .createOrder
 - order-photo.controller.ts
@@ -247,7 +245,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (208 total, 52 thin omitted)
+## Communities (206 total, 51 thin omitted)
 
 ### Community 0 - "DtoCreateOzonPrint"
 Cohesion: 0.06
@@ -278,12 +276,12 @@ Cohesion: 0.27
 Nodes (14): DtoOzonArchive, DtoOzonPriceItem, DtoOzonStockItem, DtoOzonUpdatePrices, DtoOzonUpdateStocks, ArrayNotEmpty, IsArray, IsBoolean (+6 more)
 
 ### Community 7 - "App.tsx"
-Cohesion: 0.13
-Nodes (19): authApi, AdminRoute(), App(), AppRoutes(), CrmGate(), HomeRedirect(), LoginPage, MarketplaceRoute() (+11 more)
+Cohesion: 0.09
+Nodes (32): authApi, AdminRoute(), App(), AppRoutes(), CrmGate(), HomeRedirect(), LoginPage, MarketplaceRoute() (+24 more)
 
-### Community 8 - "TshirtItemsTable.tsx"
-Cohesion: 0.12
-Nodes (15): Props, CLIENT_ITEM_PRINT_NAME, FREE_PRICE_HINT, EditState, EMPTY, EMPTY_FREE, FreeState, PositionMoney() (+7 more)
+### Community 8 - "DtoUpdateTshirtItem"
+Cohesion: 0.08
+Nodes (17): CanvasItemService, canvasMoney(), Injectable, DtoUpdateTshirtItem, IsBoolean, IsEnum, IsInt, IsOptional (+9 more)
 
 ### Community 9 - "Roles"
 Cohesion: 0.14
@@ -366,12 +364,12 @@ Cohesion: 0.11
 Nodes (14): ACCOUNT_INCLUDE, AccountRow, CreateAccountInput, MarketplaceAccountService, MarketplaceAccountView, Injectable, UpdateAccountInput, OzonService (+6 more)
 
 ### Community 29 - "OzonCredentials"
-Cohesion: 0.19
+Cohesion: 0.20
 Nodes (3): OzonCredentials, OzonProductCatalogService, Injectable
 
 ### Community 30 - "app.module.ts"
-Cohesion: 0.07
-Nodes (31): AppModule, Module, ApprovalModule, Module, CanvasModule, Module, GulianModule, Module (+23 more)
+Cohesion: 0.08
+Nodes (25): AppModule, Module, ApprovalModule, Module, CanvasModule, Module, allowedOrigins(), bootstrap() (+17 more)
 
 ### Community 31 - "review-reminder.service.ts"
 Cohesion: 0.16
@@ -383,7 +381,7 @@ Nodes (11): PartnerAdminController, Controller, Get, Param, Post, Res, UploadedF
 
 ### Community 33 - "devDependencies"
 Cohesion: 0.11
-Nodes (19): eslint-plugin-react-hooks, devDependencies, eslint, eslint-plugin-react-hooks, globals, @tailwindcss/vite, @types/node, @types/react (+11 more)
+Nodes (19): eslint-plugin-react-hooks, devDependencies, eslint, eslint-plugin-react-hooks, globals, @tailwindcss/vite, @types/node, @types/react-dom (+11 more)
 
 ### Community 34 - "get-error-message.ts"
 Cohesion: 0.08
@@ -398,8 +396,8 @@ Cohesion: 0.10
 Nodes (16): ALLOWED_INPUT, OZON_PHOTO_MAX_BYTES, OZON_PHOTO_MAX_FILES, OzonPhotoStorageService, Injectable, OzonPhotoController, Controller, Get (+8 more)
 
 ### Community 37 - "SalaryService"
-Cohesion: 0.15
-Nodes (8): SalaryController, Controller, Delete, Get, Param, UseGuards, SalaryService, Injectable
+Cohesion: 0.16
+Nodes (5): Delete, Get, Param, SalaryService, Injectable
 
 ### Community 38 - "Интеграция с исполнителем-партнёром (печать футболок)"
 Cohesion: 0.12
@@ -450,8 +448,8 @@ Cohesion: 0.06
 Nodes (49): expensesApi, reportsApi, MySalaryBalance, salaryApi, MySalaryPage, ReportsPage, SalaryPage, buildReceiptHtml() (+41 more)
 
 ### Community 50 - "CreateOrderForm.tsx"
-Cohesion: 0.11
-Nodes (24): baseSchema, canvasItemSchema, clearOrderDraft(), CreateOrderForm(), EMPTY_ORDER_FORM, FormValues, freeItemSchema, fullSchema (+16 more)
+Cohesion: 0.06
+Nodes (37): baseSchema, canvasItemSchema, clearOrderDraft(), CreateOrderForm(), EMPTY_ORDER_FORM, FormValues, freeItemSchema, fullSchema (+29 more)
 
 ### Community 51 - "Исправленные проблемы"
 Cohesion: 0.18
@@ -462,12 +460,12 @@ Cohesion: 0.20
 Nodes (9): Compile and run the project, Deployment, Description, License, Project setup, Resources, Run tests, Stay in touch (+1 more)
 
 ### Community 53 - "SettingsPage.tsx"
-Cohesion: 0.09
-Nodes (30): api, partnerSettingsApi, shipmentLeadApi, usersApi, SettingsPage, UsersPage, MockupTemplatesCard(), DailyPlanCard() (+22 more)
+Cohesion: 0.11
+Nodes (22): api, partnerSettingsApi, pushApi, shipmentLeadApi, usersApi, SettingsPage, MockupTemplatesCard(), LeadNotifyBell() (+14 more)
 
-### Community 54 - "partner-payload.ts"
-Cohesion: 0.13
-Nodes (14): hasProductionItems(), NO_PRODUCTION_ITEMS_MESSAGE, OrderWithProductionItems, PartnerOutboundService, Injectable, buildPartnerOrderPayload(), PartnerOrderForPayload, PartnerOrderPayload (+6 more)
+### Community 54 - "partner-outbound.service.ts"
+Cohesion: 0.18
+Nodes (9): hasProductionItems(), NO_PRODUCTION_ITEMS_MESSAGE, OrderWithProductionItems, PartnerOutboundService, Injectable, getTechSpecPathAt(), getTechSpecPaths(), hasTechSpecFiles() (+1 more)
 
 ### Community 55 - "scripts"
 Cohesion: 0.14
@@ -485,9 +483,9 @@ Nodes (7): API routes (prefix: `/order-photo`), Architecture, Commands, Data mod
 Cohesion: 0.20
 Nodes (8): API routes (prefix: `/order-photo`), Architecture, Commands, Data model, Environment, Key behaviors, Module structure, Граф знаний (graphify)
 
-### Community 59 - "OzonApiClient"
-Cohesion: 0.09
-Nodes (22): humanize(), OzonApiClient, OzonApiError, OzonErrorBody, Injectable, GROUP_BY_STATUS, groupForStatus(), isShipmentOverdue() (+14 more)
+### Community 59 - "ozon-orders.service.ts"
+Cohesion: 0.16
+Nodes (14): GROUP_BY_STATUS, groupForStatus(), isShipmentOverdue(), OzonOrderGroup, STATUS_LABELS, statusLabel(), OzonOrderItem, OzonOrdersPage (+6 more)
 
 ### Community 60 - "package.json"
 Cohesion: 0.25
@@ -530,8 +528,8 @@ Cohesion: 0.06
 Nodes (58): baseCodeOf(), BulkStockHistoryRow, BulkStockInput, BulkStockItem, BulkStockMode, BulkStockOperation, BulkStockPreview, BulkStockWarehouseInput (+50 more)
 
 ### Community 70 - "GulianService"
-Cohesion: 0.17
-Nodes (7): GulianOutboxProcessorService, RETRY_DELAYS_SECONDS, Injectable, GulianOrderPayload, GulianResponse, GulianService, Injectable
+Cohesion: 0.15
+Nodes (9): GulianModule, Module, GulianOutboxProcessorService, RETRY_DELAYS_SECONDS, Injectable, GulianOrderPayload, GulianResponse, GulianService (+1 more)
 
 ### Community 71 - "seed.js"
 Cohesion: 0.40
@@ -577,12 +575,12 @@ Nodes (25): buildExtraImages(), buildImportItem(), CatalogTemplateForImport, chu
 Cohesion: 0.12
 Nodes (21): DtoCreateImageCardBatch, ArrayMaxSize, IsArray, IsBoolean, IsIn, IsOptional, IsString, IsUUID (+13 more)
 
-### Community 86 - "ozon-warehouse.service.ts"
-Cohesion: 0.12
-Nodes (16): editability(), isStale(), NOT_EDITABLE, RawWarehouse, sortForPicker(), toWarehouseStates(), WAREHOUSE_CACHE_TTL_MS, WarehouseState (+8 more)
+### Community 86 - "OzonApiClient"
+Cohesion: 0.08
+Nodes (24): humanize(), OzonApiClient, OzonApiError, OzonErrorBody, Injectable, OzonConnectionInfo, OzonProductListResponse, OzonWarehouseListResponse (+16 more)
 
 ### Community 87 - "ApprovalService"
-Cohesion: 0.11
+Cohesion: 0.12
 Nodes (12): Body, Patch, ApprovalService, Injectable, ApprovalSides, clamp(), filledSides(), MAX_PRINT_MM (+4 more)
 
 ### Community 88 - "ProductsTab.tsx"
@@ -598,8 +596,8 @@ Cohesion: 0.08
 Nodes (22): DtoCreateMarketplaceAccount, IsEnum, IsString, MaxLength, MinLength, DtoUpdateMarketplaceAccount, IsBoolean, IsOptional (+14 more)
 
 ### Community 93 - "MockupService"
-Cohesion: 0.11
-Nodes (14): MockupController, Body, Controller, Delete, Get, Param, Patch, Post (+6 more)
+Cohesion: 0.08
+Nodes (26): UploadedImage, DtoCreateMockupTemplate, DtoUpdateMockupTemplate, IsBoolean, IsEnum, IsInt, IsOptional, IsString (+18 more)
 
 ### Community 94 - "avito.controller.ts"
 Cohesion: 0.29
@@ -622,8 +620,8 @@ Cohesion: 0.18
 Nodes (3): ImageCardBatchService, summarize(), Injectable
 
 ### Community 100 - "tshirt-partner-telegram.service.ts"
-Cohesion: 0.08
-Nodes (33): CanvasProductionController, Controller, Get, UseGuards, escapeHtml(), EXT_CONTENT_TYPE, money(), PRINT_LOCATION_LABELS (+25 more)
+Cohesion: 0.09
+Nodes (28): escapeHtml(), EXT_CONTENT_TYPE, money(), PRINT_LOCATION_LABELS, PRINT_TYPE_LABELS, TechSpecAttachment, TshirtOrderWithItems, buildPartnerOrderPayload() (+20 more)
 
 ### Community 101 - "PdfRasterService"
 Cohesion: 0.21
@@ -642,8 +640,8 @@ Cohesion: 0.15
 Nodes (9): AsyncMock, AT_TEN, BEFORE_TEN, createStub(), LATE_NIGHT, setup(), Stub, TaskReminderService (+1 more)
 
 ### Community 105 - "DtoUpdateItemOrder"
-Cohesion: 0.17
-Nodes (11): DtoUpdateItemOrder, IsBoolean, IsEnum, IsInt, IsOptional, IsString, MaxLength, Min (+3 more)
+Cohesion: 0.09
+Nodes (19): DtoUpdateCanvasItem, IsIn, IsInt, IsOptional, IsString, MaxLength, Min, Type (+11 more)
 
 ### Community 112 - "AvitoPage.tsx"
 Cohesion: 0.22
@@ -655,15 +653,15 @@ Nodes (9): greeting_for(), money(), Обращение целиком, а не �
 
 ### Community 114 - "index.ts"
 Cohesion: 0.06
-Nodes (46): canvasProductionApi, CanvasProductionPricing, CanvasProductionSize, CanvasItemsTable(), EditState, EMPTY, money(), Props (+38 more)
+Nodes (48): canvasProductionApi, CanvasProductionPricing, CanvasProductionSize, Props, CanvasItemsTable(), EditState, EMPTY, money() (+40 more)
 
 ### Community 116 - "OrdersTab.tsx"
 Cohesion: 0.23
 Nodes (11): OzonOrder, OzonOrderGroup, OzonOrderItem, ozonOrdersApi, OzonOrdersPage, deadlineHint(), formatDateTime(), GROUPS (+3 more)
 
 ### Community 117 - "partner-api.controller.ts"
-Cohesion: 0.09
-Nodes (18): DtoPartnerStatus, IsString, Body, Patch, FLOW_RANK, FROM_PARTNER, fromPartnerStatus(), mapPartnerStage() (+10 more)
+Cohesion: 0.08
+Nodes (22): StickerModule, Module, DtoPartnerStatus, IsString, Body, Patch, PartnerModule, Module (+14 more)
 
 ### Community 118 - "telegram.module.ts"
 Cohesion: 0.14
@@ -676,10 +674,6 @@ Nodes (5): DtoOzonUpdateCardText, IsOptional, IsString, MaxLength, MinLength
 ### Community 122 - "tg_greeter.py"
 Cohesion: 0.18
 Nodes (11): Exception, Crm, Fatal, load_templates(), main(), Очередь и отметки. Ошибки сети не роняют процесс — просто ждём., Одно сообщение. Возвращает итог из закрытого списка, который знает CRM. Все…, Настройки неверны — работать нельзя, перезапуск не поможет. (+3 more)
-
-### Community 123 - "DtoUpdateMockupTemplate"
-Cohesion: 0.23
-Nodes (12): UploadedImage, DtoCreateMockupTemplate, DtoUpdateMockupTemplate, IsBoolean, IsEnum, IsInt, IsOptional, IsString (+4 more)
 
 ### Community 124 - "ТЗ: семантика и структура страниц raspechatkaa.ru"
 Cohesion: 0.07
@@ -698,7 +692,7 @@ Cohesion: 0.14
 Nodes (13): approvalInclude, SIZE_LABELS, DtoCreateApproval, IsEnum, IsOptional, IsString, IsUUID, DtoUpdateApproval (+5 more)
 
 ### Community 130 - "Param"
-Cohesion: 0.13
+Cohesion: 0.12
 Nodes (11): parseSide(), Delete, Get, Param, Post, Query, Res, UploadedFile (+3 more)
 
 ### Community 131 - "describe"
@@ -713,17 +707,17 @@ Nodes (22): DtoDetectProduct, IsString, MaxLength, DtoSaveDraft, IsObject, IsOpt
 Cohesion: 0.29
 Nodes (3): isWithinPlanWindow(), DailyPlanService, Injectable
 
-### Community 134 - "canvas-item.service.ts"
-Cohesion: 0.11
-Nodes (21): CANVAS_MATERIAL_KIND_LABELS, CANVAS_PRODUCTION_PRICES, canvasContractorCost(), CanvasMaterialKind, CanvasPositionPricing, CanvasProductionPrice, canvasRetailPrice(), canvasSizeLabel() (+13 more)
+### Community 134 - "canvas-production-price.ts"
+Cohesion: 0.18
+Nodes (14): CanvasProductionController, Controller, Get, UseGuards, CANVAS_MATERIAL_KIND_LABELS, CANVAS_PRODUCTION_PRICES, canvasContractorCost(), CanvasMaterialKind (+6 more)
 
 ### Community 135 - "marketplace.module.ts"
 Cohesion: 0.10
 Nodes (25): SIDES, ALLOWED_IMAGE, APPROVAL_MAX_BYTES, SavedImage, AuthenticatedRequest, AuthenticatedUser, ROLES_KEY, JwtAuthGuard (+17 more)
 
 ### Community 136 - "PrismaService"
-Cohesion: 0.05
-Nodes (30): JwtPayload, JwtStrategy, Injectable, HealthController, Controller, Get, DtoUpdateTshirtItem, IsBoolean (+22 more)
+Cohesion: 0.07
+Nodes (22): JwtPayload, JwtStrategy, Injectable, HealthController, Controller, Get, FinancialClient, OrderFinancialIntegrityService (+14 more)
 
 ### Community 137 - "Выкатка: репозиторий → сервер"
 Cohesion: 0.29
@@ -745,8 +739,8 @@ Nodes (19): 1.1. Что показал живой кабинет (17.08.2026), 1
 Cohesion: 0.33
 Nodes (3): parse_proxy(), Словарь для Telethon или None, если прокси не задан. Формат именно словаря…, TestParse
 
-### Community 142 - "salary.service.ts"
-Cohesion: 0.20
+### Community 142 - "DtoCreatePayment"
+Cohesion: 0.25
 Nodes (7): DtoCreatePayment, IsInt, IsOptional, IsString, IsUUID, Min, Type
 
 ### Community 143 - "nginx-routes.spec.ts"
@@ -793,17 +787,13 @@ Nodes (44): ordersApi, DispatchToExecutorModal(), PayoutInfo, Props, rub(), Gree
 Cohesion: 0.43
 Nodes (3): items_list(), Список позиций — по строке на позицию. Именно он отличает ответ на действие от…, TestItemsList
 
-### Community 154 - "DtoCreatePaymentByAccruals"
-Cohesion: 0.29
+### Community 154 - "salary.service.ts"
+Cohesion: 0.20
 Nodes (6): DtoCreatePaymentByAccruals, ArrayMinSize, IsArray, IsOptional, IsString, IsUUID
 
 ### Community 155 - "canvas.pricing.ts"
 Cohesion: 0.16
 Nodes (16): CanvasPricingController, Controller, Get, calcCanvasUnitPrice(), calcCanvasUrgencyFee(), CANVAS_FRAME_LABELS, CANVAS_MATERIAL_LABELS, CANVAS_SIZES (+8 more)
-
-### Community 156 - "webpush.ts"
-Cohesion: 0.50
-Nodes (5): pushApi, LeadNotifyBell(), enableWebPush(), pushSupported(), urlBase64ToUint8Array()
 
 ### Community 157 - "ozon-default-warehouses.ts"
 Cohesion: 0.47
@@ -820,6 +810,10 @@ Nodes (11): DtoUpdateOrder, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Matc
 ### Community 163 - "ApprovalStorageService"
 Cohesion: 0.18
 Nodes (5): ApprovalRenderService, layoutSlots(), Injectable, ApprovalStorageService, Injectable
+
+### Community 165 - "SalaryController"
+Cohesion: 0.33
+Nodes (5): SalaryController, Body, Controller, Post, UseGuards
 
 ### Community 166 - "PartnerApiController"
 Cohesion: 0.32
@@ -860,16 +854,16 @@ Nodes (3): Get, Param, Query
 ## Knowledge Gaps
 - **822 isolated node(s):** `$schema`, `collection`, `sourceRoot`, `deleteOutDir`, `name` (+817 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **52 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **51 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Roles()` connect `Roles` to `tasks.controller.ts`, `DtoUpdateUser`, `scenario.controller.ts`, `marketplace.module.ts`, `DtoCreateExpense`, `reports.service.ts`, `AvitoService`, `TechSpecStorageService`, `ozon-photo.controller.ts`, `SalaryService`, `order-photo.controller.ts`, `DtoUpdatePartnerSettings`, `ApprovalController`, `ImageCardBatchController`, `image-card-template.service.ts`, `MarketplaceController`, `MockupService`, `avito.controller.ts`, `OzonCatalogController`, `tshirt-partner-telegram.service.ts`, `OzonProductCatalogController`?**
+- **Why does `Roles()` connect `Roles` to `tasks.controller.ts`, `DtoUpdateUser`, `scenario.controller.ts`, `canvas-production-price.ts`, `marketplace.module.ts`, `DtoCreateExpense`, `reports.service.ts`, `AvitoService`, `TechSpecStorageService`, `ozon-photo.controller.ts`, `SalaryController`, `order-photo.controller.ts`, `DtoUpdatePartnerSettings`, `ApprovalController`, `ImageCardBatchController`, `image-card-template.service.ts`, `MarketplaceController`, `MockupService`, `avito.controller.ts`, `OzonCatalogController`, `OzonProductCatalogController`?**
   _High betweenness centrality (0.227) - this node is a cross-community bridge._
 - **Why does `BatchView()` connect `Param` to `get-error-message.ts`, `getErrorMessage`?**
   _High betweenness centrality (0.160) - this node is a cross-community bridge._
-- **Why does `PrismaService` connect `PrismaService` to `approval.service.ts`, `tasks.controller.ts`, `DtoUpdateUser`, `sticker.service.ts`, `DailyPlanService`, `canvas-item.service.ts`, `marketplace.module.ts`, `DtoCreateExpense`, `reports.service.ts`, `daily-plan-rules.ts`, `AvitoService`, `salary.service.ts`, `ozon-unit-economics.service.ts`, `ozon-bulk-stock.service.ts`, `image-card-placement.ts`, `MarketplaceAccountService`, `app.module.ts`, `telegram-update.service.ts`, `review-reminder.service.ts`, `ApprovalStorageService`, `SalaryService`, `PartnerApiController`, `scenario.registry.ts`, `PushService`, `auth.controller.ts`, `my-balance.spec.ts`, `image-card-generation.service.ts`, `order-photo.service.ts`, `salary-integrity.spec.ts`, `partner-payload.ts`, `OzonApiClient`, `task-reminder-rules.ts`, `client-greeting.service.ts`, `GulianService`, `OzonPrintService`, `shipment-reminder-rules.ts`, `ozon-import.service.ts`, `image-card-template.service.ts`, `image-card-batch.service.ts`, `ozon-warehouse.service.ts`, `ImageCardStorageService`, `MockupService`, `TshirtPartnerTelegramService`, `ImageCardBatchService`, `tshirt-partner-telegram.service.ts`, `PdfRasterService`, `task-reminder.service.spec.ts`, `partner-api.controller.ts`, `DtoUpdateMockupTemplate`, `TelegramService`?**
+- **Why does `PrismaService` connect `PrismaService` to `approval.service.ts`, `tasks.controller.ts`, `DtoUpdateUser`, `sticker.service.ts`, `DailyPlanService`, `marketplace.module.ts`, `DtoUpdateTshirtItem`, `DtoCreateExpense`, `reports.service.ts`, `daily-plan-rules.ts`, `AvitoService`, `ozon-unit-economics.service.ts`, `ozon-bulk-stock.service.ts`, `image-card-placement.ts`, `salary.service.ts`, `MarketplaceAccountService`, `app.module.ts`, `telegram-update.service.ts`, `review-reminder.service.ts`, `ApprovalStorageService`, `SalaryService`, `PartnerApiController`, `scenario.registry.ts`, `PushService`, `auth.controller.ts`, `my-balance.spec.ts`, `image-card-generation.service.ts`, `order-photo.service.ts`, `salary-integrity.spec.ts`, `partner-outbound.service.ts`, `task-reminder-rules.ts`, `client-greeting.service.ts`, `GulianService`, `OzonPrintService`, `shipment-reminder-rules.ts`, `ozon-import.service.ts`, `image-card-template.service.ts`, `image-card-batch.service.ts`, `OzonApiClient`, `ImageCardStorageService`, `MockupService`, `TshirtPartnerTelegramService`, `ImageCardBatchService`, `tshirt-partner-telegram.service.ts`, `PdfRasterService`, `task-reminder.service.spec.ts`, `partner-api.controller.ts`, `TelegramService`?**
   _High betweenness centrality (0.126) - this node is a cross-community bridge._
 - **What connects `$schema`, `collection`, `sourceRoot` to the rest of the system?**
   _822 weakly-connected nodes found - possible documentation gaps or missing edges._

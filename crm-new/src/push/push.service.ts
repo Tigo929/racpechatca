@@ -85,6 +85,9 @@ export class PushService implements OnModuleInit {
     try {
       if (!this.publicKey) await this.ensureConfig();
       const subs = await this.prisma.pushSubscription.findMany();
+      // Логируем число подписок: по нему видно, подписался ли кто-то вообще
+      // (0 = никто не нажал «включить уведомления» в браузере).
+      this.logger.log(`Web Push: рассылка в ${subs.length} подписк(и/у)`);
       if (subs.length === 0) return;
       const data = JSON.stringify(payload);
       await Promise.all(

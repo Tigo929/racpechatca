@@ -507,21 +507,22 @@ export class OrderPhotoService {
         pickLeadResponders(users, settings?.leadMentionUsernames ?? ''),
       );
       await this.telegram.sendToGroup(text);
-      // Плюс браузерный Web Push — чтобы заявку было видно, даже когда вкладка
-      // CRM закрыта. Ошибки внутри проглатываются, заявку это не задерживает.
-      await this.push.sendToAll({
-        title: '🖨 Новая заявка с сайта',
-        body: [dto.name, dto.productName, dto.quantity ? `${dto.quantity} шт` : '']
-          .filter(Boolean)
-          .join(' · ') || 'Пришла заявка — её нужно обработать',
-        url: '/crm/leads',
-      });
     } catch (error) {
       // Заявка уже принята и лежит в CRM — молчание бота её не отменяет.
       this.logger.warn(
         `Не удалось уведомить о заявке ${created.numberOrder}: ${String(error)}`,
       );
     }
+    // Web Push — отдельно от Telegram: сбой одного канала не должен отменять
+    // другой. Приходит и при закрытой вкладке CRM.
+    await this.push.sendToAll({
+      title: '🖨 Новая заявка с сайта',
+      body:
+        [dto.name, dto.productName, dto.quantity ? `${dto.quantity} шт` : '']
+          .filter(Boolean)
+          .join(' · ') || 'Пришла заявка — её нужно обработать',
+      url: '/crm/leads',
+    });
   }
 
   private async createLeadTx(dto: DtoCreateLead) {

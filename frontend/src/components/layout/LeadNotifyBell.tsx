@@ -26,6 +26,17 @@ export function LeadNotifyBell() {
     return () => window.removeEventListener('focus', sync);
   }, [supported]);
 
+  // Если разрешение уже выдано (например, включил уведомления ДО появления
+  // Web Push) — тихо до-подписываем на пуш при загрузке, без повторного клика.
+  // Иначе такой пользователь считал бы, что всё включено, а подписки нет.
+  useEffect(() => {
+    if (perm === 'granted' && pushSupported()) {
+      enableWebPush().catch(() => {
+        /* нет поддержки/сеть — уведомления в открытой вкладке всё равно есть */
+      });
+    }
+  }, [perm]);
+
   if (!supported) return null;
 
   const request = async () => {
