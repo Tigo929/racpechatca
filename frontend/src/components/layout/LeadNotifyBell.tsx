@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Bell, BellOff, BellRing } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { enableWebPush, pushSupported } from '../../utils/webpush';
 
 /**
  * Кнопка «уведомления о заявках» в шапке.
@@ -36,19 +37,29 @@ export function LeadNotifyBell() {
     }
     const result = await Notification.requestPermission();
     setPerm(result);
-    if (result === 'granted') {
-      toast.success('Уведомления о заявках включены');
-      // Пробный сигнал — сразу видно, что работает.
-      try {
-        new Notification('🔔 Уведомления включены', {
-          body: 'Теперь новые заявки с сайта будут приходить сюда',
-          tag: 'lead-notify-test',
-        });
-      } catch {
-        /* пусто */
-      }
-    } else {
+    if (result !== 'granted') {
       toast('Уведомления не включены');
+      return;
+    }
+    toast.success('Уведомления о заявках включены');
+    // Пробный сигнал — сразу видно, что работает.
+    try {
+      new Notification('🔔 Уведомления включены', {
+        body: 'Теперь новые заявки с сайта будут приходить сюда',
+        tag: 'lead-notify-test',
+      });
+    } catch {
+      /* пусто */
+    }
+    // Плюс подписка на Web Push — чтобы приходило и при закрытой вкладке. Если
+    // не вышло (нет поддержки/сеть) — не страшно: пока вкладка открыта,
+    // уведомления всё равно работают.
+    if (pushSupported()) {
+      try {
+        await enableWebPush();
+      } catch {
+        toast('Фон включён частично: при закрытой вкладке может не прийти');
+      }
     }
   };
 

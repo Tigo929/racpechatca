@@ -57,6 +57,7 @@ import {
   buildLeadNotification,
   pickLeadResponders,
 } from './lead-notification';
+import { PushService } from '../push/push.service';
 
 // Сборка ссылки на переписку живёт в communication-url.ts — там же тесты
 // на нормализацию телефона для MAX.
@@ -208,6 +209,7 @@ export class OrderPhotoService {
     private readonly partnerSettings: PartnerSettingsService,
     private readonly tshirtPartnerTelegram: TshirtPartnerTelegramService,
     private readonly gulianOutbox: GulianOutboxService,
+    private readonly push: PushService,
   ) {}
 
   async createOrder(dto: DtoCreateOrder, adminId?: string) {
@@ -505,6 +507,15 @@ export class OrderPhotoService {
         pickLeadResponders(users, settings?.leadMentionUsernames ?? ''),
       );
       await this.telegram.sendToGroup(text);
+      // Плюс браузерный Web Push — чтобы заявку было видно, даже когда вкладка
+      // CRM закрыта. Ошибки внутри проглатываются, заявку это не задерживает.
+      await this.push.sendToAll({
+        title: '🖨 Новая заявка с сайта',
+        body: [dto.name, dto.productName, dto.quantity ? `${dto.quantity} шт` : '']
+          .filter(Boolean)
+          .join(' · ') || 'Пришла заявка — её нужно обработать',
+        url: '/crm/leads',
+      });
     } catch (error) {
       // Заявка уже принята и лежит в CRM — молчание бота её не отменяет.
       this.logger.warn(

@@ -18,6 +18,7 @@ import { GulianModule } from './gulian/gulian.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { CanvasModule } from './canvas/canvas.module';
 import { ApprovalModule } from './approval/approval.module';
+import { PushModule } from './push/push.module';
 import { ImageCardsModule } from './marketplace/image-cards/image-cards.module';
 import { HealthController } from './health.controller';
 
@@ -49,6 +50,7 @@ import { HealthController } from './health.controller';
     CanvasModule,
     ApprovalModule,
     ImageCardsModule,
+    PushModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
