@@ -10,6 +10,8 @@ import { attributionFromLead } from './lead-attribution';
  */
 describe('атрибуция заявки с сайта', () => {
   it('сценарий A: полная атрибуция доходит до всех восьми полей', () => {
+    // pageUrl — страница, на которой отправлена заявка; в колонку она
+    // ложится под именем conversionPageUrl. Страница входа — не она.
     expect(
       attributionFromLead({
         yandexClientId: '1741367582193847',
@@ -29,7 +31,7 @@ describe('атрибуция заявки с сайта', () => {
       utmCampaign: 'holst-msk',
       utmContent: 'banner-1',
       utmTerm: 'печать на холсте',
-      landingUrl: 'https://raspechatkaa.ru/interer/holst?utm_source=yandex',
+      conversionPageUrl: 'https://raspechatkaa.ru/interer/holst?utm_source=yandex',
     });
   });
 
@@ -42,7 +44,7 @@ describe('атрибуция заявки с сайта', () => {
       utmCampaign: null,
       utmContent: null,
       utmTerm: null,
-      landingUrl: null,
+      conversionPageUrl: null,
     });
   });
 
@@ -58,7 +60,7 @@ describe('атрибуция заявки с сайта', () => {
     expect(result.yclid).toBeNull();
     expect(result.utmSource).toBe('yandex');
     expect(result.utmMedium).toBeNull();
-    expect(result.landingUrl).toBeNull();
+    expect(result.conversionPageUrl).toBeNull();
   });
 
   it('идентификаторы остаются строками — числовой ClientID не округляется', () => {

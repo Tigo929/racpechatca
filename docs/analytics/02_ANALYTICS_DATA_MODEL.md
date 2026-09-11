@@ -8,6 +8,12 @@
 REVIEW
 ```
 
+> **Поправка FIX_01 (11.09.2026).** Поле называется `conversionPageUrl` —
+> страница, на которой отправлена заявка. Страница входа на сайт
+> (first-touch landing) пока не сохраняется; отдельное поле под неё —
+> задача этапа `04_EVENT_MODEL`.
+
+
 > ВАЖНО: исполнитель не имеет права самостоятельно ставить этому этапу `DONE`.
 > После выполнения этап переводится в `REVIEW`.
 > Решение `DONE / NEEDS_FIX / BLOCKED` принимает ChatGPT после проверки отчёта исполнителя.
@@ -816,7 +822,7 @@ push:        да (рабочая ветка сайта, выкатываетс�
 | `utmCampaign` | `String?` | `TEXT` | да | нет |
 | `utmContent` | `String?` | `TEXT` | да | нет |
 | `utmTerm` | `String?` | `TEXT` | да | нет |
-| `landingUrl` | `String?` | `TEXT` | да | нет |
+| `conversionPageUrl` (до FIX_01 — `landingUrl`) | `String?` | `TEXT` | да | нет |
 | `clientPaidAt` (существовало) | `DateTime?` | `timestamp` | да | `OrderPhoto_clientPaidAt_idx` — новый |
 
 Типы: `String?` без `@db.VarChar` — так во всей схеме проекта; длину
@@ -842,7 +848,7 @@ push:        да (рабочая ветка сайта, выкатываетс�
 | utmCampaign | → `utmCampaign` | → `utm.campaign` | `utmCampaign` | то же | `utmCampaign` |
 | utmContent | → `utmContent` | → `utm.content` | `utmContent` | то же | `utmContent` |
 | utmTerm | → `utmTerm` | → `utm.term` | `utmTerm` | то же | `utmTerm` |
-| landingUrl | `window.location.href` → `pageUrl` | `pageUrl` | `pageUrl` | `pageUrl → landingUrl` | `landingUrl` |
+| conversionPageUrl | `window.location.href` → `pageUrl` | `pageUrl` | `pageUrl` | `pageUrl → conversionPageUrl` | `conversionPageUrl` |
 
 Преобразование на границе: сайт хранит метки как `utm_source` в
 `sessionStorage`, в поля заявки раскладывает `lib/utm.ts` (`utm_source
@@ -924,9 +930,10 @@ push:        да (рабочая ветка сайта, выкатываетс�
    «все пять уходят с заявкой любого типа» — это было неверно; 01
    исправлен. Без правки на стороне сайта критерий «работают все типы
    товара» этап пройти не мог — отсюда сопутствующий коммит в web-photo.
-2. `landingUrl` получает `pageUrl` — адрес страницы, с которой отправлена
-   заявка, а **не** страницу входа на сайт: сайт её не запоминает.
-   Зафиксировано в комментарии схемы и в `lead-attribution.ts`.
+2. Поле страницы получает `pageUrl` — адрес страницы, **на которой**
+   отправлена заявка, а не страницу входа на сайт: сайт её не запоминает.
+   В первой реализации поле называлось `landingUrl` и обещало не то, что
+   хранило; по FIX_01 переименовано в `conversionPageUrl` (см. раздел 22).
 3. Единственный путь в `PAID` — `updateStatusOrder` (см. раздел 5).
 4. Backend CRM применяет миграции сам при старте (`migrate deploy`
    в compose) — ручного шага деплоя миграций нет.
@@ -947,9 +954,9 @@ push:        да (рабочая ветка сайта, выкатываетс�
 
 ## 11. OPEN ISSUES
 
-1. Страница входа на сайт (настоящий landing) сайтом не сохраняется —
-   при желании добавить в этапе 04 (событийная модель): сохранить первый
-   `location.href` визита рядом с UTM в `sessionStorage`.
+1. **First-touch landing URL пока не сохраняется.** Поля под него нет;
+   добавить в этапе 04 (событийная модель): сохранить первый
+   `location.href` визита рядом с UTM в `sessionStorage` и завести колонку.
 2. Четыре ошибки `tsc` в spec-файлах CRM на `master` — вне этапа,
    стоит починить отдельно.
 3. Слияние `feature/analytics-foundation` в `master` — по команде

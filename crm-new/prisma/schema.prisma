@@ -178,9 +178,11 @@ model OrderPhoto {
   utmCampaign    String?
   utmContent     String?
   utmTerm        String?
-  // Адрес страницы, с которой отправлена заявка (сайт передаёт его как
-  // pageUrl). Это НЕ страница входа на сайт: её сайт пока не запоминает.
-  landingUrl     String?
+  // Адрес страницы, на которой отправлена заявка (сайт передаёт его как
+  // pageUrl). Не путать со страницей входа на сайт (first-touch landing):
+  // её сайт пока не запоминает, поля под неё нет — появится с моделью
+  // событий (этап 04), когда сайт начнёт сохранять первый адрес визита.
+  conversionPageUrl String?
 
   // Telegram partner message reference
   partnerTgMessageId         Int?

@@ -12,10 +12,12 @@
  * проверил тип и длину, а «неправильная» UTM для аналитики полезнее,
  * чем пропавшая: по ней хотя бы видно, что источник размечен криво.
  *
- * `landingUrl` получает `pageUrl` — адрес страницы **заявки**, а не
- * страницы входа на сайт: страницу входа сайт пока не запоминает.
- * Имя поля — из плана аналитики; что в нём лежит на самом деле,
- * зафиксировано в 01_CURRENT_STATE.
+ * `conversionPageUrl` получает `pageUrl` — адрес страницы, **на которой
+ * отправлена заявка**. Это не страница входа на сайт (first-touch
+ * landing): её сайт пока не запоминает, и поля под неё здесь нет —
+ * появится вместе с моделью событий, когда сайт начнёт сохранять первый
+ * адрес визита. Имя выбрано так, чтобы поле не обещало больше, чем
+ * в нём лежит.
  */
 
 export interface LeadAttributionInput {
@@ -37,7 +39,7 @@ export interface LeadAttribution {
   utmCampaign: string | null;
   utmContent: string | null;
   utmTerm: string | null;
-  landingUrl: string | null;
+  conversionPageUrl: string | null;
 }
 
 function clean(value: string | null | undefined): string | null {
@@ -56,6 +58,6 @@ export function attributionFromLead(dto: LeadAttributionInput): LeadAttribution 
     utmCampaign: clean(dto.utmCampaign),
     utmContent: clean(dto.utmContent),
     utmTerm: clean(dto.utmTerm),
-    landingUrl: clean(dto.pageUrl),
+    conversionPageUrl: clean(dto.pageUrl),
   };
 }
