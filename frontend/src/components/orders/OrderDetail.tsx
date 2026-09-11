@@ -144,6 +144,63 @@ function productionTermLine(order: OrderPhoto): string {
   return `⏳ Срок изготовления: ${term} (день оформления не в счёт, отсчёт со следующего дня).`;
 }
 
+/**
+ * Технические строки заявки с сайта — их фиксируем в примечании (данные не
+ * теряются), но ни исполнителю, ни в карточке по умолчанию не показываем: для
+ * выполнения заказа они не нужны, а место занимают. Опознаём по началу строки.
+ */
+const LEAD_TECH_PREFIXES = [
+  'ID заявки:',
+  'Slug:',
+  'yclid:',
+  'Yandex ClientID:',
+  'Страница:',
+  'Отправлено на сайте:',
+];
+
+function splitLeadNote(note: string): { visible: string; technical: string } {
+  const visible: string[] = [];
+  const technical: string[] = [];
+  for (const line of note.split('\n')) {
+    const isTech = LEAD_TECH_PREFIXES.some((p) => line.trimStart().startsWith(p));
+    (isTech ? technical : visible).push(line);
+  }
+  return {
+    visible: visible.join('\n').trim(),
+    technical: technical.join('\n').trim(),
+  };
+}
+
+/**
+ * Примечание заказа: показываем только полезное. Служебные данные заявки с
+ * сайта прячем под раскрытие и только администратору — исполнитель их не видит.
+ */
+function LeadNoteBlock({ note, isAdmin }: { note: string; isAdmin: boolean }) {
+  const { visible, technical } = splitLeadNote(note);
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="sm:col-span-2 space-y-2">
+      {visible && <InfoRow label="Примечание" value={visible} />}
+      {isAdmin && technical && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            className="text-xs text-gray-400 hover:text-gray-600"
+          >
+            {open ? 'Скрыть служебные данные ▴' : 'Служебные данные заявки ▾'}
+          </button>
+          {open && (
+            <pre className="mt-1 text-[11px] text-gray-400 whitespace-pre-wrap break-words bg-gray-50 rounded-lg p-2 border border-gray-100">
+              {technical}
+            </pre>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function generateConfirmationText(order: OrderPhoto): string {
   const items = order.items ?? [];
   const tshirtItems = order.tshirtItems ?? [];
@@ -1223,11 +1280,12 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             тот же текст и отправляет руками, чтобы клиент на MAX получил
             то же самое, что клиент на телеграме.
           */}
-          {order.communicationPlatform !== 'TELEGRAM' && (
-            <div className="sm:col-span-2">
-              <GreetingCopyButton orderId={order.id} />
-            </div>
-          )}
+          {/* Кнопка есть для любой площадки, включая Telegram: бот пишет сам,
+              но менеджеру бывает нужно скопировать тот же текст и отправить
+              руками (например, создав контакт заново). */}
+          <div className="sm:col-span-2">
+            <GreetingCopyButton orderId={order.id} />
+          </div>
           {/* Строки, которые правятся, открывают правку сами. Кнопка
               «Изменить» стоит в шапке карточки, а эти поля — под списком
               позиций: доскроллив сюда, приходилось искать дорогу обратно
@@ -1259,13 +1317,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   onEdit={startEdit}
                 />
               )}
-              {order.note && (
-                <InfoRow
-                  label="Примечание"
-                  value={order.note}
-                  className="sm:col-span-2"
-                />
-              )}
+              {order.note && <LeadNoteBlock note={order.note} isAdmin />}
               {order.productCategory === "CANVAS" && (
                 <div className="sm:col-span-2 rounded-xl border border-cyan-100 bg-cyan-50/50 p-3 grid grid-cols-3 gap-3 text-sm">
                   {(() => {
@@ -1359,11 +1411,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             </>
           )}
           {!isAdmin && order.note && (
-            <InfoRow
-              label="Примечание"
-              value={order.note}
-              className="sm:col-span-2"
-            />
+            <LeadNoteBlock note={order.note} isAdmin={false} />
           )}
         </div>
       )}

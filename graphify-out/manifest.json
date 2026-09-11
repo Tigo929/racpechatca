@@ -15,8 +15,8 @@
     "semantic_hash": ""
   },
   "crm-new/package.json": {
-    "mtime": 1787655638.1899576,
-    "ast_hash": "fe75254725765deb45d519e6e4764874",
+    "mtime": 1789115878.5653372,
+    "ast_hash": "98f4a0f9d54fed7549839579176975bb",
     "semantic_hash": ""
   },
   "crm-new/prisma.config.ts": {
@@ -150,8 +150,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/app.module.ts": {
-    "mtime": 1787655638.1925476,
-    "ast_hash": "9be5f2e2458da838d97d874951dbaa89",
+    "mtime": 1789116309.5111337,
+    "ast_hash": "4eb17764b9f05c36f0cd5317a68f95be",
     "semantic_hash": ""
   },
   "crm-new/src/auth/auth.controller.ts": {
@@ -315,13 +315,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-photo.module.ts": {
-    "mtime": 1788610657.70009,
-    "ast_hash": "607aca36e9eae47d42b831e0682c57f4",
+    "mtime": 1789116299.718485,
+    "ast_hash": "67cb819228ae910f5d48ac0f0caa6a6f",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-photo.service.ts": {
-    "mtime": 1788873950.667964,
-    "ast_hash": "bc0f31340e6746c889db8ab633b07e4e",
+    "mtime": 1789118321.101843,
+    "ast_hash": "516da7599dc4a75ca4d28250ebf4ae1f",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-pricing.ts": {
@@ -665,8 +665,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/layout/AppShell.tsx": {
-    "mtime": 1785231328.7957883,
-    "ast_hash": "40d1f6657447a4d4fe94a15351a734ad",
+    "mtime": 1789115085.074824,
+    "ast_hash": "ffbebb109741d562b74f0bf2a9afd876",
     "semantic_hash": ""
   },
   "frontend/src/components/layout/navigation.ts": {
@@ -685,13 +685,13 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderDetail.tsx": {
-    "mtime": 1788955820.4735408,
-    "ast_hash": "39996509d8cc400e1db70d95b60f8910",
+    "mtime": 1789053131.9025512,
+    "ast_hash": "263c1edb106628ac4364a80db09e61d0",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderEditForm.tsx": {
-    "mtime": 1788611505.8253114,
-    "ast_hash": "308da38b2f850c013d78ba3398de61dd",
+    "mtime": 1789110403.3357906,
+    "ast_hash": "2538bd5a6df7715450e51c52fc53fe60",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/StatusStepper.tsx": {
@@ -2265,13 +2265,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/greeting-message.spec.ts": {
-    "mtime": 1788854938.748072,
-    "ast_hash": "65e3bf67cd9649ce9d91a7d0f9ddb580",
+    "mtime": 1789053131.8114507,
+    "ast_hash": "8bf36637da57b7315145dcc4c5c9e0ea",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/greeting-message.ts": {
-    "mtime": 1788854865.0219808,
-    "ast_hash": "77c04d5d269024837d6d656c8de1d0f3",
+    "mtime": 1789053131.8134568,
+    "ast_hash": "a3b04ec28645cac9ce87ceb73b97e974",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/GreetingCopyButton.tsx": {
@@ -2297,6 +2297,51 @@
   "frontend/src/features/print-designer/templates.ts": {
     "mtime": 1788872660.8833282,
     "ast_hash": "936808925d2350a25e99c743d569c7b6",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/free-delivery.spec.ts": {
+    "mtime": 1789053131.8104491,
+    "ast_hash": "78dcdb4b9f71452c2adb143b16914a0d",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/free-delivery.ts": {
+    "mtime": 1789053131.8104491,
+    "ast_hash": "192ba4b2e5385cc97d60e694b2033e3f",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/layout/LeadNotifyBell.tsx": {
+    "mtime": 1789118344.0227349,
+    "ast_hash": "b93076ec511c1649fa5e3329c5a16ff3",
+    "semantic_hash": ""
+  },
+  "frontend/src/hooks/useNewLeadNotifications.ts": {
+    "mtime": 1789115051.478479,
+    "ast_hash": "6e8d06504dcb297a8f2239a13e4ccc2e",
+    "semantic_hash": ""
+  },
+  "crm-new/src/push/push.controller.ts": {
+    "mtime": 1789116323.2673106,
+    "ast_hash": "3305e329aa620566244645663cfaa6d6",
+    "semantic_hash": ""
+  },
+  "crm-new/src/push/push.module.ts": {
+    "mtime": 1789116235.5734496,
+    "ast_hash": "cabe13a21e5007c6a9db0c7bc324cbb4",
+    "semantic_hash": ""
+  },
+  "crm-new/src/push/push.service.ts": {
+    "mtime": 1789118331.3088145,
+    "ast_hash": "9ca0d4141e77faf99d08eb228e383bd2",
+    "semantic_hash": ""
+  },
+  "frontend/src/api/push.ts": {
+    "mtime": 1789116355.3406272,
+    "ast_hash": "4762dabbeb4767e9bc2232f475bfcc7b",
+    "semantic_hash": ""
+  },
+  "frontend/src/utils/webpush.ts": {
+    "mtime": 1789116470.7693374,
+    "ast_hash": "19ee2aedd1893779c8718d2ff050323a",
     "semantic_hash": ""
   }
 }

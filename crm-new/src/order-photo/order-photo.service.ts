@@ -60,6 +60,7 @@ import {
   buildLeadNotification,
   pickLeadResponders,
 } from './lead-notification';
+import { PushService } from '../push/push.service';
 
 // Сборка ссылки на переписку живёт в communication-url.ts — там же тесты
 // на нормализацию телефона для MAX.
@@ -211,6 +212,7 @@ export class OrderPhotoService {
     private readonly partnerSettings: PartnerSettingsService,
     private readonly tshirtPartnerTelegram: TshirtPartnerTelegramService,
     private readonly gulianOutbox: GulianOutboxService,
+    private readonly push: PushService,
     private readonly metrikaOutbox: MetrikaOrderOutboxService,
   ) {}
 
@@ -515,6 +517,16 @@ export class OrderPhotoService {
         `Не удалось уведомить о заявке ${created.numberOrder}: ${String(error)}`,
       );
     }
+    // Web Push — отдельно от Telegram: сбой одного канала не должен отменять
+    // другой. Приходит и при закрытой вкладке CRM.
+    await this.push.sendToAll({
+      title: '🖨 Новая заявка с сайта',
+      body:
+        [dto.name, dto.productName, dto.quantity ? `${dto.quantity} шт` : '']
+          .filter(Boolean)
+          .join(' · ') || 'Пришла заявка — её нужно обработать',
+      url: '/crm/leads',
+    });
   }
 
   private async createLeadTx(dto: DtoCreateLead) {

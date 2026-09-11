@@ -23,20 +23,20 @@ model User {
   designRateBasisPoints Int?
   telegramUsername      String?
 
-  salaryAccruals     SalaryAccrual[]
-  salaryPayments     SalaryPayment[]   @relation("SalaryPaymentExecutor")
-  authorizedPayments SalaryPayment[]   @relation("SalaryPaymentAuthor")
-  assignedOrders     OrderPhoto[]      @relation("OrderExecutor")
-  processedOrders    OrderPhoto[]      @relation("OrderProcessedBy")
-  rateHistory        UserRateHistory[]
-  expenseOrders      ExpenseOrder[]
-  assignedTasks      Task[]            @relation("TaskAssignee")
-  authoredTasks      Task[]            @relation("TaskAuthor")
-  avitoMessages      AvitoMessage[]
-  shipmentLeadState  AppState[]        @relation("ShipmentLead")
-  marketplaceAccounts MarketplaceAccount[] @relation("MarketplaceAccountOwner")
-  printApprovals     PrintApproval[]   @relation("ApprovalAuthor")
-  imageCardBatches   ImageCardBatch[]  @relation("ImageCardBatchAuthor")
+  salaryAccruals      SalaryAccrual[]
+  salaryPayments      SalaryPayment[]          @relation("SalaryPaymentExecutor")
+  authorizedPayments  SalaryPayment[]          @relation("SalaryPaymentAuthor")
+  assignedOrders      OrderPhoto[]             @relation("OrderExecutor")
+  processedOrders     OrderPhoto[]             @relation("OrderProcessedBy")
+  rateHistory         UserRateHistory[]
+  expenseOrders       ExpenseOrder[]
+  assignedTasks       Task[]                   @relation("TaskAssignee")
+  authoredTasks       Task[]                   @relation("TaskAuthor")
+  avitoMessages       AvitoMessage[]
+  shipmentLeadState   AppState[]               @relation("ShipmentLead")
+  marketplaceAccounts MarketplaceAccount[]     @relation("MarketplaceAccountOwner")
+  printApprovals      PrintApproval[]          @relation("ApprovalAuthor")
+  imageCardBatches    ImageCardBatch[]         @relation("ImageCardBatchAuthor")
   bulkStockOperations OzonStockBulkOperation[] @relation("BulkStockAuthor")
 }
 
@@ -93,7 +93,7 @@ model OrderPhoto {
   clientGreetStatus String?
   // Когда статус менялся в последний раз. По нему видно «зависшие» заказы:
   // updatedAt для этого не годится — он дёргается от любой правки заказа.
-  statusChangedAt          DateTime?
+  statusChangedAt   DateTime?
 
   // Стоимость «разработка дизайна» по заказу (свободная цена, без количества).
   // Входит в totalOrder (клиент платит за неё) и служит базой премии менеджера
@@ -146,15 +146,15 @@ model OrderPhoto {
   // зафиксировал фактическую сумму, остаток считается от неё, а не от 50%,
   // и при любом изменении заказа (добавили/убрали позицию, сменили доставку)
   // остаток пересчитывается сам: остаток = сумма − внесённая предоплата.
-  prepaidAmount Int?
+  prepaidAmount      Int?
   // Заказ с маркетплейса на печать индивидуального принта (Ozon и т.п.): деньги
   // считаются на площадке, а CRM ведёт производство и макет. Включает статус
   // «Разработка макета» и «Дизайнер принта» на карточке.
-  isMarketplacePrint Boolean @default(false)
+  isMarketplacePrint Boolean   @default(false)
   // Когда заказ ушёл в «закрытые» (Оплачен/Завершён/Отменён). Пусто у активных.
   // По этому полю список сортируется: активные сверху, закрытые — вниз.
   // Сбрасывается в null при возврате заказа в работу.
-  closedAt     DateTime?
+  closedAt           DateTime?
 
   // ── Маркетинговая атрибуция заявки с сайта ─────────────────────────────
   // Откуда пришёл человек, оставивший заявку. Раньше всё это лежало
@@ -188,20 +188,20 @@ model OrderPhoto {
   firstTouchUrl     String?
 
   // Telegram partner message reference
-  partnerTgMessageId         Int?
-  partnerTgChatId            String?
+  partnerTgMessageId Int?
+  partnerTgChatId    String?
 
   // Gulian CRM integration
-  sourceRevision             Int       @default(1)
-  executorSentAt             DateTime?
-  gulianSyncStatus           String?
-  gulianLastAttemptAt        DateTime?
-  gulianLastSyncedAt         DateTime?
-  gulianLastError            String?
-  gulianSettlementOrderId    Int?
+  sourceRevision              Int       @default(1)
+  executorSentAt              DateTime?
+  gulianSyncStatus            String?
+  gulianLastAttemptAt         DateTime?
+  gulianLastSyncedAt          DateTime?
+  gulianLastError             String?
+  gulianSettlementOrderId     Int?
   gulianSettlementOrderNumber String?
-  gulianPositionId           Int?
-  gulianAppliedRevision      Int?
+  gulianPositionId            Int?
+  gulianAppliedRevision       Int?
 
   items          ItemPhoto[]
   tshirtItems    ItemTshirt[]
@@ -250,10 +250,10 @@ model MarketplaceAccount {
   /// Чей это кабинет. Пусто — кабинеты владельца, заведённые до появления
   /// внешних продавцов. Админ видит все, внешний продавец — только свои:
   /// в кабинете лежит ключ от чужого магазина, и путать их нельзя.
-  ownerId String?
-  owner   User?   @relation("MarketplaceAccountOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId      String?
+  owner        User?   @relation("MarketplaceAccountOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   /// Публичная часть доступа: Client-Id у Ozon.
-  externalId  String
+  externalId   String
   /// Секретная часть: зашифрованный Api-Key (AES-256-GCM).
   apiKeySecret String
   /// Хвост ключа для интерфейса — «…a1b2».
@@ -296,10 +296,10 @@ enum EnumMarketplace {
 /// интерфейсе. Оба берутся из одного ответа attribute-values/search и
 /// сохраняются парой, чтобы не резолвить их заново на каждой отправке.
 model OzonCatalogTemplate {
-  id                    String   @id @default(uuid())
-  updatedAt             DateTime @updatedAt
-  marketplaceAccountId  String   @unique
-  account               MarketplaceAccount @relation(fields: [marketplaceAccountId], references: [id], onDelete: Cascade)
+  id                   String             @id @default(uuid())
+  updatedAt            DateTime           @updatedAt
+  marketplaceAccountId String             @unique
+  account              MarketplaceAccount @relation(fields: [marketplaceAccountId], references: [id], onDelete: Cascade)
 
   descriptionCategoryId Int @default(200000933)
   typeId                Int @default(93244)
@@ -307,26 +307,26 @@ model OzonCatalogTemplate {
   vatRate          String  @default("Не облагается")
   needsMarkingCode Boolean @default(false)
 
-  brandLabel               String @default("Нет бренда")
-  brandDictionaryValueId   Int    @default(126745801)
-  countryLabel              String?
-  countryDictionaryValueId  Int?
-  materialLabel             String? @default("Хлопок")
-  materialDictionaryValueId Int?    @default(62174)
-  materialComposition       String? @default("100% Хлопок")
-  styleLabel                String? @default("Повседневный")
-  styleDictionaryValueId    Int?    @default(29802)
-  seasonLabel               String? @default("На любой сезон")
-  seasonDictionaryValueId   Int?    @default(30937)
-  careInstructions          String?
-  sleeveLabel               String?
-  sleeveDictionaryValueId   Int?
-  necklineLabel             String?
-  necklineDictionaryValueId Int?
-  packageTypeLabel              String? @default("Пакет")
-  packageTypeDictionaryValueId  Int?    @default(44412)
-  tnvedLabel                     String? @default("Майки, фуфайки с рукавами и прочие нательные фуфайки трикотажные, из хлопчатобумажной пряжи")
-  tnvedDictionaryValueId         Int?    @default(971398495)
+  brandLabel                   String  @default("Нет бренда")
+  brandDictionaryValueId       Int     @default(126745801)
+  countryLabel                 String?
+  countryDictionaryValueId     Int?
+  materialLabel                String? @default("Хлопок")
+  materialDictionaryValueId    Int?    @default(62174)
+  materialComposition          String? @default("100% Хлопок")
+  styleLabel                   String? @default("Повседневный")
+  styleDictionaryValueId       Int?    @default(29802)
+  seasonLabel                  String? @default("На любой сезон")
+  seasonDictionaryValueId      Int?    @default(30937)
+  careInstructions             String?
+  sleeveLabel                  String?
+  sleeveDictionaryValueId      Int?
+  necklineLabel                String?
+  necklineDictionaryValueId    Int?
+  packageTypeLabel             String? @default("Пакет")
+  packageTypeDictionaryValueId Int?    @default(44412)
+  tnvedLabel                   String? @default("Майки, фуфайки с рукавами и прочие нательные фуфайки трикотажные, из хлопчатобумажной пряжи")
+  tnvedDictionaryValueId       Int?    @default(971398495)
 
   /// Габариты упаковки по умолчанию на каждый российский размер:
   /// { XS: { weightG, widthMm, heightMm, lengthMm }, ... }. Задаётся один
@@ -367,29 +367,29 @@ model OzonCatalogTemplate {
 /// свои у каждого товара и меняются на стороне Ozon, поэтому читаются из
 /// API при каждом открытии карточки.
 model OzonUnitEconomics {
-  id                   String   @id @default(uuid())
-  updatedAt            DateTime @updatedAt
-  marketplaceAccountId String   @unique
+  id                   String             @id @default(uuid())
+  updatedAt            DateTime           @updatedAt
+  marketplaceAccountId String             @unique
   account              MarketplaceAccount @relation(fields: [marketplaceAccountId], references: [id], onDelete: Cascade)
 
   /// Себестоимость готового изделия — футболка с уже нанесённым принтом, ₽.
   /// Продавец считает её одной цифрой, поэтому это основное поле.
-  blankCost      Int @default(380)
+  blankCost     Int @default(380)
   /// Нанесение принта отдельной строкой — если печать считают не в составе
   /// изделия, а отдельно. Обычно 0.
-  printCost      Int @default(0)
-  packagingCost  Int @default(0)
-  otherCost      Int @default(0)
+  printCost     Int @default(0)
+  packagingCost Int @default(0)
+  otherCost     Int @default(0)
 
   /// Доля возвратов, сотые процента: 500 = 5%. Каждый возврат стоит
   /// обратной логистики, поэтому она размазывается по всем продажам.
-  returnRateBasisPoints  Int @default(0)
+  returnRateBasisPoints  Int    @default(0)
   /// Реклама, сотые процента от цены.
-  advertisingBasisPoints Int @default(0)
+  advertisingBasisPoints Int    @default(0)
   /// Ставка налога, сотые процента: 600 = 6%. По умолчанию 0 — продавец
   /// самозанятый и налог сейчас не платит. При НПД ставка 4% с продаж
   /// физлицам, так что поле пригодится, когда вычет закончится.
-  taxBasisPoints         Int @default(0)
+  taxBasisPoints         Int    @default(0)
   /// База налога: income — УСН «доходы» (с выручки), profit — с прибыли.
   taxBase                String @default("income")
 
@@ -408,9 +408,9 @@ model OzonUnitEconomics {
 /// несколько цветов. Группировка на карточке живёт в unionKey — атрибуте
 /// Ozon «Объединить на одной карточке», одинаковом у всех вариантов принта.
 model OzonPrint {
-  id                   String   @id @default(uuid())
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                   String             @id @default(uuid())
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
   marketplaceAccountId String
   account              MarketplaceAccount @relation(fields: [marketplaceAccountId], references: [id], onDelete: Cascade)
 
@@ -422,12 +422,12 @@ model OzonPrint {
   description    String?
   hashtags       String?
   mainPhotoUrl   String
-  extraPhotoUrls String[] @default([])
+  extraPhotoUrls String[]         @default([])
   price          Int
   oldPrice       Int?
   gender         EnumTshirtGender @default(UNISEX)
   /// Рисунок/тематика — «Животные», «Надписи» и т.п., атрибут 9437.
-  patternTags    String[] @default([])
+  patternTags    String[]         @default([])
 
   unionKey String @unique
 
@@ -454,14 +454,14 @@ model OzonVariant {
   /// Латинский код цвета для артикула: «черный» → black. Хранится отдельно
   /// от подписи, потому что участвует в offer_id и не должен «поехать»,
   /// если человек позже переименует цвет.
-  colorCode              String @default("")
+  colorCode              String         @default("")
   size                   EnumTshirtSize
 
   /// Главное фото именно этого цвета. У принта фото одно на всех, но
   /// футболка на снимке своего цвета: белый вариант с фотографией чёрного
   /// покупатель видит как чужой товар, а Ozon — как повод для отказа.
   /// Пусто — берётся главное фото принта.
-  mainPhotoUrl  String?
+  mainPhotoUrl String?
 
   /// <принт>-<цвет>-<размер>, схема продавца: JDM-1-1-black-S.
   offerId       String @unique
@@ -517,7 +517,7 @@ model OzonWarehouse {
   /// Можно ли писать остатки на этот склад. Считается из статуса при
   /// синхронизации; неизвестный статус считаем рабочим — см. правила
   /// в ozon-warehouse-rules.ts.
-  isEditable Boolean @default(true)
+  isEditable     Boolean @default(true)
   /// Почему нельзя — эту строку показываем рядом с выключенным пунктом,
   /// иначе человек видит недоступный склад без объяснения.
   disabledReason String?
@@ -589,11 +589,11 @@ model OzonStockBulkOperationItem {
   operation   OzonStockBulkOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
 
   /// Артикул продавца. Регистр значим — offer_id у Ozon регистрозависим.
-  offerId String
+  offerId       String
   /// Внутренний номер товара в Ozon, если он известен на момент отправки.
   ozonProductId BigInt?
 
-  warehouseId BigInt
+  warehouseId   BigInt
   /// Имя склада на момент операции. Копия, а не ссылка: склад могут
   /// переименовать или удалить, а в истории он должен остаться собой.
   warehouseName String
@@ -601,10 +601,10 @@ model OzonStockBulkOperationItem {
   requestedQuantity Int
   /// Остаток до изменения, если удалось его узнать. Для режима «Добавить»
   /// это основа расчёта, для «Установить» — просто справка в отчёте.
-  previousStock Int?
+  previousStock     Int?
   /// Что в итоге отправили площадке. У «Установить» совпадает
   /// с requestedQuantity, у «Добавить» — previousStock + requestedQuantity.
-  calculatedStock Int?
+  calculatedStock   Int?
 
   status     EnumBulkStockItemStatus @default(PENDING)
   attempts   Int                     @default(0)
@@ -839,21 +839,21 @@ model ItemPhoto {
   order   OrderPhoto @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderId String
 
-  formatPaper   String
-  typePaper     EnumTypePaper
-  quantity      Int
-  price         Int
-  pricePosition Int
+  formatPaper       String
+  typePaper         EnumTypePaper
+  quantity          Int
+  price             Int
+  pricePosition     Int
   // Позиция со свободной (договорной) ценой: pricePosition = price, кол-во не умножается.
-  isFreePrice   Boolean       @default(false)
+  isFreePrice       Boolean       @default(false)
   // Печать на изделии, которое принёс клиент. Заготовку мы не покупаем, но
   // работа партнёра остаётся: термоперенос плюс его доля от маржи. Без этого
   // признака такая позиция проходила мимо расчёта с партнёром — вся сумма
   // засчитывалась владельцу в прибыль, а партнёру не начислялось ничего.
-  printOnClientItem Boolean   @default(false)
+  printOnClientItem Boolean       @default(false)
   // Себестоимость термопереноса — снимок на момент оформления, как в ItemTshirt:
   // изменение умолчаний в настройках не должно задним числом двигать расчёт.
-  thermalCost   Int           @default(0)
+  thermalCost       Int           @default(0)
 }
 
 enum EnumTypePaper {
@@ -1131,12 +1131,12 @@ model PartnerSettings {
   // Сколько платим перевозчику. Клиенту называем больше (обычно 300 ₽), и
   // разница — заработок, а не транзит: прежний отчёт вычитал доставку
   // целиком и терял эти деньги.
-  deliveryCostYandexPvz Int @default(99)
+  deliveryCostYandexPvz  Int @default(99)
   // Цена доставки, которую платит КЛИЕНТ за Яндекс ПВЗ. Ставится по умолчанию
   // и в заявке с сайта, и когда менеджер выбирает Яндекс ПВЗ вручную.
   // Отличается от deliveryCostYandexPvz (99) — то, что платим перевозчику.
   deliveryPriceYandexPvz Int @default(300)
-  deliveryCostOzonPvz   Int @default(140)
+  deliveryCostOzonPvz    Int @default(140)
 
   // Условия производства по холсту. Прайс лежит в коде
   // (canvas/canvas-production-price.ts) — он приходит файлом и меняется целиком.
@@ -1453,7 +1453,7 @@ model ImageCardTemplate {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  title String
+  title      String
   /// Цвет изделия ключом: black, white. Строкой, а не перечислением, чтобы
   /// новый цвет добавлялся строкой в таблице, а не миграцией.
   shirtColor String
@@ -1464,7 +1464,7 @@ model ImageCardTemplate {
   canvasHeight Int     @default(0)
 
   /// Куда ложится принт, в пикселях шаблона: { x, y, width, height }.
-  placementArea Json @default("{}")
+  placementArea Json  @default("{}")
   /// Необязательная «безопасная» рамка внутри области размещения.
   safeArea      Json?
 
@@ -1492,7 +1492,7 @@ model ImageCardBatch {
   settings Json @default("{}")
 
   createdById String?
-  createdBy   User?   @relation("ImageCardBatchAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy   User?     @relation("ImageCardBatchAuthor", fields: [createdById], references: [id], onDelete: SetNull)
   completedAt DateTime?
 
   sources ImageCardSource[]
@@ -1573,4 +1573,31 @@ model ImageCardGenerated {
 
   @@index([batchId, status])
   @@index([sourceId])
+}
+
+// ── Web Push ────────────────────────────────────────────────────────────────
+// Уведомления о новой заявке, когда вкладка CRM закрыта. Подписки браузеров и
+// VAPID-ключи храним в БД: ключи бэкенд генерирует сам при первом обращении,
+// поэтому настройка на сервере (env) не нужна.
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  // Адрес доставки от push-сервиса браузера (уникален на подписку).
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  // Кто подписался — на случай, если захотим слать не всем.
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model PushConfig {
+  id              String   @id @default("default")
+  vapidPublicKey  String
+  vapidPrivateKey String
+  // «Кому» для VAPID: push-сервисы требуют контакт отправителя.
+  vapidSubject    String   @default("mailto:admin@raspechatkaa.ru")
+  createdAt       DateTime @default(now())
 }

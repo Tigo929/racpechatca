@@ -163,6 +163,8 @@ function createOrderService(stub: PrismaStub) {
     partnerSettings as unknown as PartnerSettingsService,
     tshirtPartnerTelegram as unknown as TshirtPartnerTelegramService,
     gulianOutbox as unknown as GulianOutboxService,
+    // Web Push (master) в этих тестах тоже не участвует.
+    null as never,
     metrikaOutboxStub,
   );
 }

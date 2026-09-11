@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react';
 import type { UpdateOrderDto } from '../../types/index';
 import { computePrepayment } from '../../utils/prepayment';
+import { partnerSettingsApi } from '../../api/partnerSettings';
 
 interface Props {
   form: UpdateOrderDto;
@@ -20,6 +22,29 @@ const labelCls = 'text-xs text-gray-500 mb-1';
 
 export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, productCategory, orderTotal }: Props) {
   const set = (patch: Partial<UpdateOrderDto>) => onChange({ ...form, ...patch });
+  // Цена доставки Яндекс ПВЗ из настроек — та же, что подставляется при
+  // оформлении новой заявки. Нужна, чтобы при смене способа на «Яндекс ПВЗ»
+  // стоимость подтянулась сама, а не осталась 0.
+  const { data: settings } = useQuery({
+    queryKey: ['partner-settings'],
+    queryFn: partnerSettingsApi.get,
+    staleTime: 60_000,
+  });
+
+  // Смена способа доставки: для «Яндекс ПВЗ» подставляем цену из настроек,
+  // если стоимость ещё не задана (0) — как в форме создания. Уже введённую
+  // вручную сумму не затираем.
+  const changeDelivery = (method: UpdateOrderDto['deliveryMethod']) => {
+    const patch: Partial<UpdateOrderDto> = { deliveryMethod: method };
+    if (
+      method === 'YANDEX_PVZ' &&
+      settings &&
+      !Number(form.deliveryCost ?? 0)
+    ) {
+      patch.deliveryCost = settings.deliveryPriceYandexPvz;
+    }
+    set(patch);
+  };
   // «Нужен дизайн» — включён, если у заказа уже есть сумма дизайна. Выключение
   // обнуляет сумму, чтобы дизайн ушёл из чека.
   const [designEnabled, setDesignEnabled] = useState((form.designDevelopmentCost ?? 0) > 0);
@@ -59,7 +84,7 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, pro
         <div>
           <p className={labelCls}>Способ доставки</p>
           <select className={inputCls} value={form.deliveryMethod}
-            onChange={e => set({ deliveryMethod: e.target.value as UpdateOrderDto['deliveryMethod'] })}>
+            onChange={e => changeDelivery(e.target.value as UpdateOrderDto['deliveryMethod'])}>
             <option value="PICKUP">Самовывоз</option>
             <option value="YANDEX_PVZ">Яндекс ПВЗ</option>
             <option value="OZON_PVZ">Ozon ПВЗ</option>
