@@ -6,18 +6,22 @@ import type {
   MetrikaErrorBody,
   MetrikaGoal,
   MetrikaGoalsResponse,
+  MetrikaLastUploadingsResponse,
+  MetrikaMergeMode,
   MetrikaStatsQuery,
   MetrikaStatsResponse,
+  MetrikaUploading,
+  MetrikaUploadingResponse,
 } from './metrika.types';
 
 /**
  * Клиент API Яндекс Метрики — единственная точка, откуда CRM ходит
  * в Метрику (этап 05 плана аналитики).
  *
- * Пока только чтение: счётчик, его цели, отчёты. Запись (импорт заказов
- * из CRM) появится на этапе 06 в этом же классе — чтобы заголовок
- * авторизации, таймаут, разбор ошибок и повторные попытки жили в одном
- * месте, а не расползались по сервисам вместе с сырыми `fetch`.
+ * Чтение: счётчик, его цели, отчёты, последние загрузки. Запись — одна:
+ * загрузка заказов из CRM в `simple_orders` (этап 06). Всё в одном классе,
+ * чтобы заголовок авторизации, таймаут и разбор ошибок жили в одном месте,
+ * а не расползались по сервисам вместе с сырыми `fetch`.
  *
  * Авторизация: `Authorization: OAuth <token>`. Токен приходит из
  * конфигурации и наружу не выходит: ни в логи, ни в текст ошибок, ни
@@ -30,9 +34,10 @@ import type {
  *
  * Повторы: до двух, только для чтения и только на 429, 5xx, сеть и
  * таймаут — то есть там, где повтор имеет шанс помочь и ничего не ломает.
- * 401 и 403 не повторяются: от повтора права не появятся. Полноценная
- * очередь с расписанием — не здесь (этап 06 для исходящих событий,
- * этап 13 для надёжности).
+ * 401 и 403 не повторяются: от повтора права не появятся. Запись
+ * (uploadSimpleOrders) повторов внутри клиента не делает вовсе: её повторяет
+ * очередь MetrikaOrderOutbox по своему расписанию, и один POST здесь —
+ * ровно одна попытка в журнале очереди.
  *
  * Документация: https://yandex.ru/dev/metrika/
  */
@@ -82,7 +87,7 @@ function humanize(kind: MetrikaErrorKind, status: number, apiMessage?: string): 
     case 'unauthorized':
       return 'Метрика не приняла OAuth-токен: он отсутствует, недействителен или отозван.';
     case 'forbidden':
-      return 'У аккаунта токена нет прав на этот счётчик или у приложения нет нужного разрешения (metrika:read).';
+      return 'У аккаунта токена нет прав на этот счётчик или у приложения нет нужного разрешения (metrika:read, для загрузки заказов — metrika:offline_data).';
     case 'rate_limited':
       return 'Метрика ограничила частоту запросов. Повторите позже.';
     case 'server':
@@ -164,6 +169,38 @@ export class YandexMetrikaClient {
     return this.get<MetrikaStatsResponse>('stats', `/stat/v1/data?${params.toString()}`);
   }
 
+  /**
+   * Загрузка заказов из CRM: POST /cdp/api/v1/counter/{id}/data/simple_orders.
+   * `csv` — готовый файл с заголовком (см. metrika-order-csv.ts). Один вызов —
+   * одна попытка: без повторов, их ведёт очередь. Ответ — описание загрузки;
+   * `api_validation_status` PASSED означает, что файл принят.
+   */
+  async uploadSimpleOrders(
+    csv: string,
+    mergeMode: MetrikaMergeMode = 'SAVE',
+  ): Promise<MetrikaUploading> {
+    const id = this.requireCounter();
+    const params = new URLSearchParams({ merge_mode: mergeMode, delimiter_type: 'COMMA' });
+    const form = new FormData();
+    form.append('file', new Blob([csv], { type: 'text/csv' }), 'orders.csv');
+    const body = await this.post<MetrikaUploadingResponse>(
+      'simple_orders',
+      `/cdp/api/v1/counter/${id}/data/simple_orders?${params.toString()}`,
+      form,
+    );
+    return body.uploading;
+  }
+
+  /** Последние загрузки CDP (заказы/контакты) — для проверки, что отправка дошла. */
+  async getLastUploadings(limit = 10): Promise<MetrikaUploading[]> {
+    const id = this.requireCounter();
+    const body = await this.get<MetrikaLastUploadingsResponse>(
+      'last_uploadings',
+      `/cdp/api/v1/counter/${id}/last_uploadings?limit=${Math.max(1, Math.min(1000, limit))}`,
+    );
+    return body.uploadings ?? [];
+  }
+
   private requireCounter(): number {
     if (!this.isConfigured() || this.config.counterId === null) {
       throw new MetrikaApiError('not_configured', 0, humanize('not_configured', 0));
@@ -201,15 +238,38 @@ export class YandexMetrikaClient {
     }
   }
 
-  private async once<T>(path: string, token: string): Promise<T> {
+  /** POST без повторов: одна попытка — один ответ, дальше решает вызывающий. */
+  private async post<T>(operation: string, path: string, form: FormData): Promise<T> {
+    const token = this.config.token;
+    if (!token) {
+      throw new MetrikaApiError('not_configured', 0, humanize('not_configured', 0));
+    }
+    const startedAt = Date.now();
+    try {
+      const result = await this.once<T>(path, token, { method: 'POST', body: form });
+      this.log(operation, 200, startedAt, true);
+      return result;
+    } catch (error) {
+      const e = error instanceof MetrikaApiError ? error : this.wrapUnknown(error);
+      this.log(operation, e.status, startedAt, false, e.kind);
+      throw e;
+    }
+  }
+
+  private async once<T>(
+    path: string,
+    token: string,
+    init: { method: 'GET' | 'POST'; body?: FormData } = { method: 'GET' },
+  ): Promise<T> {
     let res: Response;
     try {
       res = await this.fetchImpl(`${METRIKA_API}${path}`, {
-        method: 'GET',
+        method: init.method,
         headers: {
           Authorization: `OAuth ${token}`,
           Accept: 'application/json',
         },
+        ...(init.body ? { body: init.body } : {}),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } catch (error) {

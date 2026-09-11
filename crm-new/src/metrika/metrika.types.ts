@@ -17,6 +17,10 @@ export interface MetrikaCounter {
   site2?: { site?: string; domain?: string };
   /** Права текущего токена на счётчик: own / view / edit. */
   permission?: string;
+  /** Часовой пояс счётчика, например Europe/Moscow. В нём Метрика ждёт даты заказов из CRM. */
+  time_zone_name?: string;
+  /** Смещение часового пояса в минутах от UTC. */
+  time_zone_offset?: number;
   goals?: MetrikaGoal[];
 }
 
@@ -77,6 +81,33 @@ export interface MetrikaStatsResponse {
   min?: (number | null)[];
   max?: (number | null)[];
 }
+
+/**
+ * Загрузка данных CDP: ответ на POST /cdp/api/v1/counter/{id}/data/simple_orders
+ * и элементы GET /cdp/api/v1/counter/{id}/last_uploadings.
+ */
+export interface MetrikaUploading {
+  uploading_id: string;
+  /** yyyy-MM-dd HH:mm:ss */
+  datetime?: string;
+  /** PASSED — файл принят; FAILED — в нём ошибка, данные не загружены. */
+  api_validation_status?: 'PASSED' | 'FAILED' | string;
+  elements_count?: number;
+  entity_type?: string;
+  uploading_format?: string;
+  uploading_source?: string;
+}
+
+export interface MetrikaUploadingResponse {
+  uploading: MetrikaUploading;
+}
+
+export interface MetrikaLastUploadingsResponse {
+  uploadings: MetrikaUploading[];
+}
+
+/** merge_mode загрузки заказов: SAVE — заменить заказ целиком (мы шлём полный снимок). */
+export type MetrikaMergeMode = 'SAVE' | 'UPDATE' | 'APPEND';
 
 /** Тело ошибки API: {"errors":[{"error_type":"...","message":"..."}],"code":403,"message":"..."} */
 export interface MetrikaErrorBody {

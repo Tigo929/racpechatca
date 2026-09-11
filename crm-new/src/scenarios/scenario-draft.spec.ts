@@ -1,6 +1,14 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { ScenarioDraftService } from './scenario-draft.service';
 import type { PrismaService } from 'src/prisma/prisma.service';
+import { MetrikaOrderOutboxService } from 'src/metrika/orders/metrika-order-outbox.service';
+
+// Очередь в Метрику (этап 06) в этих тестах не участвует — заглушка,
+// чтобы собрать сервис; переходы никуда не ставятся.
+const metrikaOutboxStub = {
+  enqueueTransition: jest.fn().mockResolvedValue(null),
+} as unknown as MetrikaOrderOutboxService;
+
 
 /**
  * Проверяем оформление заказа из черновика: суммы, защиту от повторного
@@ -62,7 +70,7 @@ function makeHarness(order: FakeOrder) {
   } as unknown as PrismaService;
 
   return {
-    service: new ScenarioDraftService(prisma),
+    service: new ScenarioDraftService(prisma, metrikaOutboxStub),
     photoItems,
     tshirtItems,
     history,

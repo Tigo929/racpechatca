@@ -3,9 +3,10 @@ import { PrismaModule } from 'src/prisma/prisma.module';
 import { ScenarioController } from './scenario.controller';
 import { ScenarioDraftService } from './scenario-draft.service';
 import { validateAllScenarios } from './scenario.registry';
+import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, MetrikaOrdersModule],
   controllers: [ScenarioController],
   providers: [ScenarioDraftService],
 })

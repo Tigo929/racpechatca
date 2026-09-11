@@ -215,6 +215,8 @@ model OrderPhoto {
   avitoChats     AvitoChat[]
   approvals      PrintApproval[]
 
+  metrikaOutbox MetrikaOrderOutbox[]
+
   @@index([status])
   @@index([executorId])
   @@index([processedById])
@@ -1238,6 +1240,61 @@ model GulianOutbox {
 
   @@index([status, nextAttemptAt])
   @@index([aggregateId])
+}
+
+/// Очередь отправки заказов в Яндекс Метрику (этап 06 плана аналитики).
+///
+/// Строка появляется в ТОЙ ЖЕ транзакции, что смена статуса заказа и запись
+/// в StatusHistory: Метрика не стоит на критическом пути заказа, а событие
+/// не теряется, если она недоступна. Воркер забирает строки по расписанию
+/// и отправляет в `simple_orders` текущий канонический снимок заказа
+/// (id заказа, дата создания, ClientID, нормализованный статус, сумма,
+/// себестоимость) с merge_mode=SAVE — повторная отправка обновляет тот же
+/// заказ, а не создаёт новый.
+///
+/// Устроена как GulianOutbox: те же статусы строк, тот же захват
+/// `FOR UPDATE SKIP LOCKED`, те же паузы между попытками.
+model MetrikaOrderOutbox {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderId String
+  order   OrderPhoto @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  /// Ключ дедупликации: `history:<StatusHistory.id>` для переходов статуса,
+  /// `manual:<uuid>` для ручной постановки (контрольная отправка, requeue).
+  /// Один переход — одна строка, сколько бы раз его ни обработали.
+  dedupeKey             String  @unique
+  /// Переход StatusHistory, из-за которого строка появилась (у ручных — пусто).
+  sourceStatusHistoryId String?
+  /// Нормализованный статус Метрики, который означал переход:
+  /// IN_PROGRESS / PAID / CANCELLED. Справочно: отправляется не он, а текущее
+  /// состояние заказа на момент отправки — оно и есть правда.
+  targetMetrikaStatus   String
+  /// Что реально ушло в Метрику (после отправки).
+  sentMetrikaStatus     String?
+
+  /// pending → processing → delivered | failed | skipped.
+  /// failed — окончательная ошибка (400, 403, валидация не пройдена,
+  /// исчерпаны попытки); строка не удаляется, её можно вернуть в pending.
+  /// skipped — заказ отправлять нельзя: нет ClientID, заявка не стала заказом.
+  status        String    @default("pending")
+  skipReason    String?
+  attemptCount  Int       @default(0)
+  nextAttemptAt DateTime  @default(now())
+  lockedAt      DateTime?
+  processedAt   DateTime?
+  lastError     String?
+  responseCode  Int?
+
+  /// Ответ Метрики на загрузку: идентификатор, итог проверки, число строк.
+  remoteUploadingId   String?
+  apiValidationStatus String?
+  elementsCount       Int?
+
+  @@index([status, nextAttemptAt])
+  @@index([orderId])
 }
 
 /// Сторона печати в согласовании. Отдельно от EnumPrintLocation намеренно:

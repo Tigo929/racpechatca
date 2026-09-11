@@ -7,9 +7,10 @@ import { PartnerTokenGuard } from './partner-token.guard';
 import { PartnerApiController } from './partner-api.controller';
 import { PartnerAdminController } from './partner-admin.controller';
 import { PartnerSettingsModule } from './partner-settings.module';
+import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
 
 @Module({
-  imports: [StickerModule, PartnerSettingsModule],
+  imports: [StickerModule, PartnerSettingsModule, MetrikaOrdersModule],
   controllers: [PartnerApiController, PartnerAdminController],
   providers: [
     TechSpecStorageService,

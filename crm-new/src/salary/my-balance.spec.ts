@@ -1,6 +1,14 @@
 import { PrismaService } from 'src/prisma/prisma.service';
+import { MetrikaOrderOutboxService } from 'src/metrika/orders/metrika-order-outbox.service';
 import { EnumStatus } from 'src/generated/prisma/enums';
 import { SalaryService } from './salary.service';
+
+// Очередь в Метрику (этап 06) в этих тестах не участвует — заглушка,
+// чтобы собрать сервис; переходы никуда не ставятся.
+const metrikaOutboxStub = {
+  enqueueTransition: jest.fn().mockResolvedValue(null),
+} as unknown as MetrikaOrderOutboxService;
+
 
 type AsyncMock = jest.Mock<Promise<unknown>, unknown[]>;
 
@@ -24,7 +32,10 @@ describe('SalaryService.getMyBalance', () => {
 
   beforeEach(() => {
     prisma = createStub();
-    service = new SalaryService(prisma as unknown as PrismaService);
+    service = new SalaryService(
+      prisma as unknown as PrismaService,
+      metrikaOutboxStub,
+    );
   });
 
   it('считает долг только по незакрытым начислениям', async () => {

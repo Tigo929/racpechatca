@@ -5,11 +5,12 @@ import {
   EnumStatus,
 } from 'src/generated/prisma/enums';
 import {
-  photoMaterialCostKopecks,
-  sheetCostKopecks,
-} from 'src/order-photo/photo-material';
-import { settleOrder } from 'src/partner/partner-settlement';
-import { settlementPositions } from 'src/partner/settlement-positions';
+  costSettingsFrom,
+  orderCostOfGoods,
+  type CostSettings,
+} from './order-cogs';
+
+export type { CostSettings } from './order-cogs';
 
 const MONTH_LABELS = [
   'Январь',
@@ -86,7 +87,7 @@ export interface PnlRaw {
   canvasProfit: number;
 }
 
-type OrderRow = {
+export type OrderRow = {
   sentAt: Date | null;
   createdAt: Date;
   clientPaidAt: Date | null;
@@ -114,16 +115,6 @@ type OrderRow = {
   canvasItems: { contractorCostPosition: number }[];
   accruals: { salaryAmount: number }[];
 };
-
-/** Цены, по которым считается себестоимость. Живут в настройках партнёра. */
-export interface CostSettings {
-  sheetCostKopecks: number;
-  deliveryCostYandexPvz: number;
-  deliveryCostOzonPvz: number;
-  /** Своя доставка производства холстов по Москве: сколько платим мы. */
-  canvasDeliveryCost: number;
-  partnerRateBasisPoints: number;
-}
 
 /**
  * Сколько платим перевозчику. Самовывоз и отгрузки маркетплейсам сюда не
@@ -215,7 +206,7 @@ export function emptyBucket(): PnlRaw {
   };
 }
 
-function addOrder(b: PnlRaw, order: OrderRow, s: CostSettings): void {
+export function addOrder(b: PnlRaw, order: OrderRow, s: CostSettings): void {
   const total = order.totalOrder ?? 0;
   const deliveryCharged = order.deliveryCost ?? 0;
   // Платим перевозчику только если доставка была: у самовывоза списывать не с чего.
@@ -233,32 +224,24 @@ function addOrder(b: PnlRaw, order: OrderRow, s: CostSettings): void {
 
   const deliveryProfit = deliveryCharged - deliveryPaid;
 
+  // Себестоимость по заказу — одна функция на отчёт и на Метрику (order-cogs.ts).
+  const cogs = orderCostOfGoods(order, s);
+
   if (order.productCategory === 'PHOTO') {
-    const kopecks = photoMaterialCostKopecks(order.items, s.sheetCostKopecks);
     b.photoCount += 1;
     b.photoRevenue += total;
-    b.photoMaterialKopecks += kopecks;
-    b.photoProfit +=
-      goodsRevenue - Math.ceil(kopecks / 100) - salary + deliveryProfit;
+    b.photoMaterialKopecks += cogs.photoMaterialKopecks;
+    b.photoProfit += goodsRevenue - cogs.rub - salary + deliveryProfit;
   } else if (order.productCategory === 'TSHIRT') {
-    // Партнёру уходит стоимость материалов плюс его доля от маржи.
-    const reward = settleOrder(
-      settlementPositions(order),
-      s.partnerRateBasisPoints,
-    ).reward;
     b.tshirtCount += 1;
     b.tshirtRevenue += total;
-    b.tshirtContractorCost += reward;
-    b.tshirtProfit += goodsRevenue - reward - salary + deliveryProfit;
+    b.tshirtContractorCost += cogs.tshirtContractorCost;
+    b.tshirtProfit += goodsRevenue - cogs.rub - salary + deliveryProfit;
   } else if (order.productCategory === 'CANVAS') {
-    const contractor = order.canvasItems.reduce(
-      (sum, i) => sum + i.contractorCostPosition,
-      0,
-    );
     b.canvasCount += 1;
     b.canvasRevenue += total;
-    b.canvasContractorCost += contractor;
-    b.canvasProfit += goodsRevenue - contractor - salary + deliveryProfit;
+    b.canvasContractorCost += cogs.canvasContractorCost;
+    b.canvasProfit += goodsRevenue - cogs.rub - salary + deliveryProfit;
   }
 }
 
@@ -363,16 +346,7 @@ export class ReportsService {
     const s = await this.prisma.partnerSettings.findUnique({
       where: { id: 'default' },
     });
-    return {
-      sheetCostKopecks: sheetCostKopecks(
-        s?.photoBoxCost ?? 800,
-        s?.photoSheetsPerBox ?? 500,
-      ),
-      deliveryCostYandexPvz: s?.deliveryCostYandexPvz ?? 99,
-      canvasDeliveryCost: s?.canvasDeliveryCost ?? 700,
-      deliveryCostOzonPvz: s?.deliveryCostOzonPvz ?? 140,
-      partnerRateBasisPoints: s?.partnerRateBasisPoints ?? 3000,
-    };
+    return costSettingsFrom(s);
   }
 
   /**

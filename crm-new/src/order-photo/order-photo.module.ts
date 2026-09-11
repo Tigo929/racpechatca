@@ -17,9 +17,16 @@ import { ShipmentLeadService } from './shipment-lead.service';
 import { PartnerSettingsModule } from 'src/partner/partner-settings.module';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 import { SiteLeadTokenGuard } from './site-lead-token.guard';
+import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
 
 @Module({
-  imports: [TelegramModule, StickerModule, PartnerSettingsModule, GulianModule],
+  imports: [
+    TelegramModule,
+    StickerModule,
+    PartnerSettingsModule,
+    GulianModule,
+    MetrikaOrdersModule,
+  ],
   controllers: [LeadController, OrderPhotoController],
   providers: [
     OrderPhotoService,

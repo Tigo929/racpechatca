@@ -9,6 +9,7 @@ import {
   EnumStatus,
 } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { MetrikaOrderOutboxService } from 'src/metrika/orders/metrika-order-outbox.service';
 import { OrderFinancialIntegrityService } from 'src/order-photo/order-financial-integrity.service';
 import { OrderPhotoService } from 'src/order-photo/order-photo.service';
 import { TelegramService } from 'src/telegram/telegram.service';
@@ -17,6 +18,13 @@ import { TshirtPartnerTelegramService } from 'src/order-photo/tshirt-partner-tel
 import { GulianOutboxService } from 'src/gulian/gulian-outbox.service';
 import { SalaryService } from './salary.service';
 import { calculateSalarySnapshot, earnsStaffSalary } from './salary-calculation';
+
+// Очередь в Метрику (этап 06) в этих тестах не участвует — заглушка,
+// чтобы собрать сервис; переходы никуда не ставятся.
+const metrikaOutboxStub = {
+  enqueueTransition: jest.fn().mockResolvedValue(null),
+} as unknown as MetrikaOrderOutboxService;
+
 
 type AsyncMock = jest.Mock<Promise<unknown>, unknown[]>;
 
@@ -155,6 +163,7 @@ function createOrderService(stub: PrismaStub) {
     partnerSettings as unknown as PartnerSettingsService,
     tshirtPartnerTelegram as unknown as TshirtPartnerTelegramService,
     gulianOutbox as unknown as GulianOutboxService,
+    metrikaOutboxStub,
   );
 }
 
@@ -859,7 +868,7 @@ describe('salary payment integrity', () => {
     const harness = new PaymentPrismaHarness([
       makeAccrual('accrual-1', 100, '2026-06-01T00:00:00Z'),
     ]);
-    const service = new SalaryService(harness as unknown as PrismaService);
+    const service = new SalaryService(harness as unknown as PrismaService, metrikaOutboxStub);
 
     const results = await Promise.allSettled([
       service.createPayment(
@@ -889,7 +898,7 @@ describe('salary payment integrity', () => {
       makeAccrual('accrual-1', 100, '2026-06-01T00:00:00Z'),
       makeAccrual('accrual-2', 100, '2026-06-02T00:00:00Z'),
     ]);
-    const service = new SalaryService(harness as unknown as PrismaService);
+    const service = new SalaryService(harness as unknown as PrismaService, metrikaOutboxStub);
 
     await service.createPayment(
       { executorId: 'executor-1', amount: 120 },
@@ -1053,7 +1062,7 @@ function makePaymentByAccrualsHarness(
 
 describe('createPaymentByAccruals — StatusHistory audit trail', () => {
   function svc(h: PaymentByAccrualsHarness) {
-    return new SalaryService(h as unknown as PrismaService);
+    return new SalaryService(h as unknown as PrismaService, metrikaOutboxStub);
   }
 
   it('creates a StatusHistory entry when setting order to PAID', async () => {

@@ -1,10 +1,12 @@
 /**
  * Конфигурация доступа к API Яндекс Метрики.
  *
- * Две переменные окружения:
+ * Три переменные окружения:
  *
- *   YANDEX_METRIKA_COUNTER_ID   — номер счётчика (111569944)
- *   YANDEX_METRIKA_OAUTH_TOKEN  — OAuth-токен аккаунта с доступом к счётчику
+ *   YANDEX_METRIKA_COUNTER_ID           — номер счётчика (111569944)
+ *   YANDEX_METRIKA_OAUTH_TOKEN          — OAuth-токен аккаунта с доступом к счётчику
+ *   YANDEX_METRIKA_ORDERS_SYNC_ENABLED  — отправлять ли заказы из очереди
+ *                                         (этап 06); по умолчанию выключено
  *
  * Токен — секрет: он живёт только в окружении контейнера backend
  * (`/opt/raspechatka/.env` → docker compose), в базу не пишется, в браузер
@@ -33,4 +35,16 @@ export function metrikaConfigFromEnv(
 
 export function isMetrikaConfigured(config: MetrikaConfig): boolean {
   return config.counterId !== null && config.token !== null;
+}
+
+/**
+ * Рубильник отправки заказов (этап 06). Очередь наполняется всегда, а
+ * уходит наружу только при явном «true/1/yes/on»: первый заказ в Метрику
+ * должен уйти по команде владельца, а не в момент выкладки.
+ */
+export function metrikaOrdersSyncEnabledFromEnv(
+  env: Record<string, string | undefined> = process.env,
+): boolean {
+  const raw = (env.YANDEX_METRIKA_ORDERS_SYNC_ENABLED ?? '').trim().toLowerCase();
+  return raw === 'true' || raw === '1' || raw === 'yes' || raw === 'on';
 }

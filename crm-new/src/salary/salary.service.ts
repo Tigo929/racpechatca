@@ -6,13 +6,17 @@ import {
 import { Prisma } from 'src/generated/prisma/client';
 import { EnumStatus } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { MetrikaOrderOutboxService } from 'src/metrika/orders/metrika-order-outbox.service';
 import { DtoCreatePayment } from './dto/create-payment.dto';
 import { DtoCreatePaymentByAccruals } from './dto/create-payment-by-accruals.dto';
 import { DtoCreateBonus } from './dto/create-bonus.dto';
 
 @Injectable()
 export class SalaryService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly metrikaOutbox: MetrikaOrderOutboxService,
+  ) {}
 
   /** Сводка по всем получателям зарплаты: исполнители и менеджеры по оформлению. */
   async getSummary() {
@@ -377,13 +381,20 @@ export class SalaryService {
             where: { id: accrual.orderId },
             data: { status: 'PAID' },
           });
-          await tx.statusHistory.create({
+          const history = await tx.statusHistory.create({
             data: {
               orderId: accrual.orderId,
               fromStatus: accrual.order.status,
               toStatus: 'PAID',
               changedBy: paidById,
             },
+          });
+          // Оплата — то, ради чего заказ вообще едет в Метрику.
+          await this.metrikaOutbox.enqueueTransition(tx, {
+            orderId: accrual.orderId,
+            fromStatus: accrual.order.status,
+            toStatus: 'PAID',
+            statusHistoryId: history.id,
           });
         }
       }

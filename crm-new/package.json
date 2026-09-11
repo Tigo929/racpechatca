@@ -20,6 +20,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "analytics:backfill": "node dist/src/analytics/backfill/run.js",
     "metrika:smoke": "node dist/src/analytics/metrika-smoke.js",
+    "metrika:orders": "node dist/src/analytics/metrika-orders.js",
+    "metrika:orders:status": "node dist/src/analytics/metrika-orders.js status",
     "db:push:dev": "prisma db push"
   },
   "dependencies": {

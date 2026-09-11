@@ -9,6 +9,7 @@ import {
 import { leadDeliveryCost as deliveryCostForLead } from './free-delivery';
 import { attributionFromLead } from './lead-attribution';
 import { clientPaidAtPatch } from './paid-at';
+import { MetrikaOrderOutboxService } from 'src/metrika/orders/metrika-order-outbox.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import DtoCreateOrder from './dto/create-order.dto';
 import { calcItemPricePosition } from './order-pricing';
@@ -210,6 +211,7 @@ export class OrderPhotoService {
     private readonly partnerSettings: PartnerSettingsService,
     private readonly tshirtPartnerTelegram: TshirtPartnerTelegramService,
     private readonly gulianOutbox: GulianOutboxService,
+    private readonly metrikaOutbox: MetrikaOrderOutboxService,
   ) {}
 
   async createOrder(dto: DtoCreateOrder, adminId?: string) {
@@ -1435,7 +1437,7 @@ export class OrderPhotoService {
       if (!lockedOrder) throw new NotFoundException('Заказ не найден');
 
       // Записываем историю изменения статуса
-      await tx.statusHistory.create({
+      const history = await tx.statusHistory.create({
         data: {
           orderId: id,
 
@@ -1664,6 +1666,16 @@ export class OrderPhotoService {
           canvasItems: true,
           executor: { select: { id: true, username: true } },
         },
+      });
+
+      // Заказ для Метрики — в той же транзакции: заявка стала заказом,
+      // оплачен, отменён, возвращён в работу. Внутренние шаги не ставятся.
+      // Сама Метрика здесь не вызывается — это делает воркер очереди.
+      await this.metrikaOutbox.enqueueTransition(tx, {
+        orderId: id,
+        fromStatus: lockedOrder.status,
+        toStatus: newStatus,
+        statusHistoryId: history.id,
       });
 
       return updated;

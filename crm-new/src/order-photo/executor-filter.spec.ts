@@ -36,6 +36,7 @@ function serviceWithSpy() {
     null as never,
     null as never,
     null as never,
+    null as never,
   );
   return { service, whereOf: () => where };
 }

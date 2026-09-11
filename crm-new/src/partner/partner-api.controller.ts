@@ -12,6 +12,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { MetrikaOrderOutboxService } from 'src/metrika/orders/metrika-order-outbox.service';
 import { EnumProductCategory } from 'src/generated/prisma/enums';
 import { StickerService } from 'src/order-photo/sticker.service';
 import { PartnerTokenGuard } from './partner-token.guard';
@@ -40,6 +41,7 @@ export class PartnerApiController {
     private readonly sticker: StickerService,
     private readonly storage: TechSpecStorageService,
     private readonly settings: PartnerSettingsService,
+    private readonly metrikaOutbox: MetrikaOrderOutboxService,
     config: ConfigService,
   ) {
     this.publicBaseUrl = config.get<string>('PUBLIC_BASE_URL') || '';
@@ -87,20 +89,28 @@ export class PartnerApiController {
       throw new NotFoundException('Заказ не найден');
     }
     if (order.status !== status) {
-      await this.prisma.$transaction([
-        this.prisma.statusHistory.create({
+      await this.prisma.$transaction(async (tx) => {
+        const history = await tx.statusHistory.create({
           data: {
             orderId: idOrder,
             fromStatus: order.status,
             toStatus: status,
             changedBy: 'partner',
           },
-        }),
-        this.prisma.orderPhoto.update({
+        });
+        await tx.orderPhoto.update({
           where: { id: idOrder },
           data: { status, statusChangedAt: new Date() },
-        }),
-      ]);
+        });
+        // Обычно ничего не ставит (рабочий → рабочий), но если партнёр
+        // двигает отменённый заказ — для Метрики это возврат в работу.
+        await this.metrikaOutbox.enqueueTransition(tx, {
+          orderId: idOrder,
+          fromStatus: order.status,
+          toStatus: status,
+          statusHistoryId: history.id,
+        });
+      });
     }
     return { order_number: idOrder, status: toPartnerStatus(status) };
   }

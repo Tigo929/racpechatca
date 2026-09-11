@@ -204,3 +204,75 @@ describe('ошибки', () => {
     }
   });
 });
+
+/** Этап 06: загрузка заказов (запись) и последние загрузки. */
+describe('загрузка заказов в simple_orders', () => {
+  const CSV = 'id,create_date_time,client_uniq_id,client_ids,emails,phones,order_status,revenue,cost,goals,currency\norder-1,2026-09-11 18:30:00,,17263548291736450123,,,PAID,1500,80,,RUB\n';
+  const UPLOADING = {
+    uploading: {
+      uploading_id: 'up-1',
+      datetime: '2026-09-11 18:31:00',
+      api_validation_status: 'PASSED',
+      elements_count: 1,
+      entity_type: 'SYSTEM',
+      uploading_format: 'CSV',
+      uploading_source: 'API',
+    },
+  };
+
+  it('J: POST на нужный адрес с merge_mode=SAVE, файл в поле file, тот же заголовок OAuth', async () => {
+    const t = transport([jsonResponse(200, UPLOADING)]);
+    const client = new YandexMetrikaClient(CONFIG, t.fetchImpl, noSleep);
+    const uploading = await client.uploadSimpleOrders(CSV);
+    expect(uploading).toEqual(UPLOADING.uploading);
+    const call = t.calls[0]!;
+    expect(call.url).toBe(
+      `${METRIKA_API}/cdp/api/v1/counter/111569944/data/simple_orders?merge_mode=SAVE&delimiter_type=COMMA`,
+    );
+    expect(call.init.method).toBe('POST');
+    const headers = call.init.headers as Record<string, string>;
+    expect(headers.Authorization).toBe(`OAuth ${TOKEN}`);
+    const form = call.init.body as FormData;
+    expect(form).toBeInstanceOf(FormData);
+    const file = form.get('file') as File;
+    expect(file).toBeInstanceOf(Blob);
+    expect(await file.text()).toBe(CSV);
+  });
+
+  it('J: запись не повторяется внутри клиента — 500 сразу ошибка server, один вызов', async () => {
+    const t = transport([jsonResponse(500, { message: 'oops' })]);
+    const client = new YandexMetrikaClient(CONFIG, t.fetchImpl, noSleep);
+    await expect(client.uploadSimpleOrders(CSV)).rejects.toMatchObject({ kind: 'server', status: 500 });
+    expect(t.calls).toHaveLength(1);
+  });
+
+  it('J: 403 при загрузке — forbidden, текст называет metrika:offline_data', async () => {
+    const t = transport([jsonResponse(403, { message: 'Access denied' })]);
+    const client = new YandexMetrikaClient(CONFIG, t.fetchImpl, noSleep);
+    let caught: MetrikaApiError | undefined;
+    try {
+      await client.uploadSimpleOrders(CSV);
+    } catch (e) {
+      caught = e as MetrikaApiError;
+    }
+    expect(caught?.kind).toBe('forbidden');
+    expect(caught?.humanMessage).toContain('offline_data');
+    expect(caught?.humanMessage.includes(TOKEN)).toBe(false);
+  });
+
+  it('J: без конфигурации — not_configured, в сеть не ходим', async () => {
+    const t = transport([]);
+    const client = new YandexMetrikaClient(metrikaConfigFromEnv({}), t.fetchImpl, noSleep);
+    await expect(client.uploadSimpleOrders(CSV)).rejects.toMatchObject({ kind: 'not_configured' });
+    expect(t.calls).toHaveLength(0);
+  });
+
+  it('K: последние загрузки — GET last_uploadings с лимитом', async () => {
+    const t = transport([jsonResponse(200, { uploadings: [UPLOADING.uploading] })]);
+    const client = new YandexMetrikaClient(CONFIG, t.fetchImpl, noSleep);
+    const list = await client.getLastUploadings(5);
+    expect(list).toEqual([UPLOADING.uploading]);
+    expect(t.calls[0]!.url).toBe(`${METRIKA_API}/cdp/api/v1/counter/111569944/last_uploadings?limit=5`);
+    expect(t.calls[0]!.init.method).toBe('GET');
+  });
+});

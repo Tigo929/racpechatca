@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { MetrikaOrderOutboxService } from 'src/metrika/orders/metrika-order-outbox.service';
 import { EnumStatus } from 'src/generated/prisma/enums';
 import type { Prisma } from 'src/generated/prisma/client';
 import { calcOrderTotal } from 'src/order-photo/order-pricing';
@@ -30,7 +31,10 @@ export interface DraftState {
  */
 @Injectable()
 export class ScenarioDraftService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly metrikaOutbox: MetrikaOrderOutboxService,
+  ) {}
 
   private toAnswers(raw: unknown): Answers {
     return raw && typeof raw === 'object' && !Array.isArray(raw)
@@ -212,7 +216,7 @@ export class ScenarioDraftService {
         });
       }
 
-      await tx.statusHistory.create({
+      const history = await tx.statusHistory.create({
         data: {
           orderId,
           fromStatus: EnumStatus.LEAD,
@@ -221,7 +225,7 @@ export class ScenarioDraftService {
         },
       });
 
-      return tx.orderPhoto.update({
+      const updated = await tx.orderPhoto.update({
         where: { id: orderId },
         data: {
           status: EnumStatus.NEW,
@@ -239,6 +243,17 @@ export class ScenarioDraftService {
         },
         include: { items: true, tshirtItems: true },
       });
+
+      // Заявка стала заказом — это первый момент, когда Метрика должна
+      // узнать о заказе (IN_PROGRESS). Ставим в очередь в той же транзакции.
+      await this.metrikaOutbox.enqueueTransition(tx, {
+        orderId,
+        fromStatus: EnumStatus.LEAD,
+        toStatus: EnumStatus.NEW,
+        statusHistoryId: history.id,
+      });
+
+      return updated;
     });
   }
 }
