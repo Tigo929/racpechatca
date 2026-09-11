@@ -19,6 +19,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { CanvasModule } from './canvas/canvas.module';
 import { ApprovalModule } from './approval/approval.module';
 import { ImageCardsModule } from './marketplace/image-cards/image-cards.module';
+import { MetrikaModule } from './metrika/metrika.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -49,6 +50,7 @@ import { HealthController } from './health.controller';
     CanvasModule,
     ApprovalModule,
     ImageCardsModule,
+    MetrikaModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
