@@ -257,7 +257,7 @@ CANCELLED, PROBLEM — вне цепочки
 
 | Факт | Подробности |
 |---|---|
-| `yclid` хранится бессрочно | `localStorage['yclid']`, без срока; UTM и first-touch — `sessionStorage` (жизнь вкладки). Клик по Директу любой давности приписывается следующему заказу |
+| `yclid` — 21 день (FIX_01) | было: `localStorage['yclid']` бессрочно, клик любой давности приписывался следующему заказу. Стало (ветка `feature/analytics-event-model`): JSON с `capturedAt`, срок 21 день, прежние записи без даты недействительны. UTM и first-touch — `sessionStorage` (жизнь вкладки) |
 | UTM внутри визита — last-touch | новый набор `utm_*` в адресе перезаписывает сохранённый целиком |
 | `first_touch_url` | новое: первая страница вкладки, ставится один раз (`lib/first-touch.ts`), уходит с заявкой как `firstTouchUrl` → `OrderPhoto.firstTouchUrl` |
 | `lead_submitted` у футболок и мерча | до этапа 04 **не отправлялся** — общая цель занижена на футболки за всю историю; исправлено в `feature/analytics-event-model` |

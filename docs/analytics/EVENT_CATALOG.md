@@ -107,6 +107,16 @@
 | `detail` (dataLayer) | открыта карточка формата фотопечати | просмотр товара | `OrderPanel.tsx` → `trackProductDetail` | KEEP |
 | `purchase` (dataLayer) | **было:** сервер принял заявку | **было:** «покупка» на сумму заявки | было в `OrderPanel`, `CanvasOrderForm`, `TshirtLeadForm` | **REMOVED** в `feature/analytics-event-model`; покупка = `PAID` в CRM, отправит CRM (этап 06). В production ещё отправляется — до слияния ветки |
 
+## Атрибуция заявки (не события, но уходят с ней)
+
+| Поле | Смысл | Окно |
+|---|---|---|
+| `utmSource…utmTerm` | маркетинговая атрибуция — **last-touch UTM внутри визита** (вкладки) | sessionStorage |
+| `yclid` | клик по Директу — свидетельство, дополнение к ClientID | **21 день** с момента клика (FIX_01); прежние бессрочные записи недействительны |
+| `yandexClientId` | посетитель в Метрике — главный ключ связи | без срока |
+| `firstTouchUrl` | входная страница визита — измерение поведения, **не** рекламный источник | sessionStorage, один раз на вкладку |
+| `conversionPageUrl` | страница, на которой отправлена заявка | момент отправки |
+
 ## Order / Payment / Completion — бизнес-события (CRM)
 
 Не события сайта. Источник — `OrderPhoto.status` и `StatusHistory`:
