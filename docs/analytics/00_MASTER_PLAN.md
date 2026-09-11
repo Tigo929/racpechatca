@@ -939,7 +939,7 @@ Backfill должен быть:
 Статус:
 
 ```text
-REVIEW
+DONE
 ```
 
 Цель:
@@ -973,7 +973,7 @@ lead_submitted != purchase
 Статус:
 
 ```text
-TODO
+REVIEW
 ```
 
 Цель:
@@ -1493,10 +1493,11 @@ vs
 Текущий этап проекта:
 
 ```text
-04_EVENT_MODEL — REVIEW (реализовано 11.09.2026; FIX_01 — TTL yclid и запись модели атрибуции — выполнена, ждёт проверки)
+05_YANDEX_METRIKA_API — REVIEW / PARTIAL: LIVE_OAUTH_TOKEN_REQUIRED (клиент, CLI
+и тесты готовы 11.09.2026; живой smoke ждёт токена в окружении сервера)
 ```
 
-История: `00`, `01`, `02` (с FIX_01), `03` — DONE 11.09.2026.
+История: `00`, `01`, `02` (с FIX_01), `03`, `04` (с FIX_01) — DONE 11.09.2026.
 Ветки с кодом: CRM — `feature/analytics-foundation` (этапы 02–04, не слита
 в master); сайт — `feature/analytics-event-model` (этап 04, не выкладывается;
 слить в `feature/cms-admin` одновременно с этапом 06).
