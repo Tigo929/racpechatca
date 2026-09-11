@@ -864,7 +864,7 @@ READY_FOR_REVIEW
 ```text
 repo:           racpechatca
 branch:         feature/analytics-foundation
-commit:         см. git log (код этапа 03 — одним коммитом поверх FIX_01)
+commit:         013517e (код + документы этапа 03, поверх eb85a22 FIX_01)
 push:           origin/feature/analytics-foundation
 git status:     чисто
 master touched: no
