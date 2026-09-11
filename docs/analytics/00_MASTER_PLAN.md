@@ -847,7 +847,7 @@ DONE
 Статус:
 
 ```text
-REVIEW
+DONE
 ```
 
 Цель:
@@ -894,7 +894,7 @@ landingUrl
 Статус:
 
 ```text
-TODO
+REVIEW
 ```
 
 Цель:
@@ -1493,11 +1493,12 @@ vs
 Текущий этап проекта:
 
 ```text
-02_ANALYTICS_DATA_MODEL — REVIEW (реализовано 11.09.2026, ждёт проверки)
+03_HISTORICAL_BACKFILL — REVIEW (реализовано 11.09.2026, ждёт проверки)
 ```
 
-История: `00_MASTER_PLAN` и `01_CURRENT_STATE` — DONE 11.09.2026.
-Ветка с кодом этапа 02: `feature/analytics-foundation` (не слита в master).
+История: `00`, `01` — DONE 11.09.2026; `02` (с FIX_01) — DONE 11.09.2026.
+Ветка с кодом этапов 02–03: `feature/analytics-foundation` (не слита в master).
+Запись backfill в боевую базу (`--apply`) не выполнялась — ждёт команды владельца.
 
 После утверждения этого документа:
 
