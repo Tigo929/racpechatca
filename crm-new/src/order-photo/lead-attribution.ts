@@ -13,11 +13,10 @@
  * чем пропавшая: по ней хотя бы видно, что источник размечен криво.
  *
  * `conversionPageUrl` получает `pageUrl` — адрес страницы, **на которой
- * отправлена заявка**. Это не страница входа на сайт (first-touch
- * landing): её сайт пока не запоминает, и поля под неё здесь нет —
- * появится вместе с моделью событий, когда сайт начнёт сохранять первый
- * адрес визита. Имя выбрано так, чтобы поле не обещало больше, чем
- * в нём лежит.
+ * отправлена заявка**. `firstTouchUrl` — первая страница визита (вкладки),
+ * сайт запоминает её один раз на визит и присылает отдельно. Два разных
+ * понятия, две колонки; имена подобраны так, чтобы поле не обещало
+ * больше, чем в нём лежит.
  */
 
 export interface LeadAttributionInput {
@@ -29,6 +28,7 @@ export interface LeadAttributionInput {
   utmContent?: string | null;
   utmTerm?: string | null;
   pageUrl?: string | null;
+  firstTouchUrl?: string | null;
 }
 
 export interface LeadAttribution {
@@ -40,6 +40,7 @@ export interface LeadAttribution {
   utmContent: string | null;
   utmTerm: string | null;
   conversionPageUrl: string | null;
+  firstTouchUrl: string | null;
 }
 
 function clean(value: string | null | undefined): string | null {
@@ -59,5 +60,6 @@ export function attributionFromLead(dto: LeadAttributionInput): LeadAttribution 
     utmContent: clean(dto.utmContent),
     utmTerm: clean(dto.utmTerm),
     conversionPageUrl: clean(dto.pageUrl),
+    firstTouchUrl: clean(dto.firstTouchUrl),
   };
 }

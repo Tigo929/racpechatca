@@ -9,7 +9,7 @@ import { attributionFromLead } from './lead-attribution';
  * строки, по которым потом нельзя отличить «не было» от «было пустое».
  */
 describe('атрибуция заявки с сайта', () => {
-  it('сценарий A: полная атрибуция доходит до всех восьми полей', () => {
+  it('сценарий A: полная атрибуция доходит до всех девяти полей', () => {
     // pageUrl — страница, на которой отправлена заявка; в колонку она
     // ложится под именем conversionPageUrl. Страница входа — не она.
     expect(
@@ -22,6 +22,7 @@ describe('атрибуция заявки с сайта', () => {
         utmContent: 'banner-1',
         utmTerm: 'печать на холсте',
         pageUrl: 'https://raspechatkaa.ru/interer/holst?utm_source=yandex',
+        firstTouchUrl: 'https://raspechatkaa.ru/?utm_source=yandex&utm_medium=cpc',
       }),
     ).toEqual({
       yandexClientId: '1741367582193847',
@@ -32,6 +33,7 @@ describe('атрибуция заявки с сайта', () => {
       utmContent: 'banner-1',
       utmTerm: 'печать на холсте',
       conversionPageUrl: 'https://raspechatkaa.ru/interer/holst?utm_source=yandex',
+      firstTouchUrl: 'https://raspechatkaa.ru/?utm_source=yandex&utm_medium=cpc',
     });
   });
 
@@ -45,6 +47,7 @@ describe('атрибуция заявки с сайта', () => {
       utmContent: null,
       utmTerm: null,
       conversionPageUrl: null,
+      firstTouchUrl: null,
     });
   });
 

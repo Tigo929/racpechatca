@@ -143,6 +143,13 @@ export class DtoCreateLead {
   @MaxLength(600)
   pageUrl?: string;
 
+  // Первая страница визита (вкладки). Не путать с pageUrl — страницей,
+  // на которой отправлена заявка; между ними обычно переходы по каталогу.
+  @IsOptional()
+  @IsUrl({ require_protocol: true })
+  @MaxLength(600)
+  firstTouchUrl?: string;
+
   @IsOptional()
   @IsISO8601()
   submittedAt?: string;

@@ -656,6 +656,7 @@ export class OrderPhotoService {
         dto.yclid ? `yclid: ${dto.yclid}` : null,
         dto.yandexClientId ? `Yandex ClientID: ${dto.yandexClientId}` : null,
         dto.pageUrl ? `Страница: ${dto.pageUrl}` : null,
+        dto.firstTouchUrl ? `Первая страница визита: ${dto.firstTouchUrl}` : null,
         dto.submittedAt ? `Отправлено на сайте: ${dto.submittedAt}` : null,
       ].filter(Boolean);
 
