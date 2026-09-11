@@ -310,3 +310,136 @@ git status:
 ```text
 03_HISTORICAL_BACKFILL.md
 ```
+
+---
+
+# 8. EXECUTOR_REPORT_FIX_01 — 11.09.2026
+
+## 1. RESULT
+
+```text
+READY_FOR_REVIEW
+```
+
+## 2. FIELD DECISION
+
+```text
+old field: landingUrl
+new field: conversionPageUrl
+why:       поле получает window.location.href в момент отправки заявки —
+           адрес страницы конверсии, а не страницы входа на сайт.
+           Имя из ТЗ (предпочтительное); в схеме CRM нет соглашения,
+           которое делало бы leadPageUrl уместнее. Используется
+           последовательно: схема, миграция, lead-attribution.ts, тест,
+           документы.
+```
+
+## 3. MIGRATION STRATEGY
+
+- Исходная миграция на постоянной/shared БД **не применялась**: только на
+  schema-only копию боевой базы для проверки (`crm_shadow_migtest`),
+  которая сразу удалялась; ветка в `master` не слита. Проверено запросом
+  к боевой базе: `information_schema.columns` не содержит ни
+  `landingUrl`, ни `conversionPageUrl` (0 строк).
+- Поэтому **вариант A**: исходная миграция
+  `20260911180000_order_attribution_fields` переписана, follow-up
+  миграции нет. SQL снова сгенерирован `prisma migrate diff` от схемы
+  `master` к текущей и положен без ручных правок.
+- Почему так: вторая миграция с `RENAME COLUMN` оставила бы в истории
+  колонку, которой никогда не было ни в одной живой базе, — шум без
+  пользы. Переписывать применённую миграцию было бы нельзя; эта не
+  применялась.
+- Destructive operations: **no** — `ADD COLUMN` × 8 (nullable, без
+  DEFAULT) и `CREATE INDEX` × 2.
+- Повторная проверка: миграция применена на свежую schema-only копию
+  боевой базы — восемь колонок (`conversionPageUrl, utmCampaign,
+  utmContent, utmMedium, utmSource, utmTerm, yandexClientId, yclid`) и
+  оба индекса на месте; копия удалена.
+
+## 4. DATA FLOW
+
+```text
+window.location.href                    браузер, момент отправки заявки
+→ pageUrl                               тело запроса сайта (JSON / FormData)
+→ pageUrl                               apps/api DTO (фото, холст, футболки, контакты)
+→ lead.pageUrl                          EnrichedLead → CrmLeadChannel
+→ pageUrl                               POST /order-photo/lead, DtoCreateLead
+→ attributionFromLead(dto)              clean(dto.pageUrl)
+→ OrderPhoto.conversionPageUrl
+```
+
+Имя на проводе (`pageUrl`) не менялось — сайт и `apps/api` правок
+не потребовали.
+
+## 5. FILES_CHANGED
+
+```text
+crm-new/prisma/schema.prisma                                   | landingUrl → conversionPageUrl, комментарий переписан | семантика
+crm-new/prisma/migrations/20260911180000_.../migration.sql     | перегенерирован, колонка conversionPageUrl, шапка   | вариант A
+crm-new/src/order-photo/lead-attribution.ts                    | поле интерфейса и результата, комментарий           | семантика
+crm-new/src/order-photo/lead-attribution.spec.ts               | ожидания на conversionPageUrl, комментарий к сценарию A | п. 4 FIX
+docs/analytics/00_MASTER_PLAN.md                               | три явные пометки FIX_01 после блоков с landingUrl    | п. 16.4 плана — не менять исходный текст молча
+docs/analytics/02_ANALYTICS_DATA_MODEL.md                      | пометка под статусом; в отчёте: таблица полей, data flow, факт 2, open issue 1 | п. 5 FIX
+docs/analytics/02_ANALYTICS_DATA_MODEL_FIX_01.md               | добавлен текст доработки + этот отчёт; статус REVIEW  |
+```
+
+## 6. TESTS
+
+```text
+crm-new: npx prisma validate                       | OK
+crm-new: npx prisma generate                       | OK
+crm-new: npx prisma migrate diff --script          | SQL сгенерирован, положен без правок
+миграция на schema-only копии боевой базы          | 8 колонок + 2 индекса, копия удалена
+crm-new: npm run build (nest build)                | OK
+crm-new: npx jest src/order-photo                  | 19 suites, 181 passed
+crm-new: npx jest                                  | 59 suites, 603 passed
+web-photo apps/api: npx tsc --noEmit               | OK (код не менялся)
+web-photo apps/api: npx jest                       | 77 passed
+web-photo apps/web: npx tsc --noEmit               | OK (код не менялся)
+web-photo apps/web: npm test                       | 364, 363 passed, 1 skipped
+```
+
+Ранее известные 4 ошибки `tsc --noEmit` в двух spec-файлах CRM —
+на `master`, к этапу не относятся, не изменились.
+
+## 7. DOCS UPDATED
+
+- `00_MASTER_PLAN.md` — после каждого из трёх блоков, где перечислено
+  `landingUrl` (разделы 13.1, 16/02, 16/03), добавлена явно помеченная
+  поправка: поле — `conversionPageUrl`, first-touch landing не
+  сохраняется, задача этапа 04. Исходный текст плана не правился.
+- `02_ANALYTICS_DATA_MODEL.md` — та же пометка под статусом; в отчёте
+  исполнителя исправлены таблица полей, строка data flow, факт 2 и
+  открытый вопрос 1. Текст исходного ТЗ (упоминания `landingUrl`)
+  оставлен как история.
+- `02_ANALYTICS_DATA_MODEL_FIX_01.md` — добавлен в репозиторий, статус
+  `REVIEW`, этот отчёт в конце.
+- `01_CURRENT_STATE.md` — правок не потребовал: там поле не упоминалось.
+
+## 8. NEW FACTS
+
+```text
+none
+```
+
+## 9. OPEN ISSUES
+
+```text
+first-touch landing URL пока не сохраняется — сайт не запоминает первый
+адрес визита, поля под него в OrderPhoto нет. Передано в 04_EVENT_MODEL.
+```
+
+Прочее без изменений: 4 ошибки `tsc` в spec на `master`; слияние
+`feature/analytics-foundation` — по команде владельца.
+
+## 10. GIT
+
+```text
+repo:       racpechatca
+branch:     feature/analytics-foundation
+commit:     5882956 (код и документы), далее — этот отчёт
+push:       origin/feature/analytics-foundation
+git status: чисто
+master:     не тронут
+web-photo:  без изменений в этой доработке
+```
