@@ -894,7 +894,7 @@ landingUrl
 Статус:
 
 ```text
-REVIEW
+DONE
 ```
 
 Цель:
@@ -939,7 +939,7 @@ Backfill должен быть:
 Статус:
 
 ```text
-TODO
+REVIEW
 ```
 
 Цель:
@@ -1493,12 +1493,15 @@ vs
 Текущий этап проекта:
 
 ```text
-03_HISTORICAL_BACKFILL — REVIEW (реализовано 11.09.2026, ждёт проверки)
+04_EVENT_MODEL — REVIEW (реализовано 11.09.2026, ждёт проверки)
 ```
 
-История: `00`, `01` — DONE 11.09.2026; `02` (с FIX_01) — DONE 11.09.2026.
-Ветка с кодом этапов 02–03: `feature/analytics-foundation` (не слита в master).
+История: `00`, `01`, `02` (с FIX_01), `03` — DONE 11.09.2026.
+Ветки с кодом: CRM — `feature/analytics-foundation` (этапы 02–04, не слита
+в master); сайт — `feature/analytics-event-model` (этап 04, не выкладывается;
+слить в `feature/cms-admin` одновременно с этапом 06).
 Запись backfill в боевую базу (`--apply`) не выполнялась — ждёт команды владельца.
+Справочники: `EVENT_CATALOG.md`, `GOALS_MANIFEST.md`.
 
 После утверждения этого документа:
 
