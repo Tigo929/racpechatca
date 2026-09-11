@@ -808,7 +808,7 @@ BLOCKED
 Статус:
 
 ```text
-IN_PROGRESS
+DONE
 ```
 
 Цель:
@@ -822,7 +822,7 @@ IN_PROGRESS
 Статус:
 
 ```text
-TODO
+DONE
 ```
 
 Цель:
@@ -842,7 +842,7 @@ TODO
 Статус:
 
 ```text
-TODO
+REVIEW
 ```
 
 Цель:
@@ -1478,8 +1478,11 @@ vs
 Текущий этап проекта:
 
 ```text
-00_MASTER_PLAN
+02_ANALYTICS_DATA_MODEL — REVIEW (реализовано 11.09.2026, ждёт проверки)
 ```
+
+История: `00_MASTER_PLAN` и `01_CURRENT_STATE` — DONE 11.09.2026.
+Ветка с кодом этапа 02: `feature/analytics-foundation` (не слита в master).
 
 После утверждения этого документа:
 

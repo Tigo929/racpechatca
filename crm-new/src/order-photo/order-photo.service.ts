@@ -7,6 +7,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { leadDeliveryCost as deliveryCostForLead } from './free-delivery';
+import { attributionFromLead } from './lead-attribution';
+import { clientPaidAtPatch } from './paid-at';
 import { PrismaService } from 'src/prisma/prisma.service';
 import DtoCreateOrder from './dto/create-order.dto';
 import { calcItemPricePosition } from './order-pricing';
@@ -674,6 +676,10 @@ export class OrderPhotoService {
           totalOrder: total + leadDeliveryCost,
           productCategory: dto.productCategory ?? EnumProductCategory.PHOTO,
           note: noteLines.join('\n'),
+          // Откуда пришёл человек — колонками. Те же данные остаются
+          // строками в note выше: их читает менеджер, а колонки — отчёты
+          // и импорт заказов в Метрику (см. lead-attribution.ts).
+          ...attributionFromLead(dto),
           // Позицию заводим сразу: иначе администратору пришлось бы переносить
           // товар и тираж из примечания руками — это ошибки и потеря времени.
           // Холст заводится в свою таблицу, а не в фото-позиции: у него
@@ -1639,6 +1645,12 @@ export class OrderPhotoService {
           ...(newStatus === EnumStatus.COMPLETED
             ? { completedAt: lockedOrder.completedAt ?? new Date() }
             : {}),
+          // Первая оплата — один раз и навсегда (см. paid-at.ts). До этого
+          // поле не заполнял никто, и отчёты жили на statusChangedAt.
+          ...clientPaidAtPatch({
+            current: lockedOrder.clientPaidAt,
+            next: newStatus,
+          }),
           // closedAt: ставим при уходе в закрытые статусы (для сортировки списка),
           // сбрасываем при возврате заказа в работу.
           closedAt: CLOSED_STATUSES.includes(newStatus)
