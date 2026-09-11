@@ -5,7 +5,7 @@
 ## Статус
 
 ```text
-IN_PROGRESS
+REVIEW
 ```
 
 > ВАЖНО: исполнитель не имеет права самостоятельно ставить этому этапу `DONE`.
@@ -775,3 +775,188 @@ ChatGPT задаёт только необходимые вопросы влад
 Главная задача:
 
 > Новая заявка должна сохранять маркетинговую атрибуцию структурированно в `OrderPhoto`, а первый переход в `PAID` должен надёжно фиксировать `clientPaidAt`.
+
+---
+
+# 21. EXECUTOR_REPORT — 11.09.2026
+
+## 1. RESULT
+
+```text
+READY_FOR_REVIEW
+```
+
+## 2. GIT
+
+```text
+repo:        racpechatca
+branch:      feature/analytics-foundation
+base branch: docs/analytics (от master 20cce7b)
+commit:      f18d26f (код), далее — этот отчёт
+push:        origin/feature/analytics-foundation
+git status:  чисто
+master:      не тронут, не слит
+
+repo:        web-photo (сопутствующее, см. раздел 10)
+branch:      feature/cms-admin
+commit:      4f0bdca
+push:        да (рабочая ветка сайта, выкатывается штатно)
+```
+
+## 3. DATABASE CHANGES
+
+Модель `OrderPhoto`, миграция `20260911180000_order_attribution_fields`.
+
+| Поле | Тип Prisma | Postgres | Nullable | Индекс |
+|---|---|---|---|---|
+| `yandexClientId` | `String?` | `TEXT` | да | `OrderPhoto_yandexClientId_idx` |
+| `yclid` | `String?` | `TEXT` | да | нет |
+| `utmSource` | `String?` | `TEXT` | да | нет |
+| `utmMedium` | `String?` | `TEXT` | да | нет |
+| `utmCampaign` | `String?` | `TEXT` | да | нет |
+| `utmContent` | `String?` | `TEXT` | да | нет |
+| `utmTerm` | `String?` | `TEXT` | да | нет |
+| `landingUrl` | `String?` | `TEXT` | да | нет |
+| `clientPaidAt` (существовало) | `DateTime?` | `timestamp` | да | `OrderPhoto_clientPaidAt_idx` — новый |
+
+Типы: `String?` без `@db.VarChar` — так во всей схеме проекта; длину
+ограничивает DTO (`yandexClientId` ≤ 80, `yclid` ≤ 240, UTM ≤ 150/200,
+`pageUrl` ≤ 600). Индексы: `yandexClientId` — под импорт заказов
+в Метрику и поиск заказов одного посетителя; `clientPaidAt` — под отчёты
+по дате оплаты. `yclid` и UTM без индексов: выборка по ним — разбор
+единичных случаев, не отчёты; таблица маленькая (сотни строк).
+
+## 4. DATA FLOW
+
+Все три типа товара идут одним путём: `apps/api` → `CrmLeadChannel`
+(`crm.channel.ts`) → `POST /order-photo/lead` → `DtoCreateLead`
+→ `order-photo.service.ts` → `attributionFromLead(dto)` →
+`orderPhoto.create({ data })`. Форма контактов — тем же каналом.
+
+| Поле | браузер | web/api DTO | CRM DTO | сервис | OrderPhoto |
+|---|---|---|---|---|---|
+| yandexClientId | `getYandexClientId()` → `yandexClientId` | `yandexClientId` | `yandexClientId` | `attributionFromLead` | `yandexClientId` |
+| yclid | `getYclid()` → `yclid` | `yclid` | `yclid` | то же | `yclid` |
+| utmSource | `utmFields()` / `appendUtmFields()` → `utmSource` | `utmSource` → `buildUtm` → `utm.source` | `utmSource` | то же | `utmSource` |
+| utmMedium | → `utmMedium` | → `utm.medium` | `utmMedium` | то же | `utmMedium` |
+| utmCampaign | → `utmCampaign` | → `utm.campaign` | `utmCampaign` | то же | `utmCampaign` |
+| utmContent | → `utmContent` | → `utm.content` | `utmContent` | то же | `utmContent` |
+| utmTerm | → `utmTerm` | → `utm.term` | `utmTerm` | то же | `utmTerm` |
+| landingUrl | `window.location.href` → `pageUrl` | `pageUrl` | `pageUrl` | `pageUrl → landingUrl` | `landingUrl` |
+
+Преобразование на границе: сайт хранит метки как `utm_source` в
+`sessionStorage`, в поля заявки раскладывает `lib/utm.ts` (`utm_source
+→ utmSource`); `apps/api` собирает объект `utm {source…}` для каналов
+(`buildUtm`), `CrmLeadChannel` разворачивает обратно в плоские
+`utmSource…utmTerm` для CRM. CRM пишет и в колонки, и прежними
+строками в `note`.
+
+## 5. CLIENT_PAID_AT
+
+- Логика: `crm-new/src/order-photo/paid-at.ts`, вызов в
+  `order-photo.service.ts` → `updateStatusOrder`, в `data` у
+  `orderPhoto.update` рядом с `sentAt` / `completedAt`.
+- Заполняется: при переходе в `PAID`, если `clientPaidAt` пуст.
+- Не меняется повторно: функция возвращает пустой патч, когда дата уже
+  есть, — независимо от того, какой статус был между.
+- Другие пути в `PAID`: ручное создание заказа допускает только
+  `LEAD`/`NEW` (`create-order.dto.ts:83`); опрос партнёра
+  (`partner-status-poll`) в `PAID` не переводит (`partner-status.ts`,
+  комментарий к `FLOW_RANK`). Единственный путь — `updateStatusOrder`.
+- Тесты: `paid-at.spec.ts` — сценарии C (первый PAID), D (последующие
+  статусы), E (повторный PAID), плюс не-PAID без даты и `now` по умолчанию.
+
+## 6. FILES_CHANGED
+
+| Файл | Что изменено | Почему |
+|---|---|---|
+| `crm-new/prisma/schema.prisma` | 8 полей, 2 индекса, комментарии к `clientPaidAt` | цель этапа |
+| `crm-new/prisma/migrations/20260911180000_order_attribution_fields/migration.sql` | новая миграция | сгенерирована `prisma migrate diff` |
+| `crm-new/src/order-photo/lead-attribution.ts` (+ `.spec.ts`) | новый модуль, 5 тестов | сборка полей из DTO, сценарии A/B |
+| `crm-new/src/order-photo/paid-at.ts` (+ `.spec.ts`) | новый модуль, 5 тестов | первая оплата, сценарии C/D/E |
+| `crm-new/src/order-photo/order-photo.service.ts` | `...attributionFromLead(dto)` в приёме заявки; `...clientPaidAtPatch(...)` в смене статуса | подключение |
+| `crm-new/src/order-photo/dto/create-lead.dto.ts` | комментарий к UTM | был неверным («колонок нет») |
+| `docs/analytics/00_MASTER_PLAN.md` | статусы 00/01 DONE, 02 REVIEW, раздел 22 | п. 16 ТЗ |
+| `docs/analytics/01_CURRENT_STATE.md` | уточнение про UTM (см. раздел 9) | новый факт |
+| `docs/analytics/02_ANALYTICS_DATA_MODEL.md` | текст этапа + этот отчёт | |
+| **web-photo:** `apps/web/src/lib/utm.ts` | `utmFields()` | JSON-форма фотопечати |
+| `apps/web/src/components/product/OrderPanel.tsx` | `...utmFields()` в payload | UTM с формы фото |
+| `apps/web/src/components/canvas/CanvasOrderForm.tsx` | `appendUtmFields(payload)` | UTM с формы холста |
+| `apps/api/src/leads/utm.ts` (+ `.spec.ts`) | общий `buildUtm`, 3 теста | вместо двух копий; фото и холст его не имели |
+| `apps/api/src/leads/dto/create-lead.dto.ts`, `create-canvas-lead.dto.ts` | 5 полей UTM | принимались только у футболок и контактов |
+| `apps/api/src/leads/leads.service.ts`, `canvas-lead.service.ts` | `utm` в `EnrichedLead` | доставка в CRM |
+| `apps/api/src/leads/tshirt-lead.service.ts`, `contact-lead.service.ts` | локальный `buildUtm` → общий | дедупликация |
+
+## 7. TESTS
+
+| Команда | Результат | Примечание |
+|---|---|---|
+| `crm-new: npx prisma validate` | OK | |
+| `crm-new: npx prisma generate` | OK | клиент 7.8.0 |
+| `crm-new: npx prisma migrate diff --from-schema <old> --to-schema <new> --script` | SQL сгенерирован | положен в миграцию без правок |
+| миграция на schema-only копии боевой базы (`crm_shadow_migtest`, потом удалена) | 9 колонок, 2 индекса на месте | на сервере, через `psql` в контейнере Postgres |
+| `crm-new: npm run build` (`nest build`) | OK | |
+| `crm-new: npx tsc --noEmit -p tsconfig.json` | 4 ошибки | **все в `approval-render.spec.ts` и `partner-payload-client-item.spec.ts`, воспроизводятся на `master` без моих изменений** — не относятся к этапу |
+| `crm-new: npx jest` | 59 suites, **603 passed** | 10 новых |
+| `web-photo apps/api: npx tsc --noEmit` | OK | |
+| `web-photo apps/api: npx jest` | 11 suites, **77 passed** | 3 новых |
+| `web-photo apps/web: npx tsc --noEmit` | OK | |
+| `web-photo apps/web: npm test` | **364, 363 passed, 1 skipped** | без изменений |
+
+## 8. MIGRATION SAFETY
+
+- Применима на боевой базе: да, проверено на её schema-only копии.
+- Destructive operations: нет — только `ADD COLUMN` (nullable, без
+  DEFAULT) и `CREATE INDEX`.
+- Downtime: не требуется сверх штатного перезапуска контейнера;
+  `ADD COLUMN` без DEFAULT в PostgreSQL — правка каталога, строки
+  не перезаписываются; таблица — сотни строк, индексы строятся мгновенно.
+- Ручная подготовка: не требуется. `docker-compose.prod.yml` запускает
+  backend как `npx prisma migrate deploy && node dist/src/main` —
+  миграция применится сама при следующем старте контейнера с новым
+  образом.
+
+## 9. NEW FACTS DISCOVERED
+
+1. **UTM отправляли только формы футболок и контактов.** Формы
+   фотопечати (`OrderPanel`) и холста (`CanvasOrderForm`) UTM не
+   собирали, в их DTO на `apps/api` полей не было. Аудит 01 утверждал
+   «все пять уходят с заявкой любого типа» — это было неверно; 01
+   исправлен. Без правки на стороне сайта критерий «работают все типы
+   товара» этап пройти не мог — отсюда сопутствующий коммит в web-photo.
+2. `landingUrl` получает `pageUrl` — адрес страницы, с которой отправлена
+   заявка, а **не** страницу входа на сайт: сайт её не запоминает.
+   Зафиксировано в комментарии схемы и в `lead-attribution.ts`.
+3. Единственный путь в `PAID` — `updateStatusOrder` (см. раздел 5).
+4. Backend CRM применяет миграции сам при старте (`migrate deploy`
+   в compose) — ручного шага деплоя миграций нет.
+5. `tsc --noEmit` на `master` CRM даёт 4 ошибки в двух spec-файлах;
+   `nest build` и `jest` при этом чистые (сборка spec не включает).
+
+## 10. DEVIATIONS FROM SPEC
+
+1. **Изменения вне репозитория CRM** — `web-photo` (сайт и `apps/api`):
+   без них UTM с форм фото и холста физически не доходили до CRM,
+   и раздел 6 ТЗ («все типы заявок») был бы `PARTIAL`. Изменения
+   только про доставку UTM: события Метрики, `lead_submitted`, `purchase`
+   не тронуты. Запушено в рабочую ветку сайта `feature/cms-admin` —
+   это его штатная ветка выкладки, а не `master`; CRM эти поля уже
+   принимает, так что порядок выкладки не важен.
+2. Ветка кода — `feature/analytics-foundation` от `docs/analytics`,
+   как рекомендовано.
+
+## 11. OPEN ISSUES
+
+1. Страница входа на сайт (настоящий landing) сайтом не сохраняется —
+   при желании добавить в этапе 04 (событийная модель): сохранить первый
+   `location.href` визита рядом с UTM в `sessionStorage`.
+2. Четыре ошибки `tsc` в spec-файлах CRM на `master` — вне этапа,
+   стоит починить отдельно.
+3. Слияние `feature/analytics-foundation` в `master` — по команде
+   владельца; до слияния колонки в боевой базе не появятся.
+
+## 12. QUESTIONS FOR REVIEWER
+
+```text
+none
+```
