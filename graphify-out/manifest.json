@@ -665,8 +665,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/layout/AppShell.tsx": {
-    "mtime": 1785231328.7957883,
-    "ast_hash": "40d1f6657447a4d4fe94a15351a734ad",
+    "mtime": 1789115085.074824,
+    "ast_hash": "ffbebb109741d562b74f0bf2a9afd876",
     "semantic_hash": ""
   },
   "frontend/src/components/layout/navigation.ts": {
@@ -2307,6 +2307,16 @@
   "crm-new/src/order-photo/free-delivery.ts": {
     "mtime": 1789053131.8104491,
     "ast_hash": "192ba4b2e5385cc97d60e694b2033e3f",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/layout/LeadNotifyBell.tsx": {
+    "mtime": 1789115066.7750142,
+    "ast_hash": "1adfb02b9a2a8f0fc57693cc3bd2dca7",
+    "semantic_hash": ""
+  },
+  "frontend/src/hooks/useNewLeadNotifications.ts": {
+    "mtime": 1789115051.478479,
+    "ast_hash": "6e8d06504dcb297a8f2239a13e4ccc2e",
     "semantic_hash": ""
   }
 }

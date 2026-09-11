@@ -8,6 +8,8 @@ import { tasksApi } from '../../api/tasks';
 import {
   navGroupsFor, primaryNavFor, type BadgeKey, type NavItem,
 } from './navigation';
+import { LeadNotifyBell } from './LeadNotifyBell';
+import { useNewLeadNotifications } from '../../hooks/useNewLeadNotifications';
 
 interface Props {
   /** Заголовок страницы — показывается в верхней полосе. */
@@ -52,7 +54,13 @@ export function AppShell({
     queryFn: () => ordersApi.getStats({}),
     enabled: isAdmin,
     staleTime: 30_000,
+    // Опрашиваем фоном — чтобы новая заявка замечалась, даже когда вкладка
+    // CRM не в фокусе (сижу за ПК, работаю в другой вкладке).
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: true,
   });
+  // Уведомление о новой заявке (пока открыта вкладка CRM).
+  useNewLeadNotifications(leadStats?.leadCount, isAdmin);
   const { data: taskCount } = useQuery({
     queryKey: ['tasks', 'count'],
     queryFn: tasksApi.count,
@@ -128,6 +136,7 @@ export function AppShell({
             </div>
 
             <div className="flex items-center gap-1.5 flex-shrink-0">
+              {isAdmin && <LeadNotifyBell />}
               {onRefresh && (
                 <button
                   onClick={onRefresh}
