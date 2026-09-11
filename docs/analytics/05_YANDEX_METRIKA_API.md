@@ -1322,3 +1322,201 @@ redaction tested:  да — тест I: сообщение, стек, details, h
 ```text
 none
 ```
+
+---
+
+# 34. EXECUTOR_REPORT_LIVE_SMOKE — 11.09.2026
+
+Дополнение к отчёту раздела 33 по форматам
+`05_YANDEX_METRIKA_API_LIVE_SMOKE.md` § 12 и
+`05_YANDEX_METRIKA_OAUTH_REAL_APP.md` § 11.
+
+## 1. RESULT
+
+```text
+READY_FOR_REVIEW
+```
+
+Оба read-only smoke test выполнены настоящим токеном против настоящего
+счётчика `111569944`. Код этапа 05 не менялся. Production не тронут.
+
+## 2. LIVE ENVIRONMENT
+
+```text
+runner type:          вариант B — локальный runner из checkout ветки
+                      (npm run build → npm run metrika:smoke), токен передан
+                      переменной окружения одному процессу и не сохранён
+feature branch:       feature/analytics-foundation
+production modified:  no
+production restarted: no
+token source:         secret env одного процесса. На сервере токена НЕТ:
+                      /opt/raspechatka/.env не содержит ключей YANDEX_METRIKA_*,
+                      в контейнере raspechatka-backend-1 их тоже нет
+                      (проверено по именам ключей, значения не читались)
+token printed:        no  (вывод CLI фильтровался, в отчёт не попал)
+```
+
+## 2a. REAL APP METADATA
+
+```text
+client id:                          6e727d1db7d243d29b176d6ef8ad1f83
+redirect uri:                       https://oauth.yandex.ru/verification_code
+counter id:                         111569944
+treated as real:                    yes
+client secret required for runtime: no  (не использовался и не нужен)
+token present in secure env:        no  (см. § 2 — только разовый запуск)
+```
+
+## 3. COUNTER RESULT
+
+```text
+HTTP:         200
+counter id:   111569944
+access:       permission = own  (токен выпущен владельцем счётчика)
+status:       code_status = CS_ERR_UNKNOWN  (см. NEW FACTS, п. 3)
+site:         raspechatkaa.ru
+goals count:  13
+duration:     в составе общего прогона 1057 мс на три запроса
+```
+
+## 4. REPORTS RESULT
+
+```text
+period:        2026-09-05 .. 2026-09-11  (7 календарных дней)
+visits:        218
+users:         151
+pageviews:     1189
+sampled:       false
+sample_share:  1
+data_lag:      0 с
+duration:      в составе общего прогона 1057 мс на три запроса
+```
+
+`metrika:read` подтверждён фактически: счётчик, цели и отчёт прочитаны.
+`metrika:offline_data` write-вызовом не проверялся (§ 9 ТЗ) — подтвердится
+первым импортом на этапе 06.
+
+## 5. GOALS RECONCILIATION
+
+Источник — `GET /management/v1/counter/111569944/goals`. Полная таблица и
+решения — в `GOALS_MANIFEST.md`; здесь свод.
+
+```text
+event id                    | title (Метрика)                        | expected     | actual        | final status
+----------------------------+----------------------------------------+--------------+---------------+-------------
+lead_submitted              | Сколько заявок реально ушло на сервер   | configured   | 611379890 JS  | CONFIGURED
+form_started                | Сколько людей вообще начали заполнять  | unknown      | 611379430 JS  | CONFIGURED
+messenger_click             | Сколько предпочли написать…            | unknown      | 611380009 JS  | CONFIGURED
+phone_click                 | Сколько предпочли позвонить            | unknown      | 611380045 JS  | CONFIGURED
+choose_size                 | дошёл до выбора размера                | unknown      | 611382416 JS  | CONFIGURED
+add_tshirt_lead             | дошёл до формы заявки                  | unknown      | 611384704 JS  | CONFIGURED
+lead_submit_attempt         | Сколько дошли до нажатия «отправить»   | не создавать | 611379504 JS  | CONFIGURED (оставить)
+submit_tshirt_order_success | Заявки на футболки…                    | не создавать | 611379979 JS  | CONFIGURED (оставить до lead_submitted_tshirt)
+submit_tshirt_order_error   | неудачная отправка…                    | не создавать | 611386291 JS  | CONFIGURED (оставить)
+view_custom_tshirt          | открыл конструктор футболки            | не создавать | 611381532 JS  | CONFIGURED (оставить)
+lead_submitted_photo        | —                                      | missing      | нет           | MISSING (обязательная)
+lead_submitted_canvas       | —                                      | missing      | нет           | MISSING (обязательная)
+lead_submitted_tshirt       | —                                      | missing      | нет           | MISSING (обязательная)
+form_error                  | —                                      | missing      | нет           | MISSING (обязательная)
+canvas_format_select        | —                                      | unknown      | нет           | MISSING (желательная)
+canvas_size_select          | —                                      | unknown      | нет           | MISSING (желательная)
+canvas_upload_click         | —                                      | unknown      | нет           | MISSING (желательная)
+choose_shirt_type           | —                                      | unknown      | нет           | MISSING (желательная)
+choose_color                | —                                      | unknown      | нет           | MISSING (желательная)
+view_product                | —                                      | unknown      | нет           | MISSING (желательная)
+(url /thanks)               | Заявка отправлена                      | «JS-цель»    | 602316919 URL | EXTRA/STALE — оставить, конверсией не считать
+(autogoal form)             | Автоцель: отправка формы               | configured   | 602325854     | EXTRA (автоцель) — оставить
+(autogoal messenger)        | Автоцель: переход в мессенджер         | —            | 608401685     | EXTRA (автоцель) — оставить
+```
+
+```text
+configured:   10
+missing:      10  (4 обязательных + 6 желательных)
+extra/stale:   3  (URL-цель /thanks, две автоцели)
+unknown:       0
+```
+
+Цели через API не создавались и не менялись (§ 11 ТЗ).
+
+## 6. SECURITY
+
+```text
+client secret committed:  no  (не использовался)
+token committed:          no
+token logged:             no
+token shown in report:    no
+frontend exposure:        no
+write requests executed:  no  (три GET)
+```
+
+**Инцидент.** Токен был вставлен владельцем в переписку с исполнителем
+открытым текстом. Исполнитель использовал его один раз для этого smoke
+и не сохранил, но токен следует считать скомпрометированным: владельцу
+нужно отозвать его (Яндекс ID → Безопасность → доступы приложений) или
+перевыпустить через
+`https://oauth.yandex.ru/authorize?response_type=token&client_id=6e727d1db7d243d29b176d6ef8ad1f83`
+и новый токен положить **только** в `/opt/raspechatka/.env` на сервере,
+не пересылая его в чат. Client Secret по-прежнему подлежит перевыпуску
+(показан в скриншоте ранее).
+
+## 7. DOCS UPDATED
+
+```text
+GOALS_MANIFEST.md                    — переписан по факту API: 13 целей с id, типами
+                                       и идентификаторами; группы A/B/C; unknown = 0;
+                                       URL-цель «Заявка отправлена» = /thanks
+05_YANDEX_METRIKA_API.md             — этот раздел 34
+05_YANDEX_METRIKA_API_LIVE_SMOKE.md  — статус BLOCKED → REVIEW
+05_YANDEX_METRIKA_OAUTH_REAL_APP.md  — статус IN_PROGRESS → REVIEW
+00_MASTER_PLAN.md                    — раздел 22: 05 REVIEW (live smoke пройден);
+                                       блок 05: критерий users/visits выполнен
+01_CURRENT_STATE.md                  — раздел 4 (цели по факту), 5c (live smoke),
+                                       факт про URL-цель и CS_ERR_UNKNOWN
+```
+
+## 8. NEW FACTS
+
+1. **«Заявка отправлена» (602316919) — не JS-цель, а URL-цель на `/thanks`.**
+   На `/thanks` уходят только формы фото и холста; футболки, мерч и
+   контакты страницу «спасибо» не открывают. Значит «конверсия 11,96 %»
+   из отчётов 5–8.09 занижена на эти формы, и конверсией в отчётах
+   этапов 07–09 нужно считать JS-цель `lead_submitted` (611379890), а не
+   602316919. Раздел 4 `01_CURRENT_STATE` исправлен.
+2. В счётчике **13 целей**, из них 10 JS-целей совпадают с именами
+   событий кода. Семь целей, которые манифест этапа 04 считал
+   «unknown»/«не создавать», реально существуют — оставлены.
+   Не хватает четырёх обязательных (`lead_submitted_photo/canvas/tshirt`,
+   `form_error`) и шести целей воронок холста/футболок.
+3. `code_status = CS_ERR_UNKNOWN` — проверка кода счётчика Яндексом
+   не находит счётчик на странице. Ожидаемо: счётчик на сайте
+   загружается только после согласия на cookie (`Analytics.tsx`), а
+   робот проверки согласия не даёт. На сбор данных не влияет (218 визитов
+   за неделю подтверждают); это та же причина, по которой раньше не
+   работали Вебвизор и карты во фрейме до исключения `isMetrikaFrame()`.
+4. Отчёт за 7 дней без семплирования (`sampled=false`, `sample_share=1`,
+   `data_lag=0`) — на текущих объёмах (~30 визитов/день) Reports API
+   отдаёт точные числа; это упростит сверку CRM↔Метрика на этапах 06–08.
+5. Токен на сервере отсутствует; для этапа 06 он должен появиться в
+   `/opt/raspechatka/.env` (новый, после отзыва показанного).
+
+## 9. OPEN ISSUES
+
+1. Отзыв/перевыпуск показанного в чате OAuth-токена и перевыпуск Client
+   Secret — действие владельца.
+2. Новый токен → `/opt/raspechatka/.env` (`YANDEX_METRIKA_COUNTER_ID=111569944`,
+   `YANDEX_METRIKA_OAUTH_TOKEN=…`), без пересылки в чат — действие владельца.
+3. Создание четырёх обязательных целей из `GOALS_MANIFEST.md` § B — вручную
+   владельцем (или программно на этапе 06/13 после решения о `metrika:write`).
+4. Ветка `feature/analytics-foundation` не слита в `master`; backfill
+   `--apply` не выполнялся — ждут команды владельца.
+
+## 10. GIT
+
+```text
+repo:    racpechatca
+branch:  feature/analytics-foundation
+commit:  коммит «docs(аналитика, этап 05): live smoke …» поверх 3972558
+push:    origin/feature/analytics-foundation
+status:  live smoke не потребовал изменений кода — изменены только документы
+master:  не тронут
+```

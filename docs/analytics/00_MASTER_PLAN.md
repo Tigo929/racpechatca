@@ -999,6 +999,11 @@ NestJS
 → получены users / visits
 ```
 
+Выполнен 11.09.2026: counter HTTP 200 (permission own), 13 целей,
+visits 218 / users 151 / pageviews 1189 за 2026-09-05..11 без семплирования.
+Отчёт — `05_YANDEX_METRIKA_API.md` § 33–34; факт по целям — `GOALS_MANIFEST.md`.
+`YANDEX_OAUTH_CLIENT_ID` в runtime не нужен (token-based клиент).
+
 ---
 
 ## 06_CRM_TO_METRIKA
@@ -1493,8 +1498,10 @@ vs
 Текущий этап проекта:
 
 ```text
-05_YANDEX_METRIKA_API — REVIEW / PARTIAL: LIVE_OAUTH_TOKEN_REQUIRED (клиент, CLI
-и тесты готовы 11.09.2026; живой smoke ждёт токена в окружении сервера)
+05_YANDEX_METRIKA_API — REVIEW: live smoke пройден 11.09.2026 (counter 200,
+13 целей, Reports API 218/151/1189 за 7 дней, GOALS_MANIFEST сверён).
+Токен на сервере пока отсутствует — показанный в чате подлежит отзыву,
+новый владелец кладёт в /opt/raspechatka/.env сам. DONE ставит ChatGPT.
 ```
 
 История: `00`, `01`, `02` (с FIX_01), `03`, `04` (с FIX_01) — DONE 11.09.2026.

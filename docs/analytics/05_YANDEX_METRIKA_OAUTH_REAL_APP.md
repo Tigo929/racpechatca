@@ -5,8 +5,13 @@
 ## Статус
 
 ```text
-IN_PROGRESS
+REVIEW
 ```
+
+ClientID, Redirect URI и Counter ID приняты как реальные; live smoke с
+настоящим токеном пройден 11.09.2026 (`05_YANDEX_METRIKA_API.md`, § 34).
+Client Secret не использовался. Токен, показанный в переписке, подлежит
+отзыву и перевыпуску владельцем; новый — только в `/opt/raspechatka/.env`.
 
 > Это дополнение к `05_YANDEX_METRIKA_API.md` и `05_YANDEX_METRIKA_API_LIVE_SMOKE.md`.
 > Данные OAuth-приложения ниже считать РЕАЛЬНЫМИ текущими данными проекта, а не примерами/placeholder.
