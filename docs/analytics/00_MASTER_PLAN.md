@@ -1524,12 +1524,13 @@ vs
 Текущий этап проекта:
 
 ```text
-06_CRM_TO_METRIKA — REVIEW (фаза 1 — 11.09, FIX_01 — 12.09, LIVE WRITE — 12.09.2026
-11:45 MSK): один контрольный POST через очередь по заказу 20260909-091 → IN_PROGRESS,
-HTTP 200, api_validation_status PASSED, elements_count 1, uploading 54f3af75-…,
-last_uploadings подтверждает; пояс счётчика Europe/Moscow (+180). Production,
-master и сайт не тронуты; воркер на бою выключен. DONE ставит Reviewer; затем
-rollout (раздел 45 этапа 06). Отчёт — `06_CRM_TO_METRIKA_LIVE_WRITE.md` § 24.
+06_CRM_TO_METRIKA = DONE (Reviewer, 12.09.2026). 06_PRODUCTION_ROLLOUT — IN_PROGRESS:
+PHASE B–H выполнены 12.09.2026 12:00–12:21 MSK — master = d72ffff выложен, 4 миграции
+применены (migrate status up to date), backfill --apply 219 заказов (повторный dry-run 0,
+note/designNote/StatusHistory без изменений), Метрика из контейнера: 200, Europe/Moscow,
+воркер включён 12:20 (очередь пуста, естественных переходов пока не было). Впереди:
+PHASE I — 4 JS-цели (владелец), PHASE J — web deploy по отдельному подтверждению,
+K, L. Отчёт — `06_PRODUCTION_ROLLOUT.md` § 33.
 ```
 
 История: `00`, `01`, `02` (с FIX_01), `03`, `04` (с FIX_01), `05` (live smoke

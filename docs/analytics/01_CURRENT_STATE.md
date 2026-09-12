@@ -307,6 +307,20 @@ CANCELLED, PROBLEM — вне цепочки
 | Дрейф схемы на бою | против `schema.prisma`: TIMESTAMPTZ в GulianOutbox/ExpenseOrder/executorSentAt, DEFAULT у updatedAt в трёх таблицах, FK SalaryAccrual ON DELETE SET NULL, имя индекса GulianOutbox, лишние индексы sentAt/clientGreetedAt, WIP-объекты GulianOutboxEvent/IntegrationAuditLog/2 enum/4 колонки. Безвредно для работы и `migrate deploy`; `migrate dev` на бою не запускать |
 
 ---
+# 5e. Production после rollout PHASE B–H (12.09.2026 12:21 MSK)
+
+| Факт | Подробности |
+|---|---|
+| CRM на бою | `master` = d72ffff (этапы 02–06 + Web Push); образ backend de021522…; 75 миграций, `migrate status` up to date |
+| Схема | `OrderPhoto`: yandexClientId, yclid, utm*, conversionPageUrl, firstTouchUrl, clientPaidAt + индексы; таблица `MetrikaOrderOutbox` |
+| Backfill | применён: 219 заказов — 11 ClientID, 10 yclid, 16 conversionPageUrl, 204 clientPaidAt; повторный dry-run 0; `note`/`designNote`/`StatusHistory` не изменены |
+| Воркер Метрики | **включён** 12:20 MSK (`YANDEX_METRIKA_ORDERS_SYNC_ENABLED=true` в `/opt/raspechatka/.env`); каждые 30 с; очередь пуста — ждём первый естественный переход |
+| Метрика с боя | counter 200, пояс Europe/Moscow (+180), Reports API работает; в счётчике 17 целей: 13 прежних + 4 системные CRM-цели (заказ создан/оплачен/отменён/спам), появившиеся после первой CDP-загрузки |
+| Ещё не сделано | 4 обязательные JS-цели (владелец); web deploy `feature/analytics-event-model → feature/cms-admin` (по подтверждению) — browser purchase на бою пока уходит |
+| Серверный compose | точечно дополнен переменными YANDEX_METRIKA_*; `MARKETPLACE_SECRET` из master там всё ещё отсутствует (вне этапа) |
+| Временные базы | `crm_stage06_test`, `crm_fresh_test` удалены; на сервере только `crm` |
+
+---
 # 6. Что уже готово из целевой картины
 
 - Сайт собирает всё нужное для атрибуции и доставляет в CRM — данные
