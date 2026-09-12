@@ -1074,7 +1074,9 @@ traffic/goals/sources/utm/landings/devices/pages), каталог запросо
 сервис синхронизации с advisory lock и заменой периода, расписание за флагом
 YANDEX_METRIKA_ANALYTICS_SYNC_ENABLED (false), CLI metrika:sync. Проверено на копии боевой
 базы: 7 дней → сверка с прямым API 0 расхождений, 90 дней (данные с 13.08.2026), качество.
-Production (migrate deploy, ручные синхронизации, включение расписания) — по команде.
+Production 12.09.2026 (по команде владельца): master = b57c067, миграция применена, verify 7/7,
+7 дней → сверка 0, 90 дней, качество, покрытие; расписание включено 17:11 MSK — суточный
+(17:13) и часовой (18:11) циклы SUCCESS, lock/overlap/дубли проверены. DONE ставит Reviewer.
 ```
 
 Цель:
@@ -1544,8 +1546,9 @@ consent → Метрика работает, формы открываются, 
 07_METRIKA_TO_ANALYTICS — REVIEW (12.09.2026 15:30 MSK): Reports API → локальные таблицы.
 Реализация, тесты (830 в CRM), живая проверка всех 7 запросов, контрольная синхронизация
 7 и 90 дней и сверка (0 расхождений) — на копии базы crm_stage07_test. Production
-не менялся: выкладка (master) и включение расписания — по отдельной команде владельца,
-порядок — `07_METRIKA_TO_ANALYTICS.md` § 37 п. 13. Immutable metadata:
+rollout выполнен 12.09.2026 16:56–18:21 MSK по команде владельца: master = b57c067, миграция,
+все проверки в боевом контейнере чистые, расписание включено, два цикла SUCCESS, копия
+удалена — `07_METRIKA_TO_ANALYTICS.md` § 38. Immutable metadata:
 FALSE_BROWSER_PURCHASE_STOPPED_AT = LEAD_GOAL_SEMANTICS_CHANGED_AT = 2026-09-12 13:19:22 MSK.
 ```
 

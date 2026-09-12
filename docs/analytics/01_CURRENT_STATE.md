@@ -321,7 +321,7 @@ CANCELLED, PROBLEM — вне цепочки
 | Временные базы | `crm_stage06_test`, `crm_fresh_test` удалены; на сервере только `crm` |
 
 ---
-# 5f. Локальный слой данных Метрики — этап 07 (12.09.2026, ветка, production не тронут)
+# 5f. Локальный слой данных Метрики — этап 07 (12.09.2026, в production с 17:08 MSK)
 
 | Факт | Подробности |
 |---|---|
@@ -333,8 +333,8 @@ CANCELLED, PROBLEM — вне цепочки
 | CLI | `npm run metrika:sync -- --from … --to … [--dataset …]`, `status`, `verify` (live read-only), `reconcile`, `quality`, `coverage` — токен не печатает |
 | Проверено на копии `crm_stage07_test` | verify 7/7; 7 дней (06–12.09): 181 визитов / 146 дневных уникальных / 1023 просмотров, lead 2, CRM created 1, paid 0 — прямой API даёт то же (0 расхождений); 90 дней (15.06–12.09): 1426 строк, данные с 13.08.2026, sampled=false; lock двумя процессами — второй LOCKED |
 | Ограничения данных | JS-цели считают только с момента создания (`lead_submitted` — 2 достижения, оба 11.09; обязательные — с 12.09 13:00); UTM почти нет (Директ = yclid); `ym:pv:pageviews` ≠ `ym:s:pageviews`; дневные `users` не суммируются в периодные |
-| Production | не менялся: таблиц на бою нет, флаг не задан, расписание OFF; последовательность включения — `07_METRIKA_TO_ANALYTICS.md` § 37 п. 13. Копия `crm_stage07_test` на сервере оставлена до команды |
-| Бой 15:30 MSK (read-only) | очередь MetrikaOrderOutbox пуста, воркер healthy; после cutover 13:19 заявок с сайта не было; 20260912-109 (12:59, до cutover, utm chatgpt.com) — LEAD; 20260912-110 (Avito, 14:02) создан сразу NEW без перехода и без ClientID |
+| Production | **выложено 12.09.2026**: `master` = b57c067 (образ backend eb9fb783…), миграция `20260912140000_metrika_analytics_tables` применена 17:07 MSK (76 миграций, up to date); в боевой базе 90 дней данных (1428 строк, с 13.08.2026); `YANDEX_METRIKA_ANALYTICS_SYNC_ENABLED=true` в `/opt/raspechatka/.env` с 17:11 MSK (compose дополнен строкой с умолчанием false; backup обоих файлов рядом); расписание: суточный тик 17:13 и часовой 18:11 — SUCCESS, lock/overlap/дубли проверены; копия `crm_stage07_test` удалена. Отчёт — `07_METRIKA_TO_ANALYTICS.md` § 38 |
+| Бой 18:21 MSK (read-only) | очередь MetrikaOrderOutbox пуста, воркер заказов запущен после каждого рестарта; после cutover 13:19 заявок с сайта не было; 20260912-109 (12:59, до cutover, utm chatgpt.com) — LEAD; 20260912-110 (Avito, 14:02) создан сразу NEW без перехода и без ClientID — в очередь не попадает по дизайну |
 
 ---
 # 6. Что уже готово из целевой картины
