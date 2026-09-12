@@ -1,5 +1,6 @@
 import {
   ACCEPTED_ORDER_STATUSES,
+  findSourceTransition,
   normalizeMetrikaStatus,
   orderEligibility,
   transitionToMetrikaStatus,
@@ -110,5 +111,37 @@ describe('право перехода уйти в Метрику (eligibility)',
     expect(
       orderEligibility({ target: 'CANCELLED', history: upToCancel, previouslySynced: false }),
     ).toEqual({ eligible: false, reason: 'rejected_lead' });
+  });
+});
+
+describe('источник контрольной отправки (live write)', () => {
+  const at = (s: string) => new Date(s);
+  // История заказа 20260909-091 на бою (12.09.2026).
+  const history = [
+    { id: 'h1', fromStatus: 'LEAD', toStatus: 'NEW', createdAt: at('2026-09-09T11:49:00Z') },
+    { id: 'h2', fromStatus: 'NEW', toStatus: 'FOLDER_STRUCTURE_CREATED', createdAt: at('2026-09-11T12:48:00Z') },
+    { id: 'h3', fromStatus: 'FOLDER_STRUCTURE_CREATED', toStatus: 'NEW', createdAt: at('2026-09-11T14:15:00Z') },
+  ];
+
+  it('для IN_PROGRESS — реальный переход LEAD → NEW, а не внутренние шаги', () => {
+    expect(findSourceTransition(history, 'IN_PROGRESS')?.id).toBe('h1');
+  });
+
+  it('для PAID берётся последний переход в PAID; при повторной оплате — самый свежий', () => {
+    const paidTwice = [
+      ...history,
+      { id: 'h4', fromStatus: 'NEW', toStatus: 'PAID', createdAt: at('2026-09-12T10:00:00Z') },
+      { id: 'h5', fromStatus: 'PAID', toStatus: 'NEW', createdAt: at('2026-09-12T11:00:00Z') },
+      { id: 'h6', fromStatus: 'NEW', toStatus: 'PAID', createdAt: at('2026-09-12T12:00:00Z') },
+    ];
+    expect(findSourceTransition(paidTwice, 'PAID')?.id).toBe('h6');
+    expect(findSourceTransition(paidTwice, 'IN_PROGRESS')?.id).toBe('h5');
+  });
+
+  it('заказ заведён сразу в NEW (истории нет) — источника нет, CLI поставит ручную строку', () => {
+    expect(findSourceTransition([], 'IN_PROGRESS')).toBeNull();
+    expect(
+      findSourceTransition([{ fromStatus: 'NEW', toStatus: 'READY', createdAt: at('2026-09-01T00:00:00Z') }], 'IN_PROGRESS'),
+    ).toBeNull();
   });
 });

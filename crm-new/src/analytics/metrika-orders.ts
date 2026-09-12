@@ -10,7 +10,10 @@ import {
   isValidTimeZone,
 } from '../metrika/orders/metrika-order-csv';
 import { buildOrderSnapshot, maskClientId } from '../metrika/orders/metrika-order-payload';
-import { normalizeMetrikaStatus } from '../metrika/orders/metrika-order-status';
+import {
+  findSourceTransition,
+  normalizeMetrikaStatus,
+} from '../metrika/orders/metrika-order-status';
 import { MetrikaOrderOutboxService } from '../metrika/orders/metrika-order-outbox.service';
 import { MetrikaOrderOutboxProcessorService } from '../metrika/orders/metrika-order-outbox-processor.service';
 
@@ -25,10 +28,13 @@ import { MetrikaOrderOutboxProcessorService } from '../metrika/orders/metrika-or
  *                                                    снимок и файл, без отправки
  *   npm run metrika:orders -- send --order <id>    — то же, что preview
  *   npm run metrika:orders -- send --order <id> --live
- *                                                  — ОДИН реальный POST по заказу:
- *                                                    ставит ручную строку и сразу
- *                                                    обрабатывает её, минуя
- *                                                    рубильник расписания
+ *                                                  — ОДИН реальный POST по заказу через
+ *                                                    тот же конвейер, что у воркера:
+ *                                                    строка очереди (источник — реальный
+ *                                                    переход StatusHistory, давший текущий
+ *                                                    статус) → processor → payload → клиент.
+ *                                                    Рубильник расписания обходится намеренно;
+ *                                                    порядок очереди — нет.
  *   npm run metrika:orders -- requeue --order <id> | --all-failed
  *                                                  — вернуть failed-строки в очередь
  *   npm run metrika:orders -- skip --row <id>      — снять failed-строку (skipped), чтобы
@@ -236,8 +242,42 @@ async function send(prisma: PrismaClient, client: YandexMetrikaClient, orderId: 
     client,
     { syncEnabled: true },
   );
-  const { id } = await outbox.enqueueManual(order.id, target, 'manual');
-  console.log(`Ручная строка очереди ${id} создана — отправляем…`);
+
+  // Источник строки — реальный переход, который и дал текущий статус
+  // Метрики (последний по времени с таким же нормализованным итогом). Так
+  // контрольная отправка идёт ровно тем путём, каким пойдёт боевой воркер:
+  // dedupe по StatusHistory.id, право — по истории до перехода. Если такого
+  // перехода в истории нет (заказ заведён сразу в NEW) — ручная строка с
+  // пометкой live-test.
+  const history = await prisma.statusHistory.findMany({
+    where: { orderId: order.id },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, fromStatus: true, toStatus: true, createdAt: true },
+  });
+  const source = findSourceTransition(history, target);
+  let id: string;
+  if (source) {
+    await outbox.enqueueTransition(prisma as unknown as PrismaService, {
+      orderId: order.id,
+      fromStatus: source.fromStatus,
+      toStatus: source.toStatus,
+      statusHistoryId: source.id,
+    });
+    const existing = await prisma.metrikaOrderOutbox.findUnique({ where: { dedupeKey: `history:${source.id}` } });
+    if (!existing) return 1;
+    id = existing.id;
+    console.log(
+      `Строка очереди ${id}: источник — StatusHistory ${source.id} (${source.fromStatus ?? '—'} → ${source.toStatus} @ ${fmt(source.createdAt)}), target ${target}, status=${existing.status}`,
+    );
+    if (existing.status !== 'pending') {
+      console.log('Строка уже закрыта — повторно не отправляем.');
+      return 1;
+    }
+  } else {
+    id = (await outbox.enqueueManual(order.id, target, 'live-test')).id;
+    console.log(`Строка очереди ${id}: реального перехода в ${target} в истории нет — ручная (live-test), target ${target}`);
+  }
+  console.log('Отправляем через MetrikaOrderOutboxProcessor (один захват, одна попытка)…');
   const outcome = await processor.processById(id);
   if (outcome === null) {
     const blocking = await outbox.blockingRows(id);

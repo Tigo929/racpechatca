@@ -121,3 +121,18 @@ export function orderEligibility(input: EligibilityInput): EligibilityVerdict {
     ? { eligible: true }
     : { eligible: false, reason: 'rejected_lead' };
 }
+
+/**
+ * Переход, который дал заказу его текущий статус Метрики: последний по
+ * времени с таким же нормализованным итогом. Нужен контрольной отправке
+ * (CLI `send --live`), чтобы строка очереди ссылалась на реальный
+ * StatusHistory.id — ровно как строка, которую создал бы боевой код, — а не
+ * на выдуманный источник. Нет такого перехода (заказ заведён сразу в NEW) —
+ * null, и CLI ставит ручную строку с пометкой live-test.
+ */
+export function findSourceTransition<
+  T extends { fromStatus: string | null; toStatus: string; createdAt: Date },
+>(history: T[], target: MetrikaOrderStatus): T | null {
+  const sorted = [...history].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  return sorted.find((h) => transitionToMetrikaStatus(h.fromStatus, h.toStatus) === target) ?? null;
+}
