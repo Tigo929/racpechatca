@@ -5,12 +5,13 @@
 ## Статус
 
 ```text
-REVIEW — реализовано и проверено 12.09.2026 (живой read-only API, контрольная 7-дневная
-синхронизация, сверка 0 расхождений, 90 дней, качество — на копии боевой базы);
-production enable sequence (раздел 31) ждёт отдельной команды владельца
+REVIEW — реализовано 12.09.2026 и выложено в production тем же днём: master = b57c067,
+миграция применена 17:07 MSK, verify 7/7, 7 дней → сверка 0 расхождений, 90 дней, качество,
+покрытие; расписание включено 17:11 MSK, суточный и часовой циклы SUCCESS, lock подтверждён.
+DONE ставит Reviewer.
 ```
 
-Отчёт исполнителя — раздел 37.
+Отчёт исполнителя — раздел 37 (реализация); production rollout — раздел 38.
 
 Исполнитель не ставит этапу `DONE` самостоятельно. После реализации он возвращает `READY_FOR_REVIEW`; решение принимает ChatGPT.
 
@@ -1557,4 +1558,158 @@ docs/analytics/00_MASTER_PLAN.md, 01_CURRENT_STATE.md                        | �
 2. Естественные события PHASE K/L этапа 06 (LEAD→NEW, PAID через очередь) всё ещё
    not observed yet — не блокер этапа 07, но CRM coverage останется «1/0» до них.
 3. Security debt без изменений: ROTATE_YANDEX_OAUTH_TOKEN, ROTATE_YANDEX_CLIENT_SECRET.
+```
+
+---
+
+# 38. EXECUTOR_REPORT_PRODUCTION_ROLLOUT — 12.09.2026
+
+Команда владельца от 12.09.2026 (10 пунктов); отдельного документа
+`07_PRODUCTION_ROLLOUT.md` в наличии не было — порядок взят из команды.
+
+## 1. RESULT
+
+```text
+READY_FOR_REVIEW — production rollout этапа 07 выполнен целиком: master = b57c067
+выложен, миграция применена, все проверки в боевом контейнере чистые (verify 7/7,
+7 дней → сверка 0 расхождений, 90 дней, качество, покрытие), расписание включено
+17:11 MSK, первый автоматический запуск (суточный, 21 день) и следующий часовой
+цикл — SUCCESS, блокировка и отсутствие дублей подтверждены, тестовая копия удалена.
+```
+
+## 2. TIMELINE (Europe/Moscow)
+
+```text
+16:56:36  backup server compose → docker-compose.prod.yml.bak-20260912_165636; вставлена одна строка
+          YANDEX_METRIKA_ANALYTICS_SYNC_ENABLED: ${…:-false}; diff с backup = ровно 1 строка;
+          docker compose config OK (в рендере флаг "false"); server-only отличия сохранены
+16:56:43  merge feature/analytics-foundation → master (fast-forward d72ffff → b57c067, 5 коммитов)
+16:56:46  push master
+16:56:52  CI «Сборка образов» started → 16:59:57 completed success
+17:00:05  auto-update: frontend обновлён и здоров, nginx перечитан
+17:07:47  auto-update: backend пересоздан (образ de021522… → eb9fb783…), 17:08:08 «обновлён и здоров»,
+          17:08:10 nginx перечитан; /health ok; панель через nginx 200
+17:07:54  migrate deploy на старте контейнера: «76 migrations found», применена
+          20260912140000_metrika_analytics_tables, «All migrations have been successfully applied»
+17:09:19  verify 7/7 (read-only) из контейнера
+17:09:24  ручная синхронизация 7 дней — SUCCESS
+17:09:30  reconcile — 0 расхождений
+17:10:09  ручная синхронизация 90 дней — SUCCESS; quality; coverage
+17:11:29  .env: YANDEX_METRIKA_ANALYTICS_SYNC_ENABLED=true (backup .env.bak-metrika-analytics-20260912_171129,
+          остальные ключи не тронуты); backend пересоздан 17:11:42 → healthy 17:12:03; nginx reload 17:12:03
+17:11:54  лог: «синхронизация отчётов по расписанию запущена (каждый час — 3 дня, раз в сутки — 21 день)»
+17:13:24  первый автоматический запуск scheduler:daily 2026-08-23..2026-09-12 → 17:13:28 SUCCESS
+17:13:3x  проверка блокировки: два CLI-запуска одновременно — второй LOCKED, первый SUCCESS
+18:11:54  второй цикл: scheduler:hourly 2026-09-10..2026-09-12 → 18:11:57 SUCCESS (ровно через 60 мин после
+          старта расписания), 11 запросов, 162 строки
+18:19:27  проверка цикла: overlap 0, RUNNING/FAILED нет, дублей 0; reconcile показал −1 визит / −1 посетитель /
+          −2 просмотра за сегодня — данные «живого» дня уехали за 7 минут между тиком и сверкой
+18:21:08  контроль: ручная синхронизация окна 3 дня и сверка сразу за ней — 0 расхождений (185/149/1042/1163)
+18:19:4x  crm_stage07_test удалена; на сервере только crm
+```
+
+## 3. DEPLOY / MIGRATIONS
+
+```text
+master:               b57c067 (fast-forward; master touched: yes — по команде)
+CI:                   success 16:59:57 MSK (3 мин)
+backend:              running:healthy, образ eb9fb783…, started 17:07:47 → пересоздан 17:11:42 (флаг)
+frontend (nginx):     running:healthy, перечитан 17:00:06, 17:08:10, 17:12:03
+migrate deploy:       20260912140000_metrika_analytics_tables — finished 17:07:54 MSK; при втором
+                      старте «No pending migrations to apply»
+migrate status:       «Database schema is up to date!», 76 миграций
+analytics tables:     MetrikaSyncRun, MetrikaDailyTraffic, MetrikaDailyGoal, MetrikaDailySource,
+                      MetrikaDailyUtm, MetrikaDailyLanding, MetrikaDailyDevice, MetrikaDailyPage — 8/8;
+                      индексов по ним 17 (8 pkey + 9)
+scheduler at deploy:  OFF (лог «выключена — только ручной запуск»); env analytics_sync=false
+```
+
+## 4. PRODUCTION VERIFY / 7-DAY SYNC / RECONCILIATION (17:09 MSK, scheduler OFF)
+
+```text
+verify:     7/7 OK, 10 запросов, sampled=false; реестр целей: lead 611379890, photo 612290270,
+            canvas 612290370, tshirt 612290451, form_error 612290566, crm_created 596990603,
+            crm_paid 596990604, crm_cancelled 596990606, crm_spam 596990605, thanks 602316919
+7-day sync: 2026-09-06..2026-09-12 — SUCCESS, 11 запросов, 5,4 с;
+            traffic 7, goals 147, sources 31, utm 9, landings 40, devices 16, pages 124; sampled=false
+
+metric                              | local | direct API | difference
+visits (сумма по дням)              |   184 |        184 | 0
+users (сумма дневных уникальных)    |   147 |        147 | 0
+pageviews (ym:s)                    |  1039 |       1039 | 0
+lead_submitted reaches              |     2 |          2 | 0
+CRM: Заказ создан reaches           |     1 |          1 | 0
+CRM: Заказ оплачен reaches          |     0 |          0 | 0
+pageviews (ym:pv, pages)            |  1158 |       1158 | 0
+visits по sources/utm/landings/devices = трафик: 184 = 184 (все четыре)
+sampled=false, расхождений 0
+```
+
+## 5. 90-DAY SYNC / QUALITY / COVERAGE (17:10 MSK)
+
+```text
+90-day: 2026-06-15..2026-09-12 — SUCCESS, 11 запросов, 15,4 с; traffic 31, goals 651, sources 99,
+        utm 37, landings 114, devices 66, pages 430 (1428 строк); sampled=false
+quality: даты с трафиком 2026-08-13..2026-09-12; дней без трафика 59 (до счётчика); источник не
+        определён 0; без UTM 576 из 585 визитов; топ источников ad/Директ 279, organic/yandex 120,
+        direct 96, referral/metrika 60; топ входов / 470, /interer/holst 22, /futbolki/svoy-print 18;
+        lead_submitted 2, CRM создан 1, CRM оплачен 0; ошибок API 0
+coverage 90 дней: CRM accepted 293 (ClientID у 10; до включения воркера 292; контрольный тест 1;
+        доставлено очередью 0) vs Metrika created 1; CRM paid 204 (ClientID у 1) vs Metrika paid 0
+coverage 21 день: accepted 98 (ClientID 8) vs 1; paid 47 vs 0
+gap: pre-rollout history + no ClientID + controlled test; единственный принятый заказ после
+        включения воркера — 20260912-110 (Avito, создан оператором сразу NEW, без ClientID, без
+        перехода статуса → строки очереди нет и не должно быть)
+дубли по уникальным ключам: 0
+```
+
+## 6. SCHEDULER (включён 17:11:29 MSK)
+
+```text
+flag:                 YANDEX_METRIKA_ANALYTICS_SYNC_ENABLED=true в /opt/raspechatka/.env; compose
+                      подставляет ${…:-false}; в контейнере analytics_sync=true, orders_sync=true
+first automatic run:  scheduler:daily 2026-08-23..2026-09-12, 17:13:24–17:13:28 MSK, SUCCESS,
+                      7 наборов, 11 запросов, 1043 строки, sampled=false (batch 332e7839…)
+lock:                 во время CLI-запуска A второй CLI-запуск B → LOCKED («другая синхронизация
+                      уже идёт», 0 запросов, ничего не записано); A — SUCCESS
+overlap:              0 пар запусков разных batch с пересекающимися интервалами
+duplicates:           0 по всем семи уникальным ключам
+second cycle:         scheduler:hourly 2026-09-10..2026-09-12, 18:11:54–18:11:57 MSK, SUCCESS, 7 наборов,
+                      11 запросов, 162 строки, sampled=false (batch bf87a010…) — ровно через 60 мин
+reconcile после тика: в 18:19 −1/−1/−2 по сегодняшнему дню (визит пришёл между тиком и сверкой); внутренние
+                      суммы sources/utm/landings/devices = traffic сходятся точно; цели 2/1/0 совпадают;
+                      ручная синхронизация в 18:21 и сверка сразу за ней — 0 расхождений
+totals после повторов: трафик 06–12.09 = 183 / 147 / 1038 — на один визит меньше, чем в 17:09
+                      (184 / 1039): Метрика пересчитала сегодняшний день, окно 3 дня подхватило —
+                      ровно для этого и нужен скользящий пересчёт; сверка в момент проверки — 0
+```
+
+## 7. STAGE 06 UNTOUCHED
+
+```text
+MetrikaOrderOutbox:   0 строк до и после; код очереди/воркера/simple_orders/status mapping не менялся
+orders worker:        «воркер отправки заказов запущен» после каждого рестарта (17:08:00, 17:11:54)
+web analytics:        сайт не трогался (frontend-образ CRM пересобран CI как всегда — панель, не сайт)
+dashboard / KPI:      не строились, не менялись
+```
+
+## 8. TEMP DB
+
+```text
+crm_stage07_test: удалена 12.09.2026 18:19 MSK после успешного второго цикла (DROP DATABASE); pg_database: только crm
+```
+
+## 9. SECURITY
+
+```text
+токен: в код, логи, отчёты, чат не попадал (CLI печатает только даты, числа, коды, пути);
+.env читался только по именам ключей; резервные копии compose/.env лежат рядом с оригиналами
+security debt без изменений: ROTATE_YANDEX_OAUTH_TOKEN, ROTATE_YANDEX_CLIENT_SECRET
+```
+
+## 10. OPEN ISSUES
+
+```text
+none — блокеров нет. Не блокирует: естественные события PHASE K/L этапа 06 всё ещё not observed yet
+(после cutover 13:19 заявок с сайта не было); наблюдение за расписанием — по логу и metrika:sync status.
 ```
