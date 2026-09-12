@@ -797,3 +797,57 @@ repo: racpechatca   branch: feature/analytics-foundation
 commit: см. историю — «feat(аналитика, этап 06 / live write): контрольная отправка через реальный переход»
 push: origin   status: чисто   master touched: no
 ```
+
+---
+
+# 23. Попытка live write по команде владельца — 12.09.2026 (POST не выполнялся)
+
+Команда «РАЗРЕШАЮ LIVE WRITE» получена; отзыв/ротация токена по решению
+владельца отложены в отдельную security-задачу. Указано: использовать текущий
+токен из secure env.
+
+## RESULT
+
+```text
+BLOCKED — LIVE_TOKEN_REQUIRED (secure env пуст)
+```
+
+## Что проверено
+
+```text
+/opt/raspechatka/.env:              ключей YANDEX_METRIKA_COUNTER_ID / YANDEX_METRIKA_OAUTH_TOKEN нет
+все .env* и compose в /opt/raspechatka: упоминаний YANDEX_METRIKA_OAUTH_TOKEN нет
+контейнер raspechatka-backend-1:    переменных YANDEX_METRIKA_* нет
+(проверялись только имена ключей; значения не читались)
+```
+
+Токен существует только в переписке (показан владельцем 11.09). Документ
+LIVE_WRITE (§ 3) допускает брать токен ТОЛЬКО из серверного secret store в
+окружение тестового процесса; токен из чата этим требованием не является, и
+исполнитель его не сохранял. Поэтому POST не выполнен.
+
+## Read-only перепроверка кандидата на бою (12.09.2026, повторно)
+
+```text
+20260909-091 (f40a79d6-…): NEW, создан 2026-09-09 11:25:57 UTC, total 534, PHOTO,
+ClientID в note есть, 1 позиция «Печать фото в стиле Instax» ×13, updated 11.09 14:15;
+история: LEAD→NEW 09.09 11:49, NEW→FOLDER_STRUCTURE_CREATED 11.09 12:48,
+FOLDER_STRUCTURE_CREATED→NEW 11.09 14:15 — без изменений против копии.
+Копия crm_stage06_test: NEW, ClientID в колонке, строк очереди 0.
+```
+
+## Что нужно от владельца (одно действие)
+
+Дописать в `/opt/raspechatka/.env` две строки (значение токена — в файл,
+не в чат):
+
+```env
+YANDEX_METRIKA_COUNTER_ID=111569944
+YANDEX_METRIKA_OAUTH_TOKEN=<текущий токен>
+```
+
+Перезапуск боевого backend не нужен: тестовый процесс прочитает эти строки
+из файла в своё окружение сам. После этого — повтор команды, и исполнитель
+выполняет § 4–13 документа за один прогон: пояс счётчика, повторная
+read-only сверка кандидата, один POST через MetrikaOrderOutboxProcessor,
+проверка api_validation_status / outbox / last_uploadings.
