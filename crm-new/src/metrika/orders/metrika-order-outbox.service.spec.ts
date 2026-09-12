@@ -159,3 +159,54 @@ describe('транзакция статуса и очередь живут вм�
     expect(committed.outbox).toHaveLength(0);
   });
 });
+
+describe('ручное закрытие failed-строки (FIX_01 § 5)', () => {
+  function prismaWithRows(rows: Record<string, unknown>[]) {
+    return {
+      metrikaOrderOutbox: {
+        updateMany: jest.fn(async ({ where, data }: { where: { id: string; status: { in: string[] } }; data: Record<string, unknown> }) => {
+          const hit = rows.filter((r) => r.id === where.id && where.status.in.includes(r.status as string));
+          for (const r of hit) Object.assign(r, data);
+          return { count: hit.length };
+        }),
+        findUnique: jest.fn(async ({ where }: { where: { id: string } }) => rows.find((r) => r.id === where.id) ?? null),
+        findMany: jest.fn(async ({ where }: { where: { orderId: string; status: { in: string[] }; id: { not: string }; OR: { createdAt: Date | { lt: Date }; id?: { lt: string } }[] } }) =>
+          rows.filter((r) => {
+            if (r.orderId !== where.orderId || r.id === where.id.not) return false;
+            if (!where.status.in.includes(r.status as string)) return false;
+            const created = r.createdAt as Date;
+            return where.OR.some((c) =>
+              c.createdAt instanceof Date
+                ? created.getTime() === c.createdAt.getTime() && (r.id as string) < c.id!.lt
+                : created.getTime() < c.createdAt.lt.getTime(),
+            );
+          }),
+        ),
+      },
+    } as unknown as PrismaService;
+  }
+
+  it('markSkipped закрывает failed или pending строку как skipped/manual; delivered не трогает', async () => {
+    const rows = [
+      { id: 'a', orderId: 'o1', status: 'failed', createdAt: new Date(1) },
+      { id: 'b', orderId: 'o1', status: 'delivered', createdAt: new Date(2) },
+    ];
+    const service = new MetrikaOrderOutboxService(prismaWithRows(rows));
+    expect(await service.markSkipped('a')).toBe(true);
+    expect(rows[0]).toMatchObject({ status: 'skipped', skipReason: 'manual' });
+    expect(await service.markSkipped('b')).toBe(false);
+    expect(rows[1].status).toBe('delivered');
+  });
+
+  it('blockingRows — более ранние незакрытые строки того же заказа, delivered/skipped не считаются', async () => {
+    const rows = [
+      { id: 'a', orderId: 'o1', status: 'failed', createdAt: new Date(1), targetMetrikaStatus: 'IN_PROGRESS' },
+      { id: 'b', orderId: 'o1', status: 'delivered', createdAt: new Date(2), targetMetrikaStatus: 'PAID' },
+      { id: 'c', orderId: 'o1', status: 'pending', createdAt: new Date(3), targetMetrikaStatus: 'CANCELLED' },
+      { id: 'z', orderId: 'o2', status: 'pending', createdAt: new Date(0), targetMetrikaStatus: 'PAID' },
+    ];
+    const service = new MetrikaOrderOutboxService(prismaWithRows(rows));
+    const blocking = await service.blockingRows('c');
+    expect(blocking.map((b) => b.id)).toEqual(['a']);
+  });
+});

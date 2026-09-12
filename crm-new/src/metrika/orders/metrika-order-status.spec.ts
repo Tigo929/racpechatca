@@ -49,17 +49,10 @@ describe('переходы: что попадает в очередь', () => {
   });
 });
 
-describe('право заказа быть в Метрике (eligibility)', () => {
-  it('LEAD — нет: заявка не заказ', () => {
-    expect(orderEligibility({ status: 'LEAD', history: [], previouslySynced: false })).toEqual({
-      eligible: false,
-      reason: 'lead',
-    });
-  });
-
-  it('рабочий статус и PAID — да, без оглядки на историю', () => {
-    for (const status of ['NEW', 'IN_PROGRESS', 'SENT', 'PAID', 'COMPLETED']) {
-      expect(orderEligibility({ status, history: [], previouslySynced: false })).toEqual({
+describe('право перехода уйти в Метрику (eligibility)', () => {
+  it('IN_PROGRESS и PAID — да, без оглядки на историю: сам переход означает принятие', () => {
+    for (const target of ['IN_PROGRESS', 'PAID'] as const) {
+      expect(orderEligibility({ target, history: [], previouslySynced: false })).toEqual({
         eligible: true,
       });
     }
@@ -68,7 +61,7 @@ describe('право заказа быть в Метрике (eligibility)', () 
   it('LEAD → CANCELLED без принятия — отклонённая заявка, не отменённый заказ', () => {
     expect(
       orderEligibility({
-        status: 'CANCELLED',
+        target: 'CANCELLED',
         history: [{ fromStatus: 'LEAD', toStatus: 'CANCELLED' }],
         previouslySynced: false,
       }),
@@ -78,7 +71,7 @@ describe('право заказа быть в Метрике (eligibility)', () 
   it('CANCELLED после NEW — отменённый заказ: правило A по toStatus', () => {
     expect(
       orderEligibility({
-        status: 'CANCELLED',
+        target: 'CANCELLED',
         history: [
           { fromStatus: 'LEAD', toStatus: 'NEW' },
           { fromStatus: 'NEW', toStatus: 'CANCELLED' },
@@ -91,7 +84,7 @@ describe('право заказа быть в Метрике (eligibility)', () 
   it('заказ, заведённый руками сразу в NEW: строки «→ NEW» нет, но fromStatus = NEW доказывает принятие', () => {
     expect(
       orderEligibility({
-        status: 'CANCELLED',
+        target: 'CANCELLED',
         history: [{ fromStatus: 'NEW', toStatus: 'CANCELLED' }],
         previouslySynced: false,
       }),
@@ -100,13 +93,22 @@ describe('право заказа быть в Метрике (eligibility)', () 
 
   it('правило C: уже уходил в Метрику — отмена отправляется даже без истории', () => {
     expect(
-      orderEligibility({ status: 'CANCELLED', history: [], previouslySynced: true }),
+      orderEligibility({ target: 'CANCELLED', history: [], previouslySynced: true }),
     ).toEqual({ eligible: true });
   });
 
   it('CANCELLED вовсе без истории и без синхронизации — не отправляем', () => {
     expect(
-      orderEligibility({ status: 'CANCELLED', history: [], previouslySynced: false }),
+      orderEligibility({ target: 'CANCELLED', history: [], previouslySynced: false }),
+    ).toEqual({ eligible: false, reason: 'rejected_lead' });
+  });
+
+  it('история после перехода не учитывается: отклонённая заявка, позже возвращённая в работу', () => {
+    // LEAD → CANCELLED (эта строка), затем CANCELLED → NEW. Право на отмену
+    // решается тем, что было ДО неё — воркер передаёт историю до перехода.
+    const upToCancel = [{ fromStatus: 'LEAD', toStatus: 'CANCELLED' }];
+    expect(
+      orderEligibility({ target: 'CANCELLED', history: upToCancel, previouslySynced: false }),
     ).toEqual({ eligible: false, reason: 'rejected_lead' });
   });
 });

@@ -2,20 +2,31 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { costSettingsFrom } from 'src/reports/order-cogs';
 import { MetrikaApiError, YandexMetrikaClient } from '../metrika-api.client';
-import {
-  buildSimpleOrdersCsv,
-  isValidTimeZone,
-} from './metrika-order-csv';
+import { buildSimpleOrdersCsv, isValidTimeZone } from './metrika-order-csv';
 import { buildOrderSnapshot, maskClientId } from './metrika-order-payload';
+import type { MetrikaOrderStatus } from './metrika-order-status';
 
 /**
- * Воркер очереди заказов в Метрику (этап 06, разделы 33–37).
+ * Воркер очереди заказов в Метрику (этап 06, разделы 33–37; FIX_01).
  *
- * Раз в 30 секунд забирает созревшие строки (`FOR UPDATE SKIP LOCKED` —
- * два экземпляра CRM одну строку не возьмут), по каждой строит текущий
- * снимок заказа и отправляет его отдельным файлом: один заказ — одна
- * загрузка. Объём CRM — единицы заказов в день, и так проще всё: повтор,
- * отладку, сопоставление uploading_id с заказом.
+ * Раз в 30 секунд забирает созревшие строки и по каждой отправляет в
+ * Метрику отдельный файл: один заказ — одна загрузка. Объём CRM — единицы
+ * заказов в день, и так проще всё: повтор, отладку, сопоставление
+ * uploading_id с заказом.
+ *
+ * Что отправляется: смысл перехода — `targetMetrikaStatus` строки, а не
+ * текущий статус заказа. Иначе при задержке воркера NEW → PAID → CANCELLED
+ * ушло бы тремя CANCELLED, и «заказ создан»/«оплачен» пропали бы из воронки.
+ *
+ * Порядок внутри заказа — строгий. Выборка отдаёт строку только если у того
+ * же заказа нет более ранней незакрытой (pending/processing/failed):
+ *   - два воркера не возьмут два перехода одного заказа одновременно
+ *     (ранняя строка либо заблокирована FOR UPDATE — SKIP LOCKED её пропустит,
+ *     либо ещё pending — и тогда поздняя не проходит условие);
+ *   - повтор старого события не откатит уже доставленный новый статус —
+ *     новый просто не отправится раньше старого;
+ *   - failed блокирует: пока оператор не сделает requeue или skip, более
+ *     поздние переходы этого заказа наружу не идут.
  *
  * Паузы между попытками — те же, что у GulianOutbox: минута, пять,
  * пятнадцать, час, шесть часов; после двадцатой попытки строка становится
@@ -23,6 +34,10 @@ import { buildOrderSnapshot, maskClientId } from './metrika-order-payload';
  * 5xx, сеть, таймаут. 400 (плохой файл), 401/403 (токен, права) и
  * «валидация не пройдена» повторять бессмысленно — строка сразу failed,
  * но не удаляется: когда владелец починит токен, её вернёт requeue.
+ *
+ * Строка, зависшая в processing дольше 10 минут (воркер упал посреди
+ * запроса), возвращается в pending — иначе она навсегда держала бы очередь
+ * своего заказа.
  *
  * Включение — отдельный рубильник YANDEX_METRIKA_ORDERS_SYNC_ENABLED.
  * Пока он выключен, очередь наполняется, но наружу ничего не уходит:
@@ -36,6 +51,8 @@ const POLL_INTERVAL_MS = 30_000;
 const CLAIM_LIMIT = 10;
 /** Без конфигурации повторяем редко: ждём, пока появится токен. */
 const NOT_CONFIGURED_DELAY_SECONDS = 3600;
+/** processing старше этого — воркер умер посреди запроса; строка возвращается в pending. */
+const STALE_LOCK_MINUTES = 10;
 
 export interface ProcessorOptions {
   /** YANDEX_METRIKA_ORDERS_SYNC_ENABLED — отправлять ли по расписанию. */
@@ -46,6 +63,7 @@ export type ClaimedRow = {
   id: string;
   orderId: string;
   targetMetrikaStatus: string;
+  sourceStatusHistoryId: string | null;
   attemptCount: number;
 };
 
@@ -97,19 +115,33 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
     }
   }
 
-  /** Забрать созревшие строки и обработать по одной. */
+  /**
+   * Забрать созревшие строки и обработать по одной.
+   *
+   * Условие NOT EXISTS — сердце порядка: строка берётся, только если у её
+   * заказа нет более ранней (createdAt, id) незакрытой строки. Поскольку
+   * pending тоже «не закрыта», поздняя строка не проходит условие даже в
+   * ту миллисекунду, когда другой воркер ещё не зафиксировал захват ранней.
+   */
   async processOnce(limit = CLAIM_LIMIT): Promise<ProcessOutcome[]> {
+    await this.releaseStaleLocks();
     const rows = await this.prisma.$queryRaw<ClaimedRow[]>`
       UPDATE "MetrikaOrderOutbox"
       SET "status" = 'processing', "lockedAt" = now(), "updatedAt" = now()
       WHERE "id" IN (
-        SELECT "id" FROM "MetrikaOrderOutbox"
-        WHERE "status" = 'pending' AND "nextAttemptAt" <= now()
-        ORDER BY "nextAttemptAt", "createdAt"
+        SELECT o."id" FROM "MetrikaOrderOutbox" o
+        WHERE o."status" = 'pending' AND o."nextAttemptAt" <= now()
+          AND NOT EXISTS (
+            SELECT 1 FROM "MetrikaOrderOutbox" e
+            WHERE e."orderId" = o."orderId"
+              AND e."status" IN ('pending', 'processing', 'failed')
+              AND (e."createdAt", e."id") < (o."createdAt", o."id")
+          )
+        ORDER BY o."nextAttemptAt", o."createdAt", o."id"
         LIMIT ${limit}
-        FOR UPDATE SKIP LOCKED
+        FOR UPDATE OF o SKIP LOCKED
       )
-      RETURNING "id", "orderId", "targetMetrikaStatus", "attemptCount"
+      RETURNING "id", "orderId", "targetMetrikaStatus", "sourceStatusHistoryId", "attemptCount"
     `;
     const outcomes: ProcessOutcome[] = [];
     for (const row of rows) outcomes.push(await this.processRow(row));
@@ -118,14 +150,25 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
 
   /**
    * Обработать конкретную строку вне расписания (контрольная отправка из CLI).
-   * Строка должна быть pending; захватывается тем же способом.
+   * Строка должна быть pending и первой незакрытой у своего заказа —
+   * порядок обходить нельзя даже вручную. Иначе — null.
    */
   async processById(id: string): Promise<ProcessOutcome | null> {
     const rows = await this.prisma.$queryRaw<ClaimedRow[]>`
       UPDATE "MetrikaOrderOutbox"
       SET "status" = 'processing', "lockedAt" = now(), "updatedAt" = now()
-      WHERE "id" = ${id} AND "status" = 'pending'
-      RETURNING "id", "orderId", "targetMetrikaStatus", "attemptCount"
+      WHERE "id" IN (
+        SELECT o."id" FROM "MetrikaOrderOutbox" o
+        WHERE o."id" = ${id} AND o."status" = 'pending'
+          AND NOT EXISTS (
+            SELECT 1 FROM "MetrikaOrderOutbox" e
+            WHERE e."orderId" = o."orderId"
+              AND e."status" IN ('pending', 'processing', 'failed')
+              AND (e."createdAt", e."id") < (o."createdAt", o."id")
+          )
+        FOR UPDATE OF o SKIP LOCKED
+      )
+      RETURNING "id", "orderId", "targetMetrikaStatus", "sourceStatusHistoryId", "attemptCount"
     `;
     if (rows.length === 0) return null;
     return this.processRow(rows[0]);
@@ -150,18 +193,31 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
     return name;
   }
 
+  private async releaseStaleLocks(): Promise<void> {
+    const released = await this.prisma.$executeRaw`
+      UPDATE "MetrikaOrderOutbox"
+      SET "status" = 'pending', "lockedAt" = NULL, "updatedAt" = now(),
+          "lastError" = 'processing зависла — строка возвращена в очередь'
+      WHERE "status" = 'processing'
+        AND "lockedAt" < now() - make_interval(mins => ${STALE_LOCK_MINUTES})
+    `;
+    if (released > 0) {
+      this.logger.warn(`Метрика: возвращено в очередь зависших строк — ${released}`);
+    }
+  }
+
   private async processRow(row: ClaimedRow): Promise<ProcessOutcome> {
     const attempt = row.attemptCount + 1;
     const startedAt = Date.now();
+    const target = row.targetMetrikaStatus as MetrikaOrderStatus;
     try {
       const timeZone = await this.counterTimeZone();
-      const [order, settingsRow, deliveredBefore] = await Promise.all([
+      const [order, settingsRow, deliveredBefore, source] = await Promise.all([
         this.prisma.orderPhoto.findUnique({
           where: { id: row.orderId },
           select: {
             id: true,
             createdAt: true,
-            status: true,
             yandexClientId: true,
             totalOrder: true,
             productCategory: true,
@@ -185,21 +241,36 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
               },
             },
             canvasItems: { select: { contractorCostPosition: true } },
-            statusHistory: { select: { fromStatus: true, toStatus: true } },
+            statusHistory: {
+              select: { fromStatus: true, toStatus: true, createdAt: true },
+            },
           },
         }),
         this.prisma.partnerSettings.findUnique({ where: { id: 'default' } }),
         this.prisma.metrikaOrderOutbox.count({
           where: { orderId: row.orderId, status: 'delivered' },
         }),
+        row.sourceStatusHistoryId
+          ? this.prisma.statusHistory.findUnique({
+              where: { id: row.sourceStatusHistoryId },
+              select: { createdAt: true },
+            })
+          : Promise.resolve(null),
       ]);
 
       if (!order) {
         return this.finishFailed(row, attempt, 'Заказ не найден', true);
       }
 
+      // Право на отправку решается историей ДО этого перехода включительно:
+      // то, что случилось с заказом позже, на смысл этого события не влияет.
+      const historyUpTo = source
+        ? order.statusHistory.filter((h) => h.createdAt <= source.createdAt)
+        : order.statusHistory;
+
       const snapshot = buildOrderSnapshot(
-        order,
+        { ...order, statusHistory: historyUpTo },
+        target,
         costSettingsFrom(settingsRow),
         timeZone,
         deliveredBefore > 0,
@@ -217,7 +288,7 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
           },
         });
         this.logger.log(
-          `Метрика: заказ ${row.orderId} пропущен (${snapshot.reason}), попытка ${attempt}`,
+          `Метрика: заказ ${row.orderId} ${target} пропущен (${snapshot.reason}), попытка ${attempt}`,
         );
         return { result: 'skipped', reason: snapshot.reason };
       }
@@ -238,12 +309,12 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
             remoteUploadingId: uploading.uploading_id ?? null,
             apiValidationStatus: validation,
             elementsCount: uploading.elements_count ?? null,
-            sentMetrikaStatus: snapshot.status,
+            sentMetrikaStatus: target,
             lockedAt: null,
           },
         });
         this.logger.warn(
-          `Метрика: заказ ${row.orderId} ${snapshot.status} — файл отклонён (${validation}), uploading=${uploading.uploading_id}, попытка ${attempt}, ${durationMs} мс`,
+          `Метрика: заказ ${row.orderId} ${target} — файл отклонён (${validation}), uploading=${uploading.uploading_id}, попытка ${attempt}, ${durationMs} мс`,
         );
         return { result: 'failed', error: `api_validation_status=${validation}`, permanent: true };
       }
@@ -259,18 +330,18 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
           remoteUploadingId: uploading.uploading_id ?? null,
           apiValidationStatus: validation,
           elementsCount: uploading.elements_count ?? null,
-          sentMetrikaStatus: snapshot.status,
+          sentMetrikaStatus: target,
           lockedAt: null,
         },
       });
       this.logger.log(
-        `Метрика: заказ ${row.orderId} → ${snapshot.status}, ClientID ${maskClientId(snapshot.row.clientId)}, попытка ${attempt}, HTTP 200, ${durationMs} мс, uploading=${uploading.uploading_id}${
+        `Метрика: заказ ${row.orderId} → ${target}, ClientID ${maskClientId(snapshot.row.clientId)}, попытка ${attempt}, HTTP 200, ${durationMs} мс, uploading=${uploading.uploading_id}${
           snapshot.costReliable ? '' : ', себестоимость не передана'
         }`,
       );
       return {
         result: 'delivered',
-        status: snapshot.status,
+        status: target,
         uploadingId: uploading.uploading_id,
         elementsCount: uploading.elements_count ?? null,
         durationMs,
@@ -322,7 +393,7 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
       },
     });
     this.logger.warn(
-      `Метрика: заказ ${row.orderId} попытка ${attempt} не удалась (HTTP ${status ?? '—'}): ${message}; повтор через ${delaySec} с`,
+      `Метрика: заказ ${row.orderId} ${row.targetMetrikaStatus} попытка ${attempt} не удалась (HTTP ${status ?? '—'}): ${message}; повтор через ${delaySec} с`,
     );
     return { result: 'retry', error: message, nextAttemptAt };
   }
@@ -345,7 +416,7 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
       },
     });
     this.logger.error(
-      `Метрика: заказ ${row.orderId} — ${permanent ? 'окончательная ошибка' : 'попытки исчерпаны'} (HTTP ${status ?? '—'}): ${message}`,
+      `Метрика: заказ ${row.orderId} ${row.targetMetrikaStatus} — ${permanent ? 'окончательная ошибка' : 'попытки исчерпаны'} (HTTP ${status ?? '—'}): ${message}; более поздние переходы заказа ждут requeue/skip`,
     );
     return { result: 'failed', error: message, permanent };
   }

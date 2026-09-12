@@ -80,9 +80,13 @@ export function transitionToMetrikaStatus(
 }
 
 export interface EligibilityInput {
-  /** Текущий статус заказа в CRM. */
-  status: string;
-  /** История переходов заказа (порядок не важен). */
+  /** Статус Метрики, который несёт переход (targetMetrikaStatus строки очереди). */
+  target: MetrikaOrderStatus;
+  /**
+   * История переходов заказа ДО этого перехода включительно (порядок не
+   * важен). Более поздние переходы сюда не входят: право на отправку отмены
+   * решается тем, что было до неё, а не тем, что случилось после.
+   */
   history: { fromStatus: string | null; toStatus: string }[];
   /** Заказ уже успешно уходил в Метрику как заказ (правило C). */
   previouslySynced: boolean;
@@ -90,25 +94,23 @@ export interface EligibilityInput {
 
 export type EligibilityVerdict =
   | { eligible: true }
-  | { eligible: false; reason: 'lead' | 'rejected_lead' };
+  | { eligible: false; reason: 'rejected_lead' };
 
 /**
- * Можно ли отправлять заказ в Метрику (раздел 21 этапа 06).
+ * Можно ли отправлять переход в Метрику (раздел 21 этапа 06).
  *
  *   A. в истории был NEW или более поздний рабочий статус;
- *   B. текущий статус PAID (или любой рабочий — заказ принят прямо сейчас);
+ *   B. переход сам ведёт в рабочий статус или PAID — заказ принят этим переходом;
  *   C. заказ уже синхронизирован раньше.
  *
- * Фактическая модель StatusHistory хранит fromStatus/toStatus, поэтому
- * правило A читается по обоим полям: заказ, заведённый руками сразу в NEW,
- * строки «→ NEW» не имеет, но его отмена запишется как NEW → CANCELLED, и
- * fromStatus = NEW доказывает, что заказ был принят.
+ * Единственный спорный случай — CANCELLED: отменён заказ или отклонена
+ * заявка? Фактическая модель StatusHistory хранит fromStatus/toStatus,
+ * поэтому правило A читается по обоим полям: заказ, заведённый руками
+ * сразу в NEW, строки «→ NEW» не имеет, но его отмена запишется как
+ * NEW → CANCELLED, и fromStatus = NEW доказывает, что заказ был принят.
  */
 export function orderEligibility(input: EligibilityInput): EligibilityVerdict {
-  const current = normalizeMetrikaStatus(input.status);
-  if (current === null) return { eligible: false, reason: 'lead' };
-  if (current === 'IN_PROGRESS' || current === 'PAID') return { eligible: true };
-  // CANCELLED: отменён заказ или отклонена заявка?
+  if (input.target === 'IN_PROGRESS' || input.target === 'PAID') return { eligible: true };
   if (input.previouslySynced) return { eligible: true };
   const wasAccepted = input.history.some(
     (h) =>

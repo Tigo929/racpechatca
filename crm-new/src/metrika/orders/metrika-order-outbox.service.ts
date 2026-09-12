@@ -22,6 +22,11 @@ import {
  * вызов для того же перехода упирается в уникальный ключ и молча
  * пропускается — очередь не разрастается, сколько бы раз ни обработали
  * одно и то же событие.
+ *
+ * Порядок: строки одного заказа уходят строго по порядку создания; пока
+ * ранняя не закрыта (delivered/skipped), поздняя ждёт — в том числе за
+ * failed. Это правило живёт в SQL выборки воркера (см. процессор), здесь —
+ * только его определение (UNRESOLVED_STATUSES) и ручное закрытие.
  */
 
 /** Клиент Prisma или транзакция — у обоих есть metrikaOrderOutbox. */
@@ -45,6 +50,12 @@ export interface OutboxCounters {
   lastSuccessAt: Date | null;
   lastFailureAt: Date | null;
 }
+
+/**
+ * Строка «не закрыта», пока она pending, processing или failed: любая из них
+ * держит очередь заказа. Закрывают строку только delivered и skipped.
+ */
+export const UNRESOLVED_STATUSES = ['pending', 'processing', 'failed'] as const;
 
 function isUniqueViolation(error: unknown): boolean {
   return (
@@ -122,6 +133,47 @@ export class MetrikaOrderOutboxService {
       },
     });
     return { id };
+  }
+
+  /**
+   * Снять failed-строку вручную: пометить skipped, чтобы более поздние
+   * переходы этого заказа перестали ждать за ней (FIX_01, раздел 5).
+   * Это решение оператора, а не автоматика: строка остаётся в журнале
+   * с причиной `manual`.
+   */
+  async markSkipped(rowId: string, reason = 'manual'): Promise<boolean> {
+    const result = await this.prisma.metrikaOrderOutbox.updateMany({
+      where: { id: rowId, status: { in: ['failed', 'pending'] } },
+      data: {
+        status: 'skipped',
+        skipReason: reason,
+        processedAt: new Date(),
+        lockedAt: null,
+      },
+    });
+    return result.count > 0;
+  }
+
+  /**
+   * Более ранние незакрытые строки того же заказа: пока они есть, эта
+   * строка наружу не пойдёт (порядок переходов одного заказа — строгий).
+   */
+  async blockingRows(rowId: string) {
+    const row = await this.prisma.metrikaOrderOutbox.findUnique({ where: { id: rowId } });
+    if (!row) return [];
+    return this.prisma.metrikaOrderOutbox.findMany({
+      where: {
+        orderId: row.orderId,
+        status: { in: [...UNRESOLVED_STATUSES] },
+        id: { not: row.id },
+        OR: [
+          { createdAt: { lt: row.createdAt } },
+          { createdAt: row.createdAt, id: { lt: row.id } },
+        ],
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      select: { id: true, status: true, targetMetrikaStatus: true, lastError: true, attemptCount: true },
+    });
   }
 
   /** Вернуть неудачные строки в очередь: все или по одному заказу. */

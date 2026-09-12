@@ -31,6 +31,8 @@ import { MetrikaOrderOutboxProcessorService } from '../metrika/orders/metrika-or
  *                                                    рубильник расписания
  *   npm run metrika:orders -- requeue --order <id> | --all-failed
  *                                                  — вернуть failed-строки в очередь
+ *   npm run metrika:orders -- skip --row <id>      — снять failed-строку (skipped), чтобы
+ *                                                    более поздние переходы заказа пошли
  *
  * В выводе нет ни токена, ни полного ClientID (первые четыре цифры), ни
  * персональных данных: печатаются id заказов, статусы, суммы, коды ответов.
@@ -178,21 +180,34 @@ async function preview(prisma: PrismaClient, client: YandexMetrikaClient, orderI
   console.log(`  статус CRM:        ${order.status} → Метрика: ${normalizeMetrikaStatus(order.status) ?? '— (заявка)'}`);
   console.log(`  категория:         ${order.productCategory}`);
   console.log(`  создан (UTC):      ${fmt(order.createdAt)}`);
-  console.log(`  пояс счётчика:     ${tz.name ?? 'неизвестен'} — ${tz.note}${tz.name ? '' : '; ниже дата показана в UTC'}`);
-  console.log(`  create_date_time:  ${formatCounterDateTime(order.createdAt, zone)}`);
+  console.log(`  пояс счётчика:     ${tz.name ?? 'неизвестен'} — ${tz.note}`);
+  console.log(
+    `  create_date_time:  ${
+      tz.name
+        ? `${fmt(order.createdAt)} UTC → ${formatCounterDateTime(order.createdAt, tz.name)} (${tz.name})`
+        : 'LIVE_TOKEN_REQUIRED_BEFORE_WRITE — пояс счётчика читается из API, без токена не вычисляется'
+    }`,
+  );
+  const ageDays = Math.floor((Date.now() - order.createdAt.getTime()) / 86_400_000);
+  console.log(`  возраст:           ${ageDays} дн. ${ageDays <= 21 ? '(в окне 21 день)' : '(старше 21 дня — к визиту не привяжется)'}`);
   console.log(`  ClientID:          ${order.yandexClientId ? maskClientId(order.yandexClientId) : 'нет'}`);
   console.log(`  totalOrder:        ${order.totalOrder}`);
   console.log(`  история:           ${order.statusHistory.map((h) => `${h.fromStatus ?? '—'}→${h.toStatus}`).join(', ') || '(пусто)'}`);
   console.log(`  доставлялся ранее: ${delivered > 0 ? 'да' : 'нет'}`);
 
-  const snapshot = buildOrderSnapshot(order, settings, zone, delivered > 0);
+  const target = normalizeMetrikaStatus(order.status);
+  if (!target) {
+    console.log('Итог: НЕ отправляется — заявка (LEAD), заказа ещё нет');
+    return false;
+  }
+  const snapshot = buildOrderSnapshot(order, target, settings, zone, delivered > 0);
   if (snapshot.kind === 'skip') {
     console.log(`Итог: НЕ отправляется — ${snapshot.reason}`);
     return false;
   }
   console.log(`Итог: отправляется как ${snapshot.status}, revenue ${snapshot.row.revenue}, cost ${snapshot.row.cost ?? 'пусто (ненадёжна)'}`);
   const csv = buildSimpleOrdersCsv([{ ...snapshot.row, clientId: maskClientId(snapshot.row.clientId) }]);
-  console.log('CSV (ClientID скрыт):');
+  console.log(`CSV (ClientID скрыт${tz.name ? '' : '; дата в UTC — до чтения пояса счётчика'}):`);
   for (const line of csv.trimEnd().split('\n')) console.log(`  ${line}`);
   return true;
 }
@@ -224,12 +239,38 @@ async function send(prisma: PrismaClient, client: YandexMetrikaClient, orderId: 
   const { id } = await outbox.enqueueManual(order.id, target, 'manual');
   console.log(`Ручная строка очереди ${id} создана — отправляем…`);
   const outcome = await processor.processById(id);
+  if (outcome === null) {
+    const blocking = await outbox.blockingRows(id);
+    console.log(
+      blocking.length > 0
+        ? `Строка НЕ отправлена: у заказа есть более ранние незакрытые строки очереди (порядок строгий): ${blocking
+            .map((b) => `${b.id} ${b.status} ${b.targetMetrikaStatus}${b.lastError ? ` — ${b.lastError.slice(0, 80)}` : ''}`)
+            .join('; ')}. Сначала requeue или skip --row.`
+        : 'Строка НЕ отправлена: захват не удался (строка уже не pending).',
+    );
+    return 1;
+  }
   console.log(`Результат: ${JSON.stringify(outcome)}`);
   const row = await prisma.metrikaOrderOutbox.findUnique({ where: { id } });
   console.log(
     `Строка: status=${row?.status}, попыток=${row?.attemptCount}, uploading=${row?.remoteUploadingId ?? '—'}, validation=${row?.apiValidationStatus ?? '—'}, elements=${row?.elementsCount ?? '—'}, processedAt=${fmt(row?.processedAt)}, ошибка=${row?.lastError ?? '—'}`,
   );
   return outcome?.result === 'delivered' ? 0 : 1;
+}
+
+async function skipRow(prisma: PrismaClient, rowId?: string): Promise<number> {
+  if (!rowId) {
+    console.error('Укажите --row <id строки очереди>.');
+    return 2;
+  }
+  const outbox = new MetrikaOrderOutboxService(prisma as unknown as PrismaService);
+  const ok = await outbox.markSkipped(rowId, 'manual');
+  console.log(
+    ok
+      ? `Строка ${rowId} снята (skipped/manual); следующие переходы заказа пойдут.`
+      : `Строка ${rowId} не найдена или уже закрыта.`,
+  );
+  return ok ? 0 : 1;
 }
 
 async function requeue(prisma: PrismaClient, orderId?: string, allFailed = false): Promise<number> {
@@ -276,8 +317,13 @@ async function main(): Promise<void> {
       case 'requeue':
         code = await requeue(prisma, arg('--order'), flag('--all-failed'));
         break;
+      case 'skip':
+        code = await skipRow(prisma, arg('--row'));
+        break;
       default:
-        console.error('Команды: status | preview --order <id> | send --order <id> [--live] | requeue --order <id> | requeue --all-failed');
+        console.error(
+          'Команды: status | preview --order <id> | send --order <id> [--live] | requeue --order <id> | requeue --all-failed | skip --row <id>',
+        );
         code = 2;
     }
   } catch (e) {
