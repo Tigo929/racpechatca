@@ -17,6 +17,13 @@ import {
  * и отменённый заказ. Возврат в работу (CANCELLED → NEW, PAID → READY) не
  * двигает acceptedAt — считается самое раннее вхождение в работу.
  *
+ * Отмена — историческое событие (FIX_01): возврат в работу его не стирает.
+ * `firstCancelledAt` / `lastCancelledAt` — первый и последний вход в
+ * CANCELLED, `currentlyCancelled` — отменён ли заказ сейчас,
+ * `wasEverCancelled` — был ли отменён хоть раз. Метрика «отменено за период»
+ * считается по первой отмене (один заказ — одно событие, сколько бы раз его
+ * ни возвращали и ни отменяли снова), «сейчас отменено» — отдельно.
+ *
  * Оплата — только `clientPaidAt`. Статус PAID без даты оплаты значит «деньги
  * были, а когда — неизвестно»: такой заказ не попадает в оплаченные периода,
  * а показывается отдельно как paidWithoutDate. Угадывать дату по статусу
@@ -67,11 +74,18 @@ export interface OrderLifecycle {
   acceptedAt: Date | null;
   /** Только clientPaidAt. */
   paidAt: Date | null;
-  /** Заказ сейчас отменён — момент последнего перехода в CANCELLED; возвращён в работу — null. */
-  cancelledAt: Date | null;
+  /** Первый вход в CANCELLED — сохраняется и после возврата в работу; не отменялся — null. */
+  firstCancelledAt: Date | null;
+  /** Последний вход в CANCELLED; не отменялся — null. */
+  lastCancelledAt: Date | null;
+  /** Все моменты входа в CANCELLED (для счётчика событий отмены). */
+  cancellationTimes: Date[];
+  /** Текущий статус — CANCELLED. */
+  currentlyCancelled: boolean;
   /** Выручка признана (правило отчёта) — дата признания; иначе null. */
   realizedAt: Date | null;
   hadLeadStage: boolean;
+  /** Хотя бы один переход в CANCELLED (или создан отменённым). */
   wasEverCancelled: boolean;
   /** Статус PAID, а даты оплаты нет: оплата была, но в периодах её не посчитать. */
   paidWithoutDate: boolean;
@@ -104,15 +118,16 @@ export function deriveOrderLifecycle(
         ? order.createdAt
         : null));
 
-  const cancelTransitions = sorted.filter((h) => h.toStatus === 'CANCELLED');
-  const wasEverCancelled =
-    order.status === 'CANCELLED' || cancelTransitions.length > 0;
-  const cancelledAt =
-    order.status === 'CANCELLED'
-      ? (cancelTransitions[cancelTransitions.length - 1]?.createdAt ??
-        order.statusChangedAt ??
-        order.createdAt)
-      : null;
+  // Входы в CANCELLED по истории; заказ, отменённый сейчас без единого перехода
+  // (создан отменённым), — один вход в момент смены статуса или создания.
+  const cancellationTimes = sorted
+    .filter((h) => h.toStatus === 'CANCELLED')
+    .map((h) => h.createdAt);
+  const currentlyCancelled = order.status === 'CANCELLED';
+  if (currentlyCancelled && cancellationTimes.length === 0) {
+    cancellationTimes.push(order.statusChangedAt ?? order.createdAt);
+  }
+  const wasEverCancelled = cancellationTimes.length > 0;
 
   const realized = isRevenueRealized(order.status, order.productCategory);
 
@@ -121,7 +136,10 @@ export function deriveOrderLifecycle(
     leadAt,
     acceptedAt,
     paidAt: order.clientPaidAt ?? null,
-    cancelledAt,
+    firstCancelledAt: cancellationTimes[0] ?? null,
+    lastCancelledAt: cancellationTimes[cancellationTimes.length - 1] ?? null,
+    cancellationTimes,
+    currentlyCancelled,
     realizedAt: realized ? recognitionDate(order) : null,
     hadLeadStage,
     wasEverCancelled,

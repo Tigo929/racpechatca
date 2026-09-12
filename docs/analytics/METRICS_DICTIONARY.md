@@ -90,10 +90,14 @@ COUNTER_DATA_SINCE                = 2026-08-13                          (счё�
 | `hadLeadStage` | initialStatus = LEAD, или текущий LEAD, или любой переход из/в LEAD |
 | `acceptedAt` | первое вхождение в рабочий статус (NEW, APPROVAL_SENT, FOLDER_STRUCTURE_CREATED, IN_PROGRESS, PRINTED, READY, SHIPMENT_CREATED, DONE, SENT, PAID, READY_FOR_REVIEW, COMPLETED); создан сразу в рабочем → `createdAt`; LEAD, CANCELLED, PROBLEM принятием не являются |
 | `paidAt` | только `clientPaidAt`; статус PAID без даты → null и `paidWithoutDate = true` (дата не угадывается) |
-| `cancelledAt` | сейчас CANCELLED → момент последнего перехода в CANCELLED; возвращён в работу → null (`wasEverCancelled` хранит факт) |
+| `firstCancelledAt` / `lastCancelledAt` | первый / последний вход в CANCELLED по истории (создан отменённым без истории → statusChangedAt или createdAt); **возврат в работу их не стирает** (FIX_01) |
+| `cancellationTimes` | все моменты входа в CANCELLED — для счётчика событий |
+| `currentlyCancelled` | текущий статус = CANCELLED |
+| `wasEverCancelled` | хотя бы один вход в CANCELLED |
 | `realizedAt` | правило отчёта: `isRevenueRealized(status, category)` → `recognitionDate` (clientPaidAt → completedAt → statusChangedAt → sentAt → createdAt); иначе null |
 
-Отмена не отменяет принятие: LEAD → NEW → CANCELLED = принят и отменён.
+Отмена не отменяет принятие: LEAD → NEW → CANCELLED = принят и отменён. Отмена — историческое
+событие: LEAD → NEW → CANCELLED → NEW = принят, отменялся (first/lastCancelledAt сохранены), сейчас не отменён.
 
 ## Воронка CRM (crm)
 
@@ -104,7 +108,9 @@ COUNTER_DATA_SINCE                = 2026-08-13                          (счё�
 | `crmLeads` | Заявки CRM | заказы с `leadAt` в периоде | crm | event |
 | `acceptedOrders` | Принято заказов | заказы с `acceptedAt` в периоде (включая созданные оператором сразу NEW) | crm | event |
 | `paidOrders` | Оплачено заказов | заказы с `paidAt` (= clientPaidAt) в периоде | crm | event |
-| `cancelledOrders` | Отменено заказов | заказы с `cancelledAt` в периоде | crm | event |
+| `cancelledOrders` | Отменено заказов | заказы с **`firstCancelledAt`** в периоде — один заказ = одно событие, сколько бы раз его ни отменяли и ни возвращали | crm | event (order-level) |
+| `cancellationEvents` | Событий отмены | число переходов в CANCELLED внутри периода (`cancellationTimes`) — операционный счётчик, не заменяет `cancelledOrders` | crm | event (transition-level) |
+| `currentlyCancelledOrders` | Отменены сейчас | заказы с `firstCancelledAt` в периоде и `currentlyCancelled = true` — текущее состояние, не история | crm | state |
 | `realizedOrders` | Реализовано (выручка признана) | заказы с `realizedAt` в периоде = `orderCount` отчёта | crm/pnl | event |
 | `paidWithoutDate` | Оплачены без даты | принятые в периоде со статусом PAID и пустым clientPaidAt | crm | — (`PAID_WITHOUT_DATE`) |
 
@@ -115,7 +121,7 @@ COUNTER_DATA_SINCE                = 2026-08-13                          (счё�
 | `crmLeadToAccepted` | Заявка → заказ | `leadCohortAccepted / leadCohortSize × 100` | заявки периода с acceptedAt ≠ null / заявки периода | по leadAt |
 | `crmAcceptedToPaid` | Заказ → оплата | `acceptedCohortPaid / acceptedCohortSize × 100` | принятые периода с paidAt ≠ null / принятые периода | по acceptedAt |
 | `crmLeadToPaid` | Заявка → оплата | `leadCohortPaid / leadCohortSize × 100` | | по leadAt |
-| `crmCancellationRate` | Доля отмен | `acceptedCohortCancelled / acceptedCohortSize × 100` | принятые периода с cancelledAt ≠ null / принятые периода | по acceptedAt |
+| `crmCancellationRate` | Доля отмен | `acceptedCohortCancelled / acceptedCohortSize × 100` | принятые периода с **`wasEverCancelled`** (возврат в работу факт не стирает) / принятые периода | по acceptedAt |
 
 Когорты и события не смешиваются: `paidOrders` периода и `acceptedCohortPaid` — разные числа.
 

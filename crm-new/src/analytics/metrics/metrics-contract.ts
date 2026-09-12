@@ -68,7 +68,12 @@ export interface CrmFunnelEvents {
   crmLeads: number;
   acceptedOrders: number;
   paidOrders: number;
+  /** Заказы с ПЕРВОЙ отменой в периоде — историческое событие, возврат в работу его не стирает. */
   cancelledOrders: number;
+  /** Переходов в CANCELLED внутри периода — операционный счётчик, один заказ может дать несколько. */
+  cancellationEvents: number;
+  /** Из отменённых в периоде — сколько отменены и сейчас (текущее состояние, не история). */
+  currentlyCancelledOrders: number;
   realizedOrders: number;
 }
 
@@ -80,6 +85,7 @@ export interface CrmFunnelCohorts {
   /** Принятые с acceptedAt в периоде и что с ними стало когда-либо. */
   acceptedCohortSize: number;
   acceptedCohortPaid: number;
+  /** Принятые периода, отменявшиеся хоть раз (wasEverCancelled) — даже если возвращены в работу. */
   acceptedCohortCancelled: number;
   crmLeadToAccepted: number | null;
   crmAcceptedToPaid: number | null;
@@ -96,7 +102,10 @@ export interface CrmFunnelMetrics {
 export interface OrdersMetrics {
   acceptedOrders: number;
   paidOrders: number;
+  /** По первой отмене в периоде (см. CrmFunnelEvents). */
   cancelledOrders: number;
+  /** Отменены в периоде и отменены сейчас. */
+  currentlyCancelledOrders: number;
   realizedOrders: number;
   /** Статус PAID без clientPaidAt среди заказов, принятых в периоде. */
   paidWithoutDate: number;

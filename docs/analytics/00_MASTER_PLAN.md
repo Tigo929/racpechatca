@@ -1126,6 +1126,8 @@ REVIEW (12.09.2026) — канонический слой метрик: METRICS_
 MetrikaPeriodSnapshot (уникальные периода отдельным запросом, не SUM(daily users)),
 AnalyticsMetricsService (обзор, воронки сайта/CRM, срезы, товары, каналы, сравнение, качество),
 финансы через ReportsService.pnlForRange (= /reports/monthly). Сверки на копии базы — 0/0/0.
+FIX_01 (отмены как историческое событие: firstCancelledAt, cancellationEvents,
+currentlyCancelledOrders; rate по wasEverCancelled) — выполнен, тесты A–E.
 Production не менялся; выкладка (миграция снимков, снимки в расписании) — по команде.
 ```
 
@@ -1558,7 +1560,8 @@ FALSE_BROWSER_PURCHASE_STOPPED_AT = LEAD_GOAL_SEMANTICS_CHANGED_AT = 2026-09-12 
 
 08_ANALYTICS_METRICS — REVIEW (12.09.2026 19:05 MSK): один типизированный сервис метрик,
 site/CRM/P&L не смешаны, уникальные периода из снимков, жизненный цикл заказа с оператор-NEW
-и возвратами, финансы = отчёт владельца (сверка июль/август 0), 893 теста в CRM. Production
+и возвратами, финансы = отчёт владельца (сверка июль/август 0), 897 тестов в CRM (FIX_01:
+отмены — историческое событие, возврат в работу его не стирает). Production
 не менялся — выкладка по отдельной команде. Отчёт — `08_ANALYTICS_METRICS.md` § 59.
 ```
 

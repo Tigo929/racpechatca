@@ -160,7 +160,11 @@ async function overview(service: AnalyticsMetricsService): Promise<number> {
     n(e.paidOrders),
     'paidWithoutDate=' + o.orders.paidWithoutDate,
   );
-  line('cancelledOrders', n(e.cancelledOrders));
+  line(
+    'cancelledOrders (первая отмена)',
+    n(e.cancelledOrders),
+    `cancellationEvents=${e.cancellationEvents} currentlyCancelled=${e.currentlyCancelledOrders}`,
+  );
   line('realizedOrders', n(e.realizedOrders));
   console.log('Воронка CRM (когорты)');
   line(
@@ -378,12 +382,20 @@ async function reconcileCrm(
       count(*) FILTER (WHERE accepted_at >= ${start} AND accepted_at < ${endExclusive} AND status = 'PAID' AND "clientPaidAt" IS NULL)::int AS paid_without_date,
       coalesce(sum(CASE WHEN "clientPaidAt" >= ${start} AND "clientPaidAt" < ${endExclusive} THEN (SELECT "totalOrder" FROM "OrderPhoto" x WHERE x.id = acc.id) END),0)::int AS paid_value
     FROM acc`;
+  // Отмена — историческое событие (FIX_01): заказ считается по ПЕРВОМУ входу в CANCELLED,
+  // возврат в работу его не стирает; отдельно — число переходов и «отменены сейчас».
   const canc = await prisma.$queryRaw<Row[]>`
-    SELECT count(*)::int AS cancelled FROM "OrderPhoto" o
-    WHERE o.status = 'CANCELLED' AND coalesce(
-      (SELECT max(h."createdAt") FROM "StatusHistory" h WHERE h."orderId" = o.id AND h."toStatus" = 'CANCELLED'),
-      o."statusChangedAt", o."createdAt") >= ${start}
-      AND coalesce((SELECT max(h."createdAt") FROM "StatusHistory" h WHERE h."orderId" = o.id AND h."toStatus" = 'CANCELLED'), o."statusChangedAt", o."createdAt") < ${endExclusive}`;
+    WITH first_cancel AS (
+      SELECT o.id, o.status::text AS status,
+        coalesce((SELECT min(h."createdAt") FROM "StatusHistory" h WHERE h."orderId" = o.id AND h."toStatus" = 'CANCELLED'),
+                 CASE WHEN o.status = 'CANCELLED' THEN coalesce(o."statusChangedAt", o."createdAt") END) AS at
+      FROM "OrderPhoto" o
+    )
+    SELECT
+      count(*) FILTER (WHERE at >= ${start} AND at < ${endExclusive})::int AS cancelled,
+      count(*) FILTER (WHERE at >= ${start} AND at < ${endExclusive} AND status = 'CANCELLED')::int AS currently_cancelled,
+      (SELECT count(*) FROM "StatusHistory" h WHERE h."toStatus" = 'CANCELLED' AND h."createdAt" >= ${start} AND h."createdAt" < ${endExclusive})::int AS events
+    FROM first_cancel`;
   const leads = await prisma.$queryRaw<Row[]>`
     WITH first_h AS (
       SELECT DISTINCT ON ("orderId") "orderId", "fromStatus" FROM "StatusHistory" ORDER BY "orderId", "createdAt", id
@@ -405,6 +417,16 @@ async function reconcileCrm(
       'cancelledOrders',
       o.crmFunnel.events.cancelledOrders,
       Number(canc[0].cancelled),
+    ],
+    [
+      'cancellationEvents',
+      o.crmFunnel.events.cancellationEvents,
+      Number(canc[0].events),
+    ],
+    [
+      'currentlyCancelled',
+      o.crmFunnel.events.currentlyCancelledOrders,
+      Number(canc[0].currently_cancelled),
     ],
     [
       'paidWithoutDate',

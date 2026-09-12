@@ -265,7 +265,7 @@ describe('воронка CRM — события и когорты', () => {
     expect(o.orders.acceptedAov).toBe(1000);
   });
 
-  it('отмена после принятия: принят = да, отменён = да, cancellationRate 50 % из двух принятых', () => {
+  it('A: отмена после принятия: принят = да, отменён = да, cancellationRate 50 % из двух принятых', () => {
     const cancelled = lead({
       status: 'CANCELLED',
       statusHistory: [
@@ -287,11 +287,115 @@ describe('воронка CRM — события и когорты', () => {
       crmLeads: 1,
       acceptedOrders: 2,
       cancelledOrders: 1,
+      cancellationEvents: 1,
+      currentlyCancelledOrders: 1,
     });
     expect(o.crmFunnel.cohorts.crmCancellationRate).toBe(50);
+    expect(o.orders.currentlyCancelledOrders).toBe(1);
   });
 
-  it('заявка, отменённая без принятия, не считается принятой', () => {
+  it('B: отменён 05.09 и возвращён в работу 07.09: cancelledOrders за 01–06.09 = 1, сейчас не отменён', () => {
+    const reopened = lead({
+      createdAt: T('2026-09-01T09:00:00Z'),
+      status: 'NEW',
+      statusHistory: [
+        {
+          fromStatus: 'LEAD',
+          toStatus: 'NEW',
+          createdAt: T('2026-09-02T09:00:00Z'),
+        },
+        {
+          fromStatus: 'NEW',
+          toStatus: 'CANCELLED',
+          createdAt: T('2026-09-05T09:00:00Z'),
+        },
+        {
+          fromStatus: 'CANCELLED',
+          toStatus: 'NEW',
+          createdAt: T('2026-09-07T09:00:00Z'),
+        },
+      ],
+    });
+    const o = computeOverview(
+      inputs({
+        period: customPeriod('2026-09-01', '2026-09-06'),
+        previousPeriod: customPeriod('2026-08-26', '2026-08-31'),
+        orders: [reopened],
+      }),
+    );
+    expect(o.crmFunnel.events).toMatchObject({
+      acceptedOrders: 1,
+      cancelledOrders: 1,
+      cancellationEvents: 1,
+      currentlyCancelledOrders: 0,
+    });
+    // D: в когорте принятых заказ остаётся отменявшимся — возврат в работу факт не стирает
+    expect(o.crmFunnel.cohorts).toMatchObject({
+      acceptedCohortSize: 1,
+      acceptedCohortCancelled: 1,
+      crmCancellationRate: 100,
+    });
+    // период после возврата: события отмены нет, заказ не отменён сейчас
+    const later = computeOverview(
+      inputs({
+        period: customPeriod('2026-09-07', '2026-09-13'),
+        previousPeriod: customPeriod('2026-08-31', '2026-09-06'),
+        orders: [reopened],
+      }),
+    );
+    expect(later.crmFunnel.events).toMatchObject({
+      cancelledOrders: 0,
+      cancellationEvents: 0,
+      currentlyCancelledOrders: 0,
+    });
+  });
+
+  it('C: NEW → CANCELLED → NEW → CANCELLED: один заказ в cancelledOrders (по первой отмене), два события', () => {
+    const twice = photoOrder({
+      status: 'CANCELLED',
+      createdAt: T('2026-09-01T09:00:00Z'),
+      statusHistory: [
+        {
+          fromStatus: 'NEW',
+          toStatus: 'CANCELLED',
+          createdAt: T('2026-09-02T09:00:00Z'),
+        },
+        {
+          fromStatus: 'CANCELLED',
+          toStatus: 'NEW',
+          createdAt: T('2026-09-03T09:00:00Z'),
+        },
+        {
+          fromStatus: 'NEW',
+          toStatus: 'CANCELLED',
+          createdAt: T('2026-09-05T09:00:00Z'),
+        },
+      ],
+    });
+    const o = computeOverview(inputs({ orders: [twice] }));
+    expect(o.crmFunnel.events).toMatchObject({
+      acceptedOrders: 1,
+      cancelledOrders: 1,
+      cancellationEvents: 2,
+      currentlyCancelledOrders: 1,
+    });
+    expect(o.crmFunnel.cohorts.crmCancellationRate).toBe(100);
+    // период только со второй отменой: заказа в cancelledOrders нет (первая отмена раньше), событие — есть
+    const second = computeOverview(
+      inputs({
+        period: customPeriod('2026-09-04', '2026-09-07'),
+        previousPeriod: customPeriod('2026-08-31', '2026-09-03'),
+        orders: [twice],
+      }),
+    );
+    expect(second.crmFunnel.events).toMatchObject({
+      cancelledOrders: 0,
+      cancellationEvents: 1,
+      currentlyCancelledOrders: 0,
+    });
+  });
+
+  it('E: заявка, отменённая без принятия, не считается принятой и не входит в когорту принятых', () => {
     const o = computeOverview(
       inputs({
         orders: [
@@ -314,6 +418,11 @@ describe('воронка CRM — события и когорты', () => {
       cancelledOrders: 1,
     });
     expect(o.crmFunnel.cohorts.crmLeadToAccepted).toBe(0);
+    expect(o.crmFunnel.cohorts).toMatchObject({
+      acceptedCohortSize: 0,
+      acceptedCohortCancelled: 0,
+      crmCancellationRate: null,
+    });
   });
 
   it('оператор создал сразу NEW — принят, но не заявка; PAID без даты — не оплачен, но помечен', () => {

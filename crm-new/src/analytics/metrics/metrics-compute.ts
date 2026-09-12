@@ -288,8 +288,11 @@ export interface CrmPeriodSets {
   leads: OrderWithLifecycle[];
   accepted: OrderWithLifecycle[];
   paid: OrderWithLifecycle[];
+  /** Заказы с первой отменой в периоде — историческое событие, возврат в работу его не стирает. */
   cancelled: OrderWithLifecycle[];
   realized: OrderWithLifecycle[];
+  /** Число переходов в CANCELLED внутри периода (операционный счётчик, не заказы). */
+  cancellationEvents: number;
 }
 
 export function crmPeriodSets(
@@ -300,8 +303,17 @@ export function crmPeriodSets(
     leads: all.filter((o) => inPeriod(o.lifecycle.leadAt, period)),
     accepted: all.filter((o) => inPeriod(o.lifecycle.acceptedAt, period)),
     paid: all.filter((o) => inPeriod(o.lifecycle.paidAt, period)),
-    cancelled: all.filter((o) => inPeriod(o.lifecycle.cancelledAt, period)),
+    cancelled: all.filter((o) =>
+      inPeriod(o.lifecycle.firstCancelledAt, period),
+    ),
     realized: all.filter((o) => inPeriod(o.lifecycle.realizedAt, period)),
+    cancellationEvents: all.reduce(
+      (sum, o) =>
+        sum +
+        o.lifecycle.cancellationTimes.filter((at) => inPeriod(at, period))
+          .length,
+      0,
+    ),
   };
 }
 
@@ -315,8 +327,9 @@ export function computeCrmFunnel(sets: CrmPeriodSets): CrmFunnelMetrics {
   const acceptedCohortPaid = sets.accepted.filter(
     (o) => o.lifecycle.paidAt !== null,
   ).length;
+  // Когорта принятых: отменялся ли заказ хоть раз — возврат в работу факт не стирает.
   const acceptedCohortCancelled = sets.accepted.filter(
-    (o) => o.lifecycle.cancelledAt !== null,
+    (o) => o.lifecycle.wasEverCancelled,
   ).length;
   const paidWithoutDate = sets.accepted.filter(
     (o) => o.lifecycle.paidWithoutDate,
@@ -327,6 +340,10 @@ export function computeCrmFunnel(sets: CrmPeriodSets): CrmFunnelMetrics {
       acceptedOrders: sets.accepted.length,
       paidOrders: sets.paid.length,
       cancelledOrders: sets.cancelled.length,
+      cancellationEvents: sets.cancellationEvents,
+      currentlyCancelledOrders: sets.cancelled.filter(
+        (o) => o.lifecycle.currentlyCancelled,
+      ).length,
       realizedOrders: sets.realized.length,
     },
     cohorts: {
@@ -376,6 +393,9 @@ export function computeOrders(sets: CrmPeriodSets): OrdersMetrics {
     acceptedOrders: sets.accepted.length,
     paidOrders: sets.paid.length,
     cancelledOrders: sets.cancelled.length,
+    currentlyCancelledOrders: sets.cancelled.filter(
+      (o) => o.lifecycle.currentlyCancelled,
+    ).length,
     realizedOrders: sets.realized.length,
     paidWithoutDate,
     acceptedAov,

@@ -7,7 +7,9 @@
 ```text
 REVIEW — реализовано 12.09.2026 в feature/analytics-foundation: словарь метрик, жизненный цикл,
 снимки уникальных периода, AnalyticsMetricsService; сверки на копии боевой базы — трафик 0,
-CRM 0, P&L 0. Production не менялся. DONE ставит Reviewer.
+CRM 0, P&L 0. FIX_01 (семантика отмен: historical firstCancelledAt, cancellationEvents,
+currentlyCancelledOrders, rate по wasEverCancelled) — выполнен 12.09.2026, см.
+`08_ANALYTICS_METRICS_FIX_01.md`. Production не менялся. DONE ставит Reviewer.
 ```
 
 Отчёт исполнителя — раздел 59; словарь — `METRICS_DICTIONARY.md`.

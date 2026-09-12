@@ -39,7 +39,9 @@ describe('deriveOrderLifecycle', () => {
       leadAt: T('2026-09-01T09:00:00Z'),
       acceptedAt: T('2026-09-01T12:00:00Z'),
       paidAt: null,
-      cancelledAt: null,
+      firstCancelledAt: null,
+      lastCancelledAt: null,
+      currentlyCancelled: false,
       realizedAt: null,
       wasEverCancelled: false,
       paidWithoutDate: false,
@@ -64,24 +66,56 @@ describe('deriveOrderLifecycle', () => {
     expect(lc.realizedAt).toEqual(T('2026-09-03T10:00:00Z'));
   });
 
-  it('LEAD → NEW → CANCELLED: принят = да, отменён = да', () => {
+  it('A: LEAD → NEW → CANCELLED: принят = да; first = last = момент отмены, отменён сейчас и когда-либо', () => {
     const lc = deriveOrderLifecycle(order({ status: 'CANCELLED' }), [
       h('LEAD', 'NEW', '2026-09-01T12:00:00Z'),
       h('NEW', 'CANCELLED', '2026-09-02T08:00:00Z'),
     ]);
     expect(lc.acceptedAt).toEqual(T('2026-09-01T12:00:00Z'));
-    expect(lc.cancelledAt).toEqual(T('2026-09-02T08:00:00Z'));
+    expect(lc.firstCancelledAt).toEqual(T('2026-09-02T08:00:00Z'));
+    expect(lc.lastCancelledAt).toEqual(T('2026-09-02T08:00:00Z'));
+    expect(lc.currentlyCancelled).toBe(true);
     expect(lc.wasEverCancelled).toBe(true);
+    expect(lc.cancellationTimes).toEqual([T('2026-09-02T08:00:00Z')]);
     expect(lc.realizedAt).toBeNull();
   });
 
-  it('LEAD → CANCELLED: не принят, отменён', () => {
+  it('E: LEAD → CANCELLED: не принят, но отменён', () => {
     const lc = deriveOrderLifecycle(order({ status: 'CANCELLED' }), [
       h('LEAD', 'CANCELLED', '2026-09-02T08:00:00Z'),
     ]);
     expect(lc.leadAt).toEqual(T('2026-09-01T09:00:00Z'));
     expect(lc.acceptedAt).toBeNull();
-    expect(lc.cancelledAt).toEqual(T('2026-09-02T08:00:00Z'));
+    expect(lc.firstCancelledAt).toEqual(T('2026-09-02T08:00:00Z'));
+    expect(lc.currentlyCancelled).toBe(true);
+  });
+
+  it('C: NEW → CANCELLED → NEW → CANCELLED: first — первая, last — вторая, два события, отменён сейчас', () => {
+    const lc = deriveOrderLifecycle(order({ status: 'CANCELLED' }), [
+      h('NEW', 'CANCELLED', '2026-09-02T08:00:00Z'),
+      h('CANCELLED', 'NEW', '2026-09-03T08:00:00Z'),
+      h('NEW', 'CANCELLED', '2026-09-05T08:00:00Z'),
+    ]);
+    expect(lc.firstCancelledAt).toEqual(T('2026-09-02T08:00:00Z'));
+    expect(lc.lastCancelledAt).toEqual(T('2026-09-05T08:00:00Z'));
+    expect(lc.cancellationTimes).toHaveLength(2);
+    expect(lc.currentlyCancelled).toBe(true);
+    expect(lc.wasEverCancelled).toBe(true);
+    expect(lc.acceptedAt).toEqual(T('2026-09-01T09:00:00Z'));
+  });
+
+  it('создан отменённым без истории: одна отмена в момент смены статуса (или создания)', () => {
+    const lc = deriveOrderLifecycle(
+      order({
+        status: 'CANCELLED',
+        statusChangedAt: T('2026-09-01T10:00:00Z'),
+      }),
+      [],
+    );
+    expect(lc.firstCancelledAt).toEqual(T('2026-09-01T10:00:00Z'));
+    expect(lc.cancellationTimes).toHaveLength(1);
+    expect(lc.currentlyCancelled).toBe(true);
+    expect(lc.acceptedAt).toBeNull();
   });
 
   it('оператор создал сразу NEW: истории нет, принят в момент создания, заявкой не был', () => {
@@ -104,14 +138,16 @@ describe('deriveOrderLifecycle', () => {
     expect(lc.hadLeadStage).toBe(false);
   });
 
-  it('CANCELLED → NEW (возврат в работу): acceptedAt — первое принятие, отмены сейчас нет, но она была', () => {
+  it('B: LEAD → NEW → CANCELLED → NEW (возврат в работу): отмена в истории остаётся, сейчас не отменён', () => {
     const lc = deriveOrderLifecycle(order({ status: 'NEW' }), [
       h('LEAD', 'NEW', '2026-09-01T12:00:00Z'),
       h('NEW', 'CANCELLED', '2026-09-02T08:00:00Z'),
       h('CANCELLED', 'NEW', '2026-09-04T09:00:00Z'),
     ]);
     expect(lc.acceptedAt).toEqual(T('2026-09-01T12:00:00Z'));
-    expect(lc.cancelledAt).toBeNull();
+    expect(lc.firstCancelledAt).toEqual(T('2026-09-02T08:00:00Z'));
+    expect(lc.lastCancelledAt).toEqual(T('2026-09-02T08:00:00Z'));
+    expect(lc.currentlyCancelled).toBe(false);
     expect(lc.wasEverCancelled).toBe(true);
   });
 
