@@ -292,16 +292,17 @@ CANCELLED, PROBLEM — вне цепочки
 
 | Факт | Подробности |
 |---|---|
-| Очередь | `MetrikaOrderOutbox`: строка появляется в той же транзакции, что смена статуса и `StatusHistory`; dedupe по `StatusHistory.id`; статусы pending/processing/delivered/failed/skipped |
+| Очередь | `MetrikaOrderOutbox`: строка появляется в той же транзакции, что смена статуса и `StatusHistory`; dedupe по `StatusHistory.id`; статусы pending/processing/delivered/failed/skipped. **Порядок внутри заказа строгий**: уходит первая незакрытая строка (pending/processing/failed блокируют поздние), failed ждёт requeue/skip оператора; два воркера не возьмут два перехода одного заказа |
 | Кто меняет статус | шесть мест: `updateStatusOrder` (панель), `ScenarioDraftService` (LEAD → NEW), `SalaryService` (выплата → PAID), `PartnerApiController`, `partner-status-poll`, `telegram-update`; постановка в очередь — в первых четырёх, два последних нормализованный статус не меняют |
-| Что уходит | `simple_orders` (merge_mode=SAVE), один заказ — один файл: `OrderPhoto.id`, `createdAt` в поясе счётчика, ClientID строкой, IN_PROGRESS/PAID/CANCELLED, `totalOrder`, себестоимость из `order-cogs.ts` (та же, что в P&L), RUB. Без имени/телефона/почты/note |
+| Что уходит | `simple_orders` (merge_mode=SAVE), один заказ — один файл: `OrderPhoto.id`, `createdAt` в поясе счётчика, ClientID строкой, **статус перехода** (`targetMetrikaStatus` строки, не текущий статус заказа) IN_PROGRESS/PAID/CANCELLED, `totalOrder`, себестоимость из `order-cogs.ts` (та же, что в P&L), RUB. Без имени/телефона/почты/note. `revenue − cost` в Метрике — валовая прибыль, не чистая |
 | Что не уходит | заявки (LEAD), отклонённые заявки (LEAD → CANCELLED без принятия), заказы без ClientID (skipped/no_client_id) |
 | Рубильник | `YANDEX_METRIKA_ORDERS_SYNC_ENABLED` — по умолчанию выключено: очередь копится, наружу не уходит |
 | CLI | `npm run metrika:orders -- status \| preview --order <id> \| send --order <id> [--live] \| requeue` |
 | Себестоимость | вынесена в `reports/order-cogs.ts`; отчёт и Метрика считают одной функцией; в неё не входят зарплата и доставка перевозчику (в P&L они отдельными строками) |
-| Живой POST | не выполнялся; кандидат — заказ 20260815-050 (фото, PAID); ждёт токена и команды владельца |
-| Дрейф миграций | в боевой базе три миграции без файлов в репозитории (`20260531222621_add_yandex_request_id`, `20260531224724_add_delivery_info`, `20260728190000_add_gulian_transactional_outbox`); deploy их терпит |
+| Живой POST | не выполнялся; кандидат — заказ 20260909-091 (фото, NEW → IN_PROGRESS, 3 дня, в окне 21 день; recent PAID с ClientID нет); ждёт токена и команды владельца |
+| История миграций | **восстановлена 12.09.2026**: `20260728190000_add_gulian_transactional_outbox` — из Git (f106dca, WIP-ветка; ADD COLUMN → IF NOT EXISTS ради сборки с нуля); две от 31.05 — каталоги с объяснением (файлы утеряны, объектов на бою нет); новая `20260601000000_baseline_db_push_era` — User, ItemTshirt, 6 enum, LEAD/DONE, productCategory/deadline/isUrgent эпохи `db push`, идемпотентна. **Пустая база собирается из репозитория (75 миграций)**; на бою deploy применит только baseline как no-op |
 | master | ушёл вперёд (Web Push, 11.09.2026) — слит в `feature/analytics-foundation`; обратно не сливался |
+| Дрейф схемы на бою | против `schema.prisma`: TIMESTAMPTZ в GulianOutbox/ExpenseOrder/executorSentAt, DEFAULT у updatedAt в трёх таблицах, FK SalaryAccrual ON DELETE SET NULL, имя индекса GulianOutbox, лишние индексы sentAt/clientGreetedAt, WIP-объекты GulianOutboxEvent/IntegrationAuditLog/2 enum/4 колонки. Безвредно для работы и `migrate deploy`; `migrate dev` на бою не запускать |
 
 ---
 # 6. Что уже готово из целевой картины
