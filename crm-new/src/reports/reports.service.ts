@@ -1,9 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import {
-  EnumProductCategory,
-  EnumStatus,
-} from 'src/generated/prisma/enums';
+import { EnumProductCategory, EnumStatus } from 'src/generated/prisma/enums';
 import {
   costSettingsFrom,
   orderCostOfGoods,
@@ -153,9 +150,7 @@ export function isRevenueRealized(status: string, category: string): boolean {
   ) {
     return true;
   }
-  return (
-    status === EnumStatus.SENT && category === EnumProductCategory.PHOTO
-  );
+  return status === EnumStatus.SENT && category === EnumProductCategory.PHOTO;
 }
 
 /**
@@ -164,7 +159,12 @@ export function isRevenueRealized(status: string, category: string): boolean {
  * Порядок ДОЛЖЕН совпадать с periodWhere в fetchPeriod, иначе SQL-фильтр
  * периода и раскладка по месяцам разъедутся.
  */
-function recognitionDate(o: OrderRow): Date {
+export type RecognitionDateSource = Pick<
+  OrderRow,
+  'clientPaidAt' | 'completedAt' | 'statusChangedAt' | 'sentAt' | 'createdAt'
+>;
+
+export function recognitionDate(o: RecognitionDateSource): Date {
   return (
     o.clientPaidAt ??
     o.completedAt ??
@@ -299,6 +299,26 @@ function sumBuckets(buckets: PnlRaw[]): PnlRaw {
   }, emptyBucket());
 }
 
+/**
+ * Весь P&L периода одним числом каждого показателя — без раскладки по месяцам
+ * и неделям. Те же addOrder/addExpense/finalize, что у отчётов; отсюда же
+ * берёт финансы аналитика (этап 08): второй формулы прибыли не существует.
+ */
+export function buildPnl(
+  orders: OrderRow[],
+  expenses: ExpenseRow[],
+  salaryPayments: { amount: number }[],
+  settings: CostSettings,
+): PnlReport {
+  const b = emptyBucket();
+  for (const o of orders) addOrder(b, o, settings);
+  for (const e of expenses) addExpense(b, e);
+  for (const p of salaryPayments) b.salaryPaid += p.amount;
+  return finalize(b);
+}
+
+export type PnlReport = ReturnType<typeof finalize>;
+
 /** Добавляет производные метрики (чистая выручка, прибыль, маржа, средний чек). */
 export function finalize(b: PnlRaw) {
   // Выручка за товар: доставка вынесена, на ней зарабатываем отдельно.
@@ -342,7 +362,7 @@ export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Настройки себестоимости; строки нет — берём значения по умолчанию. */
-  private async costSettings(): Promise<CostSettings> {
+  async costSettings(): Promise<CostSettings> {
     const s = await this.prisma.partnerSettings.findUnique({
       where: { id: 'default' },
     });
@@ -458,6 +478,20 @@ export class ReportsService {
       expenses: expenses as ExpenseRow[],
       salaryPayments: salaryPayments as SalaryRow[],
     };
+  }
+
+  /**
+   * P&L за произвольный полуинтервал [start, endExclusive) — для аналитики
+   * (этап 08). Границы — моменты времени; аналитика передаёт полуночи по
+   * Москве. Внутри — ровно то, что делает месячный отчёт для одного месяца:
+   * те же заказы по дате признания, те же расходы и зарплаты, тот же finalize.
+   */
+  async pnlForRange(start: Date, endExclusive: Date): Promise<PnlReport> {
+    const [{ orders, expenses, salaryPayments }, settings] = await Promise.all([
+      this.fetchPeriod(start, endExclusive),
+      this.costSettings(),
+    ]);
+    return buildPnl(orders, expenses, salaryPayments, settings);
   }
 
   async getMonthlyReport(year: number) {

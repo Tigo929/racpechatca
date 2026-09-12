@@ -1122,7 +1122,11 @@ conversions
 Статус:
 
 ```text
-TODO
+REVIEW (12.09.2026) — канонический слой метрик: METRICS_DICTIONARY.md, deriveOrderLifecycle,
+MetrikaPeriodSnapshot (уникальные периода отдельным запросом, не SUM(daily users)),
+AnalyticsMetricsService (обзор, воронки сайта/CRM, срезы, товары, каналы, сравнение, качество),
+финансы через ReportsService.pnlForRange (= /reports/monthly). Сверки на копии базы — 0/0/0.
+Production не менялся; выкладка (миграция снимков, снимки в расписании) — по команде.
 ```
 
 Цель:
@@ -1550,6 +1554,12 @@ rollout выполнен 12.09.2026 16:56–18:21 MSK по команде вла
 все проверки в боевом контейнере чистые, расписание включено, два цикла SUCCESS, копия
 удалена — `07_METRIKA_TO_ANALYTICS.md` § 38. Immutable metadata:
 FALSE_BROWSER_PURCHASE_STOPPED_AT = LEAD_GOAL_SEMANTICS_CHANGED_AT = 2026-09-12 13:19:22 MSK.
+07 = DONE (Reviewer, входной контекст этапа 08).
+
+08_ANALYTICS_METRICS — REVIEW (12.09.2026 22:00 MSK): один типизированный сервис метрик,
+site/CRM/P&L не смешаны, уникальные периода из снимков, жизненный цикл заказа с оператор-NEW
+и возвратами, финансы = отчёт владельца (сверка июль/август 0), 893 теста в CRM. Production
+не менялся — выкладка по отдельной команде. Отчёт — `08_ANALYTICS_METRICS.md` § 59.
 ```
 
 История: `00`, `01`, `02` (с FIX_01), `03`, `04` (с FIX_01), `05` (live smoke

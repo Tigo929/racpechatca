@@ -15,8 +15,8 @@
     "semantic_hash": ""
   },
   "crm-new/package.json": {
-    "mtime": 1789215104.448963,
-    "ast_hash": "5005bd0479759172216c92b502f63a72",
+    "mtime": 1789228313.3054192,
+    "ast_hash": "cef6eb09f66b036f6354e450831bbddf",
     "semantic_hash": ""
   },
   "crm-new/prisma.config.ts": {
@@ -150,8 +150,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/app.module.ts": {
-    "mtime": 1789210223.5725973,
-    "ast_hash": "3ddabe65ed94bfb6328c9cca02705cb4",
+    "mtime": 1789228112.9083385,
+    "ast_hash": "acc53e44d48e6fc2abd445c0c085e2d0",
     "semantic_hash": ""
   },
   "crm-new/src/auth/auth.controller.ts": {
@@ -450,13 +450,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/reports/reports.module.ts": {
-    "mtime": 1786461057.6884472,
-    "ast_hash": "e6a80666ab6008cf4389f42c840689b4",
+    "mtime": 1789228112.7162685,
+    "ast_hash": "e70c0fd811672bd7d691fe1ebf015d51",
     "semantic_hash": ""
   },
   "crm-new/src/reports/reports.service.ts": {
-    "mtime": 1789203565.4993153,
-    "ast_hash": "d4cdfd9a694a578f4317f45714ebbba4",
+    "mtime": 1789228945.913756,
+    "ast_hash": "f38a1075c88f6bcfd63e295ebadc3750",
     "semantic_hash": ""
   },
   "crm-new/src/salary/dto/create-payment-by-accruals.dto.ts": {
@@ -900,8 +900,8 @@
     "semantic_hash": ""
   },
   "docker-compose.prod.yml": {
-    "mtime": 1789216291.2810855,
-    "ast_hash": "0861676df8d49dca48d1503d2bd9ef20",
+    "mtime": 1789221403.132495,
+    "ast_hash": "9d0d67f43861cba01f76ec82f987bdbf",
     "semantic_hash": ""
   },
   "docker-compose.yml": {
@@ -2400,108 +2400,108 @@
     "semantic_hash": ""
   },
   "crm-new/src/analytics/metrika-sync.ts": {
-    "mtime": 1789216735.9559147,
-    "ast_hash": "ca47e0635ef6a9caaa978ea0ebb7fe44",
+    "mtime": 1789228196.6655383,
+    "ast_hash": "6ee9857d0fbaf3809bfae5c94bdae844",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-analytics-inspect.ts": {
-    "mtime": 1789216735.6403742,
-    "ast_hash": "8cf9078028422c55b1573e52c4a0fcb9",
+    "mtime": 1789221403.1173012,
+    "ast_hash": "2e7a7a62826c3c69a4cd686f84c8189a",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-analytics-scheduler.service.spec.ts": {
-    "mtime": 1789216868.4945796,
-    "ast_hash": "a7f7effa10a798207a83b2bde0fce06a",
+    "mtime": 1789221403.1183903,
+    "ast_hash": "f7b99a24ade60458a59a64e42e80dfc7",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-analytics-scheduler.service.ts": {
-    "mtime": 1789216735.6884332,
-    "ast_hash": "17d560481c0cce420799c50ef58414dc",
+    "mtime": 1789228945.8807542,
+    "ast_hash": "9a6d4df404d9648b2532fec4e63fb9d1",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-analytics-sync.service.spec.ts": {
-    "mtime": 1789216897.0660133,
-    "ast_hash": "cc1c3ecd6b9b7722d6a13b4f08bc5786",
+    "mtime": 1789221403.1199584,
+    "ast_hash": "46f453ae820d861a4053f9f1c2174c16",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-analytics-sync.service.ts": {
-    "mtime": 1789216735.7608867,
-    "ast_hash": "d060aec6a29ac4c05a03429fbf3c59a4",
+    "mtime": 1789221403.120502,
+    "ast_hash": "2deec6868ffcfb7dc75facead9f95637",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-analytics.module.ts": {
-    "mtime": 1789216735.767818,
-    "ast_hash": "68852ddf65edaf718a5d6ebdb0896181",
+    "mtime": 1789228150.849205,
+    "ast_hash": "5a26773390ed542021821429e142a30e",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-dates.spec.ts": {
-    "mtime": 1789216735.7751222,
-    "ast_hash": "6c89bbc590ac2d16ea1ef015b53d0c31",
+    "mtime": 1789221403.1220512,
+    "ast_hash": "345f93ee179d298e50c6b154e76ffaa0",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-dates.ts": {
-    "mtime": 1789216853.4657173,
-    "ast_hash": "2c115efda608e3f1759eb20dfa4ec8a0",
+    "mtime": 1789221403.1225684,
+    "ast_hash": "c190f010ff5de2f569c6d77412ab6d36",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-goal-registry.spec.ts": {
-    "mtime": 1789216735.7967439,
-    "ast_hash": "a47374814b24c796d074f08bc9e6b051",
+    "mtime": 1789221403.1236148,
+    "ast_hash": "d7f3f0a4bb6e3f88504b327402388485",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-goal-registry.ts": {
-    "mtime": 1789216735.812088,
-    "ast_hash": "6a769943b7c827e682441f1c0cbb9387",
+    "mtime": 1789221403.1241367,
+    "ast_hash": "b9167c36a83d49a5b646ff66af2887af",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-query-catalog.spec.ts": {
-    "mtime": 1789216735.8393128,
-    "ast_hash": "59be2c1e1e66b0f63cc8a79603210099",
+    "mtime": 1789221403.1251762,
+    "ast_hash": "2ee6a3253d097e132c6418471f9c3416",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-query-catalog.ts": {
-    "mtime": 1789216735.870024,
-    "ast_hash": "97bf0ce21acda861a40c19abe615a43d",
+    "mtime": 1789221403.1257174,
+    "ast_hash": "2ca2314ae0b8d3518e8d27fd586fb6b3",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-report-fetcher.spec.ts": {
-    "mtime": 1789216853.46772,
-    "ast_hash": "0f2669cfa0bbb3bc41cfc4a5bdf57d18",
+    "mtime": 1789221403.12677,
+    "ast_hash": "2dd068f019df17a2ed564a1908a2f1f6",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-report-fetcher.ts": {
-    "mtime": 1789216735.893633,
-    "ast_hash": "514e9b8b2484f8446f2b8c55b1df2580",
+    "mtime": 1789221403.127316,
+    "ast_hash": "ffa7adaa9d21a324ed45870d915e91d3",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-sync-lock.ts": {
-    "mtime": 1789216853.466717,
-    "ast_hash": "c55acb3ab7ca1824193633cdab80758c",
+    "mtime": 1789221403.1283913,
+    "ast_hash": "8129b2608c2f6adadcba984247177992",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-sync-store.ts": {
-    "mtime": 1789216735.9139075,
-    "ast_hash": "a3a7ceebc9e9c57428ee9c34ab774e7c",
+    "mtime": 1789221403.1289043,
+    "ast_hash": "a85281750c0f0a5818eaaa88701903be",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/metrika-api.client.spec.ts": {
-    "mtime": 1789215448.2203739,
-    "ast_hash": "addce335e7c825b4152543436c9f4a4e",
+    "mtime": 1789221403.1294231,
+    "ast_hash": "94ea4d1726746ca0c7f2cef037fea8bc",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/metrika-api.client.ts": {
-    "mtime": 1789209861.3268695,
-    "ast_hash": "2e130a2bb3f99708c66ab0d1e34b7ccd",
+    "mtime": 1789221403.1304562,
+    "ast_hash": "6a02dbe2adce053a3303a958ea82bc1b",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/metrika.config.spec.ts": {
-    "mtime": 1789216735.9674113,
-    "ast_hash": "1fdae69b2e9282ed08611b8fe783bb63",
+    "mtime": 1789221403.1309738,
+    "ast_hash": "d79c6d73cec297940404713dd3bf7fed",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/metrika.config.ts": {
-    "mtime": 1789209875.8070683,
-    "ast_hash": "244d56fe727380cc884f5851c55ab791",
+    "mtime": 1789221403.1314898,
+    "ast_hash": "357ef448d278ab65dd0eac7434575071",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/metrika.module.ts": {
@@ -2510,8 +2510,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/metrika/metrika.types.ts": {
-    "mtime": 1789216924.2358015,
-    "ast_hash": "a92af7677e670cbe52d7ee85382a9875",
+    "mtime": 1789221403.132495,
+    "ast_hash": "b6a58861361eb777badaed4eabb34070",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/orders/metrika-order-csv.spec.ts": {
@@ -2600,13 +2600,13 @@
     "semantic_hash": ""
   },
   "docs/analytics/00_MASTER_PLAN.md": {
-    "mtime": 1789216697.6581795,
-    "ast_hash": "8d8f6375b6609d103d8fc30966904976",
+    "mtime": 1789229322.4174473,
+    "ast_hash": "1fa0d543407f699bf77d76f38dc0e080",
     "semantic_hash": ""
   },
   "docs/analytics/01_CURRENT_STATE.md": {
-    "mtime": 1789216697.4991465,
-    "ast_hash": "7600f31c21d42f2c63fc08e33a0d5c76",
+    "mtime": 1789229322.4184463,
+    "ast_hash": "ca611ba262a061b0aa3ff3971989a901",
     "semantic_hash": ""
   },
   "docs/analytics/02_ANALYTICS_DATA_MODEL.md": {
@@ -2665,18 +2665,18 @@
     "semantic_hash": ""
   },
   "docs/analytics/06_PRODUCTION_ROLLOUT.md": {
-    "mtime": 1789208726.6664128,
-    "ast_hash": "cd2c2fc94bf0f709972e9167d40fd03f",
+    "mtime": 1789221403.1364944,
+    "ast_hash": "4fbfeae9f82cbeee686beae70274f73d",
     "semantic_hash": ""
   },
   "docs/analytics/06_PRODUCTION_ROLLOUT_PHASE_I_J.md": {
-    "mtime": 1789208726.660414,
-    "ast_hash": "966b9bdf458bf711e1cf78c226245b4c",
+    "mtime": 1789221403.1364944,
+    "ast_hash": "ca6708b7e47ba73aedfa56d3f37a6116",
     "semantic_hash": ""
   },
   "docs/analytics/07_METRIKA_TO_ANALYTICS.md": {
-    "mtime": 1789216697.4981465,
-    "ast_hash": "0a638be51b88ff876d042d4a159f076d",
+    "mtime": 1789226545.2580233,
+    "ast_hash": "da3672e37d1152ef037f70d05b5ddf58",
     "semantic_hash": ""
   },
   "docs/analytics/EVENT_CATALOG.md": {
@@ -2685,13 +2685,98 @@
     "semantic_hash": ""
   },
   "docs/analytics/GOALS_MANIFEST.md": {
-    "mtime": 1789207124.594127,
-    "ast_hash": "8287e11889ab0f5c734d2d103d20d2f7",
+    "mtime": 1789221403.137495,
+    "ast_hash": "a2aa026dfb3e88fdd5df50d1eac2f4ad",
     "semantic_hash": ""
   },
   "docs/analytics/METRIKA_QUERY_CATALOG.md": {
-    "mtime": 1789216376.082822,
-    "ast_hash": "610d787159d7cc5126eca89e777e2cd1",
+    "mtime": 1789221403.1390007,
+    "ast_hash": "737d45e909d44173650592b13393dcbf",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/metrics-report.ts": {
+    "mtime": 1789228971.3898108,
+    "ast_hash": "253abc0afc493ea3f655e64166b717e4",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/metrics/analytics-constants.ts": {
+    "mtime": 1789228945.4745963,
+    "ast_hash": "2a64c4a493e6ef157531ffaf2279a1d3",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/metrics/analytics-metrics.module.ts": {
+    "mtime": 1789228112.7542696,
+    "ast_hash": "c982e3962f10eaff79c407c81fcaded9",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/metrics/analytics-metrics.service.ts": {
+    "mtime": 1789228945.53739,
+    "ast_hash": "e239f88081ba3fe725447d911ea3266d",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/metrics/analytics-period.spec.ts": {
+    "mtime": 1789228945.56139,
+    "ast_hash": "20fbc2c69e2e35c29a11d85366b5f4ee",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/metrics/analytics-period.ts": {
+    "mtime": 1789228945.5823889,
+    "ast_hash": "1663e2f84b23bc2d9cd5ebbb91ac8f32",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/metrics/metrics-compute.spec.ts": {
+    "mtime": 1789228945.6363876,
+    "ast_hash": "143bcd994a601f8fba94377dbcbb4199",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/metrics/metrics-compute.ts": {
+    "mtime": 1789228945.6885753,
+    "ast_hash": "6a847387ba53480dd9f81363edeb15d8",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/metrics/metrics-contract.ts": {
+    "mtime": 1789228971.3903286,
+    "ast_hash": "96fff86876f74ded97dcd893e8f0ac3c",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/metrics/order-lifecycle.spec.ts": {
+    "mtime": 1789228945.7125764,
+    "ast_hash": "1a5daa2780c3cab14e6a6de09949a594",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/metrics/order-lifecycle.ts": {
+    "mtime": 1789228945.721575,
+    "ast_hash": "ba5faa94408d5544f08a85a0878d860d",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/metrics/ratios.spec.ts": {
+    "mtime": 1789228945.7305787,
+    "ast_hash": "9a9bd6a044b4b63c7fb289c12fe3a5a7",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/metrics/ratios.ts": {
+    "mtime": 1789228945.736577,
+    "ast_hash": "3b41b6a1031694e9fcd11744f777ac76",
+    "semantic_hash": ""
+  },
+  "crm-new/src/metrika/analytics/metrika-period-snapshot.service.spec.ts": {
+    "mtime": 1789228945.869754,
+    "ast_hash": "09a0792600cf910a68369084129a0857",
+    "semantic_hash": ""
+  },
+  "crm-new/src/metrika/analytics/metrika-period-snapshot.service.ts": {
+    "mtime": 1789228945.8485777,
+    "ast_hash": "4e010e3dfbbf522fbba89f657f684afc",
+    "semantic_hash": ""
+  },
+  "docs/analytics/08_ANALYTICS_METRICS.md": {
+    "mtime": 1789229322.4164422,
+    "ast_hash": "6b0db49516c6979f3d41a19ae52800e0",
+    "semantic_hash": ""
+  },
+  "docs/analytics/METRICS_DICTIONARY.md": {
+    "mtime": 1789229178.4496064,
+    "ast_hash": "2948ad5c49089e3951ce7c7379e51ad9",
     "semantic_hash": ""
   }
 }

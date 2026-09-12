@@ -24,6 +24,7 @@
     "metrika:orders:status": "node dist/src/analytics/metrika-orders.js status",
     "metrika:sync": "node dist/src/analytics/metrika-sync.js",
     "metrika:sync:status": "node dist/src/analytics/metrika-sync.js status",
+    "metrics:report": "node dist/src/analytics/metrics-report.js",
     "db:push:dev": "prisma db push"
   },
   "dependencies": {

@@ -1477,6 +1477,34 @@ model MetrikaDailyPage {
   @@index([normalizedPath])
 }
 
+/// Снимок метрик за целый период (этап 08, раздел 8): уникальные посетители
+/// периода нельзя получить суммой дневных — Метрика считает их отдельным
+/// запросом за весь период. Снимки обновляет расписание (пресеты: сегодня,
+/// вчера, 7/30 дней и предыдущие, текущий/прошлый месяц) и ручная команда;
+/// дашборд читает таблицу и в API Яндекса не ходит.
+model MetrikaPeriodSnapshot {
+  id          String   @id @default(uuid())
+  /// Календарные даты Метрики (Europe/Moscow), включительно.
+  periodStart DateTime @db.Date
+  periodEnd   DateTime @db.Date
+  /// Область: `counter` — весь счётчик. Задел под срезы (источник, устройство).
+  metricScope String   @default("counter")
+  /// Пресет, породивший снимок (справочно); произвольный период — пусто.
+  preset      String?
+
+  users     Int
+  visits    Int
+  pageviews Int
+
+  fetchedAt    DateTime
+  sampled      Boolean
+  sampleShare  Float
+  requestCount Int      @default(1)
+
+  @@unique([periodStart, periodEnd, metricScope])
+  @@index([preset])
+}
+
 /// Сторона печати в согласовании. Отдельно от EnumPrintLocation намеренно:
 /// там значения производственные (рукава, «по ТЗ», full), а мокап бывает
 /// только с одной стороны — перед или спина.

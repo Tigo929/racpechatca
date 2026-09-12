@@ -28,6 +28,10 @@ import type { MetrikaAnalyticsSyncService } from './metrika-analytics-sync.servi
  *
  * Рубильник YANDEX_METRIKA_ANALYTICS_SYNC_ENABLED: выключен — расписания
  * нет, ручная команда `metrika:sync` работает всё равно.
+ *
+ * После синхронизации тик обновляет снимки периодов (этап 08): восемь
+ * пресетов, по запросу на каждый — уникальные посетители периода, которые
+ * нельзя получить из дневных таблиц.
  */
 
 export const HOURLY_WINDOW_DAYS = 3;
@@ -35,6 +39,11 @@ export const DAILY_WINDOW_DAYS = 21;
 const TICK_INTERVAL_MS = 60 * 60_000;
 /** Первый тик — через полторы минуты после старта: приложение уже поднялось, миграции прошли. */
 const FIRST_TICK_DELAY_MS = 90_000;
+
+/** Минимум, что расписанию нужно от сервиса снимков (этап 08). */
+export interface PeriodSnapshots {
+  refreshPresets(): Promise<unknown>;
+}
 
 export interface SchedulerOptions {
   enabled: boolean;
@@ -81,6 +90,8 @@ export class MetrikaAnalyticsSchedulerService
     private readonly sync: MetrikaAnalyticsSyncService,
     private readonly options: SchedulerOptions,
     private readonly now: () => Date = () => new Date(),
+    /** Снимки периодов (этап 08): обновляются после каждой синхронизации. */
+    private readonly snapshots: PeriodSnapshots | null = null,
   ) {}
 
   onModuleInit() {
@@ -127,6 +138,15 @@ export class MetrikaAnalyticsSchedulerService
         this.logger.warn(
           `Метрика: тик ${plan.trigger} ${plan.range.from}..${plan.range.to} завершился ${summary.status}${summary.error ? ` — ${summary.error}` : ''}`,
         );
+      }
+      // Снимки периодов — после дневных таблиц, чтобы уникальные периода и
+      // визиты по дням были из одного и того же состояния счётчика.
+      if (
+        this.snapshots &&
+        summary.status !== 'LOCKED' &&
+        summary.status !== 'NOT_CONFIGURED'
+      ) {
+        await this.snapshots.refreshPresets();
       }
     } catch (error) {
       this.logger.error(

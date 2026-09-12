@@ -37,6 +37,7 @@ import {
   MetrikaReportFetcher,
   type FetchedQuery,
 } from '../metrika/analytics/metrika-report-fetcher';
+import { MetrikaPeriodSnapshotService } from '../metrika/analytics/metrika-period-snapshot.service';
 import { PgAdvisoryLock } from '../metrika/analytics/metrika-sync-lock';
 import { PrismaMetrikaSyncStore } from '../metrika/analytics/metrika-sync-store';
 
@@ -57,6 +58,9 @@ import { PrismaMetrikaSyncStore } from '../metrika/analytics/metrika-sync-store'
  *                                            — отчёт о качестве локальных данных (без API)
  *   npm run metrika:sync -- coverage --from … --to …
  *                                            — заказы CRM против целей «CRM: Заказ создан/оплачен»
+ *   npm run metrika:sync -- snapshots [--from … --to …] [--list]
+ *                                            — снимки периодов (уникальные за период; этап 08):
+ *                                              восемь пресетов или произвольный период
  *
  * Токен не печатается никогда; в выводе — даты, числа, коды источников,
  * пути страниц. Ручной запуск работает независимо от рубильника
@@ -372,6 +376,52 @@ async function coverageCmd(
   return 0;
 }
 
+/**
+ * Снимки периодов (этап 08): без аргументов — восемь пресетов; с --from/--to —
+ * произвольный период (так снимок для нестандартных дат создаётся
+ * контролируемо, а не из запроса интерфейса). `--list` — что уже есть.
+ */
+async function snapshotsCmd(
+  prisma: PrismaClient,
+  client: YandexMetrikaClient,
+): Promise<number> {
+  const service = new MetrikaPeriodSnapshotService(
+    prisma as unknown as PrismaService,
+    client,
+  );
+  if (flag('--list')) {
+    const rows = await service.list();
+    console.log(`Снимки периодов в базе: ${rows.length}`);
+    for (const r of rows) {
+      console.log(
+        `  ${r.range.from}..${r.range.to}  users ${String(r.users).padStart(5)}  visits ${String(r.visits).padStart(5)}  pageviews ${String(r.pageviews).padStart(6)}  sampled=${r.sampled}  ${fmt(r.fetchedAt)} UTC  ${r.preset ?? '(произвольный)'}`,
+      );
+    }
+    return 0;
+  }
+  requireConfigured(client);
+  const outcomes =
+    arg('--from') && arg('--to')
+      ? [await service.refreshRange(rangeFromArgs())]
+      : await service.refreshPresets();
+  let failed = 0;
+  for (const o of outcomes) {
+    if (o.status === 'FAILED') failed += 1;
+    console.log(
+      `  ${(o.preset ?? 'custom').padEnd(17)} ${o.range.from}..${o.range.to}  ${o.status.padEnd(7)} users ${String(o.users ?? '—').padStart(5)}  visits ${String(o.visits ?? '—').padStart(5)}  pageviews ${String(o.pageviews ?? '—').padStart(6)}  sampled=${o.sampled ?? '—'}  запросов ${o.requests}` +
+        (o.error ? `  ошибка: ${o.error}` : ''),
+    );
+  }
+  console.log(
+    `Снимков обновлено: ${outcomes.length - failed}/${outcomes.length}; запросов к API: ${outcomes.reduce((s, o) => s + o.requests, 0)}`,
+  );
+  return failed === 0 ? 0 : 1;
+}
+
+function flag(name: string): boolean {
+  return process.argv.includes(name);
+}
+
 async function main(): Promise<void> {
   const command = process.argv[2]?.startsWith('--')
     ? 'sync'
@@ -399,9 +449,12 @@ async function main(): Promise<void> {
       case 'coverage':
         code = await coverageCmd(prisma, client);
         break;
+      case 'snapshots':
+        code = await snapshotsCmd(prisma, client);
+        break;
       default:
         console.error(
-          `Неизвестная команда: ${command}. Доступны: sync (по умолчанию), status, verify, reconcile, quality, coverage.`,
+          `Неизвестная команда: ${command}. Доступны: sync (по умолчанию), status, verify, reconcile, quality, coverage, snapshots.`,
         );
         code = 2;
     }

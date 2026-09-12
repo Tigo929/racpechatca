@@ -5,6 +5,7 @@ import { MetrikaModule } from '../metrika.module';
 import { metrikaAnalyticsSyncEnabledFromEnv } from '../metrika.config';
 import { MetrikaAnalyticsSchedulerService } from './metrika-analytics-scheduler.service';
 import { MetrikaAnalyticsSyncService } from './metrika-analytics-sync.service';
+import { MetrikaPeriodSnapshotService } from './metrika-period-snapshot.service';
 import { InMemoryLock, PgAdvisoryLock } from './metrika-sync-lock';
 import { PrismaMetrikaSyncStore } from './metrika-sync-store';
 
@@ -29,17 +30,34 @@ import { PrismaMetrikaSyncStore } from './metrika-sync-store';
       },
     },
     {
+      provide: MetrikaPeriodSnapshotService,
+      inject: [PrismaService, YandexMetrikaClient],
+      useFactory: (prisma: PrismaService, client: YandexMetrikaClient) =>
+        new MetrikaPeriodSnapshotService(prisma, client),
+    },
+    {
       provide: MetrikaAnalyticsSchedulerService,
-      inject: [MetrikaAnalyticsSyncService, YandexMetrikaClient],
+      inject: [
+        MetrikaAnalyticsSyncService,
+        YandexMetrikaClient,
+        MetrikaPeriodSnapshotService,
+      ],
       useFactory: (
         sync: MetrikaAnalyticsSyncService,
         client: YandexMetrikaClient,
+        snapshots: MetrikaPeriodSnapshotService,
       ) =>
-        new MetrikaAnalyticsSchedulerService(sync, {
-          enabled: metrikaAnalyticsSyncEnabledFromEnv(),
-          configured: client.isConfigured(),
-        }),
+        new MetrikaAnalyticsSchedulerService(
+          sync,
+          {
+            enabled: metrikaAnalyticsSyncEnabledFromEnv(),
+            configured: client.isConfigured(),
+          },
+          () => new Date(),
+          snapshots,
+        ),
     },
   ],
+  exports: [MetrikaPeriodSnapshotService],
 })
 export class MetrikaAnalyticsModule {}
