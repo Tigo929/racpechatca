@@ -1016,8 +1016,9 @@ REVIEW — READY_FOR_LIVE_WRITE_TEST
 
 Фаза 1 выполнена 11.09.2026: транзакционная очередь MetrikaOrderOutbox,
 воркер, simple_orders, себестоимость из P&L; FIX_01 12.09.2026: статус из
-перехода, строгий порядок, история миграций; 745 тестов; живой POST не
-выполнялся. Отчёты — `06_CRM_TO_METRIKA.md` § 71, `06_CRM_TO_METRIKA_FIX_01.md` § 21.
+перехода, строгий порядок, история миграций; 745 тестов. Live write 12.09.2026:
+один POST через очередь принят (PASSED). Отчёты — `06_CRM_TO_METRIKA.md` § 71,
+`06_CRM_TO_METRIKA_FIX_01.md` § 21, `06_CRM_TO_METRIKA_LIVE_WRITE.md` § 24.
 
 Цель:
 
@@ -1523,14 +1524,12 @@ vs
 Текущий этап проекта:
 
 ```text
-06_CRM_TO_METRIKA — REVIEW / READY_FOR_LIVE_WRITE_TEST (фаза 1 — 11.09.2026,
-FIX_01 — 12.09.2026): очередь шлёт статус перехода строго по порядку внутри
-заказа, история миграций восстановлена (пустая база собирается из репозитория),
-финансы из P&L, 745 тестов. Один контрольный POST по заказу 20260909-091
-(IN_PROGRESS, 3 дня; сверен с боем 12.09 — не изменился) ждёт нового токена на
-сервере и команды владельца «разрешаю live write» (`06_CRM_TO_METRIKA_LIVE_WRITE.md`,
-preflight в разделе 22: BLOCKED — SECURE_OAUTH_REQUIRED). Отправка по расписанию — за рубильником
-YANDEX_METRIKA_ORDERS_SYNC_ENABLED (по умолчанию выключено).
+06_CRM_TO_METRIKA — REVIEW (фаза 1 — 11.09, FIX_01 — 12.09, LIVE WRITE — 12.09.2026
+11:45 MSK): один контрольный POST через очередь по заказу 20260909-091 → IN_PROGRESS,
+HTTP 200, api_validation_status PASSED, elements_count 1, uploading 54f3af75-…,
+last_uploadings подтверждает; пояс счётчика Europe/Moscow (+180). Production,
+master и сайт не тронуты; воркер на бою выключен. DONE ставит Reviewer; затем
+rollout (раздел 45 этапа 06). Отчёт — `06_CRM_TO_METRIKA_LIVE_WRITE.md` § 24.
 ```
 
 История: `00`, `01`, `02` (с FIX_01), `03`, `04` (с FIX_01), `05` (live smoke

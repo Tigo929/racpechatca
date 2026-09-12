@@ -205,7 +205,7 @@ CANCELLED, PROBLEM — вне цепочки
 | Цели | **13** (по API 11.09.2026): 10 JS-целей с именами событий кода (`lead_submitted`, `form_started`, `messenger_click`, `phone_click`, `choose_size`, `add_tshirt_lead`, `lead_submit_attempt`, `submit_tshirt_order_success`, `submit_tshirt_order_error`, `view_custom_tshirt`), две автоцели, и **URL-цель «Заявка отправлена» = `/thanks`** — она считает только фото и холст. Нет: `lead_submitted_photo/canvas/tshirt`, `form_error` и шесть целей воронок. Подробно — `GOALS_MANIFEST.md` |
 | Электронная коммерция | включена; наполняется `purchase` с заявки |
 | Передача данных из CRM / офлайн-конверсии | **не включены** в настройках счётчика |
-| OAuth-приложение | создано владельцем 11.09.2026 (ClientID есть; секрет был показан в переписке и подлежит перевыпуску). Токен выпущен под аккаунтом владельца счётчика (permission `own`), но показан в чате → подлежит отзыву; на сервере токена нет |
+| OAuth-приложение | создано владельцем 11.09.2026 (ClientID есть; секрет был показан в переписке и подлежит перевыпуску). Токен выпущен под аккаунтом владельца счётчика (permission `own`); показан в чате → ротация отложена владельцем в отдельную задачу; с 12.09 лежит в `/opt/raspechatka/.env` |
 | Проверка кода счётчика | `code_status = CS_ERR_UNKNOWN` — робот Яндекса не видит счётчик, потому что он загружается только после согласия на cookie; на сбор данных не влияет |
 | Показ во фрейме для карт | разрешён (см. 2.1) |
 
@@ -299,7 +299,9 @@ CANCELLED, PROBLEM — вне цепочки
 | Рубильник | `YANDEX_METRIKA_ORDERS_SYNC_ENABLED` — по умолчанию выключено: очередь копится, наружу не уходит |
 | CLI | `npm run metrika:orders -- status \| preview --order <id> \| send --order <id> [--live] \| requeue` |
 | Себестоимость | вынесена в `reports/order-cogs.ts`; отчёт и Метрика считают одной функцией; в неё не входят зарплата и доставка перевозчику (в P&L они отдельными строками) |
-| Живой POST | не выполнялся; кандидат — заказ 20260909-091 (фото, NEW → IN_PROGRESS, 3 дня, в окне 21 день; recent PAID с ClientID нет); ждёт токена и команды владельца |
+| Живой POST | **выполнен 12.09.2026 11:45 MSK** по команде владельца: заказ 20260909-091 → IN_PROGRESS через очередь (строка на реальный переход LEAD→NEW), HTTP 200, PASSED, elements 1, uploading `54f3af75-17d7-4a5f-8388-a4c59b98c747`; last_uploadings — единственная загрузка счётчика (API, CSV). Matching с визитом — пока не наблюдаем (задержка данных Метрики). Production не тронут |
+| Счётчик: пояс | `Europe/Moscow`, смещение +180 мин (из API 12.09.2026) |
+| Токен | лежит в `/opt/raspechatka/.env` (владелец положил 12.09); это показанный ранее токен — отзыв/ротация и перевыпуск Client Secret отложены владельцем в отдельную security-задачу. `metrika:offline_data` подтверждён принятым POST |
 | История миграций | **восстановлена 12.09.2026**: `20260728190000_add_gulian_transactional_outbox` — из Git (f106dca, WIP-ветка; ADD COLUMN → IF NOT EXISTS ради сборки с нуля); две от 31.05 — каталоги с объяснением (файлы утеряны, объектов на бою нет); новая `20260601000000_baseline_db_push_era` — User, ItemTshirt, 6 enum, LEAD/DONE, productCategory/deadline/isUrgent эпохи `db push`, идемпотентна. **Пустая база собирается из репозитория (75 миграций)**; на бою deploy применит только baseline как no-op |
 | master | ушёл вперёд (Web Push, 11.09.2026) — слит в `feature/analytics-foundation`; обратно не сливался |
 | Дрейф схемы на бою | против `schema.prisma`: TIMESTAMPTZ в GulianOutbox/ExpenseOrder/executorSentAt, DEFAULT у updatedAt в трёх таблицах, FK SalaryAccrual ON DELETE SET NULL, имя индекса GulianOutbox, лишние индексы sentAt/clientGreetedAt, WIP-объекты GulianOutboxEvent/IntegrationAuditLog/2 enum/4 колонки. Безвредно для работы и `migrate deploy`; `migrate dev` на бою не запускать |

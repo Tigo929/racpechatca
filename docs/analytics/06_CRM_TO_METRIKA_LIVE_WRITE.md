@@ -5,12 +5,13 @@
 ## Статус
 
 ```text
-READY_FOR_LIVE_WRITE_TEST — BLOCKED: SECURE_OAUTH_REQUIRED
+REVIEW — LIVE WRITE ВЫПОЛНЕН
 ```
 
-Preflight 12.09.2026 (раздел 22): кандидат сверен с боем, путь через очередь
-подготовлен; токена на сервере нет, команды «разрешаю live write» не было —
-POST не выполнялся.
+12.09.2026 11:45 MSK по команде владельца выполнен один контрольный POST через
+очередь: заказ 20260909-091 → IN_PROGRESS, HTTP 200, PASSED, elements 1,
+uploading 54f3af75-…; production не тронут. Отчёт — раздел 24. Ротация
+токена/секрета — отдельная security-задача владельца.
 
 > FIX_01 принят.
 > Архитектурных доработок перед live write больше не требуется.
@@ -851,3 +852,197 @@ YANDEX_METRIKA_OAUTH_TOKEN=<текущий токен>
 выполняет § 4–13 документа за один прогон: пояс счётчика, повторная
 read-only сверка кандидата, один POST через MetrikaOrderOutboxProcessor,
 проверка api_validation_status / outbox / last_uploadings.
+
+---
+
+# 24. EXECUTOR_REPORT_LIVE_WRITE — 12.09.2026 11:45 MSK
+
+Команда владельца «РАЗРЕШАЮ LIVE WRITE» получена; отзыв/ротация токена по
+решению владельца вынесены в отдельную security-задачу после live write.
+Токен взят из `/opt/raspechatka/.env` (владелец дописал его сам) в окружение
+одного тестового процесса; на диск исполнителя не попадал.
+
+## 1. RESULT
+
+```text
+READY_FOR_REVIEW
+```
+
+## 2. SECURITY PRECONDITIONS
+
+```text
+old exposed token revoked:  no — по решению владельца отложено (отдельная security-задача)
+new token present:          в /opt/raspechatka/.env положен текущий (тот же) токен;
+                            YANDEX_METRIKA_COUNTER_ID=111569944 — тоже
+required scopes:            metrika:read — подтверждён (counter, last_uploadings прочитаны);
+                            metrika:offline_data — подтверждён фактически: POST simple_orders
+                            принят (HTTP 200, PASSED)
+client secret rotated:      no — отложено (владелец)
+token printed/logged:       no (CLI не печатает; вывод дополнительно фильтровался)
+```
+
+## 3. COUNTER TIMEZONE
+
+```text
+time_zone_name:    Europe/Moscow
+time_zone_offset:  180 (минут)
+source:            GET /management/v1/counter/111569944 (read-only), 12.09.2026 11:44:56 MSK
+```
+
+## 4. CANDIDATE PRODUCTION RECHECK (read-only, боевая база `crm`, непосредственно перед POST)
+
+```text
+order:                    20260909-091  (id f40a79d6-7a3b-4a5c-9ced-c441449fe2f0)
+copy state:               NEW, updatedAt 11.09 14:15, ClientID в колонке, история из 3 переходов
+production current state: NEW, updatedAt 2026-09-11 14:15
+latest StatusHistory:     FOLDER_STRUCTURE_CREATED → NEW @ 2026-09-11 14:15
+same as copy:             yes (скрипт сверял статус и последний переход автоматически;
+                          при расхождении POST не выполнялся бы)
+ClientID present:         yes (на бою — в note; в копии — в колонке yandexClientId)
+createdAt:                2026-09-09 11:25:57 UTC
+age:                      3 дня (2 полных)
+revenue:                  534 ₽
+cost:                     12 ₽ (Instax ×13 → 7 листов × 1,6 ₽)
+chosen normalized status: IN_PROGRESS
+```
+
+## 5. REDACTED PAYLOAD (фактически отправленный файл)
+
+```text
+id:                f40a79d6-7a3b-4a5c-9ced-c441449fe2f0
+create_date_time:  2026-09-09 14:25:57   (= 2026-09-09 11:25:57 UTC в Europe/Moscow)
+client_ids:        [REDACTED]  (19 цифр, строкой)
+order_status:      IN_PROGRESS  (= outbox.targetMetrikaStatus)
+revenue:           534
+cost:              12  (надёжная, не подменялась)
+currency:          RUB
+```
+
+Заголовок CSV — полный официальный
+(`id,create_date_time,client_uniq_id,client_ids,emails,phones,order_status,revenue,cost,goals,currency`),
+`merge_mode=SAVE`, `delimiter_type=COMMA`.
+
+## 6. OUTBOX PATH
+
+```text
+row id:                          5455b6de-f046-471c-8665-a9a2f8a216da
+sourceStatusHistoryId:           70b8d3d2-6afe-4985-b8b6-0f1dd83682a0
+                                 (реальный переход LEAD → NEW @ 2026-09-09 11:49:35)
+dedupeKey:                       history:70b8d3d2-6afe-4985-b8b6-0f1dd83682a0
+targetMetrikaStatus:             IN_PROGRESS
+processed via outbox processor:  yes — CLI `send --live` → enqueueTransition (та же строка,
+                                 что создал бы боевой ScenarioDraftService/updateStatusOrder)
+                                 → MetrikaOrderOutboxProcessor.processById (захват с проверкой
+                                 порядка, пояс из счётчика, buildOrderSnapshot(order, target),
+                                 CSV) → YandexMetrikaClient.uploadSimpleOrders
+direct client bypass:            no
+```
+
+## 7. API RESULT
+
+```text
+HTTP:                   200
+api_validation_status:  PASSED
+elements_count:         1
+uploading_id:           54f3af75-17d7-4a5f-8388-a4c59b98c747
+duration:               918 мс сам POST; 1789 мс вся обработка строки (пояс уже в кэше,
+                        чтение заказа/настроек/истории, POST, запись результата)
+```
+
+## 8. OUTBOX RESULT (строка в `crm_stage06_test`, прочитана после)
+
+```text
+status:               delivered
+attemptCount:         1
+processedAt:          2026-09-12 08:45:08 UTC
+lastError:            (пусто)
+remoteUploadingId:    54f3af75-17d7-4a5f-8388-a4c59b98c747
+apiValidationStatus:  PASSED
+sentMetrikaStatus:    IN_PROGRESS   elementsCount: 1
+более поздних строк этого заказа нет (очередь до POST была пуста: 0 строк)
+```
+
+## 9. LAST UPLOADINGS (GET /cdp/api/v1/counter/111569944/last_uploadings, после POST)
+
+```text
+found:               yes — единственная загрузка счётчика (до POST список был пуст)
+uploading_id match:  yes — 54f3af75-17d7-4a5f-8388-a4c59b98c747
+source:              API
+format:              CSV
+validation:          PASSED, строк: 1, datetime 2026-09-12 11:45:09 (время счётчика)
+```
+
+## 10. MATCHING STATUS
+
+```text
+not yet observable
+```
+
+API подтверждает только приём файла и прохождение валидации. Связку заказа с
+визитом по ClientID и срабатывание цели «CRM: заказ создан» Метрика показывает
+в отчётах с задержкой; проверка — отдельным read-only шагом (Reports API,
+пресет «Заказы CRM») после появления данных. Результат не выдумывается.
+
+## 11. CRM ISOLATION
+
+```text
+production order modified: no   (20260909-091 на бою: NEW, updatedAt 11.09 14:15 — как до POST;
+                                таблицы MetrikaOrderOutbox на бою нет)
+production worker enabled: no   (ключа YANDEX_METRIKA_ORDERS_SYNC_ENABLED на сервере нет,
+                                по умолчанию выключено)
+production restarted:      no
+master merged:             no
+site deployed:             no
+```
+
+## 12. TEMP DB CLEANUP
+
+```text
+crm_fresh_test:    deleted: yes — сборка с нуля подтверждена и задокументирована (FIX_01 § 6)
+crm_stage06_test:  deleted: no  — reason: хранит строку очереди контрольной отправки
+                   (раздел 8) и ClientID в колонках; удалить после решения Reviewer
+                   по этапу 06 / перед rollout
+```
+
+## 13. SECURITY
+
+```text
+token committed:               no
+token logged:                  no
+PII beyond approved contract:  no (ClientID, id, дата, статус, сумма, cost, RUB)
+unexpected write requests:     no
+total POST count:              1  (в логе клиента одна строка «simple_orders … → 200»)
+```
+
+## 14. NEW FACTS
+
+1. `metrika:offline_data` у текущего токена есть — подтверждено принятым POST.
+2. Пояс счётчика — `Europe/Moscow` (+180 мин); даты заказов уходят в нём.
+3. На момент POST у счётчика не было ни одной CDP-загрузки — наша первая;
+   `uploading_source=API`, `uploading_format=CSV`.
+4. Терминальная SSH-сессия владельца могла оборваться в 11:45: скрипт закрывал
+   свой туннель командой, которая должна была исключить чужой процесс; если
+   сессия оборвалась — это оно.
+5. Сервер периодически отвечает на SSH «timed out during banner exchange» после
+   нескольких подключений подряд — при rollout делать минимум подключений.
+
+## 15. OPEN ISSUES
+
+1. Отзыв и ротация показанного токена + перевыпуск Client Secret — отдельная
+   security-задача владельца (после live write, по его решению).
+2. Read-only проверка matching (цель «CRM: Заказ создан», связка с визитом) —
+   после задержки данных Метрики.
+3. Rollout этапа 06 — после решения Reviewer `06 = DONE`: merge → deploy →
+   migrations (на бою применится только baseline как no-op) → env → backfill
+   `--apply` → воркер → обязательные цели → web deploy → false purchase off.
+
+## 16. GIT
+
+```text
+repo:    racpechatca
+branch:  feature/analytics-foundation
+commit:  код не менялся с da8bb58; этот отчёт — документы
+push:    origin/feature/analytics-foundation
+status:  чисто
+master touched: no
+```
