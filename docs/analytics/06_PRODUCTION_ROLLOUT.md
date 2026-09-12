@@ -1029,11 +1029,11 @@ last_success_at: —   last_failure_at: —   (первый естественн
 ## 7. GOALS (PHASE I — действие владельца, пока не выполнено)
 
 ```text
-lead_submitted_photo:   MISSING
-lead_submitted_canvas:  MISSING
-lead_submitted_tshirt:  MISSING
-form_error:             MISSING
-API reconciliation:     17 целей в счётчике = 13 прежних + 4 системные CRM-цели, которые
+lead_submitted_photo:   CONFIGURED (612290270) — создана владельцем 12.09 12:5x, сверка API 12:58
+lead_submitted_canvas:  CONFIGURED (612290370)
+lead_submitted_tshirt:  CONFIGURED (612290451)
+form_error:             CONFIGURED (612290566)
+API reconciliation:     21 цель = 13 прежних + 4 обязательные JS + 4 системные CRM-цели, которые
                         Метрика показала после первой CDP-загрузки:
                         596990603 «CRM: Заказ создан» (cdp_order_in_progress),
                         596990604 «CRM: Заказ оплачен» (cdp_order_paid),

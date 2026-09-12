@@ -5,7 +5,7 @@
 ## Статус
 
 ```text
-IN_PROGRESS — PHASE I: ждём создания 4 целей владельцем (сверка 12.09 12:29 — MISSING)
+IN_PROGRESS — PHASE I выполнена (4 цели CONFIGURED, сверка 12.09 12:58); PHASE J ждёт команды «РАЗРЕШАЮ PHASE J»
 ```
 
 PHASE B–H приняты.
@@ -465,3 +465,50 @@ API write calls executed: no
 
 Очередь на бою пуста, воркер healthy, естественных переходов с 12:10 нет.
 PHASE J не начинается до четырёх CONFIGURED и команды «РАЗРЕШАЮ PHASE J».
+
+---
+
+# 14. EXECUTOR_REPORT_PHASE_I — 12.09.2026 12:58 MSK
+
+## 1. RESULT
+
+```text
+READY_FOR_WEB_CUTOVER
+```
+
+## 2. GOALS (read-only GET /management/v1/counter/111569944/goals, из боевого контейнера)
+
+```text
+lead_submitted_photo:   CONFIGURED — 612290270 «Заявка — фото»,     type=action, url=lead_submitted_photo
+lead_submitted_canvas:  CONFIGURED — 612290370 «Заявка — холст»,    type=action, url=lead_submitted_canvas
+lead_submitted_tshirt:  CONFIGURED — 612290451 «Заявка — футболка», type=action, url=lead_submitted_tshirt
+form_error:             CONFIGURED — 612290566 «Ошибка формы»,      type=action, url=form_error
+```
+
+Первая попытка владельца (12:45) в счётчик не записалась (17 целей в 12:45 и
+12:48, счётчик у аккаунта один); повторное создание — 21 цель в 12:58.
+
+## 3. COUNTER SUMMARY
+
+```text
+total goals:              21
+canonical lead goal:      lead_submitted (611379890) — на месте, не менялась
+legacy URL goal present:  yes — 602316919 «Заявка отправлена» → /thanks (не тронута)
+CRM system goals present: yes — 596990603/604/605/606
+unknown:                  0
+```
+
+## 4. WRITE OPERATIONS
+
+```text
+API write calls executed: no
+```
+
+## 5. OPEN ISSUES
+
+```text
+none
+```
+
+Бой: backend healthy, воркер работает, очередь пуста, естественных переходов
+с 12:10 нет. PHASE J — только по команде «РАЗРЕШАЮ PHASE J».
