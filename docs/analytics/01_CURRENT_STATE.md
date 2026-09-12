@@ -202,7 +202,7 @@ CANCELLED, PROBLEM — вне цепочки
 | | Состояние |
 |---|---|
 | Счётчик | работает, Вебвизор и карты включены |
-| Цели | **13** (по API 11.09.2026): 10 JS-целей с именами событий кода (`lead_submitted`, `form_started`, `messenger_click`, `phone_click`, `choose_size`, `add_tshirt_lead`, `lead_submit_attempt`, `submit_tshirt_order_success`, `submit_tshirt_order_error`, `view_custom_tshirt`), две автоцели, и **URL-цель «Заявка отправлена» = `/thanks`** — она считает только фото и холст. Нет: `lead_submitted_photo/canvas/tshirt`, `form_error` и шесть целей воронок. Подробно — `GOALS_MANIFEST.md` |
+| Цели | **21** (по API 12.09.2026): 14 JS-целей с именами событий кода (в т.ч. `lead_submitted`, `lead_submitted_photo/canvas/tshirt`, `form_error`), 4 системные CRM-цели (заказ создан/оплачен/отменён/спам — появились после первой CDP-загрузки), две автоцели и историческая URL-цель «Заявка отправлена» = `/thanks` (считает только фото и холст). Нет только шести желательных целей воронок. Подробно — `GOALS_MANIFEST.md` |
 | Электронная коммерция | включена; наполняется `purchase` с заявки |
 | Передача данных из CRM / офлайн-конверсии | **не включены** в настройках счётчика |
 | OAuth-приложение | создано владельцем 11.09.2026 (ClientID есть; секрет был показан в переписке и подлежит перевыпуску). Токен выпущен под аккаунтом владельца счётчика (permission `own`); показан в чате → ротация отложена владельцем в отдельную задачу; с 12.09 лежит в `/opt/raspechatka/.env` |
@@ -316,7 +316,7 @@ CANCELLED, PROBLEM — вне цепочки
 | Backfill | применён: 219 заказов — 11 ClientID, 10 yclid, 16 conversionPageUrl, 204 clientPaidAt; повторный dry-run 0; `note`/`designNote`/`StatusHistory` не изменены |
 | Воркер Метрики | **включён** 12:20 MSK (`YANDEX_METRIKA_ORDERS_SYNC_ENABLED=true` в `/opt/raspechatka/.env`); каждые 30 с; очередь пуста — ждём первый естественный переход |
 | Метрика с боя | counter 200, пояс Europe/Moscow (+180), Reports API работает; в счётчике 17 целей: 13 прежних + 4 системные CRM-цели (заказ создан/оплачен/отменён/спам), появившиеся после первой CDP-загрузки |
-| Ещё не сделано | 4 обязательные JS-цели (владелец); web deploy `feature/analytics-event-model → feature/cms-admin` (по подтверждению) — browser purchase на бою пока уходит |
+| Сайт | **выложен 12.09.2026**: `feature/cms-admin` = cb2dd96 (этап 04); **FALSE_BROWSER_PURCHASE_STOPPED_AT = 2026-09-12 13:19:22 MSK** — с этого момента браузер не шлёт `purchase` при заявке; `lead_submitted` + directional цели + `first_touch_url` работают; 4 обязательные JS-цели созданы (612290270/370/451/566). Данные `purchase` до отсечки — ложная семантика заявки, после — заказы/оплаты только из CRM (CDP) |
 | Серверный compose | точечно дополнен переменными YANDEX_METRIKA_*; `MARKETPLACE_SECRET` из master там всё ещё отсутствует (вне этапа) |
 | Временные базы | `crm_stage06_test`, `crm_fresh_test` удалены; на сервере только `crm` |
 

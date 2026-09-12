@@ -5,7 +5,7 @@
 ## Статус
 
 ```text
-IN_PROGRESS — PHASE I выполнена (4 цели CONFIGURED, сверка 12.09 12:58); PHASE J ждёт команды «РАЗРЕШАЮ PHASE J»
+REVIEW — PHASE I и J выполнены 12.09.2026; FALSE_BROWSER_PURCHASE_STOPPED_AT = 2026-09-12 13:19:22 MSK; K/L — наблюдение естественных событий
 ```
 
 PHASE B–H приняты.
@@ -512,3 +512,106 @@ none
 
 Бой: backend healthy, воркер работает, очередь пуста, естественных переходов
 с 12:10 нет. PHASE J — только по команде «РАЗРЕШАЮ PHASE J».
+
+---
+
+# 15. EXECUTOR_REPORT_PHASE_J — 12.09.2026
+
+## 1. RESULT
+
+```text
+READY_FOR_REVIEW
+```
+
+## 2. GIT / DEPLOY
+
+```text
+web merge commit:          cb2dd96 — fast-forward feature/analytics-event-model → feature/cms-admin
+                           (cms-admin новых UX/content-коммитов после ответвления не имел: 0 позади,
+                           затирать нечего)
+feature/cms-admin pushed:  12.09.2026 13:10:16 MSK (4f0bdca..cb2dd96)
+production deploy:         auto-update.sh: api 13:12:09 → 13:12:26 «обновлён и здоров» (образ
+                           42c22b52… → 7da55c3a…), nginx перечитан 13:12:34, холст прогрет 13:18:37;
+                           web 13:19:14 → 13:19:16 «обновлён и здоров» (образ 7bb8c13b… → a7e9d49f…),
+                           nginx перечитан 13:19:22
+deployed commit:           cb2dd96 — единственный push в feature/cms-admin после 4f0bdca; образы
+                           web-photo-web@sha256:a7e9d49f…, api 7da55c3a… собраны CI по нему
+                           (репозиторий приватный, run снаружи не виден); содержимое бандла
+                           соответствует ветке (см. § 4). BUILD_ID BHZsFiNk… → K7wld8nz…
+```
+
+## 3. TESTS (повторены перед merge)
+
+```text
+web tests:    389 passed, 1 skipped, 0 failed (node --test, 87 suites)
+api tests:    77 passed
+shared tests: 38 passed
+tsc:          apps/web 0 ошибок, apps/api 0 ошибок
+next build:   OK — 107 статических страниц (локально без CMS-базы — штатный откат на код)
+```
+
+## 4. WEB CUTOVER
+
+```text
+FALSE_BROWSER_PURCHASE_STOPPED_AT: 2026-09-12 13:19:22 Europe/Moscow
+                                   (новый web-контейнер здоров 13:19:16; nginx переключил трафик
+                                   на него 13:19:22). Оговорка: вкладки, открытые до отсечки,
+                                   несут старый JS и до перезагрузки могут прислать purchase —
+                                   хвост в несколько минут.
+lead_submitted active:             yes — цель 611379890; в бандле имя события есть (13 файлов)
+purchase-on-lead active:           no — в новом бандле строки «purchase» нет ни в одном .js
+                                   (было 12 файлов), «actionField» нет (было); «ecommerce» осталась
+                                   только для detail (просмотр карточки)
+directional goals in bundle:       lead_submitted_photo / _canvas / _tshirt, form_error — есть
+first-touch in bundle:             first_touch_url — есть (2 файла; до деплоя 0)
+```
+
+## 5. POST-DEPLOY SMOKE (без фиктивных заявок; браузер + curl с сервера)
+
+```text
+pages:      / , /formaty, /catalog/foto-10x15-s-polyami, /interer/holst, /interer/holst/30x40,
+            /interer/holst/30x40/zakaz, /futbolki, /futbolki/svoy-print, /merch, /contacts — 200,
+            заголовки и контент на месте; холст с ценами («Цены временно недоступны» нет)
+forms:      фото (OrderPanel): форма, способы связи telegram/max, кнопка «Оставить заявку · 370 ₽»;
+            холст /zakaz: имя, телефон, способ связи, доставка, согласие, «Оставить заявку»;
+            футболка svoy-print: конструктор из 4 шагов (без шага «расположение»), способы связи,
+            доставка; мерч: форма «Получить расчёт», способы связи; контакты: форма «Отправить».
+            Заявки не отправлялись.
+Metrika:    до согласия — ym не определён, скриптов Метрики нет (как задумано);
+            после «Принять и продолжить» — ym: function, загружены mc.yandex.ru/metrika/tag.js и
+            tag_phono.js, cookie-consent=accepted; sessionStorage: first_touch_url =
+            https://raspechatkaa.ru/ (новый код работает); dataLayer без purchase
+console:    ошибок нет ни на одной проверенной странице (единственный 404 — мой неверный адрес
+            /futbolki/svoy-dizayn при подборе маршрута, не ресурс сайта)
+business flow: формы открываются и валидируются; аналитика без согласия сайт не ломает
+```
+
+## 6. GOALS (read-only, 12:58 и подтверждено на 13:2x)
+
+```text
+lead_submitted_photo:   CONFIGURED 612290270
+lead_submitted_canvas:  CONFIGURED 612290370
+lead_submitted_tshirt:  CONFIGURED 612290451
+form_error:             CONFIGURED 612290566
+```
+
+## 7. NATURAL EVENTS
+
+```text
+new LEAD observed:            not observed yet (заявок после 13:19 нет — 0 новых OrderPhoto)
+NEW/IN_PROGRESS observed:     not observed yet (переходов StatusHistory после 12:10 — 0)
+PAID observed:                not observed yet
+CANCELLED observed:           not observed yet
+CRM worker:                   raspechatka-backend-1 running:healthy (с 12:19:54), очередь
+                              pending 0 / delivered 0 / failed 0 / skipped 0
+```
+
+## 8. OPEN ISSUES
+
+```text
+none (блокеров нет)
+```
+
+Незакрытое, не блокирующее: естественные события (PHASE K/L) — наблюдение;
+security debt ROTATE_YANDEX_OAUTH_TOKEN / ROTATE_YANDEX_CLIENT_SECRET;
+production CRM/master не менялись в этой фазе.

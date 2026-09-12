@@ -1528,9 +1528,12 @@ vs
 PHASE B–H выполнены 12.09.2026 12:00–12:21 MSK — master = d72ffff выложен, 4 миграции
 применены (migrate status up to date), backfill --apply 219 заказов (повторный dry-run 0,
 note/designNote/StatusHistory без изменений), Метрика из контейнера: 200, Europe/Moscow,
-воркер включён 12:20 (очередь пуста, естественных переходов пока не было). Впереди:
-PHASE I — 4 JS-цели (владелец), PHASE J — web deploy по отдельному подтверждению,
-K, L. Отчёт — `06_PRODUCTION_ROLLOUT.md` § 33.
+воркер включён 12:20. PHASE I — 4 JS-цели созданы владельцем (сверка API 12:58).
+PHASE J — сайт выложен: feature/cms-admin = cb2dd96, **FALSE_BROWSER_PURCHASE_STOPPED_AT =
+2026-09-12 13:19:22 MSK**; в бандле нет purchase, есть lead_submitted_* и first_touch_url;
+consent → Метрика работает, формы открываются, консоль чистая. K/L — ждём естественные
+события (заявок и переходов после деплоя пока не было). Отчёты — `06_PRODUCTION_ROLLOUT.md`
+§ 33, `06_PRODUCTION_ROLLOUT_PHASE_I_J.md` § 14–15. DONE ставит Reviewer.
 ```
 
 История: `00`, `01`, `02` (с FIX_01), `03`, `04` (с FIX_01), `05` (live smoke

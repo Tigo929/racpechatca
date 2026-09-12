@@ -5,7 +5,7 @@
 ## Статус
 
 ```text
-IN_PROGRESS — PHASE B–H выполнены 12.09.2026; I (цели, владелец), J (web, по подтверждению), K, L — впереди
+REVIEW — PHASE B–J выполнены 12.09.2026; K/L — наблюдение естественных событий (пока не было)
 ```
 
 Отчёт по PHASE B–H — раздел 33.
@@ -1047,11 +1047,12 @@ legacy URL goal:        602316919 «Заявка отправлена» → /tha
 ## 8. WEB CUTOVER
 
 ```text
-deployed:                          no — PHASE J ждёт (а) четырёх целей, (б) отдельного
-                                   подтверждения владельца
-FALSE_BROWSER_PURCHASE_STOPPED_AT: — (browser purchase на бою по-прежнему уходит)
-lead_submitted current:            работает на бою в текущей версии сайта (цель 611379890)
-purchase-on-lead current:          да, пока работает (feature/analytics-event-model не выложена)
+deployed:                          yes — feature/cms-admin = cb2dd96, web-контейнер здоров 13:19:16,
+                                   nginx переключён 13:19:22 MSK (PHASE_I_J § 15)
+FALSE_BROWSER_PURCHASE_STOPPED_AT: 2026-09-12 13:19:22 Europe/Moscow
+lead_submitted current:            работает (цель 611379890); directional lead_submitted_photo/canvas/
+                                   tshirt и form_error — в бандле и в целях
+purchase-on-lead current:          no — в бандле нет ни «purchase», ни «actionField»
 ```
 
 ## 9. NATURAL LIVE EVENTS
