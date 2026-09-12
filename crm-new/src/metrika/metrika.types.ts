@@ -54,10 +54,17 @@ export interface MetrikaStatsQuery {
   limit?: number;
   offset?: number;
   accuracy?: string;
+  /** Язык названий измерений (ru/en); коды (`id`) от языка не зависят. */
+  lang?: 'ru' | 'en';
 }
 
 export interface MetrikaStatsRow {
-  dimensions: { name?: string; id?: string; [key: string]: unknown }[];
+  /** У пустого измерения (прямой заход без движка, визит без UTM) name и id — null. */
+  dimensions: {
+    name?: string | null;
+    id?: string | null;
+    [key: string]: unknown;
+  }[];
   metrics: (number | null)[];
 }
 

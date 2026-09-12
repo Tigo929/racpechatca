@@ -1069,7 +1069,12 @@ idempotency
 Статус:
 
 ```text
-TODO
+REVIEW (12.09.2026) — слой данных готов: 8 таблиц (журнал MetrikaSyncRun + дневные
+traffic/goals/sources/utm/landings/devices/pages), каталог запросов (METRIKA_QUERY_CATALOG.md),
+сервис синхронизации с advisory lock и заменой периода, расписание за флагом
+YANDEX_METRIKA_ANALYTICS_SYNC_ENABLED (false), CLI metrika:sync. Проверено на копии боевой
+базы: 7 дней → сверка с прямым API 0 расхождений, 90 дней (данные с 13.08.2026), качество.
+Production (migrate deploy, ручные синхронизации, включение расписания) — по команде.
 ```
 
 Цель:
@@ -1533,7 +1538,15 @@ PHASE J — сайт выложен: feature/cms-admin = cb2dd96, **FALSE_BROWSE
 2026-09-12 13:19:22 MSK**; в бандле нет purchase, есть lead_submitted_* и first_touch_url;
 consent → Метрика работает, формы открываются, консоль чистая. K/L — ждём естественные
 события (заявок и переходов после деплоя пока не было). Отчёты — `06_PRODUCTION_ROLLOUT.md`
-§ 33, `06_PRODUCTION_ROLLOUT_PHASE_I_J.md` § 14–15. DONE ставит Reviewer.
+§ 33, `06_PRODUCTION_ROLLOUT_PHASE_I_J.md` § 14–15. 06_PRODUCTION_ROLLOUT = DONE (Reviewer,
+12.09.2026, входной контекст этапа 07).
+
+07_METRIKA_TO_ANALYTICS — REVIEW (12.09.2026 15:30 MSK): Reports API → локальные таблицы.
+Реализация, тесты (830 в CRM), живая проверка всех 7 запросов, контрольная синхронизация
+7 и 90 дней и сверка (0 расхождений) — на копии базы crm_stage07_test. Production
+не менялся: выкладка (master) и включение расписания — по отдельной команде владельца,
+порядок — `07_METRIKA_TO_ANALYTICS.md` § 37 п. 13. Immutable metadata:
+FALSE_BROWSER_PURCHASE_STOPPED_AT = LEAD_GOAL_SEMANTICS_CHANGED_AT = 2026-09-12 13:19:22 MSK.
 ```
 
 История: `00`, `01`, `02` (с FIX_01), `03`, `04` (с FIX_01), `05` (live smoke

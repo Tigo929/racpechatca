@@ -21,6 +21,7 @@ import { ApprovalModule } from './approval/approval.module';
 import { PushModule } from './push/push.module';
 import { ImageCardsModule } from './marketplace/image-cards/image-cards.module';
 import { MetrikaModule } from './metrika/metrika.module';
+import { MetrikaAnalyticsModule } from './metrika/analytics/metrika-analytics.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -52,6 +53,7 @@ import { HealthController } from './health.controller';
     ApprovalModule,
     ImageCardsModule,
     MetrikaModule,
+    MetrikaAnalyticsModule,
     PushModule,
   ],
   controllers: [HealthController],

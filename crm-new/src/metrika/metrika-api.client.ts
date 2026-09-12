@@ -166,6 +166,7 @@ export class YandexMetrikaClient {
     if (query.limit !== undefined) params.set('limit', String(query.limit));
     if (query.offset !== undefined) params.set('offset', String(query.offset));
     if (query.accuracy) params.set('accuracy', query.accuracy);
+    if (query.lang) params.set('lang', query.lang);
     return this.get<MetrikaStatsResponse>('stats', `/stat/v1/data?${params.toString()}`);
   }
 

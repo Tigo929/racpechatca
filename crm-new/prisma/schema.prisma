@@ -132,15 +132,15 @@ model OrderPhoto {
   partnerSyncError  String?
   partnerSyncAt     DateTime?
 
-  executorId   String?
-  executor     User?     @relation("OrderExecutor", fields: [executorId], references: [id])
-  completedAt  DateTime?
-  sentAt       DateTime?
+  executorId         String?
+  executor           User?     @relation("OrderExecutor", fields: [executorId], references: [id])
+  completedAt        DateTime?
+  sentAt             DateTime?
   // Первый переход заказа в «Оплачен». Ставится один раз и больше не
   // меняется: если заказ вернули в работу и снова оплатили, дата первой
   // оплаты остаётся — по ней считается срок «от заявки до денег».
   // До 11.09.2026 поле существовало, но не заполнялось.
-  clientPaidAt DateTime?
+  clientPaidAt       DateTime?
   // Сколько клиент РЕАЛЬНО внёс предоплатой. null — ещё не вносил: тогда в
   // сообщениях показывается ориентир 50% от суммы. Как только менеджер
   // зафиксировал фактическую сумму, остаток считается от неё, а не от 50%,
@@ -169,15 +169,15 @@ model OrderPhoto {
   // по которому Метрика привяжет оплаченный заказ к визиту; есть только
   // у согласившихся на cookie. Индекс — под будущий импорт заказов
   // в Метрику и поиск заказов одного посетителя.
-  yandexClientId String?
+  yandexClientId    String?
   // Метка клика Яндекс.Директа. Без индекса: выборка по yclid — редкий
   // разбор конкретного клика, не отчёт.
-  yclid          String?
-  utmSource      String?
-  utmMedium      String?
-  utmCampaign    String?
-  utmContent     String?
-  utmTerm        String?
+  yclid             String?
+  utmSource         String?
+  utmMedium         String?
+  utmCampaign       String?
+  utmContent        String?
+  utmTerm           String?
   // Адрес страницы, на которой отправлена заявка (сайт передаёт его как
   // pageUrl). Это страница конверсии — не страница входа.
   conversionPageUrl String?
@@ -1295,6 +1295,186 @@ model MetrikaOrderOutbox {
 
   @@index([status, nextAttemptAt])
   @@index([orderId])
+}
+
+/// Журнал синхронизаций отчётов Яндекс Метрики в локальные таблицы
+/// (этап 07 плана аналитики). Одна строка — один набор данных (dataset)
+/// за один период в одном запуске; наборы одного запуска связаны `batchId`.
+/// Статус честный по каждому набору: провал источников не прячется за
+/// успехом трафика. Здесь же лежит правда о семплировании ответа —
+/// без неё цифры нельзя считать точными.
+model MetrikaSyncRun {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  /// Общий идентификатор запуска: все наборы одного вызова sync.
+  batchId  String
+  /// traffic | goals | sources | utm | landings | devices | pages.
+  dataset  String
+  /// Календарные даты Метрики в поясе счётчика (Europe/Moscow), включительно.
+  dateFrom DateTime @db.Date
+  dateTo   DateTime @db.Date
+  /// Кто запустил: cli | scheduler:hourly | scheduler:daily.
+  trigger  String
+
+  startedAt  DateTime
+  finishedAt DateTime?
+  /// RUNNING → SUCCESS | FAILED. PARTIAL — итог запуска в целом, когда часть
+  /// наборов упала; на строке набора не встречается.
+  status     String
+
+  rowsReceived Int @default(0)
+  rowsStored   Int @default(0)
+  requestCount Int @default(0)
+
+  /// Что ответила Метрика про точность: семплирование, доля выборки,
+  /// задержка данных (с), запрошенная точность (пусто — по умолчанию API).
+  sampled     Boolean?
+  sampleShare Float?
+  dataLag     Int?
+  accuracy    String?
+  lastError   String?
+
+  @@index([dataset, startedAt])
+  @@index([batchId])
+}
+
+/// Трафик по дням. Одна строка — один календарный день Метрики в поясе
+/// счётчика (Europe/Moscow). `users` — уникальные посетители за день;
+/// суммировать их по дням нельзя — это не уникальные за период.
+model MetrikaDailyTraffic {
+  date      DateTime @id @db.Date
+  visits    Int
+  users     Int
+  pageviews Int
+  syncedAt  DateTime @default(now())
+}
+
+/// Достижения целей по дням: день × цель. Ключ — `goalId` Метрики;
+/// название и идентификатор события — справочно, из Management API на
+/// момент синхронизации. `reaches` — достижения, `goalVisits` — целевые
+/// визиты, `convertedUsers` — достигшие цели посетители. Конверсия здесь
+/// не хранится: это `goalVisits / MetrikaDailyTraffic.visits`.
+model MetrikaDailyGoal {
+  date           DateTime @db.Date
+  goalId         Int
+  goalName       String
+  /// Идентификатор JS-события (lead_submitted, …); у URL- и системных целей пусто.
+  goalIdentifier String?
+  reaches        Int
+  goalVisits     Int
+  convertedUsers Int
+  syncedAt       DateTime @default(now())
+
+  @@id([date, goalId])
+}
+
+/// Источники трафика по дням (атрибуция — последний значимый переход).
+/// Ключ — коды Метрики (`ad`, `organic`, `direct`, …; движок —
+/// `organic.yandex`, `ad.Яндекс: Директ`, …), пустая строка — источник
+/// не определён. Названия — как их показывает Метрика на русском.
+model MetrikaDailySource {
+  id                String   @id @default(uuid())
+  date              DateTime @db.Date
+  trafficSource     String
+  trafficSourceName String
+  sourceEngine      String
+  sourceEngineName  String
+
+  visits              Int
+  users               Int
+  pageviews           Int
+  /// Достижения канонических целей в визитах этого источника.
+  leadReaches         Int
+  orderCreatedReaches Int
+  orderPaidReaches    Int
+  syncedAt            DateTime @default(now())
+
+  @@unique([date, trafficSource, sourceEngine])
+}
+
+/// UTM-метки визитов по дням (атрибуция — последний значимый переход).
+/// Это UTM визита из Метрики, а не last-touch UTM, сохранённый в заказе
+/// CRM: источники разные, их можно сравнивать, но не смешивать.
+/// Пустая строка — метки нет.
+model MetrikaDailyUtm {
+  id          String   @id @default(uuid())
+  date        DateTime @db.Date
+  utmSource   String
+  utmMedium   String
+  utmCampaign String
+  utmContent  String
+  utmTerm     String
+
+  visits              Int
+  users               Int
+  leadReaches         Int
+  orderCreatedReaches Int
+  orderPaidReaches    Int
+  syncedAt            DateTime @default(now())
+
+  @@unique([date, utmSource, utmMedium, utmCampaign, utmContent, utmTerm])
+}
+
+/// Страницы входа по дням. `landingPath` — путь страницы входа как его
+/// отдаёт Метрика (`ym:s:startURLPath`, без хоста и параметров);
+/// `normalizedPath` — он же в нижнем регистре без завершающего слэша.
+/// Полный URL входа намеренно не хранится: у 4/5 строк в нём параметры
+/// Директа, уникальные на клик, — это уже почти визиты, а не агрегат.
+model MetrikaDailyLanding {
+  id             String   @id @default(uuid())
+  date           DateTime @db.Date
+  landingPath    String
+  normalizedPath String
+
+  visits              Int
+  users               Int
+  leadReaches         Int
+  orderCreatedReaches Int
+  orderPaidReaches    Int
+  syncedAt            DateTime @default(now())
+
+  @@unique([date, landingPath])
+  @@index([normalizedPath])
+}
+
+/// Устройства по дням. `deviceRaw` — код Метрики (desktop, mobile,
+/// tablet, tv), `deviceCategory` — наша категория: desktop | mobile |
+/// tablet | other.
+model MetrikaDailyDevice {
+  id             String   @id @default(uuid())
+  date           DateTime @db.Date
+  deviceRaw      String
+  deviceName     String
+  deviceCategory String
+
+  visits              Int
+  users               Int
+  leadReaches         Int
+  orderCreatedReaches Int
+  orderPaidReaches    Int
+  syncedAt            DateTime @default(now())
+
+  @@unique([date, deviceRaw])
+}
+
+/// Просмотры страниц по дням: день × путь страницы (`ym:pv:URLPath`).
+/// Только метрики просмотров: визиты и цели живут в другом пространстве
+/// имён Метрики (`ym:s:`) и с путём просмотра в одном запросе не
+/// сочетаются. Товар из пути не выводится — сопоставление путь → товар
+/// в CRM неоднозначно и отложено.
+model MetrikaDailyPage {
+  id             String   @id @default(uuid())
+  date           DateTime @db.Date
+  pagePath       String
+  normalizedPath String
+
+  pageviews Int
+  users     Int
+  syncedAt  DateTime @default(now())
+
+  @@unique([date, pagePath])
+  @@index([normalizedPath])
 }
 
 /// Сторона печати в согласовании. Отдельно от EnumPrintLocation намеренно:

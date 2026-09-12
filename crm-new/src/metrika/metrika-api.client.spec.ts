@@ -105,6 +105,8 @@ describe('запросы', () => {
       date1: '2026-09-05',
       date2: '2026-09-11',
       limit: 50,
+      sort: 'ym:s:date',
+      lang: 'ru',
     });
     const url = new URL(t.calls[0]!.url);
     expect(url.pathname).toBe('/stat/v1/data');
@@ -115,6 +117,8 @@ describe('запросы', () => {
     expect(url.searchParams.get('date2')).toBe('2026-09-11');
     expect(url.searchParams.get('limit')).toBe('50');
     expect(url.searchParams.has('accuracy')).toBe(false);
+    expect(url.searchParams.get('sort')).toBe('ym:s:date');
+    expect(url.searchParams.get('lang')).toBe('ru');
     expect(stats.totals).toEqual([42]);
     expect(stats.sampled).toBe(false);
   });

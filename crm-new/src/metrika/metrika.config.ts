@@ -7,6 +7,9 @@
  *   YANDEX_METRIKA_OAUTH_TOKEN          — OAuth-токен аккаунта с доступом к счётчику
  *   YANDEX_METRIKA_ORDERS_SYNC_ENABLED  — отправлять ли заказы из очереди
  *                                         (этап 06); по умолчанию выключено
+ *   YANDEX_METRIKA_ANALYTICS_SYNC_ENABLED — забирать ли отчёты Метрики в
+ *                                         локальные таблицы по расписанию
+ *                                         (этап 07); по умолчанию выключено
  *
  * Токен — секрет: он живёт только в окружении контейнера backend
  * (`/opt/raspechatka/.env` → docker compose), в базу не пишется, в браузер
@@ -45,6 +48,22 @@ export function isMetrikaConfigured(config: MetrikaConfig): boolean {
 export function metrikaOrdersSyncEnabledFromEnv(
   env: Record<string, string | undefined> = process.env,
 ): boolean {
-  const raw = (env.YANDEX_METRIKA_ORDERS_SYNC_ENABLED ?? '').trim().toLowerCase();
-  return raw === 'true' || raw === '1' || raw === 'yes' || raw === 'on';
+  return flagOn(env.YANDEX_METRIKA_ORDERS_SYNC_ENABLED);
+}
+
+/**
+ * Рубильник расписания синхронизации отчётов (этап 07). Ручной запуск из
+ * CLI работает всегда; по расписанию — только при явном «true/1/yes/on».
+ * На первой выкладке он выключен: сначала контрольная семидневная
+ * синхронизация и сверка с API руками, потом расписание.
+ */
+export function metrikaAnalyticsSyncEnabledFromEnv(
+  env: Record<string, string | undefined> = process.env,
+): boolean {
+  return flagOn(env.YANDEX_METRIKA_ANALYTICS_SYNC_ENABLED);
+}
+
+function flagOn(raw: string | undefined): boolean {
+  const v = (raw ?? '').trim().toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes' || v === 'on';
 }
