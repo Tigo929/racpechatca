@@ -87,6 +87,28 @@ function isRussianPhone(value: string): boolean {
   );
 }
 
+/**
+ * Телефон MAX к виду «+7 999 123-45-67» по мере ввода.
+ *
+ * Поле начинается с «+7 », человек вводит сразу с девятки. Если он по привычке
+ * набрал ещё 7 или 8 в начале — просто отбрасываем лишний код страны, не ругая
+ * и не сбивая ввод: оставляем 10 абонентских цифр. Курсор в конце — как в любой
+ * телефонной маске, ввод слева-направо это не ломает.
+ */
+function formatMaxPhone(raw: string): string {
+  let d = (raw ?? '').replace(/\D/g, '');
+  // Пока цифр больше 10 и первая — код страны/междугородний (7/8), отбрасываем.
+  // Так «+7» + повторные 7/8 схлопываются в один код, а остаётся номер абонента.
+  while (d.length > 10 && (d[0] === '7' || d[0] === '8')) d = d.slice(1);
+  d = d.slice(0, 10);
+  let out = '+7';
+  if (d.length > 0) out += ' ' + d.slice(0, 3);
+  if (d.length >= 4) out += ' ' + d.slice(3, 6);
+  if (d.length >= 7) out += '-' + d.slice(6, 8);
+  if (d.length >= 9) out += '-' + d.slice(8, 10);
+  return out;
+}
+
 const baseSchema = z.object({
   productCategory: z.enum(['PHOTO', 'TSHIRT', 'CANVAS']),
   sourceOrder: z.enum(['AVITO', 'OZON', 'WB', 'LOCAL']),
@@ -289,6 +311,17 @@ export function CreateOrderForm({ onClose }: Props) {
   // Режим маркетплейса действует только на футболках. В нём часть полей формы
   // скрыта — деньги и доставку ведёт площадка, CRM отвечает за макет.
   const marketMode = productCategory === 'TSHIRT' && marketplace;
+  // Переключились на MAX — сразу ставим «+7 », чтобы человек вводил с девятки.
+  // Только если поле пустое или там остался телеграм-ник: готовый телефон/ссылку
+  // не затираем.
+  useEffect(() => {
+    if (communicationPlatform !== 'MAX') return;
+    const cur = (getValues('urlCommunication') ?? '').trim();
+    if (!cur || cur.startsWith('@')) {
+      setValue('urlCommunication', '+7 ', { shouldValidate: false });
+    }
+  }, [communicationPlatform, getValues, setValue]);
+
   const freePrice = useWatch({ control, name: 'freePrice' });
   const needsDesign = useWatch({ control, name: 'needsDesign' });
   const designCostWatch = useWatch({ control, name: 'designDevelopmentCost' });
@@ -785,7 +818,18 @@ export function CreateOrderForm({ onClose }: Props) {
                 ? '+7 999 123-45-67'
                 : 'https://www.avito.ru/...'
           }
-          {...register('urlCommunication')} />
+          {...register('urlCommunication', {
+            // Для MAX форматируем телефон на лету («+7 …», лишние 7/8 в начале
+            // отбрасываем). Остальные площадки не трогаем.
+            onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+              if (communicationPlatform === 'MAX') {
+                setValue('urlCommunication', formatMaxPhone(e.target.value), {
+                  shouldValidate: false,
+                  shouldDirty: true,
+                });
+              }
+            },
+          })} />
         {communicationPlatform === 'MAX' && (
           <p className="text-xs text-gray-400 mt-1">
             Введите телефон — CRM сама соберёт ссылку на переписку в MAX.

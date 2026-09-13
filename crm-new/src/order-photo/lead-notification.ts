@@ -25,6 +25,14 @@ export interface LeadForNotification {
   quantity?: number | null;
   total?: number | null;
   comment?: string | null;
+  /**
+   * Готовая строка контакта клиента (уже безопасно оформлена вызывающим):
+   * для Telegram — ссылка t.me (Telegram сам сделает её кликабельной, тап
+   * открывает чат), для MAX — телефон (менеджер копирует и заводит контакт).
+   * Пишется в сообщение как есть, без экранирования, поэтому передавать сюда
+   * можно только контролируемый текст (URL или телефон), не сырой ввод.
+   */
+  contact?: string | null;
 }
 
 /** Экранируем то, что уйдёт в Markdown-разметку Telegram. */
@@ -69,6 +77,45 @@ export function pickLeadResponders(
   return [...new Set([...fromSettings, ...fromUsers])];
 }
 
+/** Поля заявки, из которых берём контакт клиента. */
+export interface LeadContactSource {
+  contactMethod?: 'telegram' | 'max' | 'email' | null;
+  telegram?: string | null;
+  contactValue?: string | null;
+  phone?: string | null;
+}
+
+/**
+ * Строка контакта клиента для сообщения в чат.
+ *
+ * Telegram → ссылка t.me: Telegram сам делает её кликабельной, тап открывает
+ * чат с клиентом. MAX → телефон: автоматически написать нельзя, менеджер
+ * копирует номер, заводит контакт и шлёт приветствие руками. Почта/телефон —
+ * как есть. null, если контакта нет.
+ */
+export function leadContactLine(src: LeadContactSource): string | null {
+  const method =
+    src.contactMethod ??
+    (src.telegram ? 'telegram' : null);
+  if (method === 'telegram') {
+    const nick = (src.telegram || src.contactValue || '')
+      .replace(/^@+/, '')
+      .replace(/^https?:\/\/t\.me\//i, '')
+      .trim();
+    return nick ? `Telegram: https://t.me/${nick}` : null;
+  }
+  if (method === 'max') {
+    const phone = (src.contactValue || src.phone || '').trim();
+    return phone ? `MAX: ${phone}` : null;
+  }
+  if (method === 'email') {
+    const email = (src.contactValue || '').trim();
+    return email ? `Email: ${email}` : null;
+  }
+  const phone = (src.phone || '').trim();
+  return phone ? `Телефон: ${phone}` : null;
+}
+
 /** Текст сообщения в общий чат. */
 export function buildLeadNotification(
   lead: LeadForNotification,
@@ -78,6 +125,8 @@ export function buildLeadNotification(
     '🌐 *Новая заявка с сайта*',
     `Заказ: ${escape(lead.numberOrder)}`,
     lead.name ? `Клиент: ${escape(lead.name)}` : null,
+    // Контакт — без экранирования: вызывающий кладёт сюда только URL/телефон.
+    lead.contact ? `📱 ${lead.contact}` : null,
     lead.productName ? `Товар: ${escape(lead.productName)}` : null,
     lead.quantity ? `Тираж: ${lead.quantity} шт` : null,
     lead.total ? `Сумма: ${lead.total} ₽` : null,
