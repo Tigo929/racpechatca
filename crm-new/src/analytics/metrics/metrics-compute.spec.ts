@@ -6,6 +6,7 @@ import {
   computeProducts,
   computeSalesChannels,
   computeSources,
+  computeTrend,
   computeUtm,
   crmPeriodSets,
   withLifecycles,
@@ -781,5 +782,68 @@ describe('срезы Метрики', () => {
     });
     expect(utm.totals.visits).toBe(100);
     expect(utm.totals.visitToLead).toBe(2);
+  });
+});
+
+describe('динамика по дням (computeTrend)', () => {
+  it('каждый день периода — точка; дни без данных нули; события CRM и деньги ложатся в московский день', () => {
+    const period = customPeriod('2026-09-01', '2026-09-03');
+    const accepted = photoOrder({ createdAt: T('2026-09-01T21:30:00Z') }); // 00:30 MSK 02.09
+    const paid = photoOrder({
+      status: 'PAID',
+      createdAt: T('2026-08-30T09:00:00Z'),
+      clientPaidAt: T('2026-09-03T08:00:00Z'),
+    });
+    const trend = computeTrend(
+      period,
+      metrika(
+        [{ date: '2026-09-02', visits: 20, users: 15, pageviews: 40 }],
+        [{ date: '2026-09-02', goalId: GOALS.lead, reaches: 3 }],
+      ),
+      withLifecycles([accepted, paid]),
+      [
+        {
+          date: '2026-09-03',
+          realizedRevenue: 1300,
+          netProfit: 700,
+          realizedOrders: 1,
+        },
+      ],
+      GOALS,
+      {
+        lastMetrikaSyncAt: NOW,
+        metrikaDataAgeSeconds: 0,
+        status: 'FRESH',
+        thresholdSeconds: 7200,
+      },
+    );
+    expect(trend.points.map((p) => p.date)).toEqual([
+      '2026-09-01',
+      '2026-09-02',
+      '2026-09-03',
+    ]);
+    expect(trend.points[0]).toMatchObject({
+      visits: 0,
+      siteLeads: 0,
+      acceptedOrders: 0,
+      paidOrders: 0,
+      realizedRevenue: 0,
+    });
+    expect(trend.points[1]).toMatchObject({
+      visits: 20,
+      pageviews: 40,
+      siteLeads: 3,
+      acceptedOrders: 1,
+    });
+    expect(trend.points[2]).toMatchObject({
+      paidOrders: 1,
+      realizedRevenue: 1300,
+      netProfit: 700,
+      realizedOrders: 1,
+    });
+    expect(trend.quality.notes).toEqual([
+      'INCOMPLETE_LEGACY_SITE_LEADS',
+      'CRM_GOALS_BEFORE_ROLLOUT',
+    ]);
   });
 });

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { PrismaService } from 'src/prisma/prisma.service';
 import { EXPECTED_GOAL_IDS } from '../../metrika/analytics/metrika-goal-registry';
 import {
+  calendarDateIn,
   isoToUtcDate,
   utcDateToIso,
 } from '../../metrika/analytics/metrika-dates';
@@ -22,6 +23,7 @@ import {
   computeProducts,
   computeSalesChannels,
   computeSources,
+  computeTrend,
   computeUtm,
   freshnessOf,
   withLifecycles,
@@ -44,6 +46,7 @@ import type {
   SiteFunnelMetrics,
   Slice,
   SourceRow,
+  Trend,
   UtmRow,
 } from './metrics-contract';
 
@@ -154,6 +157,32 @@ export class AnalyticsMetricsService {
       previous,
       orders,
     });
+  }
+
+  /** Динамика по дням для графика: одна выборка заказов, дневные таблицы, P&L по дням. */
+  async getTrend(period: AnalyticsPeriod): Promise<Trend> {
+    const bounds = periodBoundsUtc(period);
+    const [orders, lastSync, cur, pnlByDay] = await Promise.all([
+      this.loadOrders(bounds.endExclusive),
+      this.lastMetrikaSyncAt(),
+      this.loadPeriod(period),
+      this.reports.pnlBuckets(bounds.start, bounds.endExclusive, (at) =>
+        calendarDateIn(at),
+      ),
+    ]);
+    return computeTrend(
+      period,
+      cur.metrika,
+      withLifecycles(orders),
+      [...pnlByDay.entries()].map(([date, pnl]) => ({
+        date,
+        realizedRevenue: pnl.totalRevenue,
+        netProfit: pnl.netProfit,
+        realizedOrders: pnl.orderCount,
+      })),
+      this.goalIds,
+      freshnessOf(lastSync, this.now()),
+    );
   }
 
   async getFunnel(

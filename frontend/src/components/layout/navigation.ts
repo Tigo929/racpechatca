@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Bell,
+  LineChart,
   Camera,
   CheckSquare,
   Image,
@@ -126,6 +127,9 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/crm/marketplace/ozon/connection', label: 'Маркетплейсы', icon: Store, roles: MARKETPLACE, primary: true },
       { to: '/crm/salary', label: 'Зарплата', icon: Wallet, roles: ADMIN },
       { to: '/crm/reports', label: 'Отчёты', icon: BarChart3, roles: ADMIN },
+      // Дашборд руководителя (аналитика сайта и CRM). Сервер может выключить
+      // раздел флагом ANALYTICS_DASHBOARD_ENABLED — тогда страница так и скажет.
+      { to: '/crm/analytics', label: 'Аналитика', icon: LineChart, roles: ADMIN },
       { to: '/crm/users', label: 'Сотрудники', icon: Users, roles: ADMIN },
       { to: '/crm/settings', label: 'Настройки', icon: Settings, roles: ADMIN },
     ],

@@ -68,6 +68,11 @@ jobs:
         working-directory: frontend
         run: npm ci && npm run build
 
+      # vitest + testing-library: пока только дашборд аналитики (этап 09).
+      - name: Тесты панели
+        working-directory: frontend
+        run: npm test
+
   build:
     needs: test
     runs-on: ubuntu-latest

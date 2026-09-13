@@ -252,6 +252,32 @@ export interface Overview {
 }
 
 // ---------------------------------------------------------------------------
+// Динамика по дням (график дашборда)
+
+export interface TrendPoint {
+  /** Календарный день Europe/Moscow. */
+  date: string;
+  visits: number;
+  pageviews: number;
+  siteLeads: number;
+  matchedAccepted: number;
+  matchedPaid: number;
+  crmLeads: number;
+  acceptedOrders: number;
+  paidOrders: number;
+  /** Из P&L отчёта по дате признания выручки; null — за день реализации не было. */
+  realizedRevenue: number;
+  netProfit: number;
+  realizedOrders: number;
+}
+
+export interface Trend {
+  period: AnalyticsPeriod;
+  points: TrendPoint[];
+  quality: GroupQuality;
+}
+
+// ---------------------------------------------------------------------------
 // Срезы
 
 export interface MatchedFunnelRates {

@@ -20,6 +20,10 @@ const MarketplacePage = lazy(() => import('./pages/MarketplacePage'));
 const ReportsPage = lazy(() =>
   import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage })),
 );
+// Дашборд руководителя (этап 09 аналитики): только для админа, за серверным флагом.
+const AnalyticsPage = lazy(() =>
+  import('./pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })),
+);
 // Модуль за флагом features.printDesigner — грузим лениво, отдельным чанком.
 const PrintDesignerPage = lazy(
   () => import('./features/print-designer/PrintDesignerPage'),
@@ -116,6 +120,7 @@ function AppRoutes() {
             отдаёт баланс только по id из токена */}
         <Route path="/crm/my-salary" element={<CrmGate><PrivateRoute><MySalaryPage /></PrivateRoute></CrmGate>} />
         <Route path="/crm/reports" element={<CrmGate><AdminRoute><ReportsPage /></AdminRoute></CrmGate>} />
+        <Route path="/crm/analytics" element={<CrmGate><AdminRoute><AnalyticsPage /></AdminRoute></CrmGate>} />
         <Route path="/crm/settings" element={<CrmGate><AdminRoute><SettingsPage /></AdminRoute></CrmGate>} />
         {/* Доступы к кабинетам площадок — «ключи от кассы», поэтому только админ.
             Площадка и раздел живут в адресе: на них можно дать ссылку, работает

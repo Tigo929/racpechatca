@@ -494,6 +494,43 @@ export class ReportsService {
     return buildPnl(orders, expenses, salaryPayments, settings);
   }
 
+  /**
+   * P&L за [start, endExclusive), разложенный по ключу `keyOf` (например,
+   * по московским дням для графика дашборда). Заказ попадает в корзину по
+   * дате признания выручки, расход и выплата — по своей дате; каждая
+   * корзина считается тем же buildPnl. Одна выборка на весь период.
+   */
+  async pnlBuckets(
+    start: Date,
+    endExclusive: Date,
+    keyOf: (at: Date) => string,
+  ): Promise<Map<string, PnlReport>> {
+    const [{ orders, expenses, salaryPayments }, settings] = await Promise.all([
+      this.fetchPeriod(start, endExclusive),
+      this.costSettings(),
+    ]);
+    const byKey = new Map<
+      string,
+      { orders: OrderRow[]; expenses: ExpenseRow[]; salary: SalaryRow[] }
+    >();
+    const bucket = (key: string) => {
+      let b = byKey.get(key);
+      if (!b) {
+        b = { orders: [], expenses: [], salary: [] };
+        byKey.set(key, b);
+      }
+      return b;
+    };
+    for (const o of orders) bucket(keyOf(recognitionDate(o))).orders.push(o);
+    for (const e of expenses) bucket(keyOf(e.createdAt)).expenses.push(e);
+    for (const s of salaryPayments) bucket(keyOf(s.createdAt)).salary.push(s);
+    const out = new Map<string, PnlReport>();
+    for (const [key, b] of byKey) {
+      out.set(key, buildPnl(b.orders, b.expenses, b.salary, settings));
+    }
+    return out;
+  }
+
   async getMonthlyReport(year: number) {
     const start = new Date(year, 0, 1);
     const endExclusive = new Date(year + 1, 0, 1);

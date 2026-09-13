@@ -34,6 +34,7 @@ export default defineConfig({
         '/telegram',
         '/approvals',
         '/mockup-templates',
+        '/analytics',
       ].map((prefix) => [
         prefix,
         { target: 'http://localhost:3000', changeOrigin: true },

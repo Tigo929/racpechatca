@@ -18,6 +18,7 @@ import {
   previousPeriod,
   type AnalyticsPeriod,
 } from './analytics-period';
+import { calendarDateIn, eachDay } from '../../metrika/analytics/metrika-dates';
 import type {
   ComparisonSet,
   CrmFunnelMetrics,
@@ -39,6 +40,7 @@ import type {
   Slice,
   SourceRow,
   TrafficMetrics,
+  Trend,
   UtmRow,
 } from './metrics-contract';
 import {
@@ -686,6 +688,75 @@ export function computeOverview(inputs: OverviewInputs): Overview {
       lastMetrikaSyncAt: inputs.lastMetrikaSyncAt,
       generatedAt: inputs.now,
     },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Динамика по дням
+
+export interface DailyPnlInput {
+  date: string;
+  realizedRevenue: number;
+  netProfit: number;
+  realizedOrders: number;
+}
+
+/**
+ * Точка на день: трафик и цели — из дневных таблиц Метрики, события CRM —
+ * по московскому дню leadAt / acceptedAt / paidAt, деньги — из P&L отчёта,
+ * разложенного по дням признания выручки. Дни без данных — нули, чтобы
+ * график не терял ось.
+ */
+export function computeTrend(
+  period: AnalyticsPeriod,
+  metrika: MetrikaPeriodInput,
+  all: OrderWithLifecycle[],
+  pnlByDay: DailyPnlInput[],
+  goalIds: CanonicalGoalIds,
+  freshness: Freshness,
+): Trend {
+  const days = eachDay(period.from, period.to);
+  const traffic = new Map(metrika.traffic.map((r) => [r.date, r]));
+  const goal = (date: string, id: number) =>
+    sum(
+      metrika.goals.filter((g) => g.date === date && g.goalId === id),
+      (g) => g.reaches,
+    );
+  const pnl = new Map(pnlByDay.map((r) => [r.date, r]));
+  const dayOf = (at: Date | null) => (at ? calendarDateIn(at) : null);
+  const count = (pick: (o: OrderWithLifecycle) => Date | null) => {
+    const m = new Map<string, number>();
+    for (const o of all) {
+      const d = dayOf(pick(o));
+      if (d) m.set(d, (m.get(d) ?? 0) + 1);
+    }
+    return m;
+  };
+  const leads = count((o) => o.lifecycle.leadAt);
+  const accepted = count((o) => o.lifecycle.acceptedAt);
+  const paid = count((o) => o.lifecycle.paidAt);
+  const notes: QualityNote[] = [];
+  if (siteLeadsLegacy(period)) notes.push('INCOMPLETE_LEGACY_SITE_LEADS');
+  if (crmGoalsBeforeRollout(period)) notes.push('CRM_GOALS_BEFORE_ROLLOUT');
+  if (period.from < COUNTER_DATA_SINCE) notes.push('PERIOD_BEFORE_COUNTER');
+  if (freshness.status === 'STALE') notes.push('METRIKA_STALE');
+  return {
+    period,
+    points: days.map((date) => ({
+      date,
+      visits: traffic.get(date)?.visits ?? 0,
+      pageviews: traffic.get(date)?.pageviews ?? 0,
+      siteLeads: goal(date, goalIds.lead),
+      matchedAccepted: goal(date, goalIds.created),
+      matchedPaid: goal(date, goalIds.paid),
+      crmLeads: leads.get(date) ?? 0,
+      acceptedOrders: accepted.get(date) ?? 0,
+      paidOrders: paid.get(date) ?? 0,
+      realizedRevenue: pnl.get(date)?.realizedRevenue ?? 0,
+      netProfit: pnl.get(date)?.netProfit ?? 0,
+      realizedOrders: pnl.get(date)?.realizedOrders ?? 0,
+    })),
+    quality: quality(notes),
   };
 }
 
