@@ -1,3 +1,5 @@
+import { formatPhoneForDisplay, normalizePhone } from './communication-url';
+
 /**
  * Сообщение в общий чат о заявке с сайта.
  *
@@ -105,8 +107,12 @@ export function leadContactLine(src: LeadContactSource): string | null {
     return nick ? `Telegram: https://t.me/${nick}` : null;
   }
   if (method === 'max') {
-    const phone = (src.contactValue || src.phone || '').trim();
-    return phone ? `MAX: ${phone}` : null;
+    const raw = (src.contactValue || src.phone || '').trim();
+    if (!raw) return null;
+    // Показываем в едином виде «+7 999 123-45-67», как в форме и карточке:
+    // клиент мог ввести как угодно, а копировать удобнее аккуратный номер.
+    const normalized = normalizePhone(raw);
+    return `MAX: ${normalized ? formatPhoneForDisplay(normalized) : raw}`;
   }
   if (method === 'email') {
     const email = (src.contactValue || '').trim();

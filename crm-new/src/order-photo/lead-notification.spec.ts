@@ -16,9 +16,16 @@ describe('контакт клиента в уведомлении о заявк�
     ).toBe('Telegram: https://t.me/ivan');
   });
 
-  it('MAX — телефон как есть (менеджер копирует и заводит контакт)', () => {
+  it('MAX — телефон приводим к единому виду +7 999 123-45-67', () => {
     expect(
       leadContactLine({ contactMethod: 'max', contactValue: '+7 999 123-45-67' }),
+    ).toBe('MAX: +7 999 123-45-67');
+    // Как бы клиент ни ввёл — в чат уходит аккуратный номер.
+    expect(
+      leadContactLine({ contactMethod: 'max', contactValue: '8 (999) 123-45-67' }),
+    ).toBe('MAX: +7 999 123-45-67');
+    expect(
+      leadContactLine({ contactMethod: 'max', contactValue: '9991234567' }),
     ).toBe('MAX: +7 999 123-45-67');
   });
 

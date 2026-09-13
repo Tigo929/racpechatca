@@ -675,8 +675,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/CreateOrderForm.tsx": {
-    "mtime": 1789294038.7037933,
-    "ast_hash": "9936a269930bdf23d69b0120ef36a3a8",
+    "mtime": 1789294488.1212127,
+    "ast_hash": "9ed4934bfaa8167f0e331256177b252f",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/ItemsTable.tsx": {
@@ -1345,13 +1345,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/lead-notification.spec.ts": {
-    "mtime": 1789294038.6997962,
-    "ast_hash": "4eabc83897f6d026e8bf6196b7ba38e7",
+    "mtime": 1789317967.019334,
+    "ast_hash": "2c7f326f642b1751e2d5d0af13a1d6ac",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/lead-notification.ts": {
-    "mtime": 1789294038.7007947,
-    "ast_hash": "be6035627c647370b03ce0596bda43b5",
+    "mtime": 1789317956.75318,
+    "ast_hash": "f914c222a42368ef411c983ac5eadb62",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-profit.spec.ts": {
