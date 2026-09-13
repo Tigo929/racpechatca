@@ -1128,7 +1128,10 @@ AnalyticsMetricsService (обзор, воронки сайта/CRM, срезы, 
 финансы через ReportsService.pnlForRange (= /reports/monthly). Сверки на копии базы — 0/0/0.
 FIX_01 (отмены как историческое событие: firstCancelledAt, cancellationEvents,
 currentlyCancelledOrders; rate по wasEverCancelled) — выполнен, тесты A–E.
-Production не менялся; выкладка (миграция снимков, снимки в расписании) — по команде.
+Production rollout 12.09.2026 22:02–23:00 MSK по команде владельца: расписание временно OFF,
+master = e7e936d, миграция снимков, 8 снимков (periodUsers = прямой API, diff 0), сверки из
+боевого контейнера 0/0/0, расписание включено, 14 автоматических циклов SUCCESS к 13:00 13.09.
+DONE ставит Reviewer. Отчёт — `08_PRODUCTION_ROLLOUT.md` § 26.
 ```
 
 Цель:
@@ -1561,8 +1564,11 @@ FALSE_BROWSER_PURCHASE_STOPPED_AT = LEAD_GOAL_SEMANTICS_CHANGED_AT = 2026-09-12 
 08_ANALYTICS_METRICS — REVIEW (12.09.2026 19:05 MSK): один типизированный сервис метрик,
 site/CRM/P&L не смешаны, уникальные периода из снимков, жизненный цикл заказа с оператор-NEW
 и возвратами, финансы = отчёт владельца (сверка июль/август 0), 897 тестов в CRM (FIX_01:
-отмены — историческое событие, возврат в работу его не стирает). Production
-не менялся — выкладка по отдельной команде. Отчёт — `08_ANALYTICS_METRICS.md` § 59.
+отмены — историческое событие, возврат в работу его не стирает). FIX_01 принят;
+production rollout выполнен 12.09.2026 22:02–23:00 MSK (master = e7e936d, снимки на бою,
+расписание обновляет их каждый час, второй и дальнейшие циклы SUCCESS; хост выключался
+хостингом 13.09 08:51–09:42 и поднялся сам). Отчёты — `08_ANALYTICS_METRICS.md` § 59,
+`08_ANALYTICS_METRICS_FIX_01.md` § 13, `08_PRODUCTION_ROLLOUT.md` § 26. DONE ставит Reviewer.
 ```
 
 История: `00`, `01`, `02` (с FIX_01), `03`, `04` (с FIX_01), `05` (live smoke

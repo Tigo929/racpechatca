@@ -59,7 +59,7 @@ COUNTER_DATA_SINCE                = 2026-08-13                          (счё�
 | name | label | formula | numerator / denominator | source | period semantics | limitations |
 |---|---|---|---|---|---|---|
 | `visits` | Визиты | Σ `MetrikaDailyTraffic.visits` за дни периода | — | site | event, аддитивно | — |
-| `periodUsers` | Посетители периода | `MetrikaPeriodSnapshot.users` для (from, to, scope=counter) | — | site (отдельный запрос API за период) | period-unique | нет снимка → `null` + `NO_PERIOD_SNAPSHOT`; снимки обновляются каждый час для 8 пресетов и командой `metrika:sync snapshots` |
+| `periodUsers` | Посетители периода | `MetrikaPeriodSnapshot.users` для (from, to, scope=counter) | — | site (отдельный запрос API за период) | period-unique | нет снимка → `null` + `NO_PERIOD_SNAPSHOT`; снимки обновляются каждый час для 8 пресетов и командой `metrika:sync snapshots`; ключ снимка — диапазон дат, пресеты сдвигаются ежедневно, старые диапазоны остаются в таблице (≈6 строк/сутки) — искать по диапазону, не по колонке `preset` |
 | `sumDailyUsers` | Сумма дневных уникальных | Σ `MetrikaDailyTraffic.users` | — | site | event | **не** уникальные периода; названа честно, под именами `users`/`visitors` не отдаётся |
 | `pageviews` (headline) | Просмотры | = `pageviewsSession` | — | site | event | заголовочная семантика выбрана: просмотры внутри визитов |
 | `pageviewsSession` | Просмотры (визиты) | Σ `MetrikaDailyTraffic.pageviews` (`ym:s:pageviews`) | — | site | event | — |

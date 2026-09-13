@@ -5,7 +5,8 @@
 ## Статус
 
 ```text
-REVIEW — исправлено 12.09.2026 (feature/analytics-foundation); production не тронут
+ACCEPTED — исправление принято Reviewer (входной контекст 08_PRODUCTION_ROLLOUT.md);
+в production с 12.09.2026 22:13 MSK (master = e7e936d)
 ```
 
 Отчёт исполнителя — раздел 13.

@@ -9,7 +9,9 @@ REVIEW — реализовано 12.09.2026 в feature/analytics-foundation: с
 снимки уникальных периода, AnalyticsMetricsService; сверки на копии боевой базы — трафик 0,
 CRM 0, P&L 0. FIX_01 (семантика отмен: historical firstCancelledAt, cancellationEvents,
 currentlyCancelledOrders, rate по wasEverCancelled) — выполнен 12.09.2026, см.
-`08_ANALYTICS_METRICS_FIX_01.md`. Production не менялся. DONE ставит Reviewer.
+`08_ANALYTICS_METRICS_FIX_01.md` (принят Reviewer). Production rollout выполнен 12.09.2026
+(master = e7e936d, снимки на бою, расписание обновляет их каждый час) — `08_PRODUCTION_ROLLOUT.md` § 26.
+DONE ставит Reviewer после review rollout.
 ```
 
 Отчёт исполнителя — раздел 59; словарь — `METRICS_DICTIONARY.md`.

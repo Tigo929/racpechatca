@@ -337,7 +337,7 @@ CANCELLED, PROBLEM — вне цепочки
 | Бой 18:21 MSK (read-only) | очередь MetrikaOrderOutbox пуста, воркер заказов запущен после каждого рестарта; после cutover 13:19 заявок с сайта не было; 20260912-109 (12:59, до cutover, utm chatgpt.com) — LEAD; 20260912-110 (Avito, 14:02) создан сразу NEW без перехода и без ClientID — в очередь не попадает по дизайну |
 
 ---
-# 5g. Канонические метрики — этап 08 (12.09.2026, ветка, production не тронут)
+# 5g. Канонические метрики — этап 08 (12.09.2026; в production с 22:13 MSK)
 
 | Факт | Подробности |
 |---|---|
@@ -346,8 +346,9 @@ CANCELLED, PROBLEM — вне цепочки
 | Уникальные периода | `MetrikaPeriodSnapshot` (миграция `20260912160000_metrika_period_snapshot`): отдельный запрос к API за период; 8 пресетов обновляются тиком расписания этапа 07 и `metrika:sync snapshots`; без снимка `periodUsers = null`, `sumDailyUsers` отдаётся под своим именем (30 дней: 323 vs 408) |
 | Сверки (копия crm_stage08_test) | трафик vs таблицы этапа 07 — 0; CRM (leads/accepted/paid/cancelled/paidWithoutDate/paidOrderValue) vs независимый SQL — 0 за 30 дней и за 01.06–12.09; P&L vs `/reports/monthly` и `/reports/weekly` — 0 по 12 строкам за июль и август 2026 |
 | Данные на 12.09 | 325 заказов, 267 начали в NEW (оператор/Avito), 26 — в LEAD; отмен нет; PAID без clientPaidAt — 13; ClientID у принятых за 30 дней 7,7 %; siteLeads 2 против crmLeads 29 за 30 дней (цель молодая) |
-| Диагностика | `npm run metrics:report -- overview|slices|reconcile-traffic|reconcile-crm|reconcile-pnl|perf`; getOverview — 29 SQL-запросов независимо от числа заказов |
-| Production | не менялся: таблицы снимков на бою нет, расписание снимки не обновляет — до выкладки этапа 08 по команде; копия `crm_stage08_test` удалена |
+| Диагностика | `npm run metrics:report -- overview|slices|reconcile-traffic|reconcile-crm|reconcile-pnl|perf`; getOverview — 29 SQL-запросов независимо от числа заказов (в контейнере ≈2,3 с с прогревом) |
+| Бой 13:00 MSK 13.09 (read-only) | после cutover 2 естественные заявки с сайта (20260913-111 02:43, 20260913-112 11:58 MSK): first-touch и страница конверсии есть, ClientID пуст (вероятно, без cookie-согласия), обе LEAD; 16 переходов CRM — все внутри IN_PROGRESS, очередь этапа 06 пуста по дизайну; первый LEAD→NEW/PAID через очередь — not observed yet. Хост выключался хостингом 08:51–09:42 MSK, всё поднялось само |
+| Production | **выложено 12.09.2026 22:13 MSK**: `master` = e7e936d (образ backend b03d34f3…), миграция `20260912160000_metrika_period_snapshot` (77 миграций); расписание было временно OFF на время деплоя и проверок (backup `.env.bak-stage08-*`), включено 22:57; снимки 8 пресетов обновляются после каждого тика (≈19 запросов/тик); periodUsers на бою = прямой API (131 / 323), сверки трафик/CRM/P&L из контейнера 0/0/0. Таблица снимков растёт ≈6 строк/сутки (старые диапазоны остаются, ключ — диапазон). Отчёт — `08_PRODUCTION_ROLLOUT.md` § 26 |
 
 ---
 # 6. Что уже готово из целевой картины
