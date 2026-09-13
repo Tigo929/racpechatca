@@ -21,10 +21,11 @@ import {
   formatPaymentPhoneForClient,
   resolvePickupAddress,
 } from "../../config/business";
-import { COMMUNICATION_LABELS, DELIVERY_LABELS } from "../../constants";
+import { DELIVERY_LABELS } from "../../constants";
 import { GulianSyncBlock } from './GulianSyncBlock';
 import { DispatchToExecutorModal } from './DispatchToExecutorModal';
 import { GreetingCopyButton } from './GreetingCopyButton';
+import { OrderContact } from './OrderContact';
 import { ApprovalsBlock } from '../approval/ApprovalsBlock';
 
 /**
@@ -1270,19 +1271,15 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
-          <InfoRow
-            label="Платформа общения"
-            value={COMMUNICATION_LABELS[order.communicationPlatform]}
+          {/* Контакт клиента с действием: Telegram — кликабельный ник (сразу
+              в чат), MAX — телефон + «Скопировать номер». */}
+          <OrderContact
+            platform={order.communicationPlatform}
+            url={order.urlCommunication}
           />
-          {/*
-            Первое сообщение уходит само только в телеграм — у остальных
-            площадок написать первым нельзя. Здесь менеджер копирует ровно
-            тот же текст и отправляет руками, чтобы клиент на MAX получил
-            то же самое, что клиент на телеграме.
-          */}
-          {/* Кнопка есть для любой площадки, включая Telegram: бот пишет сам,
-              но менеджеру бывает нужно скопировать тот же текст и отправить
-              руками (например, создав контакт заново). */}
+          {/* Приветственное сообщение. Бот шлёт его сам в Telegram; здесь
+              менеджер копирует ровно тот же текст и отправляет руками — так
+              клиент на MAX получает то же, что клиент на Telegram. */}
           <div className="sm:col-span-2">
             <GreetingCopyButton orderId={order.id} />
           </div>

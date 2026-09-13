@@ -1,8 +1,47 @@
 import {
   buildLeadNotification,
+  leadContactLine,
   pickLeadResponders,
   type NotifiableUser,
 } from './lead-notification';
+
+describe('контакт клиента в уведомлении о заявке', () => {
+  it('Telegram — ссылка t.me (Telegram сделает её кликабельной)', () => {
+    expect(leadContactLine({ contactMethod: 'telegram', telegram: '@ivan' })).toBe(
+      'Telegram: https://t.me/ivan',
+    );
+    // Собаку и готовую ссылку тоже принимаем.
+    expect(
+      leadContactLine({ contactMethod: 'telegram', contactValue: 'https://t.me/ivan' }),
+    ).toBe('Telegram: https://t.me/ivan');
+  });
+
+  it('MAX — телефон приводим к единому виду +7 999 123-45-67', () => {
+    expect(
+      leadContactLine({ contactMethod: 'max', contactValue: '+7 999 123-45-67' }),
+    ).toBe('MAX: +7 999 123-45-67');
+    // Как бы клиент ни ввёл — в чат уходит аккуратный номер.
+    expect(
+      leadContactLine({ contactMethod: 'max', contactValue: '8 (999) 123-45-67' }),
+    ).toBe('MAX: +7 999 123-45-67');
+    expect(
+      leadContactLine({ contactMethod: 'max', contactValue: '9991234567' }),
+    ).toBe('MAX: +7 999 123-45-67');
+  });
+
+  it('без контакта — null', () => {
+    expect(leadContactLine({})).toBeNull();
+    expect(leadContactLine({ contactMethod: 'max', contactValue: '' })).toBeNull();
+  });
+
+  it('контакт попадает в текст уведомления', () => {
+    const text = buildLeadNotification(
+      { numberOrder: '20260913-001', contact: 'MAX: +7 999 123-45-67' },
+      [],
+    );
+    expect(text).toContain('MAX: +7 999 123-45-67');
+  });
+});
 
 const user = (o: Partial<NotifiableUser>): NotifiableUser => ({
   username: 'someone',

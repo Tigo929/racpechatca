@@ -58,6 +58,7 @@ import {
 } from './tshirt-production-items';
 import {
   buildLeadNotification,
+  leadContactLine,
   pickLeadResponders,
 } from './lead-notification';
 import { PushService } from '../push/push.service';
@@ -507,6 +508,7 @@ export class OrderPhotoService {
           quantity: dto.quantity,
           total: dto.total,
           comment: dto.comment ?? dto.description,
+          contact: leadContactLine(dto),
         },
         pickLeadResponders(users, settings?.leadMentionUsernames ?? ''),
       );
