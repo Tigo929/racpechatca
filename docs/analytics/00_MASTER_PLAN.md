@@ -1131,7 +1131,7 @@ currentlyCancelledOrders; rate по wasEverCancelled) — выполнен, те
 Production rollout 12.09.2026 22:02–23:00 MSK по команде владельца: расписание временно OFF,
 master = e7e936d, миграция снимков, 8 снимков (periodUsers = прямой API, diff 0), сверки из
 боевого контейнера 0/0/0, расписание включено, 14 автоматических циклов SUCCESS к 13:00 13.09.
-DONE ставит Reviewer. Отчёт — `08_PRODUCTION_ROLLOUT.md` § 26.
+DONE (Reviewer, 14.09.2026). Отчёт — `08_PRODUCTION_ROLLOUT.md` § 26.
 ```
 
 Цель:
@@ -1172,7 +1172,7 @@ ROMI
 Статус:
 
 ```text
-REVIEW (14.09.2026) — read-only API /analytics/dashboard/* (9 маршрутов, только ADMIN, флаг
+READY_FOR_PRODUCTION_ROLLOUT (Reviewer, 14.09.2026) — read-only API /analytics/dashboard/* (9 маршрутов, только ADMIN, флаг
 ANALYTICS_DASHBOARD_ENABLED default false, кэш 45 с) поверх AnalyticsMetricsService без своих формул;
 раздел «Аналитика» (/crm/analytics): KPI со сравнением и полярностью, раздельные воронки сайта (ClientID)
 и CRM, «Требует внимания», график одного показателя по дням (getTrend = Метрика + lifecycle +
@@ -1180,8 +1180,10 @@ ReportsService.pnlBuckets), срезы источников/UTM/товаров/�
 предупреждения legacy/counter/snapshot/stale/coverage; состояния loading/empty/error/disabled; mobile-first.
 Сверка на копии crm_stage09_test: 10 метрик × 3 периода diff 0, все листья JSON HTTP = service = CLI
 (кроме секунд «возраста»). Тесты: CRM 912, панель 21 (vitest). Production не тронут — выкладка и флаг
-только по отдельной команде. Контракт — DASHBOARD_CONTRACT.md, отчёт — 09_DASHBOARD_V1.md § 64.
-DONE ставит Reviewer.
+только по отдельной команде «СТАРТ» по плану `09_PRODUCTION_ROLLOUT.md` (подготовлен 14.09.2026:
+без миграций, scheduler не выключать, оба образа, флаг в серверном compose, включение отдельным
+шагом, сверка из контейнера, owner smoke). Контракт — DASHBOARD_CONTRACT.md, отчёт — 09_DASHBOARD_V1.md § 64.
+DONE ставит Reviewer после production verification.
 ```
 
 Цель:
@@ -1579,11 +1581,13 @@ production rollout выполнен 12.09.2026 22:02–23:00 MSK (master = e7e93
 хостингом 13.09 08:51–09:42 и поднялся сам). Отчёты — `08_ANALYTICS_METRICS.md` § 59,
 `08_ANALYTICS_METRICS_FIX_01.md` § 13, `08_PRODUCTION_ROLLOUT.md` § 26. DONE ставит Reviewer.
 
-09_DASHBOARD_V1 — REVIEW (14.09.2026): дашборд руководителя реализован (backend API + раздел панели),
+00–08 = DONE (Reviewer, 14.09.2026).
+
+09_DASHBOARD_V1 — READY_FOR_PRODUCTION_ROLLOUT (Reviewer, 14.09.2026): дашборд руководителя реализован (backend API + раздел панели),
 проверен на копии production (сверка dashboard = metrics service = CLI, diff 0; скриншоты desktop/mobile
 на реальных данных), ветка feature/analytics-foundation (с влитым master 4349ae2 владельца). Production
-не тронут: выкладка, merge в master и включение ANALYTICS_DASHBOARD_ENABLED — по отдельной команде.
-Бой 13–14.09: расписание Метрики SUCCESS каждый час, 8/8 снимков; коммиты владельца 13a76a7..4349ae2
+не тронут: выкладка, merge в master и включение ANALYTICS_DASHBOARD_ENABLED — по отдельной команде «СТАРТ»,
+план — `09_PRODUCTION_ROLLOUT.md` (PREPARED). Бой 13–14.09: расписание Метрики SUCCESS каждый час, 8/8 снимков; коммиты владельца 13a76a7..4349ae2
 выложены auto-update 13.09 19:48 MSK. Отчёт — `09_DASHBOARD_V1.md` § 64.
 ```
 

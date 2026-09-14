@@ -5,8 +5,11 @@
 ## Статус
 
 ```text
-REVIEW (14.09.2026) — реализация и проверка на копии production выполнены,
-production не тронут; отчёт — § 64. DONE ставит Reviewer.
+READY_FOR_PRODUCTION_ROLLOUT (Reviewer, 14.09.2026) — реализация принята: API под ADMIN, флаг,
+канонический слой метрик, reconciliation diff 0, состояния ошибок/неполных данных, responsive,
+тесты и сборка. Production сознательно не тронут. Отчёт — § 64. Следующий документ —
+`09_PRODUCTION_ROLLOUT.md`; выкладка только по отдельной команде владельца «СТАРТ». DONE ставит Reviewer
+после controlled production verification.
 ```
 
 > Этап 08 принят как DONE.
