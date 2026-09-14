@@ -158,7 +158,8 @@ export function FormErrorsBlock({ errors }: { errors: FormErrors | undefined }) 
         <StateBlock kind="empty" message="За этот период ошибок формы не зафиксировано" />
       ) : (
         <div className="grid md:grid-cols-2 gap-4 mt-4">
-          <div>
+          {/* min-w-0: колонка сетки не должна расширяться под таблицу — таблица скроллится внутри */}
+          <div className="min-w-0">
             <h3 className="text-xs font-semibold text-gray-600 mb-2">По полям</h3>
             {errors.byField.length === 0 ? (
               <p className="text-xs text-gray-400">Поле ошибки в параметрах визита не передано</p>
@@ -177,7 +178,7 @@ export function FormErrorsBlock({ errors }: { errors: FormErrors | undefined }) 
               </TableWrap>
             )}
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="text-xs font-semibold text-gray-600 mb-2">По устройствам</h3>
             <TableWrap>
               <table className="min-w-full">
@@ -325,7 +326,7 @@ export function PagesBlock({ pages }: { pages: PagesBehavior | undefined }) {
 
 function PathList({ title, rows, unit, total }: { title: string; rows: PathPage[]; unit: 'visits' | 'pageviews'; total: number }) {
   return (
-    <div>
+    <div className="min-w-0">
       <h3 className="text-xs font-semibold text-gray-600 mb-2">
         {title} <span className="text-gray-400 font-normal">· всего {formatCount(total)} {unit === 'visits' ? 'визитов' : 'просмотров'}</span>
       </h3>

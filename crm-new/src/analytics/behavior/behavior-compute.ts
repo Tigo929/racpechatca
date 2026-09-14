@@ -873,6 +873,9 @@ export function computeIssues(
     for (let i = 1; i < measured.length; i++) {
       const prevStep = measured[i - 1];
       const step = measured[i];
+      // Переход «визит → первое действие» — не отвал воронки: большинство визитов формы не начинает
+      // по природе трафика; эту долю показывает сводка, а её аномалии ловят правила 11.2, 11.4, 11.5.
+      if (prevStep.basis === 'visits') continue;
       if ((prevStep.visits ?? 0) < MIN_STEP_ENTRANTS) continue;
       anyChecked = true;
       const drop = step.dropoffRate ?? 0;

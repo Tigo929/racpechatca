@@ -566,12 +566,14 @@ describe('«Требует внимания»: правила, пороги, к�
     expect(gap?.fact).toMatch(/телефоны 0 %/);
     expect(gap?.hypothesis).toMatch(/^Возможн/);
     expect(gap?.recommendation).toMatch(/360–430/);
-    const drop = issues.issues.find((i) => i.rule === 'FUNNEL_DROPOFF');
-    expect(drop).toMatchObject({
-      severity: 'ATTENTION',
-      scope: { kind: 'funnel', key: 'global:form_started' },
-    });
-    expect(drop?.fact).toMatch(/145 → 13/);
+    // «визит → начали форму» отвалом не считается (природа трафика); отвал ловится между
+    // действиями — у фото: начали форму фотопечати 28 → заявка 2 (92,9 %)
+    const drops = issues.issues.filter((i) => i.rule === 'FUNNEL_DROPOFF');
+    expect(drops.map((d) => d.scope.key)).toEqual([
+      'photo:lead_submitted_photo',
+    ]);
+    expect(drops[0]).toMatchObject({ severity: 'ATTENTION' });
+    expect(drops[0].fact).toMatch(/28 → 2/);
     // порядок: CRITICAL раньше ATTENTION
     expect(issues.issues[0].severity).toBe('CRITICAL');
     // без сопоставимого периода — правило про lead rate пропущено с причиной
