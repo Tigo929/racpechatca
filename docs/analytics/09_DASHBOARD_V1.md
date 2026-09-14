@@ -5,11 +5,10 @@
 ## Статус
 
 ```text
-READY_FOR_PRODUCTION_ROLLOUT (Reviewer, 14.09.2026) — реализация принята: API под ADMIN, флаг,
-канонический слой метрик, reconciliation diff 0, состояния ошибок/неполных данных, responsive,
-тесты и сборка. Production сознательно не тронут. Отчёт — § 64. Следующий документ —
-`09_PRODUCTION_ROLLOUT.md`; выкладка только по отдельной команде владельца «СТАРТ». DONE ставит Reviewer
-после controlled production verification.
+IN_PRODUCTION (14.09.2026 19:16 MSK, REVIEW) — реализация принята Reviewer 14.09 (§ 64), production rollout
+выполнен по команде «СТАРТ» строго по `09_PRODUCTION_ROLLOUT.md`: master = be591d3, флаг
+ANALYTICS_DASHBOARD_ENABLED=true, dashboard = service = CLI на боевых данных (diff 0), P&L = /reports/monthly,
+два тика расписания SUCCESS — отчёт `09_PRODUCTION_ROLLOUT.md` § 18. DONE ставит Reviewer после owner smoke.
 ```
 
 > Этап 08 принят как DONE.
