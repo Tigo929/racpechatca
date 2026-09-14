@@ -58,6 +58,8 @@ export function TrendChart({ trend }: { trend: Trend }) {
       </div>
       {points.length === 0 ? (
         <div className="py-10 text-center text-sm text-gray-400">Нет данных за период</div>
+      ) : values.every((v) => v === 0) ? (
+        <div className="py-10 text-center text-sm text-gray-400">{def.label}: за этот период нулевые значения — рисовать нечего</div>
       ) : (
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label={`${def.label} по дням, ${points.length} дней, максимум ${formatMetric(max, def.format)}`}>
           <line x1={PAD.left} x2={W - PAD.right} y1={zeroY} y2={zeroY} stroke="#E2E8F0" strokeWidth={1} />
