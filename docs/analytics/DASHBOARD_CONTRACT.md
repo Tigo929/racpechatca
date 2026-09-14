@@ -42,6 +42,13 @@ Production: не включён (ANALYTICS_DASHBOARD_ENABLED=false до отде
 проксирует `/analytics` наравне с `/orders`, `/reports` и т. д. — `frontend/nginx.conf`;
 dev-прокси Vite — `frontend/vite.config.ts`).
 
+**Два хоста, два белых списка.** Панель доступна как `https://195-2-75-249.sslip.io/crm/…`
+(конфиг из образа CRM) и как `https://raspechatkaa.ru/crm/…` — блок домена в
+`web-photo/deploy/nginx-domain.conf`, живая копия на сервере
+`/opt/raspechatka/frontend/nginx-photo.conf` (не синхронизируется из git). Новый API-префикс
+нужно добавлять в оба; 14.09.2026 `/analytics` отсутствовал во втором — на домене дашборд
+получал 404 HTML («Адрес не найден на сервере»), исправлено 15.09 00:01 MSK.
+
 | Метод | Путь | Метод сервиса | Ответ (тип из `metrics-contract.ts`) |
 |---|---|---|---|
 | GET | `/analytics/dashboard/status` | — | `DashboardStatus` (см. §4) |

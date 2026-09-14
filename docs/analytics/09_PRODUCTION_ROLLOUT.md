@@ -565,8 +565,17 @@ security debt: без изменений — ROTATE_YANDEX_OAUTH_TOKEN, ROTATE_Y
 ## 14. OPEN ISSUES
 
 ```text
+0. FIX 15.09.2026 00:01 MSK (NEEDS_FIX владельца, 14.09 23:5x): на домене raspechatkaa.ru дашборд отдавал
+   «Адрес не найден на сервере: GET /analytics/dashboard/status». Причина — второй белый список API в блоке
+   домена (/opt/raspechatka/frontend/nginx-photo.conf → conf.d/photo.conf того же nginx) без /analytics:
+   запрос уходил в Next.js → 404 HTML. Исправление: + approvals|mockup-templates|analytics в location ~ ^/(…)
+   (backup nginx-photo.conf.bak-analytics-route-20260914-2359), пересоздание только frontend-контейнера
+   (bind-mount не видел файл после sed -i), backend не перезапускался. После: все 9 маршрутов дашборда через
+   домен → 200 под ADMIN (временный токен в памяти), /order-photo, /auth/me, /reports/monthly → 200, сайт 200,
+   sslip-хост без изменений. Источник правды обновлён: web-photo deploy/nginx-domain.conf (53d2e8f).
+   Owner smoke § 11 выполнялся на хосте sslip.io, где маршрут был, — поэтому дефект проявился позже.
 1. Verdict Reviewer: 09_DASHBOARD_V1 / 09_PRODUCTION_ROLLOUT → DONE (все пункты Decision Gate § 17 закрыты
-   исполнителем и владельцем; production после 19:16:39 MSK не менялся).
+   исполнителем и владельцем; production после 19:16:39 MSK не менялся — до фикса маршрута 15.09 00:01).
 2. Скриншоты production — по желанию владельца (docs/analytics/screenshots/09_production/), не блокер.
 3. Наблюдение: eligibleAccepted 0 на бою — сопоставленная воронка остаётся «—» до заявок с cookie-согласием;
    PHASE K/L (LEAD→NEW/PAID через очередь с ClientID) — not observed yet.
