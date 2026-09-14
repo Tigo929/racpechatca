@@ -1172,7 +1172,16 @@ ROMI
 Статус:
 
 ```text
-TODO
+REVIEW (14.09.2026) — read-only API /analytics/dashboard/* (9 маршрутов, только ADMIN, флаг
+ANALYTICS_DASHBOARD_ENABLED default false, кэш 45 с) поверх AnalyticsMetricsService без своих формул;
+раздел «Аналитика» (/crm/analytics): KPI со сравнением и полярностью, раздельные воронки сайта (ClientID)
+и CRM, «Требует внимания», график одного показателя по дням (getTrend = Метрика + lifecycle +
+ReportsService.pnlBuckets), срезы источников/UTM/товаров/каналов/страниц/устройств, панель качества данных,
+предупреждения legacy/counter/snapshot/stale/coverage; состояния loading/empty/error/disabled; mobile-first.
+Сверка на копии crm_stage09_test: 10 метрик × 3 периода diff 0, все листья JSON HTTP = service = CLI
+(кроме секунд «возраста»). Тесты: CRM 912, панель 21 (vitest). Production не тронут — выкладка и флаг
+только по отдельной команде. Контракт — DASHBOARD_CONTRACT.md, отчёт — 09_DASHBOARD_V1.md § 64.
+DONE ставит Reviewer.
 ```
 
 Цель:
@@ -1569,6 +1578,13 @@ production rollout выполнен 12.09.2026 22:02–23:00 MSK (master = e7e93
 расписание обновляет их каждый час, второй и дальнейшие циклы SUCCESS; хост выключался
 хостингом 13.09 08:51–09:42 и поднялся сам). Отчёты — `08_ANALYTICS_METRICS.md` § 59,
 `08_ANALYTICS_METRICS_FIX_01.md` § 13, `08_PRODUCTION_ROLLOUT.md` § 26. DONE ставит Reviewer.
+
+09_DASHBOARD_V1 — REVIEW (14.09.2026): дашборд руководителя реализован (backend API + раздел панели),
+проверен на копии production (сверка dashboard = metrics service = CLI, diff 0; скриншоты desktop/mobile
+на реальных данных), ветка feature/analytics-foundation (с влитым master 4349ae2 владельца). Production
+не тронут: выкладка, merge в master и включение ANALYTICS_DASHBOARD_ENABLED — по отдельной команде.
+Бой 13–14.09: расписание Метрики SUCCESS каждый час, 8/8 снимков; коммиты владельца 13a76a7..4349ae2
+выложены auto-update 13.09 19:48 MSK. Отчёт — `09_DASHBOARD_V1.md` § 64.
 ```
 
 История: `00`, `01`, `02` (с FIX_01), `03`, `04` (с FIX_01), `05` (live smoke
