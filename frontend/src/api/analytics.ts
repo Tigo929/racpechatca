@@ -12,6 +12,15 @@ import type {
   Trend,
   UtmRow,
 } from '../types/analytics';
+import type {
+  BehaviorIssues,
+  BehaviorSummary,
+  DevicesBehavior,
+  FormErrors,
+  Funnel,
+  PagesBehavior,
+  PathsBehavior,
+} from '../types/behavior';
 import { api } from './client';
 
 /**
@@ -39,6 +48,17 @@ export const analyticsApi = {
   devices: (q: PeriodQuery) => get<Slice<DeviceRow>>('devices', q),
   products: (q: PeriodQuery) => get<CrmSlice<ProductRow>>('products', q),
   salesChannels: (q: PeriodQuery) => get<CrmSlice<SalesChannelRow>>('sales-channels', q),
+};
+
+/** Поведение и воронки (этап 10): тот же префикс, флаг и правила доступа. */
+export const behaviorApi = {
+  summary: (q: PeriodQuery) => get<BehaviorSummary>('behavior/summary', q),
+  funnels: (q: PeriodQuery) => get<Funnel[]>('behavior/funnels', q),
+  errors: (q: PeriodQuery) => get<FormErrors>('behavior/errors', q),
+  pages: (q: PeriodQuery) => get<PagesBehavior>('behavior/pages', q),
+  devices: (q: PeriodQuery) => get<DevicesBehavior>('behavior/devices', q),
+  paths: (q: PeriodQuery) => get<PathsBehavior>('behavior/paths', q),
+  issues: (q: PeriodQuery) => get<BehaviorIssues>('behavior/issues', q),
 };
 
 /** Ключ кэша react-query — тот же, что ключ серверного кэша: вид + период. */

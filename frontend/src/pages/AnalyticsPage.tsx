@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { AppShell } from '../components/layout/AppShell';
-import { analyticsApi, periodKey } from '../api/analytics';
+import { analyticsApi, behaviorApi, periodKey } from '../api/analytics';
 import { usePersistentState } from '../hooks/usePersistentState';
 import type { Overview, PeriodQuery } from '../types/analytics';
 import { getErrorMessage } from '../utils/get-error-message';
@@ -30,6 +30,17 @@ import {
   UtmTable,
 } from '../features/analytics/sections';
 import { Card, KpiCard, Notice, StateBlock } from '../features/analytics/ui';
+import {
+  BehaviorHeadline,
+  DevicesBlock,
+  DirectionFunnels,
+  FormErrorsBlock,
+  FunnelCard,
+  IssuesBlock,
+  PagesBlock,
+  PathsBlock,
+} from '../features/analytics/behavior-sections';
+import { behaviorWarnings } from '../features/analytics/behavior-view';
 
 /**
  * Дашборд руководителя (этап 09). Все числа — из `AnalyticsMetricsService`
@@ -37,10 +48,11 @@ import { Card, KpiCard, Notice, StateBlock } from '../features/analytics/ui';
  * показывает, подписывает и предупреждает о неполных данных.
  */
 
-type Tab = 'overview' | 'sources' | 'products' | 'pages' | 'quality';
+type Tab = 'overview' | 'behavior' | 'sources' | 'products' | 'pages' | 'quality';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'overview', label: 'Обзор' },
+  { key: 'behavior', label: 'Поведение' },
   { key: 'sources', label: 'Источники' },
   { key: 'products', label: 'Товары' },
   { key: 'pages', label: 'Страницы' },
@@ -97,6 +109,15 @@ export function AnalyticsPage() {
   const channels = useQuery({ queryKey: ['analytics', 'sales-channels', key], queryFn: () => analyticsApi.salesChannels(period), enabled: enabled && tab === 'products', staleTime: 45_000 });
   const landings = useQuery({ queryKey: ['analytics', 'landings', key], queryFn: () => analyticsApi.landings(period), enabled: enabled && tab === 'pages', staleTime: 45_000 });
   const devices = useQuery({ queryKey: ['analytics', 'devices', key], queryFn: () => analyticsApi.devices(period), enabled: enabled && tab === 'pages', staleTime: 45_000 });
+  // Поведение (этап 10): сводка первой, остальное — параллельно, страница не блокируется.
+  const bTab = enabled && tab === 'behavior';
+  const bSummary = useQuery({ queryKey: ['analytics', 'behavior', 'summary', key], queryFn: () => behaviorApi.summary(period), enabled: bTab, staleTime: 45_000 });
+  const bFunnels = useQuery({ queryKey: ['analytics', 'behavior', 'funnels', key], queryFn: () => behaviorApi.funnels(period), enabled: bTab, staleTime: 45_000 });
+  const bErrors = useQuery({ queryKey: ['analytics', 'behavior', 'errors', key], queryFn: () => behaviorApi.errors(period), enabled: bTab, staleTime: 45_000 });
+  const bDevices = useQuery({ queryKey: ['analytics', 'behavior', 'devices', key], queryFn: () => behaviorApi.devices(period), enabled: bTab, staleTime: 45_000 });
+  const bPages = useQuery({ queryKey: ['analytics', 'behavior', 'pages', key], queryFn: () => behaviorApi.pages(period), enabled: bTab, staleTime: 45_000 });
+  const bPaths = useQuery({ queryKey: ['analytics', 'behavior', 'paths', key], queryFn: () => behaviorApi.paths(period), enabled: bTab, staleTime: 45_000 });
+  const bIssues = useQuery({ queryKey: ['analytics', 'behavior', 'issues', key], queryFn: () => behaviorApi.issues(period), enabled: bTab, staleTime: 45_000 });
 
   const o = overview.data;
   const freshness = o?.dataQuality.freshness;
@@ -173,6 +194,33 @@ export function AnalyticsPage() {
                     </Card>
                     <MoneyDetails o={o} />
                   </>
+                )}
+                {tab === 'behavior' && (
+                  <div className="space-y-4">
+                    {bSummary.isLoading ? (
+                      <StateBlock kind="loading" />
+                    ) : bSummary.isError || !bSummary.data ? (
+                      <StateBlock kind="error" message={getErrorMessage(bSummary.error)} onRetry={() => void bSummary.refetch()} />
+                    ) : (
+                      <>
+                        <BehaviorHeadline summary={bSummary.data} />
+                        {behaviorWarnings(bSummary.data.dataQuality.notes).length > 0 && (
+                          <div className="space-y-1.5">
+                            {behaviorWarnings(bSummary.data.dataQuality.notes).map((w) => (
+                              <Notice key={w.code} warning={w} />
+                            ))}
+                          </div>
+                        )}
+                        {bIssues.isError ? <StateBlock kind="error" message={getErrorMessage(bIssues.error)} onRetry={() => void bIssues.refetch()} /> : <IssuesBlock issues={bIssues.data} />}
+                        <FunnelCard funnel={bSummary.data.global} />
+                        {bFunnels.isError ? <StateBlock kind="error" message={getErrorMessage(bFunnels.error)} onRetry={() => void bFunnels.refetch()} /> : <DirectionFunnels funnels={bFunnels.data} />}
+                        {bErrors.isError ? <StateBlock kind="error" message={getErrorMessage(bErrors.error)} onRetry={() => void bErrors.refetch()} /> : <FormErrorsBlock errors={bErrors.data} />}
+                        {bDevices.isError ? <StateBlock kind="error" message={getErrorMessage(bDevices.error)} onRetry={() => void bDevices.refetch()} /> : <DevicesBlock devices={bDevices.data} />}
+                        {bPages.isError ? <StateBlock kind="error" message={getErrorMessage(bPages.error)} onRetry={() => void bPages.refetch()} /> : <PagesBlock pages={bPages.data} />}
+                        {bPaths.isError ? <StateBlock kind="error" message={getErrorMessage(bPaths.error)} onRetry={() => void bPaths.refetch()} /> : <PathsBlock paths={bPaths.data} />}
+                      </>
+                    )}
+                  </div>
                 )}
                 {tab === 'sources' && (
                   <div className="space-y-4">

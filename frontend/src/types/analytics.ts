@@ -155,13 +155,15 @@ export interface FinancialMetrics {
 
 export type FreshnessStatus = 'FRESH' | 'STALE' | 'NO_DATA';
 
+export interface Freshness {
+  lastMetrikaSyncAt: string | null;
+  metrikaDataAgeSeconds: number | null;
+  status: FreshnessStatus;
+  thresholdSeconds: number;
+}
+
 export interface DataQualityMetrics {
-  freshness: {
-    lastMetrikaSyncAt: string | null;
-    metrikaDataAgeSeconds: number | null;
-    status: FreshnessStatus;
-    thresholdSeconds: number;
-  };
+  freshness: Freshness;
   clientIdCoverageAccepted: number | null;
   clientIdCoveragePaid: number | null;
   eligibleAccepted: number;
