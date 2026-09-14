@@ -150,8 +150,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/app.module.ts": {
-    "mtime": 1789294393.6953301,
-    "ast_hash": "9192520d4ae27ce5077486124d50b1f6",
+    "mtime": 1789416349.9313276,
+    "ast_hash": "279aa421548e0e211a4ac95e70de3681",
     "semantic_hash": ""
   },
   "crm-new/src/auth/auth.controller.ts": {
@@ -320,7 +320,7 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-photo.service.ts": {
-    "mtime": 1789320332.6142075,
+    "mtime": 1789400897.9556098,
     "ast_hash": "f7ec4eea88d2b43a44196273c53662a2",
     "semantic_hash": ""
   },
@@ -455,8 +455,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/reports/reports.service.ts": {
-    "mtime": 1789294190.1252038,
-    "ast_hash": "4f1602d024b9daa4b8fb36c1d784386e",
+    "mtime": 1789400897.9576097,
+    "ast_hash": "999d440f22cbdc1556061d382624246b",
     "semantic_hash": ""
   },
   "crm-new/src/salary/dto/create-payment-by-accruals.dto.ts": {
@@ -605,13 +605,13 @@
     "semantic_hash": ""
   },
   "frontend/package.json": {
-    "mtime": 1789295216.9012864,
-    "ast_hash": "8407dbd981d47414e6269dda82f9ea12",
+    "mtime": 1789400898.0113585,
+    "ast_hash": "3e04ed5417143f07e9fb541bb6f9ab96",
     "semantic_hash": ""
   },
   "frontend/src/App.tsx": {
-    "mtime": 1789294892.9964273,
-    "ast_hash": "d22f5ac27c1c3e7a897ab0748d120617",
+    "mtime": 1789400898.0123959,
+    "ast_hash": "446ade124ee10bad5eb94e015b0b31a0",
     "semantic_hash": ""
   },
   "frontend/src/api/auth.ts": {
@@ -670,12 +670,12 @@
     "semantic_hash": ""
   },
   "frontend/src/components/layout/navigation.ts": {
-    "mtime": 1789294892.9964273,
-    "ast_hash": "bf455bca181dac1f6522acff0d737aba",
+    "mtime": 1789400898.0134363,
+    "ast_hash": "b8d920e33b5e923e58e8b3e7f6f84abb",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/CreateOrderForm.tsx": {
-    "mtime": 1789320332.6162064,
+    "mtime": 1789400898.0144787,
     "ast_hash": "9ed4934bfaa8167f0e331256177b252f",
     "semantic_hash": ""
   },
@@ -685,7 +685,7 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderDetail.tsx": {
-    "mtime": 1789320332.6172068,
+    "mtime": 1789400898.0160842,
     "ast_hash": "c2ec4130cbe8387abc58b81ec9ddbedd",
     "semantic_hash": ""
   },
@@ -835,8 +835,8 @@
     "semantic_hash": ""
   },
   "frontend/tsconfig.app.json": {
-    "mtime": 1789295252.206213,
-    "ast_hash": "23d1dc1328ed84a111ec366a2eb5f43b",
+    "mtime": 1789400898.024394,
+    "ast_hash": "6257154f2b66d2bb2535330ee5f1fd72",
     "semantic_hash": ""
   },
   "frontend/tsconfig.json": {
@@ -845,13 +845,13 @@
     "semantic_hash": ""
   },
   "frontend/tsconfig.node.json": {
-    "mtime": 1789295441.2045648,
-    "ast_hash": "8788db7f51d2d64226db1393571325d1",
+    "mtime": 1789400898.0259008,
+    "ast_hash": "f171f4ee523c5bb1e571e3c0a93d46ea",
     "semantic_hash": ""
   },
   "frontend/vite.config.ts": {
-    "mtime": 1789295441.203525,
-    "ast_hash": "47ad1be345c012031e99928a3853d396",
+    "mtime": 1789400898.0259008,
+    "ast_hash": "8bcdfe0e298038c7d7b9562f0f0a7db4",
     "semantic_hash": ""
   },
   "package.json": {
@@ -900,8 +900,8 @@
     "semantic_hash": ""
   },
   "docker-compose.prod.yml": {
-    "mtime": 1789294393.7034018,
-    "ast_hash": "558e57e4a39f3dfca9d632635dda9ed2",
+    "mtime": 1789400897.958611,
+    "ast_hash": "b48f0aebb48482888e7e04d6b4153617",
     "semantic_hash": ""
   },
   "docker-compose.yml": {
@@ -1345,12 +1345,12 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/lead-notification.spec.ts": {
-    "mtime": 1789320332.613208,
+    "mtime": 1789400897.953609,
     "ast_hash": "2c7f326f642b1751e2d5d0af13a1d6ac",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/lead-notification.ts": {
-    "mtime": 1789320332.613208,
+    "mtime": 1789400897.9546099,
     "ast_hash": "f914c222a42368ef411c983ac5eadb62",
     "semantic_hash": ""
   },
@@ -1435,8 +1435,8 @@
     "semantic_hash": ""
   },
   ".github/workflows/build-images.yml": {
-    "mtime": 1789320315.0014875,
-    "ast_hash": "564cb6309626d7ce50e88f311c5482d8",
+    "mtime": 1789400897.9456098,
+    "ast_hash": "c1838ce341e69c7cf53936a9c9e3d0de",
     "semantic_hash": ""
   },
   "deploy/README.md": {
@@ -2400,13 +2400,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/analytics/metrika-sync.ts": {
-    "mtime": 1789239781.046245,
-    "ast_hash": "37a8fce85e6c20ea71d704d24a328017",
+    "mtime": 1789415362.2364728,
+    "ast_hash": "9aafece9ed9d33e8e5ea2af375529a35",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-analytics-inspect.ts": {
-    "mtime": 1789221403.1173012,
-    "ast_hash": "2e7a7a62826c3c69a4cd686f84c8189a",
+    "mtime": 1789416391.5068717,
+    "ast_hash": "73127aa132bc66bd4b5f06bddfb28cb9",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-analytics-scheduler.service.spec.ts": {
@@ -2420,8 +2420,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-analytics-sync.service.spec.ts": {
-    "mtime": 1789221403.1199584,
-    "ast_hash": "46f453ae820d861a4053f9f1c2174c16",
+    "mtime": 1789415130.291434,
+    "ast_hash": "4fc20ca08059a49fb57d51e43dce57f8",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-analytics-sync.service.ts": {
@@ -2460,8 +2460,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-query-catalog.ts": {
-    "mtime": 1789221403.1257174,
-    "ast_hash": "2ca2314ae0b8d3518e8d27fd586fb6b3",
+    "mtime": 1789414991.2354984,
+    "ast_hash": "2cb1f96f8a0d99912a7bc5830786adda",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-report-fetcher.spec.ts": {
@@ -2470,8 +2470,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-report-fetcher.ts": {
-    "mtime": 1789221403.127316,
-    "ast_hash": "ffa7adaa9d21a324ed45870d915e91d3",
+    "mtime": 1789415000.9490833,
+    "ast_hash": "1d5726e4a821e7e2e855c5a044363930",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-sync-lock.ts": {
@@ -2480,8 +2480,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-sync-store.ts": {
-    "mtime": 1789221403.1289043,
-    "ast_hash": "a85281750c0f0a5818eaaa88701903be",
+    "mtime": 1789415019.9536662,
+    "ast_hash": "805113e95f00cdbb07c4bd973d48fab6",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/metrika-api.client.spec.ts": {
@@ -2600,13 +2600,13 @@
     "semantic_hash": ""
   },
   "docs/analytics/00_MASTER_PLAN.md": {
-    "mtime": 1789293758.072898,
-    "ast_hash": "53ff69fdc45d0710d8d20298b5125b6f",
+    "mtime": 1789418656.1408918,
+    "ast_hash": "f7fc5a4d108a03af89051a477c6c23ef",
     "semantic_hash": ""
   },
   "docs/analytics/01_CURRENT_STATE.md": {
-    "mtime": 1789293758.072898,
-    "ast_hash": "771d602c73b25c322fe979414c70b6a0",
+    "mtime": 1789418656.1418931,
+    "ast_hash": "237cd6816e09069107a008d4d97bae3e",
     "semantic_hash": ""
   },
   "docs/analytics/02_ANALYTICS_DATA_MODEL.md": {
@@ -2675,8 +2675,8 @@
     "semantic_hash": ""
   },
   "docs/analytics/07_METRIKA_TO_ANALYTICS.md": {
-    "mtime": 1789239781.055474,
-    "ast_hash": "ca52f76ea91121f5fed11a30dad75135",
+    "mtime": 1789400897.9616117,
+    "ast_hash": "38b6083ef749779ff801f6d8221c9295",
     "semantic_hash": ""
   },
   "docs/analytics/EVENT_CATALOG.md": {
@@ -2690,8 +2690,8 @@
     "semantic_hash": ""
   },
   "docs/analytics/METRIKA_QUERY_CATALOG.md": {
-    "mtime": 1789221403.1390007,
-    "ast_hash": "737d45e909d44173650592b13393dcbf",
+    "mtime": 1789418387.329283,
+    "ast_hash": "fead11302610922d9b0c26c3b6945ceb",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/metrics-report.ts": {
@@ -2710,8 +2710,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/analytics/metrics/analytics-metrics.service.ts": {
-    "mtime": 1789294275.5987213,
-    "ast_hash": "afce1975d75e707469cf0d72c42264d8",
+    "mtime": 1789400897.9496095,
+    "ast_hash": "65ca6e6ca6b501c15504bf681c77d491",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/metrics/analytics-period.spec.ts": {
@@ -2725,18 +2725,18 @@
     "semantic_hash": ""
   },
   "crm-new/src/analytics/metrics/metrics-compute.spec.ts": {
-    "mtime": 1789294468.5969348,
-    "ast_hash": "6e3eca80caf2b7926a27c71d88e8aceb",
+    "mtime": 1789400897.9506092,
+    "ast_hash": "f202de3e57d8dffdce1e81d08ea1f216",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/metrics/metrics-compute.ts": {
-    "mtime": 1789294222.6340394,
-    "ast_hash": "b476255178afd1a0123002281ee5a46f",
+    "mtime": 1789400897.9516098,
+    "ast_hash": "74a7c021de5236bf5f2de5e7aac0f216",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/metrics/metrics-contract.ts": {
-    "mtime": 1789294222.6330395,
-    "ast_hash": "f44de34dba12f56ab0e201319c8b2085",
+    "mtime": 1789400897.9526136,
+    "ast_hash": "c14c55c159502f9cf039ca3d964d97a3",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/metrics/order-lifecycle.spec.ts": {
@@ -2760,138 +2760,358 @@
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-period-snapshot.service.spec.ts": {
-    "mtime": 1789239781.0488596,
-    "ast_hash": "932f278bae8a117c611e0838ed6e7141",
+    "mtime": 1789416391.4522257,
+    "ast_hash": "b15c15e741dcd48ccc5cc49c2d145923",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-period-snapshot.service.ts": {
-    "mtime": 1789239781.0493765,
-    "ast_hash": "730ff20316a894f3c9a9718547c8b6dd",
+    "mtime": 1789415189.4153538,
+    "ast_hash": "04f05252e068c4e968cbff0a8c7844f9",
     "semantic_hash": ""
   },
   "docs/analytics/08_ANALYTICS_METRICS.md": {
-    "mtime": 1789293758.0598915,
-    "ast_hash": "263882bba738964cb7853d7f59611e9b",
+    "mtime": 1789400897.962613,
+    "ast_hash": "98654e9707da6a844141eb531b121a55",
     "semantic_hash": ""
   },
   "docs/analytics/METRICS_DICTIONARY.md": {
-    "mtime": 1789293758.0738983,
-    "ast_hash": "11c0a4037eadd292cfbf3e11f6013d8a",
+    "mtime": 1789400897.9666102,
+    "ast_hash": "7f06302d90e20486e4a488b534c767de",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderContact.tsx": {
-    "mtime": 1789320332.6162064,
+    "mtime": 1789400898.0150492,
     "ast_hash": "5227fee9656c6721ff86f9296581a376",
     "semantic_hash": ""
   },
   "docs/analytics/08_ANALYTICS_METRICS_FIX_01.md": {
-    "mtime": 1789293758.0658996,
-    "ast_hash": "128f7498a394b8324c751e65d453e554",
+    "mtime": 1789400897.962613,
+    "ast_hash": "649df0a4ae4cc22e78ffcb1d5bd7e3e0",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/dashboard/analytics-dashboard.controller.spec.ts": {
-    "mtime": 1789294468.4184544,
-    "ast_hash": "5ba64bacff381c360b936c57d1fdf89d",
+    "mtime": 1789400897.9466126,
+    "ast_hash": "794cebf4a6a36e26d1ebc5e6344a0bb9",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/dashboard/analytics-dashboard.controller.ts": {
-    "mtime": 1789294491.768597,
-    "ast_hash": "fbde4577b929fee16b14267a32e801da",
+    "mtime": 1789400897.9466126,
+    "ast_hash": "29f778c7b4db2d071d8dfcb0ef2f18d6",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/dashboard/analytics-dashboard.module.ts": {
-    "mtime": 1789294414.9743128,
-    "ast_hash": "e06f5d2772a81b5fb3ef92710028225b",
+    "mtime": 1789400897.9476128,
+    "ast_hash": "86c145f06eddaa5cd2808593d785eb7b",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/dashboard/dashboard-cache.ts": {
-    "mtime": 1789294303.5178702,
-    "ast_hash": "0d33b6da1691842c9d3033920a367934",
+    "mtime": 1789400897.9486084,
+    "ast_hash": "9dd42b00c41ffdea42554611bdeef755",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/dashboard/dashboard-period.ts": {
-    "mtime": 1789294468.4694028,
-    "ast_hash": "eab1194e028c40b903e20ba02bcff414",
+    "mtime": 1789400897.9486084,
+    "ast_hash": "82499ec809b29ac9bb5f65313e3ab796",
     "semantic_hash": ""
   },
   "frontend/src/api/analytics.ts": {
-    "mtime": 1789294589.871137,
-    "ast_hash": "05c46d3b47c6cf3c8227956c49ca3993",
+    "mtime": 1789416558.9021728,
+    "ast_hash": "bdbfccee547f6f80fc43c5b424fd9013",
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/PeriodSelector.tsx": {
-    "mtime": 1789294732.642781,
-    "ast_hash": "f9287d3d848c04350f7195edd69e2ce1",
+    "mtime": 1789400898.0166028,
+    "ast_hash": "2b43cf62e4bfca4e8cf5737e127ffc6d",
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/TrendChart.tsx": {
-    "mtime": 1789320207.0669224,
-    "ast_hash": "c04b12c6e11e1a84b1eb35bc2c1dd314",
+    "mtime": 1789400898.0176394,
+    "ast_hash": "216ce364a14662eb9bc65c424d08cf11",
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/__tests__/analytics-view.test.ts": {
-    "mtime": 1789295252.2876494,
-    "ast_hash": "c990c6bf2c92716d3072145cc94f6b01",
+    "mtime": 1789400898.018715,
+    "ast_hash": "ac328de6406e73e7790de3732a8ef88f",
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/__tests__/components.test.tsx": {
-    "mtime": 1789295339.9930177,
-    "ast_hash": "52b04705e26421fd97d34741785a113b",
+    "mtime": 1789400898.0192523,
+    "ast_hash": "2f4daace78d59e58c972cb1219b90de3",
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/__tests__/fixtures.ts": {
-    "mtime": 1789295405.0673645,
-    "ast_hash": "50960849f76dfe7e90f7b64acf20c16e",
+    "mtime": 1789400898.0203013,
+    "ast_hash": "24e40cb3ba126bdf056153e9f312e04f",
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/analytics-view.ts": {
-    "mtime": 1789318566.3618808,
-    "ast_hash": "7f2f15a5f2d8b0965c47659382b4c604",
+    "mtime": 1789400898.02082,
+    "ast_hash": "64b58ac60417532d1889807f9f36dcee",
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/sections.tsx": {
-    "mtime": 1789319093.4512403,
-    "ast_hash": "5c04cb37e6634add7948e1eb6cc352ec",
+    "mtime": 1789400898.0213873,
+    "ast_hash": "91dd5a989d1eb475d5a0e3dcb1180a2b",
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/ui.tsx": {
-    "mtime": 1789294714.1574118,
-    "ast_hash": "5dacbd0ddab10d6e34b51dcd86b67f0d",
+    "mtime": 1789400898.0223966,
+    "ast_hash": "22eb667b683ed0bdd6c6b08a70d54b67",
     "semantic_hash": ""
   },
   "frontend/src/pages/AnalyticsPage.tsx": {
-    "mtime": 1789319093.463275,
-    "ast_hash": "560b4a1b19a2f3ce37e88910c6b68182",
+    "mtime": 1789416738.7018802,
+    "ast_hash": "65b7b2b87aeb45ed2825307fcb09ea30",
     "semantic_hash": ""
   },
   "frontend/src/test-setup.ts": {
-    "mtime": 1789295216.9335313,
-    "ast_hash": "b6047cb48430aab17d0c9a3cec1e4bb5",
+    "mtime": 1789400898.0233922,
+    "ast_hash": "2b9a2baf78ecc9cb14fc15edd668f0a9",
     "semantic_hash": ""
   },
   "frontend/src/types/analytics.ts": {
-    "mtime": 1789294575.567935,
-    "ast_hash": "311dc63ce3480d80efb75feafba55427",
+    "mtime": 1789416763.1294484,
+    "ast_hash": "ef08e56407eefa6684abe6315a37ea4a",
     "semantic_hash": ""
   },
   "frontend/vitest.config.ts": {
-    "mtime": 1789295441.2040431,
-    "ast_hash": "41ddbb4dd2e888a86f23608898609e39",
+    "mtime": 1789400898.0259008,
+    "ast_hash": "893195855823641d21f68c46add30c06",
     "semantic_hash": ""
   },
   "docs/analytics/08_PRODUCTION_ROLLOUT.md": {
-    "mtime": 1789293758.0538933,
-    "ast_hash": "0f7062a5d35cc6b3f885aa135602190d",
+    "mtime": 1789400897.9636133,
+    "ast_hash": "4f9dab26d0687c94c8832e992132e211",
     "semantic_hash": ""
   },
   "docs/analytics/09_DASHBOARD_V1.md": {
-    "mtime": 1789294095.1543436,
-    "ast_hash": "b734c23fcf82010d11663b99b25d2bb2",
+    "mtime": 1789413404.954897,
+    "ast_hash": "a86a990b82f272bb1a9fb4fc46a78624",
     "semantic_hash": ""
   },
   "docs/analytics/DASHBOARD_CONTRACT.md": {
-    "mtime": 1789320292.3633943,
-    "ast_hash": "32df90a6b38eb637277e35077391d638",
+    "mtime": 1789418387.3302848,
+    "ast_hash": "f5c8c97092b11122a8ea572c5e4c96be",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/behavior/behavior-compute.spec.ts": {
+    "mtime": 1789417960.8325539,
+    "ast_hash": "203088dc9d86f963b24590c17185f97f",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/behavior/behavior-compute.ts": {
+    "mtime": 1789417932.0445876,
+    "ast_hash": "474b2ace5ccd66b4ef3b3ee718cca85d",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/behavior/behavior-contract.ts": {
+    "mtime": 1789416391.2517452,
+    "ast_hash": "099779ec43faea358ee7615af815ad44",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/behavior/behavior-dashboard.controller.spec.ts": {
+    "mtime": 1789416444.1976106,
+    "ast_hash": "e5febf473487a608eee607afe4c81277",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/behavior/behavior-dashboard.controller.ts": {
+    "mtime": 1789416391.2823162,
+    "ast_hash": "c9403edf91b0800399689cd0ddef5a6c",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/behavior/behavior-metrics.service.ts": {
+    "mtime": 1789416391.3103147,
+    "ast_hash": "b4d9b42987a67b389b655639998e7876",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/behavior/behavior-rules.ts": {
+    "mtime": 1789415551.2789514,
+    "ast_hash": "74f3a7eedfd33a49a3f807c846f04cd5",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/behavior/behavior.module.ts": {
+    "mtime": 1789416349.7650876,
+    "ast_hash": "dab406ff9701e3e34313b1861181870a",
+    "semantic_hash": ""
+  },
+  "crm-new/src/metrika/analytics/metrika-behavior-datasets.spec.ts": {
+    "mtime": 1789416391.3553183,
+    "ast_hash": "13636357f2f66190dd38122273319e07",
+    "semantic_hash": ""
+  },
+  "crm-new/src/metrika/analytics/metrika-behavior-goals.ts": {
+    "mtime": 1789415524.6105697,
+    "ast_hash": "64f867219a0875c0d9160e8f9fdbf774",
+    "semantic_hash": ""
+  },
+  "frontend/src/features/analytics/__tests__/behavior.test.tsx": {
+    "mtime": 1789416873.5113034,
+    "ast_hash": "f981eb705e20f58bbab96e1d0b2a12d5",
+    "semantic_hash": ""
+  },
+  "frontend/src/features/analytics/behavior-sections.tsx": {
+    "mtime": 1789417790.5221615,
+    "ast_hash": "dee1ac804a0c9925ae906d1a8bbe964a",
+    "semantic_hash": ""
+  },
+  "frontend/src/features/analytics/behavior-view.ts": {
+    "mtime": 1789416595.9555385,
+    "ast_hash": "0db565620e650e082e1ef97acf2fac8a",
+    "semantic_hash": ""
+  },
+  "frontend/src/types/behavior.ts": {
+    "mtime": 1789416546.6740115,
+    "ast_hash": "1cc4fa009e55ae3b97585bd0a983590a",
+    "semantic_hash": ""
+  },
+  "docs/analytics/09_PRODUCTION_ROLLOUT.md": {
+    "mtime": 1789413404.9488962,
+    "ast_hash": "9d5ddd64cd2adb7789f5ca2944325de6",
+    "semantic_hash": ""
+  },
+  "docs/analytics/10_BEHAVIOR_AND_FUNNELS.md": {
+    "mtime": 1789418656.139891,
+    "ast_hash": "8c03bd933d9cfd0a04cb8e9a017602af",
+    "semantic_hash": ""
+  },
+  "docs/analytics/BEHAVIOR_DATA_MODEL.md": {
+    "mtime": 1789418300.696118,
+    "ast_hash": "230b02723cf42241d154fefaa02e6405",
+    "semantic_hash": ""
+  },
+  "docs/analytics/BEHAVIOR_EVENT_CONTRACT.md": {
+    "mtime": 1789415524.6115725,
+    "ast_hash": "6017ad4ca8fb24c2e0516f90de7bc664",
+    "semantic_hash": ""
+  },
+  "docs/analytics/BEHAVIOR_RULES.md": {
+    "mtime": 1789418341.9158251,
+    "ast_hash": "b866ff180cb5b128b1534566b792a6c4",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/09_dashboard_v1/desktop-overview-30d.png": {
+    "mtime": 1789400897.9706092,
+    "ast_hash": "878956ad4d5b408622fddd19ff914248",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/09_dashboard_v1/desktop-overview-7d.png": {
+    "mtime": 1789400897.9746087,
+    "ast_hash": "69e94904e2b2b72715918758d6ab0115",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/09_dashboard_v1/desktop-overview-precounter.png": {
+    "mtime": 1789400897.9775777,
+    "ast_hash": "bc14a532d61e4d3b0be7bcf94d7fd9b9",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/09_dashboard_v1/desktop-overview-today.png": {
+    "mtime": 1789400897.9801989,
+    "ast_hash": "b2d19b5b31d3f18637fd273b65f24532",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/09_dashboard_v1/desktop-pages-7d.png": {
+    "mtime": 1789400897.9828062,
+    "ast_hash": "d669ba25992ca0cf34d1cdb05bfe15c0",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/09_dashboard_v1/desktop-products-7d.png": {
+    "mtime": 1789400897.9849112,
+    "ast_hash": "c345ee231978999d302acead4348a7c9",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/09_dashboard_v1/desktop-quality-7d.png": {
+    "mtime": 1789400897.9871948,
+    "ast_hash": "b26e9d05101341959c9d49619cd7e91b",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/09_dashboard_v1/desktop-sources-7d.png": {
+    "mtime": 1789400897.990201,
+    "ast_hash": "11ea008b93678bc9154f985d07713e48",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/09_dashboard_v1/desktop-trend-profit.png": {
+    "mtime": 1789400897.9912012,
+    "ast_hash": "c2332cb8e1221fb021d45eeaceb99c2a",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/09_dashboard_v1/mobile-overview-7d-viewport.png": {
+    "mtime": 1789400897.993201,
+    "ast_hash": "e6b027a684a0de68254ebd61c47ce033",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/09_dashboard_v1/mobile-overview-7d.png": {
+    "mtime": 1789400897.9982095,
+    "ast_hash": "eb76bbafc61f6f203bcdd82e4162f6b7",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/09_dashboard_v1/mobile-sources-7d.png": {
+    "mtime": 1789400898.001208,
+    "ast_hash": "3cf2278fcb27219fc6f8fa250be7611f",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/09_dashboard_v1/state-disabled.png": {
+    "mtime": 1789400898.0032074,
+    "ast_hash": "e29a536148e0dfa5b1088ae597e61e7f",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/09_dashboard_v1/state-empty-sources.png": {
+    "mtime": 1789400898.0042078,
+    "ast_hash": "9f89c37cb22f82bf3773d36e530de9e7",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/09_dashboard_v1/state-error.png": {
+    "mtime": 1789400898.0062103,
+    "ast_hash": "2a39609d430504034a2964cfa4087883",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/09_dashboard_v1/state-loading.png": {
+    "mtime": 1789400898.007208,
+    "ast_hash": "c222ea143958c8eab3acdbd1fb5c7e1a",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/10_behavior/behavior-desktop-30d.png": {
+    "mtime": 1789418244.4723952,
+    "ast_hash": "8588a97dbf31318565301f5875e00d79",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/10_behavior/behavior-desktop-7d.png": {
+    "mtime": 1789418244.4848568,
+    "ast_hash": "1f236b4d789810f6095443a8e961e5fd",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/10_behavior/behavior-desktop-pre-goals.png": {
+    "mtime": 1789418244.4968624,
+    "ast_hash": "4b88e3daf3b2f680470dce273e3708ac",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/10_behavior/behavior-devices-7d.png": {
+    "mtime": 1789418244.5080712,
+    "ast_hash": "d4b1d90611d11c04a9b9cbd290dc5ad2",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/10_behavior/behavior-errors-7d.png": {
+    "mtime": 1789418244.520071,
+    "ast_hash": "b642b7972609afdfa6e47a87d4ead28f",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/10_behavior/behavior-funnel-7d.png": {
+    "mtime": 1789418244.5260708,
+    "ast_hash": "b5c45a932689b1b3123792502ee95fd7",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/10_behavior/behavior-issues-7d.png": {
+    "mtime": 1789418244.5380723,
+    "ast_hash": "13e55d0144bd224afdd62ec19339a583",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/10_behavior/behavior-loading.png": {
+    "mtime": 1789418244.5490706,
+    "ast_hash": "4db5a55d5b30d510a780ddbea9f93c55",
+    "semantic_hash": ""
+  },
+  "docs/analytics/screenshots/10_behavior/behavior-mobile-7d.png": {
+    "mtime": 1789418244.560071,
+    "ast_hash": "fb7df1759867e232318c7424177f9777",
     "semantic_hash": ""
   }
 }

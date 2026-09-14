@@ -370,6 +370,22 @@ CANCELLED, PROBLEM — вне цепочки
 | Бой 13–14.09 (read-only) | расписание Метрики работает (hourly SUCCESS, 8/8 снимков); auto-update 13.09 19:48–19:49 MSK выложил коммиты владельца 13a76a7..4349ae2 (backend + frontend healthy); 14.09 14:42 разовая ошибка pull из реестра — обновлять было нечего |
 
 ---
+# 5i. Поведение и воронки — этап 10 (14.09.2026; в production НЕ выложен)
+
+| Факт | Подробности |
+|---|---|
+| Аудит событий | `BEHAVIOR_EVENT_CONTRACT.md`: 34 события реестра сайта → 14 с целями в счётчике, 10 отправляются без целей (теряются), 9 объявлены и не вызываются (`canvas_upload_click` — в несмонтированном компоненте); `form_started` (контакты) и `add_tshirt_lead` без дедупликации; серверная ошибка отправки есть только у футболок; счётчик грузится лишь при согласии на cookie; параметры целей — параметры визита без PII |
+| DATA GAPS | G1 мёртвые события (шаги загрузки/качества/краёв/позиции принта не существуют на сайте); G2 нет целей для `submit_tshirt_order`, `view_product`, `canvas_size_select` и др.; G3 нет события серверной ошибки для фото/холста/контактов; G4 дубли событий → единица шага — целевые визиты; G5 последовательностей нет в Reports API (Logs API — отдельное решение); G6 `form_error` по product×field не разложить; G7 уникальные шага только снимком для пресетов; G8 телефоны 08–14.09: 64 визита, 0 начал формы |
+| Данные | миграция `20260914200000_metrika_behavior_tables`: `MetrikaDailyBehaviorDevice`, `MetrikaDailyBehaviorLanding`, `MetrikaDailyVisitParam` (белый список 12 ключей), `MetrikaDailyPathPage` (entry_lead / viewed_lead / exit_all / exit_nolead), `MetrikaDailyDeviceEngagement` (аддитивные bounces / pageviews / seconds), `MetrikaPeriodGoalSnapshot`; наборы в каталоге этапа 07 с `filters`; +12 запросов на тик и +8 на снимки (`BEHAVIOR_DATA_MODEL.md`) |
+| Слой метрик и API | `crm-new/src/analytics/behavior/`: контракт, пороги (`behavior-rules.ts`), чистый `behavior-compute.ts`, `BehaviorMetricsService` (13 groupBy на период), `GET /analytics/dashboard/behavior/{status,summary,funnels,errors,pages,devices,paths,issues}` — ADMIN, флаг `ANALYTICS_DASHBOARD_ENABLED`, кэш 45 с; даты доступности 2026-09-10 / 2026-09-12 |
+| Воронки | global (визит → начали форму → отправили → заявка), photo / canvas / contact (шаг 1 по параметрам визита), tshirt (4 цели); единицы: события / целевые визиты / посетители периода; неизмеримые шаги — `not_measured` с причиной; период до целей — `insufficient_data`; сравнение только с периодом после даты доступности |
+| Правила | `BEHAVIOR_RULES.md`: FUNNEL_DROPOFF (≥ 90 % при входе ≥ 20; не для «визит → первое действие»), DEVICE_GAP (оба ≥ 30 визитов; ≤ 0,5 / ≤ 0,25), FORM_ERROR_SPIKE (≥ 5; ×2 / ×3 или ≥ 30 % от начавших), LANDING_UNDERPERFORMANCE (≥ 30 визитов, ожидаемых ≥ 3, ≤ 50 % средней), LEAD_RATE_ANOMALY (оба ≥ 30, |Δ| ≥ 50 %); карточки FACT / HYPOTHESIS / RECOMMENDATION, `causality: NOT_ESTABLISHED`, пропуски с причиной |
+| UI | вкладка «Поведение» в `/crm/analytics`: сводка, «Требует внимания», общая воронка, направления, ошибки форм, устройства (+ вовлечённость, текст разрыва), страницы входа, пути-агрегаты; состояния loading/empty/error/not_measured/LOW_SAMPLE; mobile без горизонтального скролла |
+| Сверка (копия `crm_stage10_test`, 14.09 23:15 MSK, live sync 13.08–14.09, удалена) | HTTP = service по всем листьям JSON (797 / 1037 / 1352, diff 0); HTTP = независимый SQL по таблицам-источникам 25 / 31 / 31 метрик diff 0; Σ по устройствам = итогам; idempotency повтора — без дублей и дрейфа; `metrika:sync verify` 12/12 |
+| Цифры боя 08–14.09 | 145 визитов / 94 посетителя; форму начали в 13 визитах (25 событий, 3 посетителя), отправили 4, заявок 4 — все на компьютерах; телефоны 64 визита / 0 начал формы (DEVICE_GAP CRITICAL как наблюдение); ошибок формы 1 визит (3 события, поле «Контакт»); футболки 11 → 2 → 1 → 0; фото: 32 визита с формой → 2 заявки |
+| Тесты | CRM 955 (86 suites), панель 30 (vitest); build OK |
+
+---
 # 6. Что уже готово из целевой картины
 
 - Сайт собирает всё нужное для атрибуции и доставляет в CRM — данные

@@ -22,7 +22,9 @@ sort:            по измерению даты (детерминирован�
 attribution:     lastsign — «последний значимый переход» (источники, UTM); названо явно в имени измерения
 accuracy:        политика «по умолчанию, при выборке — повтор с full» (см. ниже)
 replacement:     за запрошенный период строки набора удаляются и вставляются заново в одной транзакции
-live verified:   12.09.2026 — все семь наборов, `npm run metrika:sync -- verify`, sampled=false
+live verified:   12.09.2026 — все семь наборов, `npm run metrika:sync -- verify`, sampled=false;
+                 14.09.2026 — 12/12 наборов вместе с пятью наборами этапа 10
+filters:         поле `filters` запроса (сегмент Reports API) — только у наборов этапа 10
 ```
 
 ## Политика точности (accuracy / sampling)
@@ -189,6 +191,74 @@ live API verified: yes (12.09.2026)
 
 ---
 
+## Наборы этапа 10 — поведение
+
+Подробно — `BEHAVIOR_DATA_MODEL.md`; поведенческие цели — `metrika-behavior-goals.ts` (14 идентификаторов
+JS-событий, номера ищутся через Management API; цель без события в счётчике пропускается).
+
+### behaviorDevices — `MetrikaDailyBehaviorDevice`
+
+```text
+dimensions:  ym:s:date, ym:s:deviceCategory
+metrics:     ym:s:visits (якорь) + для каждой поведенческой цели: goal<id>reaches, goal<id>visits, goal<id>users
+grain:       день × устройство × goalId;  unique key: (date, deviceRaw, goalId)
+запросов:    ⌈целей / 6⌉ — сейчас 3
+live API verified: yes (14.09.2026)
+```
+
+### behaviorLandings — `MetrikaDailyBehaviorLanding`
+
+```text
+dimensions:  ym:s:date, ym:s:startURLPath
+metrics:     как у behaviorDevices
+grain:       день × страница входа × goalId;  unique key: (date, landingPath, goalId); normalizedPath — как у landings
+запросов:    3
+live API verified: yes (14.09.2026)
+```
+
+### behaviorParams — `MetrikaDailyVisitParam`
+
+```text
+dimensions:  ym:s:date, ym:s:deviceCategory, ym:s:paramsLevel1, ym:s:paramsLevel2
+metrics:     ym:s:visits, ym:s:users, ym:s:paramsNumber
+filters:     ym:s:paramsLevel1=.('field','product','form','productSlug','intent','format','size','value','location','channel','kind','topic')
+grain:       день × устройство × ключ × значение;  unique key: (date, deviceRaw, paramKey, paramValue)
+запросов:    1
+live API verified: yes (14.09.2026) — параметры целей Метрика хранит как параметры визита
+```
+
+### behaviorPaths — `MetrikaDailyPathPage`
+
+```text
+4 запроса, kind в порядке PATH_PAGE_KINDS:
+  entry_lead   dimensions ym:s:date, ym:s:startURLPath;  metrics ym:s:visits, ym:s:users;  filters ym:s:goal<lead>IsReached=='Yes'
+  viewed_lead  dimensions ym:pv:date, ym:pv:URLPath;     metrics ym:pv:pageviews, ym:pv:users; filters ym:s:goal<lead>IsReached=='Yes'
+  exit_all     dimensions ym:s:date, ym:s:endURLPath;    metrics ym:s:visits, ym:s:users
+  exit_nolead  то же с filters ym:s:goal<lead>IsReached=='No'
+grain:       день × kind × путь;  unique key: (date, kind, pagePath)
+live API verified: yes (14.09.2026) — фильтр по цели визита с измерением ym:pv:URLPath работает
+```
+
+### behaviorEngagement — `MetrikaDailyDeviceEngagement`
+
+```text
+dimensions:  ym:s:date, ym:s:deviceCategory
+metrics:     ym:s:visits, ym:s:bounces, ym:s:pageviews, ym:s:sumVisitDurationSeconds   (только аддитивные)
+grain:       день × устройство;  unique key: (date, deviceRaw)
+запросов:    1
+live API verified: yes (14.09.2026)
+```
+
+### Снимок посетителей по целям — `MetrikaPeriodGoalSnapshot`
+
+```text
+metrics:     ym:s:visits + goal<id>users × 14 поведенческих целей, без измерений, за весь период
+когда:       вторым запросом при каждом обновлении снимка пресета (MetrikaPeriodSnapshotService)
+unique key:  (periodStart, periodEnd, goalId)
+```
+
+---
+
 ## Реестр канонических целей
 
 Правда — Management API; в коде только правила поиска (`CANONICAL_GOAL_RULES`)
@@ -225,7 +295,8 @@ lock:           pg_try_advisory_lock(700701) в отдельном соедин�
                 занято → LOCKED, ничего не пишется
 journal:        MetrikaSyncRun — строка на набор и период; RUNNING → SUCCESS | FAILED;
                 зависшие RUNNING старше часа закрываются как FAILED на следующем запуске
-requests/run:   11 на полный запуск (1 список целей + 10 отчётов) — 24 запуска в сутки ≈ 270 запросов
+requests/run:   этап 07 — 11 на полный запуск (1 список целей + 10 отчётов); с этапом 10 — 23 (+12 отчётов),
+                плюс снимки 16 (8 счётчика + 8 по целям) на тик — 24 запуска в сутки ≈ 940 запросов
 CLI:            npm run metrika:sync -- --from YYYY-MM-DD --to YYYY-MM-DD [--dataset …]
                 npm run metrika:sync -- status | verify | reconcile | quality | coverage
 ```

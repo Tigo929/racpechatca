@@ -441,6 +441,28 @@ acceptedOrders, paidOrders, realizedRevenue, cogs, netProfit, paidAov.
 
 ---
 
+# 11a. Поведение (этап 10) — `/analytics/dashboard/behavior/*`
+
+Те же guards (только ADMIN), тот же флаг `ANALYTICS_DASHBOARD_ENABLED` (выключен → 404, кроме
+`behavior/status`), тот же разбор периода и кэш 45 с (ключ `behavior-<kind>:<from>:<to>:<kind периода>`).
+Контракт — `crm-new/src/analytics/behavior/behavior-contract.ts` (зеркало `frontend/src/types/behavior.ts`),
+правила — `BEHAVIOR_RULES.md`, данные — `BEHAVIOR_DATA_MODEL.md`, события — `BEHAVIOR_EVENT_CONTRACT.md`.
+
+| Путь | Метод сервиса | Ответ |
+|---|---|---|
+| `GET …/behavior/status` | — | `enabled`, `behaviorGoalsAvailableFrom`, `directionGoalsAvailableFrom`, `minSampleVisits`, `thresholds` |
+| `GET …/behavior/summary` | `getSummary` | `BehaviorSummary` — общая воронка, headline (визиты / начали / отправили / заявка / ошибки), разрыв устройств, счётчик карточек, качество |
+| `GET …/behavior/funnels` | `getFunnels` | `Funnel[]` — global, photo, tshirt, canvas, contact |
+| `GET …/behavior/errors` | `getErrors` | `FormErrors` — итоги, по полям, устройствам, входам |
+| `GET …/behavior/pages` | `getPages` | `PagesBehavior` — страницы входа × шаги, порог выборки |
+| `GET …/behavior/devices` | `getDevices` | `DevicesBehavior` — шаги, вовлечённость, `gap` |
+| `GET …/behavior/paths` | `getPaths` | `PathsBehavior` — агрегаты входов/просмотров/выходов + `dataGap` |
+| `GET …/behavior/issues` | `getIssues` | `BehaviorIssues` — карточки FACT / HYPOTHESIS / RECOMMENDATION, `skipped`, `thresholds` |
+
+Единицы шага воронки: `visits` (целевые визиты — канон), `events` (достижения), `users` (посетители
+периода из снимка или `null`). Шаг без цели в счётчике — `availability: 'not_measured'` с `note`; период до
+даты доступности — `insufficient_data`. UI: вкладка «Поведение» (`?tab=behavior`).
+
 # 12. Чего в V1 нет (намеренно)
 
 - Фильтров по источнику/каналу/товару, комбинированных срезов.

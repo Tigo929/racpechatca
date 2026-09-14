@@ -2,7 +2,11 @@
 
 ## STATUS
 
-`TODO`
+`REVIEW` — реализовано 14.09.2026 в `feature/analytics-foundation`: аудит событий
+(`BEHAVIOR_EVENT_CONTRACT.md`), пять наборов Метрики и снимок посетителей по целям
+(`BEHAVIOR_DATA_MODEL.md`), сервис/API/раздел «Поведение», правила «Требует внимания»
+(`BEHAVIOR_RULES.md`); сверка на копии production diff 0. Production не тронут. Отчёт — § 32.
+DONE ставит Reviewer.
 
 ## STAGE
 
@@ -800,3 +804,348 @@ Stage 10 может быть принят только если:
 > Все выводы разделяй на FACT / HYPOTHESIS / RECOMMENDATION. Никаких причинных утверждений без доказательств.
 >
 > Production не изменяй. После реализации верни полный EXECUTOR_REPORT по формату Stage 10.
+
+---
+
+# 32. EXECUTOR_REPORT — 14.09.2026
+
+## RESULT
+
+```text
+READY_FOR_REVIEW
+```
+
+Реализация выполнена и проверена на свежей копии production-базы (`crm_stage10_test`, снята 14.09.2026
+23:15 MSK) с живой синхронизацией Reports API (read-only) за 13.08–14.09. Production не изменялся:
+ни деплоя, ни env, ни миграции, ни изменений событий сайта. Все read-only проверки боя — Management API
+(список целей), Reports API (пробы), чтение таблиц.
+
+## GIT
+
+```text
+repo:               racpechatca, ветка feature/analytics-foundation (master не тронут, = be591d3 production)
+commits:            85e1be3 docs: ТЗ этапа 10 в репозитории
+                    2e49dad feat: аудит событий, наборы Метрики, воронки и правила (backend + миграция)
+                    2bcf9b2 feat: раздел «Поведение» в /crm/analytics (frontend)
+                    01960ec fix: правило отвала без перехода «визит → первое действие»; мобильная вёрстка; скриншоты
+                    + этот коммит: BEHAVIOR_DATA_MODEL.md, BEHAVIOR_RULES.md, каталог, контракт, отчёт, master plan, current state
+push:               origin/feature/analytics-foundation
+web-photo:          не менялся (аудит по origin/feature/cms-admin = 8a9b33c, production-образ web 14.09 18:20)
+```
+
+## EVENT AUDIT
+
+`BEHAVIOR_EVENT_CONTRACT.md` — по production-коду сайта и 21 цели счётчика 111569944 (Management API 14.09 22:29 MSK):
+
+```text
+событий в реестре METRIKA_GOALS:            34
+вызываются в коде и имеют цель:             14  (form_started, lead_submit_attempt, lead_submitted, form_error,
+                                                lead_submitted_photo/canvas/tshirt, view_custom_tshirt, choose_size,
+                                                add_tshirt_lead, submit_tshirt_order_success/_error, messenger_click, phone_click)
+вызываются, но цели в счётчике нет:         10  (view_tshirt_catalog, view_product, choose_shirt_type, choose_color,
+                                                submit_tshirt_order, canvas_format_select, canvas_size_select,
+                                                canvas_send_photo_later, reviews_source_click, canvas_upload_click*)
+объявлены, но не вызываются:                 9  (select_product, configure_tshirt, choose_print_position, upload_print,
+                                                cross_sell_click, canvas_upload_success, canvas_quality_warning,
+                                                canvas_edge_select, canvas_extra_open); *canvas_upload_click — в несмонтированном компоненте
+без дедупликации (событий > визитов):        form_started у контактов, add_tshirt_lead у футболок/мерча
+серверная ошибка без события:                фото, холст, контакты (только у футболок есть submit_tshirt_order_error)
+параметры целей:                             sanitizeGoalParams режет name/phone/email/contactValue/comment/note/address;
+                                             Метрика хранит их как параметры визита — доступны Reports API
+фильтр согласия на cookie:                   счётчик грузится только при accepted — все поведенческие данные по согласившимся
+документация этапа 04 vs код:                расхождений в именах нет; шаги «upload/quality/edge/print position» из ТЗ
+                                             этапа 10 в коде не существуют
+```
+
+## DATA GAPS
+
+```text
+G1  9 мёртвых событий → шаги «позиция принта», «загрузка макета/фото», «предупреждение о качестве», «края»
+    не измеримы и на сайте не существуют (холст без загрузки). Ничего не добавлять; удалить ключи — задача сайта.
+G2  10 событий без целей → нет шагов каталог→карточка и крой/цвет у футболок, попытки отправки у футболок,
+    формат→размер у холста. Минимальное расширение: JS-цели в счётчике (владелец): submit_tshirt_order,
+    view_product, canvas_size_select. Задним числом не восстановятся — availableFrom = дата создания.
+G3  нет события серверной ошибки у фото/холста/контактов → предложение lead_submit_error{product, code} (правка сайта, gate).
+G4  дублирующиеся события → единица шага — целевые визиты; события подписаны отдельно.
+G5  последовательности страниц/событий в визите Reports API не отдаёт → пути V1 только агрегатами;
+    полные пути — Logs API (объём ≈ 150 визитов/1000 просмотров в день, ≈ 5–10 МБ CSV/мес, задержка ≈ сутки,
+    retention 90 дней, без URL с etext/ybaip) — только по отдельному решению Reviewer, НЕ включён.
+G6  form_error одновременно по product и field не разложить (параметры визита — дерево двух веток) →
+    по полям суммарно и по устройствам; по направлениям — через страницу входа визита.
+G7  уникальные посетители шага за произвольные даты — нет; для 8 пресетов — снимок (реализовано).
+G8  телефоны 08–14.09: 64 визита, 0 начал формы — факт для правила 11.2; причина не установлена.
+```
+
+## DATA MODEL
+
+`BEHAVIOR_DATA_MODEL.md`; миграция `20260914200000_metrika_behavior_tables` (сгенерирована `prisma migrate diff`,
+применена на копии `migrate deploy` → 78 миграций up to date; на production не применялась):
+
+```text
+MetrikaDailyBehaviorDevice    день × устройство × цель      reaches / goalVisits / convertedUsers   uq (date, deviceRaw, goalId)
+MetrikaDailyBehaviorLanding   день × страница входа × цель  то же                                   uq (date, landingPath, goalId)
+MetrikaDailyVisitParam        день × устройство × ключ × значение (белый список 12 ключей)  visits/users/paramsNumber
+MetrikaDailyPathPage          день × kind × путь            visits | pageviews, users               kind: entry_lead/viewed_lead/exit_all/exit_nolead
+MetrikaDailyDeviceEngagement  день × устройство             visits, bounces, pageviews, durationSeconds (аддитивные)
+MetrikaPeriodGoalSnapshot     период × цель                 users (посетители периода), preset, fetchedAt, sampled
+```
+
+Старые таблицы не изменены. PII нет по построению (ключи параметров — только белый список).
+
+## SYNC
+
+```text
+каталог:        5 новых наборов в DATASET_SPECS (behaviorDevices, behaviorLandings, behaviorParams, behaviorPaths,
+                behaviorEngagement); ReportQuery.filters проброшен через fetcher в getStats
+паттерны 07:    delete+insert за диапазон в транзакции, MetrikaSyncRun по набору, advisory lock, accuracy=full при выборке,
+                расписание без изменений (все наборы по умолчанию) — новые наборы подхватятся тем же тиком
+снимок:         MetrikaPeriodSnapshotService — второй запрос на пресет: ym:s:goal<id>users × 14 (кэш списка целей 10 мин)
+запросов/тик:   было 11 + 8 снимков → станет 23 + 16 снимков (≈ 940/сутки при 24 тиках)
+live verify:    metrika:sync verify — 12/12 наборов OK, sampled=false (14.09 23:2x MSK)
+live sync копии: 13.08–14.09: behaviorDevices 213→994 строк (3 запроса), behaviorLandings 369→1722 (3),
+                behaviorParams 348 (1), behaviorPaths 390 (4), behaviorEngagement 71 (1); 13 запросов, 16,3 с, SUCCESS
+snapshots копии: 8/8 пресетов, «целей 14» у каждого, 16 запросов; last_7_days users 94 / visits 145
+idempotency:    повтор 08–14.09 для behaviorDevices/behaviorParams — SUCCESS, строки заменены (238 / 122), дублей нет
+                (уникальные ключи), суммы те же (сверка ниже совпала после повтора)
+```
+
+## FUNNELS
+
+`behavior-compute.ts::computeFunnel`; единица шага — целевые визиты, рядом события и посетители (снимок) —
+никогда не подменяются.
+
+```text
+global   визит → form_started → lead_submit_attempt → lead_submitted                         все шаги — цели
+photo    [каталог: not_measured] → начали форму фото (param productSlug) → lead_submitted_photo   basis param + goal
+tshirt   view_custom_tshirt → [крой/цвет: not_measured] → choose_size → add_tshirt_lead → [попытка: not_measured] → lead_submitted_tshirt
+canvas   взаимодействие с конфигуратором (param product=canvas) → [загрузка: not_measured — на сайте нет] → lead_submitted_canvas
+contact  форма контактов (param form=contact) → обращение (param product=contact)
+```
+
+Копия, 08–14.09 (реальные): global 145 визитов → 13 (25 событий, 3 посетителя) → 4 → 4; конверсии шагов
+8,97 % / 30,77 % / 100 %; tshirt 11 → 2 → 1 → 0; photo 32 → 2; canvas 11 → 0; contact 0 → 0.
+Неизмеримые шаги — `availability: not_measured` с причиной, из конверсий исключены; период до 10.09 —
+`insufficient_data` / воронка `unavailable`; частичный — `PARTIAL_BEHAVIOR_PERIOD`.
+
+## FORM ERRORS
+
+```text
+итоги:          formErrorEvents / formErrorVisits / formStartedVisits / attemptEvents; errorRate = визиты с ошибкой /
+                визиты с началом формы; errorsPerAttempt = события ошибок / (попытки + ошибки); серверные — submit_tshirt_order_error
+по полям:       параметр визита field → label (Имя, Телефон, Контакт, Согласие, …), events / visits / доля
+по устройствам: цель form_error из behaviorDevices; по входам: из behaviorLandings (с порогом выборки)
+копия 08–14.09: 3 события / 1 визит; contactValue 3 (75 %), name 1; только компьютер; доля от начавших 7,69 %; серверных 1
+PII:            нет — только имя поля (field=name — это поле «Имя», а не имя клиента)
+```
+
+## PAGES
+
+Страницы входа × визиты / сумма дневных посетителей (подписана) / начали форму / отправили / заявки / ошибки /
+сопоставленные заказы; доли — от визитов страницы; `sample` (< 30 визитов → LOW_SAMPLE) и `leadConversionVsSite`
+(п.п.) только при OK. Копия, 7 дней: `/` 105 визитов, 12 начали, 4 заявки (3,81 %, +1,1 п.п. к сайту);
+остальные страницы — LOW_SAMPLE.
+
+## DEVICES
+
+Компьютер / телефон / планшет / другое: визиты, начали / отправили / заявки / ошибки, доли, вовлечённость
+(отказы, глубина, время — из аддитивных сумм), `gap` (mobile/desktop по конверсии в заявку или доле начала
+формы). Копия, 7 дней: компьютер 78 визитов, 13 начали (16,67 %), 4 заявки (5,13 %), отказы 5,13 %, глубина 8,7,
+5 мин 55 с; телефон 64 визита, 0 начали, 0 заявок, отказы 6,25 %, глубина 3,3, 2 мин 04 с → gap COMPARABLE, ratio 0.
+Формулировка в UI — наблюдение, «причина по данным не установлена».
+
+## PATHS
+
+V1 агрегаты (Reports API): вход визитов с заявкой, страницы, просмотренные в визитах с заявкой (просмотры),
+выход визитов без заявки и всех. Копия, 7 дней: вход заявок — `/` 4/4; просмотры в визитах с заявкой —
+`/` 84, `/catalog/foto-10x15-s-polyami` 19, `/catalog/foto-10x15-bez-polej` 15, `/futbolki/svoy-print` 15;
+выход без заявки — `/` 72, `/catalog/foto-10x15-bez-polej` 13, `/interer/holst` 12. Последовательности — DATA GAP G5,
+текст gap отдаётся в ответе и показывается в UI.
+
+## ISSUE RULES
+
+`BEHAVIOR_RULES.md`; 5 правил, пороги в `behavior-rules.ts`, severity INFO / ATTENTION / CRITICAL по порогам, без LLM:
+
+```text
+11.1 FUNNEL_DROPOFF          вход ≥ 20 визитов; отвал ≥ 90 % → ATTENTION; падение конверсии шага ≥ 15 п.п. → CRITICAL;
+                             переход «визит → первое действие» не считается отвалом
+11.2 DEVICE_GAP              оба устройства ≥ 30 визитов; mobile/desktop ≤ 0,5 → ATTENTION, ≤ 0,25 или 0 → CRITICAL
+11.3 FORM_ERROR_SPIKE        ≥ 5 визитов с ошибкой; ×2 к сопоставимому периоду → ATTENTION, ×3 → CRITICAL;
+                             или ≥ 30 % от начавших при ≥ 10 начавших
+11.4 LANDING_UNDERPERFORMANCE visits ≥ 30, ожидаемых заявок ≥ 3, конверсия ≤ 50 % средней → ATTENTION
+11.5 LEAD_RATE_ANOMALY       оба периода ≥ 30 визитов, сопоставимы, ≥ 3 заявок; |Δ| ≥ 50 % → ATTENTION (падение) / INFO (рост)
+```
+
+Каждая карточка: `fact` (только числа), `hypothesis` («Возможно…», без причинности), `recommendation` (что проверить),
+`evidence[]` с `sample`/`minSample`, `causality: 'NOT_ESTABLISHED'`; правила без вывода — в `skipped[]` с причиной.
+Копия, 7 дней: DEVICE_GAP CRITICAL (телефоны 0 % при 64 визитах vs компьютеры 5,13 %), FUNNEL_DROPOFF ATTENTION
+(фото: 32 → 2, отвал 93,8 %); пропущено 7 правил с причинами. 30 дней: + отвал в воронке футболок.
+
+## API
+
+```text
+GET /analytics/dashboard/behavior/status | summary | funnels | errors | pages | devices | paths | issues
+guards:      JwtAuthGuard + RolesGuard(ADMIN) — копия: без токена 401, EXECUTOR 403 (включая /status), ADMIN 200
+flag:        ANALYTICS_DASHBOARD_ENABLED (тот же) — выключен → 404 «Раздел аналитики выключен» (кроме /status)
+period:      ?preset= | ?from&to (≤ 366 дней) — bogus → 400, > 366 дней → 400 (копия)
+cache:       DashboardCache 45 с, ключи behavior-<kind>:… не пересекаются с ключами этапа 09
+PII/secrets: в ответах только агрегаты; live Metrika API с запроса дашборда не вызывается
+```
+
+## UI
+
+Вкладка «Поведение» (`/crm/analytics?tab=behavior`): сводка (визиты → начали → отправили → заявка, ошибки,
+число карточек), предупреждения качества, «Требует внимания» (Факт / Гипотеза / Что проверить, «причина не
+установлена», список пропущенных правил), общая воронка (3 единицы подписаны и объяснены подсказками, полосы,
+конверсия и отвал шага, дельта визитов при сопоставимом периоде), направления (фото / футболки / холсты /
+контакты, неизмеримые шаги — текстом), ошибки форм (итоги, поля, устройства, входы), устройства (таблица +
+вовлечённость + текст разрыва), страницы входа (порог выборки, «к среднему», «Показать все»), пути-агрегаты
+с текстом gap. Состояния: загрузка (по блокам, страница не блокируется), пусто («поведенческих данных нет»),
+ошибка блока с «Повторить», `not_measured`, `LOW_SAMPLE`, stale/partial предупреждения. ru-RU, без ID событий
+для руководителя (идентификаторы — только в подсказках и контракте).
+
+## DATA QUALITY
+
+```text
+freshness:        lastMetrikaSyncAt как в этапе 08 (FRESH/STALE/NO_DATA → заметки)
+availability:     BEHAVIOR_GOALS_AVAILABLE_FROM = 2026-09-10; DIRECTION_GOALS_AVAILABLE_FROM = 2026-09-12;
+                  период до → PERIOD_BEFORE_* (unavailable, шаги insufficient_data); частично → PARTIAL_BEHAVIOR_PERIOD
+sync gate:        behaviorRows = 0 за период → BEHAVIOR_NOT_SYNCED (unavailable — «нет данных», не нули)
+sample:           < 30 визитов → LOW_SAMPLE; 0 → INSUFFICIENT_DATA; правила молчат
+snapshot:         нет снимка периода → NO_PERIOD_GOAL_SNAPSHOT, users = null
+comparison:       предыдущий период до даты доступности или без строк → COMPARISON_UNAVAILABLE, дельт нет
+```
+
+## TESTS
+
+```text
+backend:   CRM 955 tests / 86 suites (было 912): metrika-behavior-datasets.spec 10, behavior-compute.spec 26
+           (три единицы, повторные события, нулевые входы, снимок null, not_measured, param-шаги, cutover, partial,
+           comparison, stale, not synced, ошибки, страницы, устройства/gap, пути, 5 правил + пороги + контракт карточки,
+           сводка), behavior-dashboard.controller.spec 6 (guards/ADMIN, status, 404 флаг, маршруты, 400, кэш),
+           period-snapshot.spec +1 (снимок по целям), sync.service.spec обновлён (12 наборов); nginx-routes зелёный
+frontend:  vitest 30 (было 21): behavior.test.tsx 9 — единицы подписаны, not_measured текстом, посетители «—»,
+           период до целей → «нет данных», карточка Факт/Гипотеза/Что проверить + «Причина не установлена»,
+           пропущенные правила, пустое/загрузка, ошибки форм (доли, поля, пусто), устройства (текст разрыва,
+           INSUFFICIENT_DATA), behaviorWarnings без дублей
+build:     nest build OK; frontend tsc -b && vite build OK; prettier/eslint новых файлов чистые
+```
+
+## PERFORMANCE
+
+```text
+где:            копия через SSH-туннель к боевому Postgres (RTT ≈ 40–60 мс на запрос) — верхняя оценка
+service:        loadInput = 13 groupBy/aggregate на период (+ 13 на предыдущий для сравнения), без N+1
+HTTP холодный:  summary 1,0–2,1 с; funnels 0,7–1,6 с; errors 0,8–1,1 с; pages 0,4–1,0 с; devices 0,3–0,7 с;
+                paths 0,4–0,9 с; issues 0,6–1,1 с (три периода)
+HTTP кэш:       summary повторно 86–322 мс (в основном 86–144 мс)
+ожидание на бою (локальная БД, как этап 09: 4,3 с через туннель → 1,4 с в контейнере): summary ≲ 0,5 с холодный
+dashboard не вызывает live Metrika API: подтверждено кодом (только Prisma) и отсутствием запросов клиента при HTTP
+```
+
+## RECONCILIATION
+
+Копия `crm_stage10_test`, A = HTTP `/analytics/dashboard/behavior/*` (ADMIN), B = `BehaviorMetricsService`
+(та же сборка), C = независимый SQL по таблицам-источникам (`MetrikaDailyGoal`, `MetrikaDailyTraffic`,
+`MetrikaDailyBehaviorDevice/Landing`, `MetrikaDailyDevice/Landing`, `MetrikaDailyVisitParam`,
+`MetrikaDailyDeviceEngagement`, `MetrikaDailyPathPage`, `MetrikaPeriodGoalSnapshot`):
+
+```text
+period         A vs B (все листья JSON 7 маршрутов)   A vs C (метрики)   device totals
+today          797 листьев, diffs 0                    25 / 25 = 0        Σ по устройствам = итог (визиты 13, начали 0)
+last_7_days    1037 листьев, diffs 0                   31 / 31 = 0        визиты 145 = 145; начали 13 = 13
+last_30_days   1352 листьев, diffs 0                   31 / 31 = 0        визиты 589 = 589; начали 13 = 13
+```
+
+Проверенные вручную числа (7 дней): visits 145; form_started 13 визитов / 25 событий / 3 посетителя (снимок);
+attempt 4; lead 4 (1 посетитель); form_error 1 визит / 3 события; по полям contactValue 3, name 1; компьютер
+78 визитов / 13 начали / 4 заявки, телефон 64 / 0 / 0, планшет 3; `/` 105 визитов / 12 начали; отказы компьютер
+5,128 %, телефон 6,25 %; выход без заявки `/` 72, `/catalog/foto-10x15-bez-polej` 13. Расхождений нет; после
+повторной синхронизации (idempotency) сверка совпала повторно.
+
+## RESPONSIVE
+
+Desktop 1440: сетки 2 колонки для направлений и блоков ошибок/путей; таблицы в overflow-контейнерах.
+Mobile 390 (Chrome mobile emulation): KPI по 2 в ряд, таблицы скроллятся внутри карточек, `scrollWidth ==
+clientWidth` (после исправления `min-w-0` у колонок сетки — до него 577 px). Скриншоты —
+`docs/analytics/screenshots/10_behavior/` (loading, desktop 7d/30d, период до целей, mobile 7d, блоки issues /
+funnel / errors / devices) — данные копии production, не фикстуры.
+
+## PRIVACY
+
+Локально: дата, устройство, путь страницы, идентификатор цели, ключ/значение параметра из белого списка
+(`field, product, form, productSlug, intent, format, size, value, location, channel, kind, topic`), счётчики.
+Не хранится и не запрашивается: ClientID, тексты, телефоны, e-mail, имена, файлы, Telegram/MAX. Проверено
+по фактическим ключам параметров счётчика за 08–14.09 (19 ключей, все технические) и по `sanitizeGoalParams`.
+
+## FILES_CHANGED
+
+```text
+crm-new/prisma/schema.prisma                                         +6 моделей
+crm-new/prisma/migrations/20260914200000_metrika_behavior_tables     new
+crm-new/src/metrika/analytics/metrika-behavior-goals.ts               new — BEHAVIOR_EVENTS, behaviorGoals, белый список параметров
+crm-new/src/metrika/analytics/metrika-query-catalog.ts                +5 наборов, filters, типы строк
+crm-new/src/metrika/analytics/metrika-report-fetcher.ts               filters → getStats
+crm-new/src/metrika/analytics/metrika-sync-store.ts                   replaceRows для 5 таблиц
+crm-new/src/metrika/analytics/metrika-analytics-inspect.ts            состояние/качество по новым таблицам
+crm-new/src/metrika/analytics/metrika-period-snapshot.service.ts      снимок посетителей по целям
+crm-new/src/metrika/analytics/*.spec.ts                               обновлены/добавлены (datasets, snapshot, sync)
+crm-new/src/analytics/metrika-sync.ts                                 вывод «целей N» у снимков
+crm-new/src/analytics/behavior/{behavior-contract,behavior-rules,behavior-compute,behavior-metrics.service,
+  behavior-dashboard.controller,behavior.module}.ts + 2 spec           new
+crm-new/src/app.module.ts                                             + BehaviorModule
+frontend/src/types/behavior.ts, frontend/src/types/analytics.ts (Freshness)  new / export
+frontend/src/api/analytics.ts                                         + behaviorApi
+frontend/src/features/analytics/{behavior-view.ts,behavior-sections.tsx}  new
+frontend/src/features/analytics/__tests__/behavior.test.tsx           new
+frontend/src/pages/AnalyticsPage.tsx                                  вкладка «Поведение»
+docs/analytics/{BEHAVIOR_EVENT_CONTRACT,BEHAVIOR_DATA_MODEL,BEHAVIOR_RULES}.md  new
+docs/analytics/{METRIKA_QUERY_CATALOG,DASHBOARD_CONTRACT,10_BEHAVIOR_AND_FUNNELS,00_MASTER_PLAN,01_CURRENT_STATE}.md
+docs/analytics/screenshots/10_behavior/*.png                          9 скриншотов
+```
+
+## NEW FACTS
+
+- Метрика хранит параметры `reachGoal` как параметры визита и записывает их даже для событий **без цели**
+  (`format`, `size`, `value` есть в счётчике при отсутствии целей) — поэтому шаги «формат/размер холста» и
+  «начали форму фото/контактов» измеримы через параметры, хотя целей нет.
+- Фильтр `ym:s:goal<id>IsReached` работает с измерениями `ym:pv:*` — можно считать просмотры страниц внутри
+  визитов с заявкой; метрики `ym:pv` с метриками `ym:s:goal` — по-прежнему нельзя.
+- `ym:s:bounces` и `ym:s:sumVisitDurationSeconds` существуют — вовлечённость хранится аддитивно и агрегируется точно.
+- Бой 08–14.09: 145 визитов, 94 посетителя; форму начали в 13 визитах (3 посетителя), отправили 4, заявок 4 —
+  все на компьютерах; на телефонах 64 визита и 0 начатых форм; ошибок формы 1 визит (3 события, поле
+  «Контакт»); футболки: 11 открыли конструктор, 2 выбрали размер, 1 дошёл до формы, 0 заявок, 1 серверная ошибка.
+- 21 цель в счётчике: 14 поведенческих + 4 CRM + авто-цели «отправка формы» (602325854, с 26.08, 85 достижений),
+  «переход в мессенджер» (608401685), URL `/thanks` (602316919, 76 достижений с 30.08) — исторические прокси.
+- Даты доступности: JS-цели серии 6113794xx–6113863xx — первые достижения 10–11.09; цели направлений и form_error — 12.09.
+- Доля визитов с началом формы (≈ 9 %) — не «отвал»: правило 11.1 намеренно не считает первый переход.
+
+## DEVIATIONS
+
+```text
+1. § 5.2/5.4 (photo/canvas funnels): шаги «каталог», «загрузка», «предупреждение о качестве», «края», «позиция
+   принта» не реализованы — событий нет в production-коде (G1); показаны как not_measured, не как 0.
+2. § 9 (paths): последовательности не строятся — Reports API их не отдаёт (G5); V1 — агрегаты входа/просмотров/
+   выхода; Logs API не включён (нужно решение Reviewer).
+3. § 7/8 (users на страницах и устройствах): показана сумма дневных посетителей с подписью, не уникальные периода —
+   уникальные по разрезам потребовали бы отдельных снимков на каждый разрез.
+4. § 17: добавлен /behavior/status (даты доступности, пороги) — панель показывает их в подсказках.
+5. § 22 (performance): измерено через туннель (summary 1,0–2,1 с холодный, кэш 86–322 мс); прямой замер на бою
+   невозможен без выкладки.
+6. Белый список параметров расширен на form и productSlug — без них не определить начало формы контактов и фото.
+```
+
+## OPEN ISSUES
+
+```text
+1. Production rollout — отдельный документ и gate (миграция 20260914200000 применится на старте контейнера;
+   scheduler подхватит наборы автоматически; +12 запросов к Reports API на тик и +8 на снимки; первый тик после
+   деплоя заполнит 3 дня, суточный — 21 день; историю 13.08–09.09 при желании добить CLI `metrika:sync --from … --to … --dataset …`).
+2. Решения владельца/Reviewer по gap: создать цели submit_tshirt_order, view_product, canvas_size_select (G2);
+   событие серверной ошибки для фото/холста/контактов (G3); дедупликация form_started/add_tshirt_lead на сайте (G4);
+   Logs API для путей (G5) — по отдельной оценке.
+3. Копия crm_stage10_test удалена после отчёта; временные пользователи stage10_admin/stage10_executor были только в копии.
+4. Наблюдение из данных (не вывод): на телефонах за 08–14.09 ни одного начала формы при 64 визитах — правило 11.2
+   выдаёт CRITICAL; гипотезы (форма/страница на мобильных, состав трафика, доля согласия на cookie по устройствам)
+   требуют ручной проверки; данных о согласии по устройствам нет.
+5. Security debt без изменений (ротация токена/секрета Яндекса).
+```
