@@ -5,10 +5,13 @@
 ## Статус
 
 ```text
-IN_PRODUCTION (14.09.2026 19:16 MSK, REVIEW) — реализация принята Reviewer 14.09 (§ 64), production rollout
+REVIEW (в production с 14.09.2026 19:16 MSK) — реализация принята Reviewer 14.09 (§ 64), production rollout
 выполнен по команде «СТАРТ» строго по `09_PRODUCTION_ROLLOUT.md`: master = be591d3, флаг
 ANALYTICS_DASHBOARD_ENABLED=true, dashboard = service = CLI на боевых данных (diff 0), P&L = /reports/monthly,
-два тика расписания SUCCESS — отчёт `09_PRODUCTION_ROLLOUT.md` § 18. DONE ставит Reviewer после owner smoke.
+два тика расписания SUCCESS — отчёт `09_PRODUCTION_ROLLOUT.md` § 18. Owner smoke § 11 пройден владельцем
+14.09.2026 («/crm/analytics под ADMIN открывается корректно, пресеты работают, воронки разделены,
+предупреждение о неполном сопоставлении корректно, разделы открываются, критических визуальных ошибок нет»).
+Все пункты Decision Gate (§ 62) закрыты; DONE ставит Reviewer.
 ```
 
 > Этап 08 принят как DONE.
