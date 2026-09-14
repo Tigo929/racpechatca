@@ -1505,6 +1505,131 @@ model MetrikaPeriodSnapshot {
   @@index([preset])
 }
 
+/// Этап 10 (поведение): достижения поведенческих целей по дням и устройствам —
+/// шаги воронок (начал форму, попытка, заявка, ошибка, шаги футболок, клики)
+/// в разрезе `ym:s:deviceCategory`. Единица шага — целевые визиты
+/// (`goalVisits`); `reaches` — события (у форм без дедупликации завышены),
+/// `convertedUsers` — посетители за день (за период не суммируются).
+model MetrikaDailyBehaviorDevice {
+  id             String   @id @default(uuid())
+  date           DateTime @db.Date
+  deviceRaw      String
+  deviceCategory String
+  goalId         Int
+  goalIdentifier String
+
+  reaches        Int
+  goalVisits     Int
+  convertedUsers Int
+  syncedAt       DateTime @default(now())
+
+  @@unique([date, deviceRaw, goalId])
+  @@index([date])
+}
+
+/// Этап 10: те же поведенческие цели в разрезе страницы входа визита
+/// (`ym:s:startURLPath`) — воронка по посадочным страницам.
+model MetrikaDailyBehaviorLanding {
+  id             String   @id @default(uuid())
+  date           DateTime @db.Date
+  landingPath    String
+  normalizedPath String
+  goalId         Int
+  goalIdentifier String
+
+  reaches        Int
+  goalVisits     Int
+  convertedUsers Int
+  syncedAt       DateTime @default(now())
+
+  @@unique([date, landingPath, goalId])
+  @@index([date])
+  @@index([normalizedPath])
+}
+
+/// Этап 10: параметры визитов из белого списка ключей (`field` — поле ошибки
+/// формы, `product`, `intent`, `format`, `size`, `value`, `location`,
+/// `channel`, `kind`, `topic`) по дням и устройствам. Персональных данных
+/// здесь нет по построению: ключи `name/phone/email/…` сайт вырезает до
+/// отправки, а сюда попадают только ключи из списка.
+model MetrikaDailyVisitParam {
+  id             String   @id @default(uuid())
+  date           DateTime @db.Date
+  deviceRaw      String
+  deviceCategory String
+  paramKey       String
+  paramValue     String
+
+  visits       Int
+  users        Int
+  paramsNumber Int
+  syncedAt     DateTime @default(now())
+
+  @@unique([date, deviceRaw, paramKey, paramValue])
+  @@index([date])
+  @@index([paramKey])
+}
+
+/// Этап 10: агрегатные «пути» V1. `kind`: `entry_lead` — страница входа
+/// визитов с заявкой (визиты), `viewed_lead` — страницы, просмотренные в
+/// визитах с заявкой (просмотры), `exit_all` / `exit_nolead` — страница
+/// выхода всех визитов / визитов без заявки (визиты). Последовательности
+/// страниц Reports API не отдаёт — это не пути, а агрегаты.
+model MetrikaDailyPathPage {
+  id             String   @id @default(uuid())
+  date           DateTime @db.Date
+  kind           String
+  pagePath       String
+  normalizedPath String
+
+  visits    Int?
+  pageviews Int?
+  users     Int
+  syncedAt  DateTime @default(now())
+
+  @@unique([date, kind, pagePath])
+  @@index([date])
+}
+
+/// Этап 10: вовлечённость по устройствам — только аддитивные величины
+/// (отказы, просмотры, секунды), чтобы доля отказов, глубина и длительность
+/// за период считались точно, а не средним средних.
+model MetrikaDailyDeviceEngagement {
+  id             String   @id @default(uuid())
+  date           DateTime @db.Date
+  deviceRaw      String
+  deviceCategory String
+
+  visits          Int
+  bounces         Int
+  pageviews       Int
+  durationSeconds Int
+  syncedAt        DateTime @default(now())
+
+  @@unique([date, deviceRaw])
+  @@index([date])
+}
+
+/// Этап 10: посетители, достигшие поведенческой цели за целый период
+/// (аналог MetrikaPeriodSnapshot для шагов воронки): дневные
+/// `convertedUsers` не суммируются, поэтому один запрос за период на пресет.
+model MetrikaPeriodGoalSnapshot {
+  id             String   @id @default(uuid())
+  periodStart    DateTime @db.Date
+  periodEnd      DateTime @db.Date
+  goalId         Int
+  goalIdentifier String
+  preset         String?
+
+  users       Int
+  fetchedAt   DateTime
+  sampled     Boolean
+  sampleShare Float
+
+  @@unique([periodStart, periodEnd, goalId])
+  @@index([preset])
+}
+
 /// Сторона печати в согласовании. Отдельно от EnumPrintLocation намеренно:
 /// там значения производственные (рукава, «по ТЗ», full), а мокап бывает
 /// только с одной стороны — перед или спина.

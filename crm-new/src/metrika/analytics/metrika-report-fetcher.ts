@@ -111,6 +111,7 @@ export class MetrikaReportFetcher {
       sort: query.sort,
       lang: query.lang,
       limit: API_ROW_LIMIT,
+      filters: query.filters,
     });
     let meta = metaOf(res, 1, ACCURACY_DEFAULT);
 
@@ -124,6 +125,7 @@ export class MetrikaReportFetcher {
         sort: query.sort,
         lang: query.lang,
         limit: API_ROW_LIMIT,
+        filters: query.filters,
         accuracy: ACCURACY_FULL,
       });
       meta = mergeMeta(

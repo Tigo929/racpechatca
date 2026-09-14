@@ -161,6 +161,46 @@ async function tableState(
       });
       return { rows: a._count, min: a._min.date, max: a._max.date };
     }
+    case 'behaviorDevices': {
+      const a = await db.metrikaDailyBehaviorDevice.aggregate({
+        _count: true,
+        _min: { date: true },
+        _max: { date: true },
+      });
+      return { rows: a._count, min: a._min.date, max: a._max.date };
+    }
+    case 'behaviorLandings': {
+      const a = await db.metrikaDailyBehaviorLanding.aggregate({
+        _count: true,
+        _min: { date: true },
+        _max: { date: true },
+      });
+      return { rows: a._count, min: a._min.date, max: a._max.date };
+    }
+    case 'behaviorParams': {
+      const a = await db.metrikaDailyVisitParam.aggregate({
+        _count: true,
+        _min: { date: true },
+        _max: { date: true },
+      });
+      return { rows: a._count, min: a._min.date, max: a._max.date };
+    }
+    case 'behaviorPaths': {
+      const a = await db.metrikaDailyPathPage.aggregate({
+        _count: true,
+        _min: { date: true },
+        _max: { date: true },
+      });
+      return { rows: a._count, min: a._min.date, max: a._max.date };
+    }
+    case 'behaviorEngagement': {
+      const a = await db.metrikaDailyDeviceEngagement.aggregate({
+        _count: true,
+        _min: { date: true },
+        _max: { date: true },
+      });
+      return { rows: a._count, min: a._min.date, max: a._max.date };
+    }
   }
 }
 
@@ -436,6 +476,18 @@ export async function dataQuality(
   rowsPerDataset.landings = await db.metrikaDailyLanding.count({ where });
   rowsPerDataset.devices = await db.metrikaDailyDevice.count({ where });
   rowsPerDataset.pages = await db.metrikaDailyPage.count({ where });
+  rowsPerDataset.behaviorDevices = await db.metrikaDailyBehaviorDevice.count({
+    where,
+  });
+  rowsPerDataset.behaviorLandings = await db.metrikaDailyBehaviorLanding.count({
+    where,
+  });
+  rowsPerDataset.behaviorParams = await db.metrikaDailyVisitParam.count({
+    where,
+  });
+  rowsPerDataset.behaviorPaths = await db.metrikaDailyPathPage.count({ where });
+  rowsPerDataset.behaviorEngagement =
+    await db.metrikaDailyDeviceEngagement.count({ where });
 
   const traffic = await db.metrikaDailyTraffic.findMany({
     where,

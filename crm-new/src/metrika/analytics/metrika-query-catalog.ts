@@ -5,6 +5,12 @@ import {
   REQUIRED_FOR_DIMENSION_DATASETS,
   type CanonicalGoalRegistry,
 } from './metrika-goal-registry';
+import {
+  behaviorGoalChunks,
+  behaviorGoals,
+  visitParamKeysFilter,
+  type BehaviorGoal,
+} from './metrika-behavior-goals';
 
 /**
  * Каталог запросов к Reports API (этап 07, раздел 15) — единственное
@@ -31,7 +37,12 @@ export type MetrikaDataset =
   | 'utm'
   | 'landings'
   | 'devices'
-  | 'pages';
+  | 'pages'
+  | 'behaviorDevices'
+  | 'behaviorLandings'
+  | 'behaviorParams'
+  | 'behaviorPaths'
+  | 'behaviorEngagement';
 
 export const ALL_DATASETS: readonly MetrikaDataset[] = [
   'traffic',
@@ -41,6 +52,20 @@ export const ALL_DATASETS: readonly MetrikaDataset[] = [
   'landings',
   'devices',
   'pages',
+  'behaviorDevices',
+  'behaviorLandings',
+  'behaviorParams',
+  'behaviorPaths',
+  'behaviorEngagement',
+];
+
+/** Наборы этапа 10 (поведение) — синхронизируются тем же расписанием, что и наборы этапа 07. */
+export const BEHAVIOR_DATASETS: readonly MetrikaDataset[] = [
+  'behaviorDevices',
+  'behaviorLandings',
+  'behaviorParams',
+  'behaviorPaths',
+  'behaviorEngagement',
 ];
 
 export function isDataset(value: string): value is MetrikaDataset {
@@ -57,6 +82,8 @@ export interface ReportQuery {
   metrics: string[];
   sort: string;
   lang: 'ru';
+  /** Сегмент Reports API (например, визиты с достигнутой целью); без фильтра — весь счётчик. */
+  filters?: string;
 }
 
 export interface QueryResult {
@@ -140,6 +167,74 @@ export interface PageRow {
   users: number;
 }
 
+// Этап 10 — поведение
+
+export interface BehaviorDeviceRow {
+  date: IsoDate;
+  deviceRaw: string;
+  deviceCategory: DeviceCategory;
+  goalId: number;
+  goalIdentifier: string;
+  reaches: number;
+  goalVisits: number;
+  convertedUsers: number;
+}
+
+export interface BehaviorLandingRow {
+  date: IsoDate;
+  landingPath: string;
+  normalizedPath: string;
+  goalId: number;
+  goalIdentifier: string;
+  reaches: number;
+  goalVisits: number;
+  convertedUsers: number;
+}
+
+export interface VisitParamRow {
+  date: IsoDate;
+  deviceRaw: string;
+  deviceCategory: DeviceCategory;
+  paramKey: string;
+  paramValue: string;
+  visits: number;
+  users: number;
+  paramsNumber: number;
+}
+
+export type PathPageKind =
+  | 'entry_lead'
+  | 'viewed_lead'
+  | 'exit_all'
+  | 'exit_nolead';
+
+export const PATH_PAGE_KINDS: readonly PathPageKind[] = [
+  'entry_lead',
+  'viewed_lead',
+  'exit_all',
+  'exit_nolead',
+];
+
+export interface PathPageRow {
+  date: IsoDate;
+  kind: PathPageKind;
+  pagePath: string;
+  normalizedPath: string;
+  visits: number | null;
+  pageviews: number | null;
+  users: number;
+}
+
+export interface DeviceEngagementRow {
+  date: IsoDate;
+  deviceRaw: string;
+  deviceCategory: DeviceCategory;
+  visits: number;
+  bounces: number;
+  pageviews: number;
+  durationSeconds: number;
+}
+
 export type DatasetRow<D extends MetrikaDataset> = D extends 'traffic'
   ? TrafficRow
   : D extends 'goals'
@@ -152,7 +247,17 @@ export type DatasetRow<D extends MetrikaDataset> = D extends 'traffic'
           ? LandingRow
           : D extends 'devices'
             ? DeviceRow
-            : PageRow;
+            : D extends 'pages'
+              ? PageRow
+              : D extends 'behaviorDevices'
+                ? BehaviorDeviceRow
+                : D extends 'behaviorLandings'
+                  ? BehaviorLandingRow
+                  : D extends 'behaviorParams'
+                    ? VisitParamRow
+                    : D extends 'behaviorPaths'
+                      ? PathPageRow
+                      : DeviceEngagementRow;
 
 export interface DatasetSpec<D extends MetrikaDataset = MetrikaDataset> {
   dataset: D;
@@ -558,6 +663,249 @@ const pages: DatasetSpec<'pages'> = {
     }),
 };
 
+// ---------------------------------------------------------------------------
+// Этап 10 — поведение
+
+/** Метрики целей чанка: 3 на цель после якоря визитов. */
+function behaviorChunkMetrics(chunk: BehaviorGoal[]): string[] {
+  return [
+    'ym:s:visits',
+    ...chunk.flatMap((g) => [
+      goalMetric(g.goalId, 'reaches'),
+      goalMetric(g.goalId, 'visits'),
+      goalMetric(g.goalId, 'users'),
+    ]),
+  ];
+}
+
+function requireResults(
+  results: QueryResult[],
+  expected: number,
+  dataset: MetrikaDataset,
+): void {
+  if (results.length !== expected) {
+    throw new MetrikaParseError(
+      `набор ${dataset}: ожидалось ответов ${expected}, получено ${results.length}`,
+    );
+  }
+}
+
+const behaviorDevices: DatasetSpec<'behaviorDevices'> = {
+  dataset: 'behaviorDevices',
+  table: 'MetrikaDailyBehaviorDevice',
+  title: 'Поведенческие цели по дням и устройствам',
+  grain: 'date + deviceRaw + goalId',
+  queries: (ctx) =>
+    behaviorGoalChunks(behaviorGoals(ctx.goals)).map((chunk) => ({
+      dimensions: ['ym:s:date', 'ym:s:deviceCategory'],
+      metrics: behaviorChunkMetrics(chunk),
+      sort: 'ym:s:date',
+      lang: 'ru',
+    })),
+  parse: (results, ctx) => {
+    const chunks = behaviorGoalChunks(behaviorGoals(ctx.goals));
+    requireResults(results, chunks.length, 'behaviorDevices');
+    const out: BehaviorDeviceRow[] = [];
+    chunks.forEach((chunk, i) => {
+      for (const row of results[i].rows) {
+        const date = dimDate(row.dimensions[0], 'behaviorDevices');
+        const deviceRaw = dimId(row.dimensions[1]);
+        chunk.forEach((g, j) => {
+          const base = 1 + j * 3;
+          out.push({
+            date,
+            deviceRaw,
+            deviceCategory: deviceCategoryOf(deviceRaw),
+            goalId: g.goalId,
+            goalIdentifier: g.event,
+            reaches: metricInt(row.metrics[base]),
+            goalVisits: metricInt(row.metrics[base + 1]),
+            convertedUsers: metricInt(row.metrics[base + 2]),
+          });
+        });
+      }
+    });
+    return out;
+  },
+};
+
+const behaviorLandings: DatasetSpec<'behaviorLandings'> = {
+  dataset: 'behaviorLandings',
+  table: 'MetrikaDailyBehaviorLanding',
+  title: 'Поведенческие цели по дням и страницам входа',
+  grain: 'date + landingPath + goalId',
+  queries: (ctx) =>
+    behaviorGoalChunks(behaviorGoals(ctx.goals)).map((chunk) => ({
+      dimensions: ['ym:s:date', 'ym:s:startURLPath'],
+      metrics: behaviorChunkMetrics(chunk),
+      sort: 'ym:s:date',
+      lang: 'ru',
+    })),
+  parse: (results, ctx) => {
+    const chunks = behaviorGoalChunks(behaviorGoals(ctx.goals));
+    requireResults(results, chunks.length, 'behaviorLandings');
+    const out: BehaviorLandingRow[] = [];
+    chunks.forEach((chunk, i) => {
+      for (const row of results[i].rows) {
+        const date = dimDate(row.dimensions[0], 'behaviorLandings');
+        const landingPath = dimName(row.dimensions[1]);
+        chunk.forEach((g, j) => {
+          const base = 1 + j * 3;
+          out.push({
+            date,
+            landingPath,
+            normalizedPath: normalizePath(landingPath),
+            goalId: g.goalId,
+            goalIdentifier: g.event,
+            reaches: metricInt(row.metrics[base]),
+            goalVisits: metricInt(row.metrics[base + 1]),
+            convertedUsers: metricInt(row.metrics[base + 2]),
+          });
+        });
+      }
+    });
+    return out;
+  },
+};
+
+const behaviorParams: DatasetSpec<'behaviorParams'> = {
+  dataset: 'behaviorParams',
+  table: 'MetrikaDailyVisitParam',
+  title: 'Параметры визитов (белый список) по дням и устройствам',
+  grain: 'date + deviceRaw + paramKey + paramValue',
+  queries: () => [
+    {
+      dimensions: [
+        'ym:s:date',
+        'ym:s:deviceCategory',
+        'ym:s:paramsLevel1',
+        'ym:s:paramsLevel2',
+      ],
+      metrics: ['ym:s:visits', 'ym:s:users', 'ym:s:paramsNumber'],
+      sort: 'ym:s:date',
+      lang: 'ru',
+      filters: visitParamKeysFilter(),
+    },
+  ],
+  parse: (results) =>
+    single(results, 'behaviorParams').map((row) => {
+      const deviceRaw = dimId(row.dimensions[1]);
+      return {
+        date: dimDate(row.dimensions[0], 'behaviorParams'),
+        deviceRaw,
+        deviceCategory: deviceCategoryOf(deviceRaw),
+        paramKey: dimName(row.dimensions[2]),
+        paramValue: dimName(row.dimensions[3]),
+        visits: metricInt(row.metrics[0]),
+        users: metricInt(row.metrics[1]),
+        paramsNumber: metricInt(row.metrics[2]),
+      };
+    }),
+};
+
+function leadGoalId(ctx: CatalogContext, dataset: MetrikaDataset): number {
+  const id = ctx.registry.canonicalLeadGoalId;
+  if (id === null) {
+    throw new MetrikaParseError(
+      `набор ${dataset}: в счётчике не найдена каноническая цель lead — запрос не собрать`,
+    );
+  }
+  return id;
+}
+
+/** Четыре запроса — по одному на вид агрегата, в порядке PATH_PAGE_KINDS. */
+const behaviorPaths: DatasetSpec<'behaviorPaths'> = {
+  dataset: 'behaviorPaths',
+  table: 'MetrikaDailyPathPage',
+  title: 'Страницы входа/выхода и просмотры визитов с заявкой',
+  grain: 'date + kind + pagePath',
+  queries: (ctx) => {
+    const lead = leadGoalId(ctx, 'behaviorPaths');
+    return [
+      {
+        dimensions: ['ym:s:date', 'ym:s:startURLPath'],
+        metrics: ['ym:s:visits', 'ym:s:users'],
+        sort: 'ym:s:date',
+        lang: 'ru',
+        filters: `ym:s:goal${lead}IsReached=='Yes'`,
+      },
+      {
+        dimensions: ['ym:pv:date', 'ym:pv:URLPath'],
+        metrics: ['ym:pv:pageviews', 'ym:pv:users'],
+        sort: 'ym:pv:date',
+        lang: 'ru',
+        filters: `ym:s:goal${lead}IsReached=='Yes'`,
+      },
+      {
+        dimensions: ['ym:s:date', 'ym:s:endURLPath'],
+        metrics: ['ym:s:visits', 'ym:s:users'],
+        sort: 'ym:s:date',
+        lang: 'ru',
+      },
+      {
+        dimensions: ['ym:s:date', 'ym:s:endURLPath'],
+        metrics: ['ym:s:visits', 'ym:s:users'],
+        sort: 'ym:s:date',
+        lang: 'ru',
+        filters: `ym:s:goal${lead}IsReached=='No'`,
+      },
+    ];
+  },
+  parse: (results) => {
+    requireResults(results, PATH_PAGE_KINDS.length, 'behaviorPaths');
+    const out: PathPageRow[] = [];
+    PATH_PAGE_KINDS.forEach((kind, i) => {
+      for (const row of results[i].rows) {
+        const pagePath = dimName(row.dimensions[1]);
+        const first = metricInt(row.metrics[0]);
+        out.push({
+          date: dimDate(row.dimensions[0], `behaviorPaths/${kind}`),
+          kind,
+          pagePath,
+          normalizedPath: normalizePath(pagePath),
+          visits: kind === 'viewed_lead' ? null : first,
+          pageviews: kind === 'viewed_lead' ? first : null,
+          users: metricInt(row.metrics[1]),
+        });
+      }
+    });
+    return out;
+  },
+};
+
+const behaviorEngagement: DatasetSpec<'behaviorEngagement'> = {
+  dataset: 'behaviorEngagement',
+  table: 'MetrikaDailyDeviceEngagement',
+  title: 'Вовлечённость по дням и устройствам',
+  grain: 'date + deviceRaw',
+  queries: () => [
+    {
+      dimensions: ['ym:s:date', 'ym:s:deviceCategory'],
+      metrics: [
+        'ym:s:visits',
+        'ym:s:bounces',
+        'ym:s:pageviews',
+        'ym:s:sumVisitDurationSeconds',
+      ],
+      sort: 'ym:s:date',
+      lang: 'ru',
+    },
+  ],
+  parse: (results) =>
+    single(results, 'behaviorEngagement').map((row) => {
+      const deviceRaw = dimId(row.dimensions[1]);
+      return {
+        date: dimDate(row.dimensions[0], 'behaviorEngagement'),
+        deviceRaw,
+        deviceCategory: deviceCategoryOf(deviceRaw),
+        visits: metricInt(row.metrics[0]),
+        bounces: metricInt(row.metrics[1]),
+        pageviews: metricInt(row.metrics[2]),
+        durationSeconds: metricInt(row.metrics[3]),
+      };
+    }),
+};
+
 export const DATASET_SPECS: { [D in MetrikaDataset]: DatasetSpec<D> } = {
   traffic,
   goals,
@@ -566,6 +914,11 @@ export const DATASET_SPECS: { [D in MetrikaDataset]: DatasetSpec<D> } = {
   landings,
   devices,
   pages,
+  behaviorDevices,
+  behaviorLandings,
+  behaviorParams,
+  behaviorPaths,
+  behaviorEngagement,
 };
 
 export function specOf<D extends MetrikaDataset>(dataset: D): DatasetSpec<D> {

@@ -40,6 +40,11 @@ class MemoryStore implements MetrikaSyncStore {
     landings: [],
     devices: [],
     pages: [],
+    behaviorDevices: [],
+    behaviorLandings: [],
+    behaviorParams: [],
+    behaviorPaths: [],
+    behaviorEngagement: [],
   };
   failReplaceFor: MetrikaDataset | null = null;
   replaceCalls: MetrikaDataset[] = [];
@@ -244,10 +249,16 @@ describe('MetrikaAnalyticsSyncService', () => {
       'landings:SUCCESS',
       'devices:SUCCESS',
       'pages:SUCCESS',
+      'behaviorDevices:SUCCESS',
+      'behaviorLandings:SUCCESS',
+      'behaviorParams:SUCCESS',
+      'behaviorPaths:SUCCESS',
+      'behaviorEngagement:SUCCESS',
     ]);
-    expect(calls).toHaveLength(7);
-    expect(s.requests).toBe(8); // 7 отчётов + список целей
-    expect(store.runs).toHaveLength(7);
+    // 7 отчётов этапа 07 + 8 этапа 10 (по одной поведенческой цели: 1 + 1 + 1 + 4 путей + 1 вовлечённость)
+    expect(calls).toHaveLength(15);
+    expect(s.requests).toBe(16); // 15 отчётов + список целей
+    expect(store.runs).toHaveLength(12);
     expect(
       store.runs.every(
         (r) =>
@@ -278,7 +289,7 @@ describe('MetrikaAnalyticsSyncService', () => {
     expect(
       store.tables.traffic.reduce((s, r) => s + (r.visits as number), 0),
     ).toBe(58);
-    expect(store.runs).toHaveLength(14);
+    expect(store.runs).toHaveLength(24);
   });
 
   it('replacement: источник исчез из ответа API — исчезает и локально за этот период', async () => {
@@ -359,7 +370,7 @@ describe('MetrikaAnalyticsSyncService', () => {
       requestCount: 1,
     });
     expect(run?.lastError).toContain('503');
-    expect(s.datasets.filter((d) => d.status === 'SUCCESS')).toHaveLength(6);
+    expect(s.datasets.filter((d) => d.status === 'SUCCESS')).toHaveLength(11);
   });
 
   it('таймаут/сеть на всех наборах → каждый FAILED, итог FAILED, ни одной записи', async () => {

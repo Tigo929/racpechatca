@@ -408,7 +408,7 @@ async function snapshotsCmd(
   for (const o of outcomes) {
     if (o.status === 'FAILED') failed += 1;
     console.log(
-      `  ${(o.preset ?? 'custom').padEnd(17)} ${o.range.from}..${o.range.to}  ${o.status.padEnd(7)} users ${String(o.users ?? '—').padStart(5)}  visits ${String(o.visits ?? '—').padStart(5)}  pageviews ${String(o.pageviews ?? '—').padStart(6)}  sampled=${o.sampled ?? '—'}  запросов ${o.requests}` +
+      `  ${(o.preset ?? 'custom').padEnd(17)} ${o.range.from}..${o.range.to}  ${o.status.padEnd(7)} users ${String(o.users ?? '—').padStart(5)}  visits ${String(o.visits ?? '—').padStart(5)}  pageviews ${String(o.pageviews ?? '—').padStart(6)}  sampled=${o.sampled ?? '—'}  целей ${o.goalUsers ?? '—'}  запросов ${o.requests}` +
         (o.error ? `  ошибка: ${o.error}` : ''),
     );
   }

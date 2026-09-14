@@ -201,6 +201,71 @@ export class PrismaMetrikaSyncStore implements MetrikaSyncStore {
               ).count;
             }
             return stored;
+          case 'behaviorDevices':
+            await tx.metrikaDailyBehaviorDevice.deleteMany({ where });
+            for (const part of chunks(
+              rows as DatasetRow<'behaviorDevices'>[],
+              INSERT_CHUNK,
+            )) {
+              stored += (
+                await tx.metrikaDailyBehaviorDevice.createMany({
+                  data: part.map(withDate),
+                })
+              ).count;
+            }
+            return stored;
+          case 'behaviorLandings':
+            await tx.metrikaDailyBehaviorLanding.deleteMany({ where });
+            for (const part of chunks(
+              rows as DatasetRow<'behaviorLandings'>[],
+              INSERT_CHUNK,
+            )) {
+              stored += (
+                await tx.metrikaDailyBehaviorLanding.createMany({
+                  data: part.map(withDate),
+                })
+              ).count;
+            }
+            return stored;
+          case 'behaviorParams':
+            await tx.metrikaDailyVisitParam.deleteMany({ where });
+            for (const part of chunks(
+              rows as DatasetRow<'behaviorParams'>[],
+              INSERT_CHUNK,
+            )) {
+              stored += (
+                await tx.metrikaDailyVisitParam.createMany({
+                  data: part.map(withDate),
+                })
+              ).count;
+            }
+            return stored;
+          case 'behaviorPaths':
+            await tx.metrikaDailyPathPage.deleteMany({ where });
+            for (const part of chunks(
+              rows as DatasetRow<'behaviorPaths'>[],
+              INSERT_CHUNK,
+            )) {
+              stored += (
+                await tx.metrikaDailyPathPage.createMany({
+                  data: part.map(withDate),
+                })
+              ).count;
+            }
+            return stored;
+          case 'behaviorEngagement':
+            await tx.metrikaDailyDeviceEngagement.deleteMany({ where });
+            for (const part of chunks(
+              rows as DatasetRow<'behaviorEngagement'>[],
+              INSERT_CHUNK,
+            )) {
+              stored += (
+                await tx.metrikaDailyDeviceEngagement.createMany({
+                  data: part.map(withDate),
+                })
+              ).count;
+            }
+            return stored;
           default:
             throw new Error(`Неизвестный набор данных: ${String(dataset)}`);
         }

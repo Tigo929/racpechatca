@@ -24,6 +24,7 @@ import { MetrikaModule } from './metrika/metrika.module';
 import { MetrikaAnalyticsModule } from './metrika/analytics/metrika-analytics.module';
 import { AnalyticsMetricsModule } from './analytics/metrics/analytics-metrics.module';
 import { AnalyticsDashboardModule } from './analytics/dashboard/analytics-dashboard.module';
+import { BehaviorModule } from './analytics/behavior/behavior.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -58,6 +59,7 @@ import { HealthController } from './health.controller';
     MetrikaAnalyticsModule,
     AnalyticsMetricsModule,
     AnalyticsDashboardModule,
+    BehaviorModule,
     PushModule,
   ],
   controllers: [HealthController],

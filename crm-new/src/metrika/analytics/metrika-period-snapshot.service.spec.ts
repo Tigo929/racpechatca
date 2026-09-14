@@ -1,6 +1,10 @@
 import type { PrismaService } from 'src/prisma/prisma.service';
 import { MetrikaApiError } from '../metrika-api.client';
-import type { MetrikaStatsQuery, MetrikaStatsResponse } from '../metrika.types';
+import type {
+  MetrikaGoal,
+  MetrikaStatsQuery,
+  MetrikaStatsResponse,
+} from '../metrika.types';
 import {
   MetrikaPeriodSnapshotService,
   type SnapshotsClient,
@@ -36,12 +40,61 @@ function fakePrisma() {
       return Promise.resolve(rows.get(key));
     },
   );
+  // Этап 10: снимки посетителей по целям — отдельная таблица с ключом (период, цель).
+  const goalRows = new Map<string, Record<string, unknown>>();
+  const goalUpsert = jest.fn(
+    ({
+      where,
+      create,
+      update,
+    }: {
+      where: {
+        periodStart_periodEnd_goalId: {
+          periodStart: Date;
+          periodEnd: Date;
+          goalId: number;
+        };
+      };
+      create: Record<string, unknown>;
+      update: Record<string, unknown>;
+    }) => {
+      const k = where.periodStart_periodEnd_goalId;
+      const key = `${k.periodStart.toISOString()}|${k.periodEnd.toISOString()}|${k.goalId}`;
+      const existing = goalRows.get(key);
+      goalRows.set(key, existing ? { ...existing, ...update } : create);
+      return Promise.resolve(goalRows.get(key));
+    },
+  );
   return {
     rows,
-    prisma: { metrikaPeriodSnapshot: { upsert } } as unknown as PrismaService,
+    goalRows,
+    prisma: {
+      metrikaPeriodSnapshot: { upsert },
+      metrikaPeriodGoalSnapshot: { upsert: goalUpsert },
+    } as unknown as PrismaService,
     upsert,
   };
 }
+
+/** Две поведенческие цели в счётчике: начало формы и заявка. */
+const BEHAVIOR_GOALS: MetrikaGoal[] = [
+  {
+    id: 611379430,
+    name: 'form_started',
+    type: 'action',
+    conditions: [{ type: 'contain', url: 'form_started' }],
+  },
+  {
+    id: 611379890,
+    name: 'lead_submitted',
+    type: 'action',
+    conditions: [{ type: 'contain', url: 'lead_submitted' }],
+  },
+  { id: 596990603, name: 'CRM: Заказ создан', type: 'cdp_order_in_progress' },
+];
+
+/** Ответ на запрос посетителей по целям: [visits, users(form_started), users(lead)]. */
+const GOAL_USERS_ROW = { dimensions: [], metrics: [250, 13, 3] };
 
 function fakeClient(
   handler: (q: MetrikaStatsQuery) => Partial<MetrikaStatsResponse> | Error,
@@ -51,9 +104,13 @@ function fakeClient(
     calls,
     client: {
       isConfigured: () => true,
+      getGoals: () => Promise.resolve(BEHAVIOR_GOALS),
       getStats: (q) => {
         calls.push(q);
-        const out = handler(q);
+        const isGoalUsers = q.metrics.some(
+          (m) => m.endsWith('users') && m.includes('goal'),
+        );
+        const out = isGoalUsers ? { data: [GOAL_USERS_ROW] } : handler(q);
         if (out instanceof Error) return Promise.reject(out);
         return Promise.resolve({
           query: {
@@ -86,12 +143,22 @@ describe('MetrikaPeriodSnapshotService', () => {
       { from: '2026-09-06', to: '2026-09-12' },
       'last_7_days',
     );
-    expect(calls).toHaveLength(1);
+    // Два запроса за период: сводка счётчика и посетители по поведенческим целям.
+    expect(calls).toHaveLength(2);
     expect(calls[0]).toMatchObject({
       date1: '2026-09-06',
       date2: '2026-09-12',
       dimensions: undefined,
       metrics: ['ym:s:visits', 'ym:s:users', 'ym:s:pageviews'],
+    });
+    expect(calls[1]).toMatchObject({
+      date1: '2026-09-06',
+      date2: '2026-09-12',
+      metrics: [
+        'ym:s:visits',
+        'ym:s:goal611379430users',
+        'ym:s:goal611379890users',
+      ],
     });
     expect(out).toMatchObject({
       status: 'SUCCESS',
@@ -99,7 +166,8 @@ describe('MetrikaPeriodSnapshotService', () => {
       visits: 250,
       pageviews: 610,
       sampled: false,
-      requests: 1,
+      requests: 2,
+      goalUsers: 2,
     });
     const stored = [...rows.values()][0];
     expect(stored).toMatchObject({
@@ -114,6 +182,32 @@ describe('MetrikaPeriodSnapshotService', () => {
     expect((stored.periodStart as Date).toISOString()).toBe(
       '2026-09-06T00:00:00.000Z',
     );
+  });
+
+  it('этап 10: посетители по целям за период — строка на цель, ключ (период, цель), 0 явно', async () => {
+    const { prisma, goalRows } = fakePrisma();
+    const { client } = fakeClient(() => ({}));
+    const s = new MetrikaPeriodSnapshotService(prisma, client, () => NOW);
+    await s.refreshRange(
+      { from: '2026-09-06', to: '2026-09-12' },
+      'last_7_days',
+    );
+    expect(goalRows.size).toBe(2);
+    const byGoal = Object.fromEntries(
+      [...goalRows.values()].map((r) => [r.goalIdentifier as string, r]),
+    );
+    expect(byGoal.form_started).toMatchObject({
+      users: 13,
+      preset: 'last_7_days',
+      sampled: false,
+    });
+    expect(byGoal.lead_submitted).toMatchObject({ users: 3 });
+    // повтор — обновление, не вторая строка
+    await s.refreshRange(
+      { from: '2026-09-06', to: '2026-09-12' },
+      'last_7_days',
+    );
+    expect(goalRows.size).toBe(2);
   });
 
   it('повторный снимок того же периода обновляет строку, а не создаёт вторую', async () => {
@@ -155,7 +249,8 @@ describe('MetrikaPeriodSnapshotService', () => {
     expect(failed[0].preset).toBe('today');
     expect(failed[0].error).toContain('503');
     expect(rows.size).toBe(7);
-    expect(calls).toHaveLength(8);
+    // 7 удачных пресетов × (сводка + цели) + 1 неудачная сводка
+    expect(calls).toHaveLength(15);
   });
 
   it('семплированный ответ → повтор с accuracy=full, признак сохраняется честно', async () => {
@@ -167,8 +262,9 @@ describe('MetrikaPeriodSnapshotService', () => {
     );
     const s = new MetrikaPeriodSnapshotService(prisma, client, () => NOW);
     const out = await s.refreshRange({ from: '2026-08-14', to: '2026-09-12' });
-    expect(calls).toHaveLength(2);
-    expect(out.requests).toBe(2);
+    // сводка (выборка) + повтор с accuracy=full + посетители по целям
+    expect(calls).toHaveLength(3);
+    expect(out.requests).toBe(3);
     expect(out.sampled).toBe(false);
     expect([...rows.values()][0]).toMatchObject({
       requestCount: 2,

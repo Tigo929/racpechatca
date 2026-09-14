@@ -10,6 +10,8 @@ import type { YandexMetrikaClient } from '../metrika-api.client';
 import { describe } from './metrika-analytics-sync.service';
 import { isoToUtcDate, utcDateToIso, type DateRange } from './metrika-dates';
 import { MetrikaReportFetcher } from './metrika-report-fetcher';
+import { behaviorGoals, type BehaviorGoal } from './metrika-behavior-goals';
+import { goalMetric } from './metrika-query-catalog';
 
 /**
  * Снимки метрик за целый период (этап 08, разделы 8–9).
@@ -23,6 +25,11 @@ import { MetrikaReportFetcher } from './metrika-report-fetcher';
  * текущий и прошлый месяц) — каждый часовой тик расписания и по ручной
  * команде. Произвольный период — только ручной командой: снимок для него
  * создаётся контролируемо, а не из запроса интерфейса.
+ *
+ * Этап 10: вторым запросом того же периода берутся посетители, достигшие
+ * каждой поведенческой цели (`ym:s:goal<id>users`, ≤ 14 метрик + якорь) —
+ * шаги воронки в уникальных посетителях периода (MetrikaPeriodGoalSnapshot).
+ * Цели без достижений API в строке не отдаёт — тогда пишем 0 явно.
  */
 
 export interface SnapshotOutcome {
@@ -35,11 +42,13 @@ export interface SnapshotOutcome {
   sampled: boolean | null;
   requests: number;
   error: string | null;
+  /** Этап 10: сколько поведенческих целей получили снимок посетителей (null — цели не запрашивались). */
+  goalUsers: number | null;
 }
 
 export type SnapshotsClient = Pick<
   YandexMetrikaClient,
-  'getStats' | 'isConfigured'
+  'getStats' | 'isConfigured' | 'getGoals'
 >;
 
 export class MetrikaPeriodSnapshotService {
@@ -83,9 +92,11 @@ export class MetrikaPeriodSnapshotService {
         sampled: null,
         requests: 0,
         error: 'клиент Метрики не настроен',
+        goalUsers: null,
       };
     }
     const counter = { requests: 0 };
+    let goalUsers: number | null = null;
     try {
       const res = await this.fetcher.fetch(
         {
@@ -129,6 +140,7 @@ export class MetrikaPeriodSnapshotService {
         },
         update: data,
       });
+      goalUsers = await this.refreshGoalUsers(range, preset, counter);
       return {
         preset,
         range,
@@ -139,6 +151,7 @@ export class MetrikaPeriodSnapshotService {
         sampled: res.meta.sampled,
         requests: counter.requests,
         error: null,
+        goalUsers,
       };
     } catch (error) {
       const message = describe(error);
@@ -155,7 +168,85 @@ export class MetrikaPeriodSnapshotService {
         sampled: null,
         requests: counter.requests,
         error: message,
+        goalUsers,
       };
+    }
+  }
+
+  /**
+   * Посетители периода по поведенческим целям — один запрос на период.
+   * Список целей берётся из Management API (кэшируется на время одного
+   * обновления пресетов). Ошибка здесь не портит основной снимок:
+   * она логируется, а посетители шагов остаются прежними.
+   */
+  private goalsCache: { at: number; goals: BehaviorGoal[] } | null = null;
+
+  private async behaviorGoalList(): Promise<BehaviorGoal[]> {
+    const now = this.now().getTime();
+    if (this.goalsCache && now - this.goalsCache.at < 10 * 60_000)
+      return this.goalsCache.goals;
+    const goals = behaviorGoals(await this.client.getGoals());
+    this.goalsCache = { at: now, goals };
+    return goals;
+  }
+
+  private async refreshGoalUsers(
+    range: DateRange,
+    preset: PeriodPreset | null,
+    counter: { requests: number },
+  ): Promise<number | null> {
+    try {
+      const goals = await this.behaviorGoalList();
+      if (goals.length === 0) return 0;
+      const res = await this.fetcher.fetch(
+        {
+          dimensions: [],
+          metrics: [
+            'ym:s:visits',
+            ...goals.map((g) => goalMetric(g.goalId, 'users')),
+          ],
+          sort: 'ym:s:visits',
+          lang: 'ru',
+        },
+        range,
+        counter,
+      );
+      const metrics = res.rows[0]?.metrics ?? [];
+      const int = (v: number | null | undefined) =>
+        Math.round(Number(v ?? 0)) || 0;
+      const fetchedAt = this.now();
+      for (const [i, g] of goals.entries()) {
+        const data = {
+          goalIdentifier: g.event,
+          preset,
+          users: int(metrics[1 + i]),
+          fetchedAt,
+          sampled: res.meta.sampled,
+          sampleShare: res.meta.sampleShare,
+        };
+        await this.prisma.metrikaPeriodGoalSnapshot.upsert({
+          where: {
+            periodStart_periodEnd_goalId: {
+              periodStart: isoToUtcDate(range.from),
+              periodEnd: isoToUtcDate(range.to),
+              goalId: g.goalId,
+            },
+          },
+          create: {
+            periodStart: isoToUtcDate(range.from),
+            periodEnd: isoToUtcDate(range.to),
+            goalId: g.goalId,
+            ...data,
+          },
+          update: data,
+        });
+      }
+      return goals.length;
+    } catch (error) {
+      this.logger.warn(
+        `Метрика: снимок посетителей по целям ${range.from}..${range.to}${preset ? ` (${preset})` : ''} не обновлён — ${describe(error)}`,
+      );
+      return null;
     }
   }
 
