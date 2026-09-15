@@ -26,6 +26,7 @@ const USERNAME = process.env.CRM_USERNAME ?? config.crmUsername;
 const PASSWORD = process.env.CRM_PASSWORD ?? config.crmPassword;
 const WORKING_DIRECTORY = path.resolve(process.env.LOCAL_AGENT_WORKDIR ?? config.workingDirectory ?? path.resolve(SCRIPT_DIR, '..'));
 const INTERVAL_MS = Math.max(5_000, Number(process.env.LOCAL_AGENT_INTERVAL_MS ?? config.pollIntervalMs ?? 15_000));
+const REQUEST_TIMEOUT_MS = Math.max(5_000, Number(process.env.LOCAL_AGENT_REQUEST_TIMEOUT_MS ?? config.requestTimeoutMs ?? 20_000));
 const CLAUDE_ENABLED = process.env.CLAUDE_ENABLED === 'true' || config.claudeEnabled === true;
 const ENABLED_AGENTS = new Set(
   String(process.env.CRM_AGENTS ?? config.agents ?? 'CODEX,CLOUD_CODE')
@@ -50,8 +51,10 @@ const running = new Set();
 const unavailableReported = new Set();
 
 async function request(pathname, options = {}, retry = true) {
+  const { signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS), ...requestOptions } = options;
   const res = await fetch(`${BASE_URL}${pathname}`, {
-    ...options,
+    ...requestOptions,
+    signal,
     headers: {
       'content-type': 'application/json',
       ...(AGENT_TOKEN || token ? { authorization: `Bearer ${AGENT_TOKEN || token}` } : {}),
@@ -308,11 +311,18 @@ async function tick() {
 
 console.log(`CRM local dispatcher -> ${BASE_URL}`);
 console.log(`Agents: ${[...ENABLED_AGENTS].join(', ')}; workspace: ${WORKING_DIRECTORY}`);
-await tick();
-const timer = setInterval(() => tick().catch((error) => {
-  console.error(error);
-  token = '';
-}), INTERVAL_MS);
+
+async function runTick() {
+  try {
+    await tick();
+  } catch (error) {
+    console.error(`${new Date().toISOString()} dispatcher tick failed:`, error);
+    token = '';
+  }
+}
+
+await runTick();
+const timer = setInterval(runTick, INTERVAL_MS);
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
