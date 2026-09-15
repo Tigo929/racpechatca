@@ -22,6 +22,11 @@ model User {
   // суммы «разработка дизайна» в заказе. 4000 = 40%.
   designRateBasisPoints Int?
   telegramUsername      String?
+  // id темы (форум-топика) в рабочей супергруппе Telegram. При назначении
+  // заказа этому исполнителю бот пишет задачу прямо в его тему. Заполняется
+  // вручную из ссылки на тему (последнее число в t.me/c/<чат>/<topic_id>):
+  // бот темы «искать» не может — Telegram не отдаёт список тем.
+  telegramTopicId       Int?
 
   salaryAccruals      SalaryAccrual[]
   salaryPayments      SalaryPayment[]          @relation("SalaryPaymentExecutor")

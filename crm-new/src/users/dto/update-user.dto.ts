@@ -31,4 +31,13 @@ export class DtoUpdateUser {
   @IsOptional()
   @IsString()
   telegramUsername?: string | null;
+
+  /**
+   * id темы (форум-топика) исполнителя в рабочей группе Telegram. При
+   * назначении заказа бот пишет задачу в эту тему. null — очистить.
+   */
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  telegramTopicId?: number | null;
 }

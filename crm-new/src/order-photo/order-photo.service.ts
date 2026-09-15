@@ -420,6 +420,7 @@ export class OrderPhotoService {
               id: true,
               username: true,
               telegramUsername: true,
+              telegramTopicId: true,
             },
           },
         },
@@ -439,12 +440,17 @@ export class OrderPhotoService {
       return created;
     });
 
-    if (result.executor?.telegramUsername) {
+    if (result.executor?.telegramUsername || result.executor?.telegramTopicId != null) {
       const text = this.buildAssignmentMessage(
         result,
-        result.executor.telegramUsername,
+        result.executor.telegramUsername ?? '',
       );
-      this.telegram.sendToGroup(text).catch(() => {});
+      // Есть тема исполнителя — пишем прямо в неё; иначе в общую группу.
+      const threadId =
+        result.executor.telegramTopicId != null
+          ? String(result.executor.telegramTopicId)
+          : undefined;
+      this.telegram.sendToGroup(text, threadId).catch(() => {});
     }
 
     return result;
@@ -1133,9 +1139,11 @@ export class OrderPhotoService {
 
     let executor: {
       id: string;
+      username: string;
       rateBasisPoints: number | null;
       isActive: boolean;
       telegramUsername: string | null;
+      telegramTopicId: number | null;
     } | null = null;
     if (!isUnassign) {
       executor = await this.prisma.user.findUnique({
@@ -1219,15 +1227,21 @@ export class OrderPhotoService {
     });
 
     if (!isUnassign && result) {
-      if (executor?.telegramUsername) {
+      if (executor?.telegramUsername || executor?.telegramTopicId != null) {
         const text = this.buildAssignmentMessage(
           result,
-          executor.telegramUsername,
+          executor.telegramUsername ?? '',
         );
-        this.telegram.sendToGroup(text).catch(() => {});
+        // Если у исполнителя задана тема — задача уходит прямо в его тему
+        // («заказы Лёша»), иначе в общую группу с упоминанием по нику.
+        const threadId =
+          executor.telegramTopicId != null
+            ? String(executor.telegramTopicId)
+            : undefined;
+        this.telegram.sendToGroup(text, threadId).catch(() => {});
       } else {
         this.logger.warn(
-          `Заказ ${result.numberOrder}: у исполнителя не задан Telegram-юзернейм — уведомление в группу пропущено`,
+          `Заказ ${result.numberOrder}: у исполнителя нет ни Telegram-ника, ни темы — уведомление пропущено`,
         );
       }
     }
@@ -1257,7 +1271,11 @@ export class OrderPhotoService {
     },
     username: string,
   ): string {
-    const handle = `@${username.replace(/^@/, '')}`;
+    // Тег по нику, если он есть. Если исполнителя нашли только по теме (ник не
+    // задан) — обходимся без «@»: сообщение и так уходит прямо в его тему.
+    const greeting = username.trim()
+      ? `🔔 @${username.replace(/^@/, '')}, вам назначена задача!`
+      : '🔔 Вам назначена задача!';
 
     const lines: string[] = [];
     for (const i of order.items) {
@@ -1304,7 +1322,7 @@ export class OrderPhotoService {
       : [];
 
     return [
-      `🔔 ${handle}, вам назначена задача!`,
+      greeting,
       '',
       `📋 Заказ: <code>${escapeHtml(order.numberOrder)}</code>`,
       `🏷 Категория: ${category}`,

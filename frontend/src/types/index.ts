@@ -320,6 +320,8 @@ export interface AppUser {
   /** Ставка премии за разработку дизайна (сотые процента). Для менеджера. */
   designRateBasisPoints: number | null;
   telegramUsername: string | null;
+  /** id темы исполнителя в рабочей группе Telegram (message_thread_id). */
+  telegramTopicId: number | null;
   createdAt: string;
   /** Заказов в работе — считаются до статуса «Готов» (текущая загрузка). */
   activeOrdersCount?: number;

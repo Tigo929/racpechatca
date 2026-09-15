@@ -155,13 +155,19 @@ interface TelegramEditorProps {
 function TelegramEditor({ user, onClose }: TelegramEditorProps) {
   const qc = useQueryClient();
   const [username, setUsername] = useState(user.telegramUsername ?? '');
+  const [topicId, setTopicId] = useState(
+    user.telegramTopicId != null ? String(user.telegramTopicId) : '',
+  );
 
   const mutation = useMutation({
-    mutationFn: (telegramUsername: string | null) =>
-      usersApi.update(user.id, { telegramUsername }),
+    mutationFn: () =>
+      usersApi.update(user.id, {
+        telegramUsername: username.trim() || null,
+        telegramTopicId: topicId.trim() ? Number(topicId.trim()) : null,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] });
-      toast.success('Telegram-юзернейм сохранён');
+      toast.success('Telegram сохранён');
       onClose();
     },
     onError: (error: unknown) => toast.error(getErrorMessage(error, 'Ошибка')),
@@ -170,37 +176,40 @@ function TelegramEditor({ user, onClose }: TelegramEditorProps) {
   return (
     <div className="flex flex-col gap-2 mt-2">
       <p className="text-xs text-gray-500">
-        Юзернейм в Telegram — бот тегнёт его в общей группе при назначении заказа.
-        Исполнитель должен состоять в группе.
+        Юзернейм — бот тегнёт исполнителя при назначении заказа. Исполнитель
+        должен состоять в группе.
+      </p>
+      <div className="relative">
+        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span>
+        <input
+          type="text"
+          value={username.replace(/^@/, '')}
+          onChange={(e) => setUsername(e.target.value)}
+          className="w-full rounded-lg border border-sky-300 pl-6 pr-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          placeholder="username"
+        />
+      </div>
+      <p className="text-xs text-gray-500 mt-1">
+        ID темы исполнителя в группе — тогда задача уйдёт прямо в его тему
+        («заказы {user.username}»). Открой тему в Telegram: последнее число в
+        ссылке t.me/c/…/<b>число</b> — это и есть ID. Пусто — писать в общую группу.
       </p>
       <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span>
-          <input
-            type="text"
-            value={username.replace(/^@/, '')}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full rounded-lg border border-sky-300 pl-6 pr-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-            placeholder="username"
-          />
-        </div>
+        <input
+          type="number"
+          inputMode="numeric"
+          value={topicId}
+          onChange={(e) => setTopicId(e.target.value)}
+          className="flex-1 rounded-lg border border-violet-300 px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+          placeholder="ID темы, напр. 12"
+        />
         <button
-          onClick={() => mutation.mutate(username.trim() || null)}
+          onClick={() => mutation.mutate()}
           disabled={mutation.isPending}
           className="flex items-center gap-1 px-3 py-1.5 bg-sky-600 text-white text-sm rounded-lg hover:bg-sky-700 disabled:opacity-50"
         >
           <Check size={13} /> {mutation.isPending ? '…' : 'Сохранить'}
         </button>
-        {user.telegramUsername && (
-          <button
-            onClick={() => mutation.mutate(null)}
-            disabled={mutation.isPending}
-            className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 text-sm rounded-lg hover:bg-red-100 disabled:opacity-50"
-            title="Отвязать Telegram"
-          >
-            <X size={13} />
-          </button>
-        )}
         <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600">
           <X size={14} />
         </button>

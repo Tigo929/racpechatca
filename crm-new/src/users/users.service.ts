@@ -114,6 +114,7 @@ export class UsersService {
       rateBasisPoints?: number;
       designRateBasisPoints?: number;
       telegramUsername?: string | null;
+      telegramTopicId?: number | null;
     } = {};
 
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
@@ -124,6 +125,12 @@ export class UsersService {
     if ('telegramUsername' in dto)
       data.telegramUsername =
         dto.telegramUsername?.replace(/^@/, '').trim() || null;
+    if ('telegramTopicId' in dto)
+      // 0/пусто трактуем как «нет темы».
+      data.telegramTopicId =
+        dto.telegramTopicId && dto.telegramTopicId > 0
+          ? dto.telegramTopicId
+          : null;
 
     const updated = await this.prisma.$transaction(async (tx) => {
       if (dto.rateBasisPoints !== undefined) {
