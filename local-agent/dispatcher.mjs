@@ -3,9 +3,23 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
+import { format } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const SERVICE_LOG_DIRECTORY = path.join(SCRIPT_DIR, 'service-logs');
+await mkdir(SERVICE_LOG_DIRECTORY, { recursive: true });
+const serviceLog = createWriteStream(path.join(SERVICE_LOG_DIRECTORY, 'dispatcher.log'), { flags: 'a' });
+
+function serviceMessage(target, ...args) {
+  const message = `${new Date().toISOString()} ${format(...args)}\n`;
+  serviceLog.write(message);
+  target.write(message);
+}
+
+const log = (...args) => serviceMessage(process.stdout, ...args);
+const logError = (...args) => serviceMessage(process.stderr, ...args);
+
 const CONFIG_PATH = process.env.LOCAL_AGENT_CONFIG
   ? path.resolve(process.env.LOCAL_AGENT_CONFIG)
   : path.join(SCRIPT_DIR, 'config.local.json');
@@ -155,7 +169,7 @@ function execute(command, run) {
     child.stdout.on('data', (chunk) => record(chunk, process.stdout));
     child.stderr.on('data', (chunk) => record(chunk, process.stderr));
     child.stdin.on('error', (error) => {
-      if (error.code !== 'EPIPE') console.error('agent stdin:', error.message);
+      if (error.code !== 'EPIPE') logError('agent stdin:', error.message);
     });
     child.once('error', (error) => {
       log.end();
@@ -232,11 +246,11 @@ async function handleTask(task) {
         ? agentAction(task.id, 'heartbeat', task.assigneeKind, summary)
         : updateTask(task.id, { agentSummary: summary });
       heartbeatRequest.catch((error) =>
-        console.error(`[${task.id}] heartbeat:`, error.message),
+        logError(`[${task.id}] heartbeat:`, error.message),
       );
     }, 30_000);
 
-    console.log(`[${task.id}] starting ${command.executable} in ${WORKING_DIRECTORY}`);
+    log(`[${task.id}] starting ${command.executable} in ${WORKING_DIRECTORY}`);
     const execution = await execute(command, run);
     const summary = await resultSummary(task, run, execution);
     if (AGENT_TOKEN) {
@@ -250,14 +264,14 @@ async function handleTask(task) {
       await updateTask(task.id, { agentSummary: summary });
       if (execution.code === 0) await setStatus(task.id, 'DONE');
     }
-    console.log(`[${task.id}] finished with code ${execution.code}`);
+    log(`[${task.id}] finished with code ${execution.code}`);
   } catch (error) {
     const missing = error.code === 'ENOENT';
     const agentName = task.assigneeKind === 'CODEX' ? 'Codex' : 'Claude Code';
     const message = missing
       ? `${agentName} не установлен или не найден в PATH ноутбука.`
       : `Ошибка локального агента: ${error.message}`;
-    console.error(`[${task.id}]`, error);
+    logError(`[${task.id}]`, error);
     try {
       const summary = message.slice(0, 4_000);
       if (AGENT_TOKEN) {
@@ -266,7 +280,7 @@ async function handleTask(task) {
         await updateTask(task.id, { agentSummary: summary });
       }
     } catch (reportError) {
-      console.error(`[${task.id}] cannot report error:`, reportError.message);
+      logError(`[${task.id}] cannot report error:`, reportError.message);
     }
   } finally {
     if (heartbeat) clearInterval(heartbeat);
@@ -309,14 +323,14 @@ async function tick() {
   }
 }
 
-console.log(`CRM local dispatcher -> ${BASE_URL}`);
-console.log(`Agents: ${[...ENABLED_AGENTS].join(', ')}; workspace: ${WORKING_DIRECTORY}`);
+log(`CRM local dispatcher -> ${BASE_URL}`);
+log(`Agents: ${[...ENABLED_AGENTS].join(', ')}; workspace: ${WORKING_DIRECTORY}`);
 
 async function runTick() {
   try {
     await tick();
   } catch (error) {
-    console.error(`${new Date().toISOString()} dispatcher tick failed:`, error);
+    logError('dispatcher tick failed:', error);
     token = '';
   }
 }

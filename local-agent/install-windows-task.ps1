@@ -2,16 +2,16 @@ $ErrorActionPreference = 'Stop'
 
 $taskName = 'CRM Local Code Agents'
 $agentDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
-$runnerPath = Join-Path $agentDirectory 'run-windows.ps1'
+$dispatcherPath = Join-Path $agentDirectory 'dispatcher.mjs'
 $configPath = Join-Path $agentDirectory 'config.local.json'
 
 if (-not (Test-Path -LiteralPath $configPath)) {
   throw "Create $configPath from config.example.json and fill in the CRM credentials first."
 }
 
-$powerShellPath = (Get-Command powershell.exe).Source
-$arguments = "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$runnerPath`""
-$action = New-ScheduledTaskAction -Execute $powerShellPath -Argument $arguments -WorkingDirectory $agentDirectory
+$nodePath = (Get-Command node.exe).Source
+$arguments = "`"$dispatcherPath`""
+$action = New-ScheduledTaskAction -Execute $nodePath -Argument $arguments -WorkingDirectory $agentDirectory
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 $settings = New-ScheduledTaskSettingsSet `
   -StartWhenAvailable `
