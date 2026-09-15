@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -16,6 +17,8 @@ import { DtoCreateTask } from './dto/create-task.dto';
 import { DtoUpdateTask } from './dto/update-task.dto';
 import { DtoQueryTasks } from './dto/query-tasks.dto';
 import { OPEN_TASK_STATUSES } from './task-reminder-rules';
+import { TelegramService } from 'src/telegram/telegram.service';
+import { buildLocalAgentReportMessage } from './local-agent-report';
 
 const TASK_INCLUDE = {
   assignee: {
@@ -33,7 +36,12 @@ function assigneeKindLabel(kind: EnumTaskAssigneeKind) {
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(TasksService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly telegram?: TelegramService,
+  ) {}
 
   private async assertAssigneeExists(assigneeId: string) {
     const user = await this.prisma.user.findUnique({
@@ -143,41 +151,41 @@ export class TasksService {
     // Статус можно поменять и здесь (форма редактирования у админа), поэтому
     // начисление синхронизируем той же логикой, что и в updateStatus.
     return this.prisma.$transaction(async (tx) => {
-    const rewardAccrualId = statusChanged
-      ? await this.syncReward(tx, task, dto.status!)
-      : undefined;
-    return tx.task.update({
-      where: { id },
-      data: {
-        ...(rewardAccrualId !== undefined ? { rewardAccrualId } : {}),
-        title: dto.title?.trim(),
-        description:
-          dto.description === undefined
-            ? undefined
-            : dto.description.trim() || null,
-        assigneeKind: assignee?.assigneeKind,
-        assigneeId: assignee?.assigneeId,
-        deadline:
-          dto.deadline === undefined ? undefined : new Date(dto.deadline),
-        orderId: dto.orderId,
-        rewardAmount:
-          effectiveAssigneeKind === EnumTaskAssigneeKind.USER
-            ? dto.rewardAmount
-            : 0,
-        agentSummary:
-          dto.agentSummary === undefined
-            ? undefined
-            : dto.agentSummary.trim() || null,
-        agentLastHeartbeatAt:
-          dto.agentSummary !== undefined &&
-          effectiveAssigneeKind !== EnumTaskAssigneeKind.USER
-            ? new Date()
-            : undefined,
-        status: dto.status,
-        ...(statusChanged ? this.statusSideEffects(dto.status!) : {}),
-      },
-      include: TASK_INCLUDE,
-    });
+      const rewardAccrualId = statusChanged
+        ? await this.syncReward(tx, task, dto.status!)
+        : undefined;
+      return tx.task.update({
+        where: { id },
+        data: {
+          ...(rewardAccrualId !== undefined ? { rewardAccrualId } : {}),
+          title: dto.title?.trim(),
+          description:
+            dto.description === undefined
+              ? undefined
+              : dto.description.trim() || null,
+          assigneeKind: assignee?.assigneeKind,
+          assigneeId: assignee?.assigneeId,
+          deadline:
+            dto.deadline === undefined ? undefined : new Date(dto.deadline),
+          orderId: dto.orderId,
+          rewardAmount:
+            effectiveAssigneeKind === EnumTaskAssigneeKind.USER
+              ? dto.rewardAmount
+              : 0,
+          agentSummary:
+            dto.agentSummary === undefined
+              ? undefined
+              : dto.agentSummary.trim() || null,
+          agentLastHeartbeatAt:
+            dto.agentSummary !== undefined &&
+            effectiveAssigneeKind !== EnumTaskAssigneeKind.USER
+              ? new Date()
+              : undefined,
+          status: dto.status,
+          ...(statusChanged ? this.statusSideEffects(dto.status!) : {}),
+        },
+        include: TASK_INCLUDE,
+      });
     });
   }
 
@@ -331,7 +339,9 @@ export class TasksService {
 
   private assertLocalAgentKind(kind: EnumTaskAssigneeKind) {
     if (kind === EnumTaskAssigneeKind.USER) {
-      throw new BadRequestException('Для сотрудника локальный агент недоступен.');
+      throw new BadRequestException(
+        'Для сотрудника локальный агент недоступен.',
+      );
     }
   }
 
@@ -387,7 +397,8 @@ export class TasksService {
       },
       data: { agentSummary: summary.trim() },
     });
-    if (!updated.count) throw new NotFoundException('Задача агента не найдена.');
+    if (!updated.count)
+      throw new NotFoundException('Задача агента не найдена.');
     return this.localAgentTask(id);
   }
 
@@ -425,7 +436,9 @@ export class TasksService {
     if (!updated.count) {
       throw new NotFoundException('Активная задача агента не найдена.');
     }
-    return this.localAgentTask(id);
+    const task = await this.localAgentTask(id);
+    await this.notifyLocalAgentReport(task, summary, 'done');
+    return task;
   }
 
   async failLocalAgentTask(
@@ -433,7 +446,25 @@ export class TasksService {
     kind: EnumTaskAssigneeKind,
     summary: string,
   ) {
-    return this.heartbeatLocalAgentTask(id, kind, summary);
+    const task = await this.heartbeatLocalAgentTask(id, kind, summary);
+    await this.notifyLocalAgentReport(task, summary, 'failed');
+    return task;
+  }
+
+  private async notifyLocalAgentReport(
+    task: Awaited<ReturnType<TasksService['localAgentTask']>>,
+    summary: string,
+    status: 'done' | 'failed',
+  ) {
+    if (!this.telegram) return;
+    const sent = await this.telegram.sendToGroup(
+      buildLocalAgentReportMessage(task, summary, status),
+    );
+    if (!sent) {
+      this.logger.warn(
+        `Local agent report was not delivered to Telegram: ${task.id}`,
+      );
+    }
   }
 
   async remove(id: string) {

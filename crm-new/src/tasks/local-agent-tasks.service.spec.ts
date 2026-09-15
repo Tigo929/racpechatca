@@ -39,4 +39,55 @@ describe('TasksService local agent queue', () => {
       service.claimLocalAgentTask('task-1', EnumTaskAssigneeKind.CODEX),
     ).rejects.toBeInstanceOf(ConflictException);
   });
+
+  it('sends the final agent report to the Telegram group on completion', async () => {
+    const telegram = { sendToGroup: jest.fn().mockResolvedValue(true) };
+    const serviceWithTelegram = new TasksService(
+      { task } as never,
+      telegram as never,
+    );
+    task.updateMany.mockResolvedValue({ count: 1 });
+    task.findUnique.mockResolvedValue({
+      id: 'task-1',
+      title: 'Report task',
+      assigneeKind: EnumTaskAssigneeKind.CODEX,
+      order: null,
+    });
+
+    await expect(
+      serviceWithTelegram.completeLocalAgentTask(
+        'task-1',
+        EnumTaskAssigneeKind.CODEX,
+        'Готово',
+      ),
+    ).resolves.toEqual(expect.objectContaining({ id: 'task-1' }));
+    expect(telegram.sendToGroup).toHaveBeenCalledWith(
+      expect.stringContaining('Codex завершил задачу'),
+    );
+  });
+
+  it('sends a problem report to the Telegram group when the agent fails', async () => {
+    const telegram = { sendToGroup: jest.fn().mockResolvedValue(true) };
+    const serviceWithTelegram = new TasksService(
+      { task } as never,
+      telegram as never,
+    );
+    task.updateMany.mockResolvedValue({ count: 1 });
+    task.findUnique.mockResolvedValue({
+      id: 'task-1',
+      title: 'Broken task',
+      assigneeKind: EnumTaskAssigneeKind.CODEX,
+      order: null,
+    });
+
+    await serviceWithTelegram.failLocalAgentTask(
+      'task-1',
+      EnumTaskAssigneeKind.CODEX,
+      'Нужна проверка',
+    );
+
+    expect(telegram.sendToGroup).toHaveBeenCalledWith(
+      expect.stringContaining('сообщил о проблеме'),
+    );
+  });
 });
