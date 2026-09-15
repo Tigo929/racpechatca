@@ -16,7 +16,7 @@ import {
   DtoLocalAgentTaskReport,
 } from './dto/local-agent-task.dto';
 
-@Controller('local-agent/tasks')
+@Controller('tasks-agent')
 @UseGuards(LocalAgentTokenGuard)
 export class LocalAgentTasksController {
   constructor(private readonly tasksService: TasksService) {}

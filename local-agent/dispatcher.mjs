@@ -181,7 +181,7 @@ async function setStatus(id, status) {
 }
 
 async function agentAction(id, action, assigneeKind, summary) {
-  return request(`/local-agent/tasks/${id}/${action}`, {
+  return request(`/tasks-agent/${id}/${action}`, {
     method: action === 'claim' ? 'POST' : 'PATCH',
     body: JSON.stringify({
       assigneeKind,
@@ -290,7 +290,7 @@ async function tick() {
     for (const agent of ENABLED_AGENTS) {
       const tasks = await request(
         AGENT_TOKEN
-          ? `/local-agent/tasks?assigneeKind=${agent}`
+          ? `/tasks-agent?assigneeKind=${agent}`
           : `/tasks?assigneeKind=${agent}`,
       );
       for (const task of tasks.filter((item) => item.status === 'OPEN')) {

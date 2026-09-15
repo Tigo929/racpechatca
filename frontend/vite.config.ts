@@ -25,7 +25,6 @@ export default defineConfig({
         '/reports',
         '/expenses',
         '/tasks',
-        '/local-agent',
         '/scenarios',
         '/avito',
         '/marketplace',

@@ -8,7 +8,7 @@ import { LocalAgentTokenGuard } from './local-agent-token.guard';
 
 @Module({
   imports: [TelegramModule],
-  controllers: [TasksController, LocalAgentTasksController],
+  controllers: [LocalAgentTasksController, TasksController],
   providers: [TasksService, TaskReminderService, LocalAgentTokenGuard],
   exports: [TasksService],
 })
