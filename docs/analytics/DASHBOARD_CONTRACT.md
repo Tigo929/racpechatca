@@ -477,10 +477,28 @@ FIX_01 (15.09.2026, feature): у измеренного шага `measuredFrom` 
 PARTIAL_BEHAVIOR_PERIOD | COMPARISON_UNAVAILABLE | NO_LEADS` (BEHAVIOR_RULES.md «Коды skipped[]»). Поля
 добавлены, ничего не удалено — старые клиенты совместимы.
 
+# 11b. Рост и изменения (этап 11) — `/analytics/dashboard/growth/*`
+
+Контракт — `crm-new/src/analytics/growth/growth-contract.ts` (зеркало `frontend/src/types/growth.ts`), данные и правила —
+`GROWTH_DATA_CONTRACT.md`, статистика — `GROWTH_STATISTICS.md`. Те же guards (ADMIN) и флаг `ANALYTICS_DASHBOARD_ENABLED`
+(выключен → 404 кроме `status`); списки не кэшируются (реестр маленький, правки должны быть видны сразу).
+
+| Путь | Метод сервиса | Ответ |
+|---|---|---|
+| `GET …/growth/status` | `status` | `GrowthStatus` — enabled, каталог метрик, измерения аудитории, типы/статусы, defaults, политика созревания, счётчики |
+| `GET …/growth/changes`, `GET …/changes/:id` | `listChanges` / `getChange` | `AnalyticsChangeRecord` с `latestEvaluation` |
+| `POST …/growth/changes`, `PATCH …/changes/:id` | `createChange` / `updateChange` | запись; после первой оценки первичная метрика и направление зафиксированы (400) |
+| `POST …/growth/changes/:id/evaluate` | `evaluate(id, 'manual')` | `GrowthEvaluation` — новая версия; окна, FACT / INTERPRETATION / RECOMMENDATION, `causality: NOT_ESTABLISHED`, `abCapability: NO_VARIANT_ASSIGNMENT` |
+| `GET …/growth/changes/:id/evaluations`, `…/latest`, `…/:version` | `listEvaluations` / `getEvaluation` | сводки версий / неизменяемая оценка |
+
+Единицы: доли — %, счётчики — за окно (дни в `denominator`), деньги — ₽; `value = null` и флаг вместо нуля при
+блокировке; уникальные посетители окон — только из `MetrikaPeriodSnapshot` по точным датам (иначе null +
+`UNIQUE_USERS_UNAVAILABLE_FOR_CUSTOM_WINDOW`). UI: вкладка «Рост / Изменения» (`?tab=growth`).
+
 # 12. Чего в V1 нет (намеренно)
 
 - Фильтров по источнику/каналу/товару, комбинированных срезов.
 - Spend / CPL / CPA / ROAS / ROMI (`spend.status = UNAVAILABLE_NO_SPEND_DATA`).
-- Поведенческих воронок, тепловых карт, session replay, гипотез (этап 10).
+- Тепловых карт, session replay, рандомизированных A/B-тестов (этап 11 — только наблюдательные «до / после»).
 - Записи в БД и любых мутаций через API дашборда.
 - Live-обращений к Яндекс Метрике.

@@ -257,6 +257,17 @@ metrics:     ym:s:visits + goal<id>users × 14 поведенческих цел
 unique key:  (periodStart, periodEnd, goalId)
 ```
 
+### Точные снимки окон «до / после» — этап 11 (в production НЕ выложено)
+
+```text
+что:         те же MetrikaPeriodSnapshot / MetrikaPeriodGoalSnapshot с preset = null за точные даты окон
+             изменения (before.from–before.to, after.from–after.to) — уникальные посетители окна не суммируются из дней
+когда:       хук после тика расписания (registerAfterSync «growth:evaluate», после снимков пресетов, на SUCCESS/PARTIAL):
+             для каждого ACTIVE/COMPLETED изменения ≤ 4 запроса (2 окна × 2 отчёта), пока окно после не устоялось
+             (день наблюдения ≥ after.to), затем 0; из запросов дашборда к API Метрики — 0
+если нет:    periodUsers = null и флаг UNIQUE_USERS_UNAVAILABLE_FOR_CUSTOM_WINDOW, оценка не блокируется
+```
+
 ---
 
 ## Реестр канонических целей

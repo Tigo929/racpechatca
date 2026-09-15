@@ -2,7 +2,12 @@
 
 ## STATUS
 
-TODO — implementation may start only after Reviewer approval of this specification.
+`REVIEW` — реализовано 15.09.2026 в `feature/analytics-foundation` (с влитым master 3ac9be8): реестр изменений и
+версии оценок (миграция 20260915130000), каталог метрик поверх сервисов этапов 08/10, окна с исключённым днём cutover и
+сопоставимостью по датам доступности, эмпирическое созревание когорт, статистика с независимыми контрольными
+значениями и MDE, вердикты без причинности, confounders, API под флагом дашборда, вкладка «Рост / Изменения», хук
+расписания для точных снимков окон и автооценки. Сверка на копии production A = B = C diff 0. Production не тронут.
+Отчёт — § 31; контракты — `GROWTH_DATA_CONTRACT.md`, `GROWTH_STATISTICS.md`. READY_FOR_REVIEW; verdict — Reviewer.
 
 ## 1. Goal
 
@@ -620,3 +625,245 @@ For this implementation gate:
 - Statistical uncertainty is mandatory; “percentage went up” is never enough.
 - Business outcomes must respect cohort maturity and attribution scope.
 
+---
+
+# 31. EXECUTOR_REPORT — 15.09.2026
+
+### RESULT
+
+```text
+READY_FOR_REVIEW
+```
+
+Реализовано на `feature/analytics-foundation` (с влитым `master` владельца 3ac9be8), проверено на свежей копии
+production-базы `crm_stage11_test` (снята 15.09 15:53 MSK, удалена после проверок). Production не менялся: ни деплоя
+CRM, ни env, ни миграции, ни данных; таблиц реестра в боевой базе нет. Логс API не включался, A/B-разделения нет,
+event model сайта не трогалась.
+
+### AUDIT
+
+```text
+Переиспользовано: AnalyticsMetricsService.getOverview (визиты, siteLeads, matched*, P&L окна, покрытие ClientID, снимок
+уникальных по точному периоду), .lifecycles (даты жизненного цикла заказов → когорты и эмпирические задержки),
+.getTrafficSources / .getUtm (только для аудиторий source / utm); BehaviorMetricsService.loadInput (цели form_started /
+lead_submit_attempt / form_error, устройства и страницы входа с достижениями lead_submitted); MetrikaPeriodSnapshotService
+.refreshRange (точные снимки окон из хука расписания); константы доступности этапов 08/10; хук после тика добавлен в
+MetrikaAnalyticsSchedulerService.registerAfterSync (модуль расписания о росте не знает — цикла модулей нет).
+Фактические схемы: MetrikaPeriodSnapshot уже принимает произвольные периоды (preset nullable) — отдельной таблицы
+снимков окон не потребовалось. Противоречий со спецификацией нет; уточнения — DEVIATIONS.
+Полный контракт — GROWTH_DATA_CONTRACT.md, формулы — GROWTH_STATISTICS.md.
+```
+
+### DATA MODEL
+
+```text
+AnalyticsChange (реестр, primaryLockedAt) + AnalyticsChangeEvaluation (версии: unique(changeId, version), result JSONB,
+flags, окна DATE, observationCutoff, metricVersion, lastSyncRunId) — миграция 20260915130000_analytics_change_registry:
+2 CREATE TABLE, 3 CREATE INDEX, 1 FK ON DELETE CASCADE; DROP / ALTER / UPDATE / DELETE / TRUNCATE — 0. Применена на копии
+(prisma migrate deploy), в production — нет. После слияния master миграции владельца 20260915120000 / 170000 / 173000
+соседствуют по имени; deploy применяет недостающие независимо от порядка применённых.
+```
+
+### CHANGE REGISTRY
+
+```text
+Поля — раздел 4 спецификации целиком (+ evaluationDays 7|14|21|28, primaryLockedAt). Валидация: DTO class-validator с
+whitelist/forbidNonWhitelisted (лишние поля, в т. ч. любые PII-поля → 400), сервисная проверка дат (endedAt > startedAt),
+аудитории (только device|source|utm|landing, 1–20 значений), метрик из каталога. Жизненный цикл: DRAFT → ACTIVE →
+COMPLETED / CANCELLED; CANCELLED не оценивается. Аудит: первая оценка фиксирует primaryMetric и expectedDirection
+(PATCH → 400 «зафиксирована первой оценкой»), остальные поля правятся; каждая оценка — новая версия с trigger и датой;
+проверено на копии (PATCH до оценки 200, после — 400; v1 неизменна при v2). Общего audit-log в проекте нет — пробел
+задокументирован, отдельная подсистема не строилась.
+```
+
+### COMPARISON ENGINE
+
+```text
+buildWindows: день cutover по Москве исключён (кроме ровно 00:00 MSK), окна равной длины из полных дней, авто —
+целые недели ≤ 28, SHORT_WINDOW при < запрошенного, AFTER_WINDOW_TRUNCATED_BY_END, наблюдение — вчера по Москве не
+позже последнего дня данных; состав дней недели → WEEKDAY_MIX_MISMATCH. metricComparability: measuredFrom по
+availableFrom, PARTIAL_MEASUREMENT_PERIOD / METRIC_UNAVAILABLE_* / MEASUREMENT_DEFINITION_CHANGED → INCOMPARABLE без
+процента прироста. Фикстура 12.09 13:19 MSK × siteLeadRate на копии: INCOMPARABLE (METRIC_UNAVAILABLE_BEFORE +
+MEASUREMENT_DEFINITION_CHANGED), числа 3,92 % (2/51) → 7,41 % (2/27) показаны, «+88,9 %» выводом не является.
+```
+
+### MATURITY
+
+```text
+Эмпирика из lifecycles копии (15.09): заявка → принят n = 24 (медиана 0, p90 0,7 дн. → политика 1 день, empirical);
+принят → оплата n = 212 (p90 20 дн.); заявка → оплата n < 20 → политика paid по умолчанию 14 дн. с флагом
+MATURITY_HISTORY_INSUFFICIENT. Когорты — по дате заявки / принятия в окне, исходы до конца дня наблюдения (не календарные
+оплаты); статусы MATURE / PARTIALLY_MATURE (после медианы) / IMMATURE с maturityUntil; вердикт IMMATURE не считается итогом
+даже при большой разнице (тест: leadToPaidRate 25 % → 62,5 % → IMMATURE, после 15.10 → POSITIVE_SIGNAL).
+```
+
+### STATISTICS
+
+```text
+Методы: Wilson + Newcombe (метод 10) + z-тест с объединённой долей / точный Фишера при ожидаемых < 5 (доли); условный
+биномиальный точный тест и интервал отношения интенсивностей через Wilson (счётчики); перцентильный бутстрэп
+разности средних с фиксированным зерном (средний чек); суммы — описательно (STATISTICAL_TEST_UNAVAILABLE).
+α 0,05 (двусторонний), мощность 0,8, целевой эффект 20 %: MDE и требуемая выборка в каждой оценке словами
+(«заметим только эффект от ±… (±… % от базы); чтобы заметить 20 %, нужно ≈ N визитов/событий на окно»).
+Независимые контрольные значения (Python + опубликованные примеры): Wilson 5/100 (0,02154; 0,11175); Newcombe 56/70 →
+48/80 (−0,3339; −0,0524); z = 2,357 / p 0,0184; Фишер 3/4 vs 1/4 = 0,4857; Пуассон 10 → 20 p 0,0987, RR (0,952; 4,200);
+требуемая выборка 10 % → 15 % = 686; MDE 5 % при 500/500 = 3,86 п.п.; событий для +20 % = 432; бутстрэп детерминирован.
+Первичная метрика заявляется до оценки и фиксируется; вторичные — исследовательские; NO_CLEAR_CHANGE — только если MDE
+≤ 20 %, иначе INSUFFICIENT_DATA (низкий трафик честно даёт именно его).
+```
+
+### METRICS / SCOPE
+
+```text
+Поддержаны 21 метрика (GROWTH_DATA_CONTRACT.md § 3): сайт (visits, siteLeads, siteLeadRate, formStarts, formStartRate,
+leadAttempts, formErrors, formErrorRate), сопоставленные (matchedAccepted, matchedAcceptedRate, matchedPaid — всегда
+контекст, гейт покрытия ClientID ≥ 50 %), CRM-когорты (crmLeads, acceptedOrders, leadToAcceptedRate, leadToPaidRate,
+paidOrders, paidAov, contractValue, paidOrderValue), P&L (realizedRevenue, netProfit — контекст для сайта/CRM, первичны
+для цен/операций; COGS_INCOMPLETE блокирует прибыль). Правка сайта с первичной crmLeads → METRIC_SCOPE_MISMATCH.
+Итоги CRM не смешиваются с метриками сайта: контекст подписан «контекст описывает бизнес, а не эффект изменения».
+```
+
+### CONFOUNDERS
+
+```text
+Дни недели (окна не из целых недель), сдвиг смеси источников / устройств / страниц входа ≥ 15 п.п. (описательно, с
+долями до/после), смена определения метрик (по заявленным метрикам), пересекающиеся ACTIVE/COMPLETED изменения (ids),
+устаревшие данные, малая выборка, покрытие ClientID, COGS, незрелость. Ни один не «исправляет» числа и не утверждает
+причину; все перечислены в INTERPRETATION. На копии обе фикстуры получили OVERLAPPING_CHANGE друг от друга ✓.
+```
+
+### A/B CAPABILITY
+
+```text
+NO_VARIANT_ASSIGNMENT: на сайте нет стабильного назначения вариантов и событий экспозиции; все оценки —
+OBSERVATIONAL_BEFORE_AFTER, наблюдательные сравнения A/B-тестами не называются (status.abCapability, поле в каждой оценке,
+плашка в UI). Будущий контракт вариантов (experimentId, variantId, анонимный ключ, assignmentAt, exposure event,
+persistence, consent, без PII) описан в GROWTH_DATA_CONTRACT.md как отдельный gate; web-photo не менялся.
+```
+
+### API / UI
+
+```text
+Маршруты: GET status; GET/POST changes; GET/PATCH changes/:id; POST changes/:id/evaluate; GET changes/:id/evaluations,
+…/latest, …/:version — ADMIN only (JwtAuthGuard + RolesGuard), флаг ANALYTICS_DASHBOARD_ENABLED (выключен → 404 кроме
+status). На копии: без токена 401, EXECUTOR 403 (GET и POST), невалидное тело 400 с перечнем ошибок и «customerPhone
+should not exist».
+UI: вкладка «Рост / Изменения» в /crm/analytics — плашка NO_VARIANT_ASSIGNMENT и дисклеймер, список изменений (вердикт,
+до → после; дельта крупно только при POSITIVE / NEGATIVE / NO_CLEAR_CHANGE, иначе «разница не оценивается»), форма
+регистрации (московское время → ISO, метрики другой области подписаны «только контекст», аудитория из одобренных
+измерений), детали: окна и исключённый день, до → после → разница, интервал / p / метод / MDE словами, сопоставимость
+и созревание, ФАКТ / ИНТЕРПРЕТАЦИЯ / ЧТО ДЕЛАТЬ, оговорки с долями, вторичные и контекст, сегменты, уникальные только из
+снимков, пометки качества, версии оценок, «Оценить сейчас». Скриншоты docs/analytics/screenshots/11_growth/:
+growth-loading, growth-desktop-incomparable (фикстура 12.09), growth-desktop-insufficient (визиты, окно 2 дня),
+growth-desktop-form, growth-desktop-error (500 через перехват), growth-desktop-empty, growth-mobile-390 (scrollWidth 390).
+```
+
+### RECONCILIATION
+
+```text
+Копия crm_stage11_test, backend :3000, вход stage11_admin (только в копии). A = HTTP POST evaluate, B = AnalyticsGrowthService
+на тех же строках, C = независимый SQL (MetrikaDailyTraffic / MetrikaDailyGoal / MetrikaDailyBehaviorDevice /
+MetrikaPeriodSnapshot) и когорты этапа 08 (Overview.crmFunnel.cohorts.leadCohortSize / acceptedCohortSize):
+  фикстура 12.09 × siteLeadRate: A = B по 501 листу JSON diff 0; A = C 12 проверок diff 0 (siteLeads 2/2, rate 3,92/7,41,
+    formStarts 8/3, crmLeads 0/1, acceptedOrders 5/9, periodUsers null/null)
+  фикстура 12.09 × visits:       A = B 378 листьев diff 0; A = C 8 проверок diff 0 (visits 51/27, crmLeads, accepted, users)
+Версии: v1 неизменна после v2; latest = v2. afterSync на копии: {evaluated 0, snapshotRequests 0, errors 0} — без нового
+полного дня переоценки нет (клиент Метрики в копии не настроен — снимки окон не запрашивались).
+```
+
+### PERFORMANCE
+
+```text
+Одна оценка: 76 SQL-запросов, постоянное число (OrderPhoto с позициями ×5: 2 обзора × (заказы + P&L) + lifecycles;
+поведенческие агрегаты ×2 по 13; источники ×2 по 1; реестр 4–6; N+1 нет). На копии через SSH-туннель (RTT 122–163 мс):
+evaluate 2,2–2,7 с (первые прогоны 6–8 с при RTT 163 мс и старой схеме загрузки — оптимизировано: устройства/страницы из
+поведенческих агрегатов, источники одним groupBy); list 2 SQL 0,25–0,35 с; status 7 SQL 0,4 с (lifecycles для эмпирики);
+getEvaluation 1 SQL 0,1 с. Ожидание на бою (БД в соседнем контейнере, RTT ~1 мс) — ≤ 1–1,5 с на оценку; цель ≤ 3 с
+проверяется при rollout. Дополнительные запросы к Метрике: только точные снимки окон из хука расписания — ≤ 4 на
+ACTIVE/COMPLETED изменение за тик, пока окна не устоялись, затем 0; из запросов дашборда — 0.
+```
+
+### PRIVACY
+
+```text
+Реестр: name / description / hypothesis — внутренний текст администратора (в Метрику не уходит), аудитория — только
+device | source | utm | landing; DTO отбрасывает любые лишние поля (проверено: customerPhone → 400). Оценки: числа,
+даты, коды, тексты FACT / INTERPRETATION / RECOMMENDATION; ClientID, телефоны, e-mail, имена, Telegram/MAX не хранятся и
+не отдаются. Скан сохранённых строк копии regex-паттернами дал 4 «попадания» — все ложные: ISO-даты («026-09-14»),
+цифровые хвосты чисел с плавающей точкой в статистике и имя поля clientIdCoverageAccepted (доля в %, не идентификатор).
+```
+
+### TESTS
+
+```text
+CRM (jest): 1012 / 1012, 93 suites (было 960 до этапа + тесты владельца). Этап 11 — 50: growth-statistics.spec (9,
+независимые контрольные значения), growth-compute.spec (23: окна и день cutover, авто-длина, endedAt/lastDataDay,
+сопоставимость, фикстура 12.09 без ложного роста, малая выборка при +200 %, нулевой знаменатель, positive / negative /
+no-clear синтетика, короткое окно, уникальные не суммируются, scope mismatch, покрытие ClientID, COGS, созревание и
+незрелая когорта, lagInputsFrom, пересечения, сдвиг смесей, сегменты и неподдерживаемые, causality/контракт, бутстрэп
+среднего чека), analytics-growth.service.spec (5: валидация и фиксация первичной метрики, версии и когорты, cohortsFor,
+afterSync, status), growth-dashboard.controller.spec (4: guards/ADMIN, флаг, маршруты, DTO whitelist/PII/аудитория),
+metrika-analytics-scheduler.service.spec (+1: хук после тика, ошибка хука не ломает тик). Покрытие разделов 26.1–26.25 —
+все; 26.24/26.25 — прежние тесты этапов 06/09/10 зелёные без правок.
+Панель (vitest): 35 / 35 — growth.test.tsx 5 (дельта не заголовок при INSUFFICIENT_DATA, FACT/интерпретация/рекомендация
+и дисклеймер, MDE словами, INCOMPARABLE / IMMATURE, форма отправляет только одобренные поля и московское время).
+Build: nest build OK, tsc -b && vite build OK; lint: eslint growth/ 0 проблем, prettier чисто; frontend eslint по
+аналитике 0 (19 прежних проблем репозитория вне аналитики — как на HEAD).
+```
+
+### GIT
+
+```text
+feature/analytics-foundation: 51f850d docs спецификация; 41be79b feat backend; e2583cb feat панель; 70f4aab merge
+origin/master 3ac9be8 (владелец: Telegram-темы исполнителей, локальные агенты — 11 коммитов 15.09); 5328917 fix правила
+после сверки; <docs> — GROWTH_DATA_CONTRACT.md, GROWTH_STATISTICS.md, отчёт § 31, DASHBOARD_CONTRACT § 11b, master plan,
+current state, скриншоты. master = 3ac9be8 (production CRM, задеплоен владельцем 15.09 15:55–17:49); master ⊂ feature.
+```
+
+### PRODUCTION_UNTOUCHED
+
+```text
+CRM production не менялся этапом 11: master 3ac9be8 — коммиты владельца, наш код в master не пушился; env / compose /
+данные не трогались; таблиц AnalyticsChange* в боевой базе нет (миграция применялась только на копии, копия удалена).
+Отдельно и вне этапа 11 по прямой команде владельца 15.09 20:27 восстановлен сайт web-photo (см. NEW FACTS).
+```
+
+### NEW FACTS / DEVIATIONS / OPEN DECISIONS
+
+```text
+NEW FACTS
+1. Сегодняшние окна для изменения 12.09: после cutover есть лишь 2 полных дня (13–14.09) → любое сравнение сейчас
+   SHORT_WINDOW; первое недельное окно 13–19.09 станет доступно 20.09.
+2. Задержки CRM: заявка → принят p90 0,7 дня (n = 24), принят → оплата p90 20 дней (n = 212); пар «заявка → оплата»
+   меньше 20 — созревание оплат пока по умолчанию 14 дней.
+3. Параллельно 15.09 владелец задеплоил в CRM Telegram-темы исполнителей и локальных агентов (3 миграции); влито в
+   feature без конфликтов, 1012 тестов зелёные.
+4. 14.09 18:17 пуш устаревшей ветки web-photo feature/print-card-lead-form (по просьбе «отправить всё») перезаписал тег
+   latest сайта августовской сборкой (её workflow триггерится на саму себя); 15.09 20:27–20:32 по команде владельца сайт
+   восстановлен пересборкой из feature/cms-admin (коммит cc9bc89 без изменений кода, /api/health → cc9bc89).
+   Event model сайта при этом не менялась. Урок и защита — предложение удалить ветку на origin (решение владельца).
+
+DEVIATIONS
+1. Добавлено правило вне буквы спецификации: окно < 7 полных дней → SHORT_WINDOW и вердикт не выше INSUFFICIENT_DATA
+   (на копии 2-дневное окно давало NEGATIVE_SIGNAL для визитов при сравнении будней с выходными — формально значимый,
+   но бессмысленный сигнал). Порог MIN_WINDOW_DAYS_FOR_SIGNAL = 7, задокументирован.
+2. Confounders о смене определения / покрытии / COGS считаются по заявленным метрикам (первичная + вторичные), контекст —
+   отдельно со своими вердиктами (иначе оговорки шумят метриками, которых пользователь не спрашивал).
+3. Сегменты по устройствам и страницам входа берутся из поведенческих агрегатов этапа 10 (визиты и достижения
+   lead_submitted совпадают со срезами этапа 09); matchedPaid по срезам не хранится → сегменты по нему не поддержаны.
+4. Фикстура 17.2 («деплой web-photo с неизменной семантикой») привязана к тому же деплою 12.09 с метрикой visits: других
+   точно датированных production-деплоев сайта с неизменной семантикой нет; результат — INSUFFICIENT_DATA (окно 2 дня).
+5. Точные снимки уникальных за окна реализованы через существующий MetrikaPeriodSnapshotService (таблица та же), но на
+   копии не запрашивались (клиент Метрики не настроен) — поведение проверено юнит-тестом хука; фактические запросы
+   увидим при rollout.
+6. Общего audit-log в проекте нет: аудит реестра — updatedAt, primaryLockedAt и неизменяемые версии оценок.
+
+OPEN DECISIONS
+1. Production rollout — отдельный документ и gate (миграция 20260915130000 применится на старте контейнера; env не
+   меняется; хук расписания добавит ≤ 4 запроса к Метрике на активное изменение за тик до устоявшихся окон).
+2. Подтвердить на бою цель производительности evaluate ≤ 3 с (76 SQL; на копии через туннель 2,2–2,7 с).
+3. Пороги MIN_WINDOW_DAYS_FOR_SIGNAL = 7, MIX_SHIFT 15 п.п., TARGET_RELATIVE_EFFECT 20 %, покрытие ClientID 50 % — конфигурация
+   в growth-rules.ts; менять — решением Reviewer.
+4. Реальное A/B (назначение вариантов в web-photo) — отдельная спецификация; G2–G5 этапа 10 не тронуты.
+5. Удаление устаревшей ветки web-photo feature/print-card-lead-form на origin — решение владельца.
+```

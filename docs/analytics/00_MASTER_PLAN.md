@@ -1272,7 +1272,18 @@ skipped[] с кодами) — реализован 15.09 (f2db719, § 34) и в
 Статус:
 
 ```text
-TODO
+REVIEW (15.09.2026). Реализовано в feature/analytics-foundation (с влитым master 3ac9be8 владельца), проверено на
+копии production crm_stage11_test (удалена): реестр изменений AnalyticsChange + неизменяемые версии оценок
+AnalyticsChangeEvaluation (миграция 20260915130000, только CREATE); окна «до / после» из полных московских дней с
+исключённым днём cutover; сопоставимость метрик по датам доступности и смены определений (деплой 12.09 →
+INCOMPARABLE, а не «+88,9 %»); когорты CRM по дате заявки/принятия с эмпирическим созреванием; статистика без
+библиотек (Wilson / Newcombe / z / Фишер / Пуассон / бутстрэп) с MDE и требуемой выборкой словами; вердикты
+POSITIVE_SIGNAL … INCOMPARABLE без причинности (causality NOT_ESTABLISHED, abCapability NO_VARIANT_ASSIGNMENT);
+confounders; ADMIN API /analytics/dashboard/growth/* под флагом дашборда; вкладка «Рост / Изменения»; хук после тика
+расписания (точные снимки окон, автооценка ACTIVE). Сверка A (HTTP) = B (service) = C (SQL) diff 0; 76 SQL на оценку;
+тесты CRM 1012 / панель 35. Production не тронут (Logs API OFF, A/B-разделения нет, event model сайта не менялась);
+rollout — отдельный gate. Отчёт — 11_GROWTH_AND_EXPERIMENTS.md § 31; контракты — GROWTH_DATA_CONTRACT.md,
+GROWTH_STATISTICS.md. Verdict ставит Reviewer.
 ```
 
 Цель:
@@ -1618,6 +1629,14 @@ diff 0, расписание — 10 тиков SUCCESS до 10:23) — отчё�
 ждёт verdict Reviewer (DONE). FIX_01 к правилу 11.1 реализован (f2db719, § 34) и выложен в production 15.09 11:26 MSK
 (master b04681f, rollout § 22–23). Маршрут `/analytics`
 на домене raspechatkaa.ru исправлен 15.09 00:01 (второй белый список nginx). Отчёт этапа — `10_BEHAVIOR_AND_FUNNELS.md` § 32 / § 33.
+
+11_GROWTH_AND_EXPERIMENTS — REVIEW (15.09.2026): реестр изменений (AnalyticsChange) и версии оценок «до / после»
+поверх сервисов этапов 08/10: равные окна полных московских дней с исключённым днём cutover, сопоставимость по датам
+доступности и смены определений (фикстура 12.09 → INCOMPARABLE), эмпирическое созревание когорт CRM, статистика
+(Wilson/Newcombe/z/Фишер/Пуассон/бутстрэп, MDE, требуемая выборка) с независимыми контрольными значениями, вердикты
+POSITIVE_SIGNAL … INCOMPARABLE без причинности, confounders, ADMIN API под флагом, вкладка «Рост / Изменения», хук
+расписания (точные снимки окон + автооценка). Копия production: A = B = C diff 0; тесты CRM 1012 / панель 35; A/B —
+NO_VARIANT_ASSIGNMENT. Production не тронут; rollout — отдельный gate. Отчёт — `11_GROWTH_AND_EXPERIMENTS.md` § 31.
 ```
 
 История: `00`, `01`, `02` (с FIX_01), `03`, `04` (с FIX_01), `05` (live smoke
