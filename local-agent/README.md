@@ -15,12 +15,11 @@ ChatGPT. Claude Code может использовать вход в Claude Pro/
 
 ## Настройка на этом ноутбуке
 
-Скопируйте `config.example.json` в `config.local.json` и заполните логин и
-пароль CRM. `config.local.json`, ТЗ, ответы и журналы исключены из Git.
+На этом ноутбуке уже создан `config.local.json` с отдельным ограниченным
+токеном агента. Он не является логином администратора и даёт доступ только к
+очереди задач. `config.local.json`, ТЗ, ответы и журналы исключены из Git.
 
 ```powershell
-Copy-Item .\local-agent\config.example.json .\local-agent\config.local.json
-notepad .\local-agent\config.local.json
 node .\local-agent\dispatcher.mjs
 ```
 

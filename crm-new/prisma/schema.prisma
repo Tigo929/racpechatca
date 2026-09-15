@@ -1228,6 +1228,17 @@ enum EnumTaskAssigneeKind {
   CLOUD_CODE
 }
 
+/// Отдельный ограниченный доступ ноутбука к очереди локальных агентов.
+/// В базе хранится только SHA-256 токена, сам токен остаётся на ноутбуке.
+model LocalAgentCredential {
+  id         String    @id @default(uuid())
+  createdAt  DateTime  @default(now())
+  name       String    @unique
+  tokenHash  String    @unique
+  isActive   Boolean   @default(true)
+  lastUsedAt DateTime?
+}
+
 /// Одна строка на всю систему для флагов планировщиков. Нужна, чтобы
 /// ежедневные рассылки (например, план дня) не повторялись при рестарте
 /// контейнера: храним дату последней отправки по Москве (YYYY-MM-DD).

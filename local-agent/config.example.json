@@ -1,7 +1,6 @@
 {
   "crmBaseUrl": "https://raspechatkaa.ru",
-  "crmUsername": "admin",
-  "crmPassword": "change-me",
+  "crmAgentToken": "generated-during-installation",
   "workingDirectory": "C:\\Users\\User\\Desktop\\1Проекты\\racpechatca",
   "pollIntervalMs": 15000,
   "agents": "CODEX,CLOUD_CODE",

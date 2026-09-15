@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -73,7 +74,10 @@ export class TasksService {
         createdById: authorId,
         deadline: dto.deadline ? new Date(dto.deadline) : null,
         orderId: dto.orderId ?? null,
-        rewardAmount: dto.rewardAmount ?? 0,
+        rewardAmount:
+          assignee.assigneeKind === EnumTaskAssigneeKind.USER
+            ? (dto.rewardAmount ?? 0)
+            : 0,
         agentSummary: dto.agentSummary?.trim() || null,
       },
       include: TASK_INCLUDE,
@@ -156,7 +160,10 @@ export class TasksService {
         deadline:
           dto.deadline === undefined ? undefined : new Date(dto.deadline),
         orderId: dto.orderId,
-        rewardAmount: dto.rewardAmount,
+        rewardAmount:
+          effectiveAssigneeKind === EnumTaskAssigneeKind.USER
+            ? dto.rewardAmount
+            : 0,
         agentSummary:
           dto.agentSummary === undefined
             ? undefined
@@ -320,6 +327,113 @@ export class TasksService {
       completedAt: isClosed ? new Date() : null,
       lastRemindedOn: isClosed ? undefined : null,
     };
+  }
+
+  private assertLocalAgentKind(kind: EnumTaskAssigneeKind) {
+    if (kind === EnumTaskAssigneeKind.USER) {
+      throw new BadRequestException('Для сотрудника локальный агент недоступен.');
+    }
+  }
+
+  private async localAgentTask(id: string) {
+    const task = await this.prisma.task.findUnique({
+      where: { id },
+      include: TASK_INCLUDE,
+    });
+    if (!task) throw new NotFoundException('Задача не найдена.');
+    return task;
+  }
+
+  async findLocalAgentQueue(kind: EnumTaskAssigneeKind) {
+    this.assertLocalAgentKind(kind);
+    return this.prisma.task.findMany({
+      where: { assigneeKind: kind, status: EnumTaskStatus.OPEN },
+      include: TASK_INCLUDE,
+      orderBy: { createdAt: 'asc' },
+      take: 10,
+    });
+  }
+
+  async claimLocalAgentTask(id: string, kind: EnumTaskAssigneeKind) {
+    this.assertLocalAgentKind(kind);
+    const agentName = assigneeKindLabel(kind);
+    const claimed = await this.prisma.task.updateMany({
+      where: { id, assigneeKind: kind, status: EnumTaskStatus.OPEN },
+      data: {
+        status: EnumTaskStatus.IN_PROGRESS,
+        completedAt: null,
+        lastRemindedOn: null,
+        agentLastHeartbeatAt: new Date(),
+        agentSummary: `${agentName} получил задачу и начал работу.`,
+      },
+    });
+    if (!claimed.count) {
+      throw new ConflictException('Задача уже забрана или недоступна агенту.');
+    }
+    return this.localAgentTask(id);
+  }
+
+  async noteLocalAgentTask(
+    id: string,
+    kind: EnumTaskAssigneeKind,
+    summary: string,
+  ) {
+    this.assertLocalAgentKind(kind);
+    const updated = await this.prisma.task.updateMany({
+      where: {
+        id,
+        assigneeKind: kind,
+        status: { in: [EnumTaskStatus.OPEN, EnumTaskStatus.IN_PROGRESS] },
+      },
+      data: { agentSummary: summary.trim() },
+    });
+    if (!updated.count) throw new NotFoundException('Задача агента не найдена.');
+    return this.localAgentTask(id);
+  }
+
+  async heartbeatLocalAgentTask(
+    id: string,
+    kind: EnumTaskAssigneeKind,
+    summary: string,
+  ) {
+    this.assertLocalAgentKind(kind);
+    const updated = await this.prisma.task.updateMany({
+      where: { id, assigneeKind: kind, status: EnumTaskStatus.IN_PROGRESS },
+      data: { agentSummary: summary.trim(), agentLastHeartbeatAt: new Date() },
+    });
+    if (!updated.count) {
+      throw new NotFoundException('Активная задача агента не найдена.');
+    }
+    return this.localAgentTask(id);
+  }
+
+  async completeLocalAgentTask(
+    id: string,
+    kind: EnumTaskAssigneeKind,
+    summary: string,
+  ) {
+    this.assertLocalAgentKind(kind);
+    const updated = await this.prisma.task.updateMany({
+      where: { id, assigneeKind: kind, status: EnumTaskStatus.IN_PROGRESS },
+      data: {
+        status: EnumTaskStatus.DONE,
+        completedAt: new Date(),
+        agentSummary: summary.trim(),
+        agentLastHeartbeatAt: new Date(),
+      },
+    });
+    if (!updated.count) {
+      throw new NotFoundException('Активная задача агента не найдена.');
+    }
+    return this.localAgentTask(id);
+  }
+
+  async failLocalAgentTask(
+    id: string,
+    kind: EnumTaskAssigneeKind,
+    summary: string,
+  ) {
+    return this.heartbeatLocalAgentTask(id, kind, summary);
   }
 
   async remove(id: string) {

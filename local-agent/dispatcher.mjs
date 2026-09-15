@@ -21,6 +21,7 @@ async function readConfig() {
 
 const config = await readConfig();
 const BASE_URL = String(process.env.CRM_BASE_URL ?? config.crmBaseUrl ?? 'https://raspechatkaa.ru').replace(/\/$/, '');
+const AGENT_TOKEN = process.env.CRM_AGENT_TOKEN ?? config.crmAgentToken;
 const USERNAME = process.env.CRM_USERNAME ?? config.crmUsername;
 const PASSWORD = process.env.CRM_PASSWORD ?? config.crmPassword;
 const WORKING_DIRECTORY = path.resolve(process.env.LOCAL_AGENT_WORKDIR ?? config.workingDirectory ?? path.resolve(SCRIPT_DIR, '..'));
@@ -33,8 +34,8 @@ const ENABLED_AGENTS = new Set(
     .filter(Boolean),
 );
 
-if (!USERNAME || !PASSWORD) {
-  throw new Error(`Set CRM credentials in ${CONFIG_PATH} or CRM_USERNAME/CRM_PASSWORD.`);
+if (!AGENT_TOKEN && (!USERNAME || !PASSWORD)) {
+  throw new Error(`Set crmAgentToken in ${CONFIG_PATH}.`);
 }
 
 for (const agent of ENABLED_AGENTS) {
@@ -53,12 +54,12 @@ async function request(pathname, options = {}, retry = true) {
     ...options,
     headers: {
       'content-type': 'application/json',
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(AGENT_TOKEN || token ? { authorization: `Bearer ${AGENT_TOKEN || token}` } : {}),
       ...(options.headers ?? {}),
     },
   });
 
-  if (res.status === 401 && retry) {
+  if (res.status === 401 && retry && !AGENT_TOKEN) {
     token = '';
     await login();
     return request(pathname, options, false);
@@ -179,6 +180,16 @@ async function setStatus(id, status) {
   });
 }
 
+async function agentAction(id, action, assigneeKind, summary) {
+  return request(`/local-agent/tasks/${id}/${action}`, {
+    method: action === 'claim' ? 'POST' : 'PATCH',
+    body: JSON.stringify({
+      assigneeKind,
+      ...(summary === undefined ? {} : { summary }),
+    }),
+  });
+}
+
 async function resultSummary(task, run, execution) {
   let result = '';
   try {
@@ -193,7 +204,7 @@ async function resultSummary(task, run, execution) {
   const prefix = execution.code === 0
     ? `${agentName} завершил задачу.`
     : `${agentName} завершился с кодом ${execution.code ?? 'unknown'}${execution.signal ? ` (${execution.signal})` : ''}.`;
-  return `${prefix}\n\n${result}`.slice(0, 8_000);
+  return `${prefix}\n\n${result}`.slice(0, 4_000);
 }
 
 async function handleTask(task) {
@@ -205,19 +216,37 @@ async function handleTask(task) {
     const run = await prepareRun(task);
     const command = commandFor(task.assigneeKind, run);
     const agentName = task.assigneeKind === 'CODEX' ? 'Codex' : 'Claude Code';
-    await setStatus(task.id, 'IN_PROGRESS');
-    await updateTask(task.id, { agentSummary: `${agentName} получил задачу и начал работу.` });
+    if (AGENT_TOKEN) {
+      await agentAction(task.id, 'claim', task.assigneeKind);
+    } else {
+      await setStatus(task.id, 'IN_PROGRESS');
+      await updateTask(task.id, { agentSummary: `${agentName} получил задачу и начал работу.` });
+    }
 
     heartbeat = setInterval(() => {
-      updateTask(task.id, { agentSummary: `${agentName} выполняет задачу...` })
-        .catch((error) => console.error(`[${task.id}] heartbeat:`, error.message));
+      const summary = `${agentName} выполняет задачу...`;
+      const heartbeatRequest = AGENT_TOKEN
+        ? agentAction(task.id, 'heartbeat', task.assigneeKind, summary)
+        : updateTask(task.id, { agentSummary: summary });
+      heartbeatRequest.catch((error) =>
+        console.error(`[${task.id}] heartbeat:`, error.message),
+      );
     }, 30_000);
 
     console.log(`[${task.id}] starting ${command.executable} in ${WORKING_DIRECTORY}`);
     const execution = await execute(command, run);
     const summary = await resultSummary(task, run, execution);
-    await updateTask(task.id, { agentSummary: summary });
-    if (execution.code === 0) await setStatus(task.id, 'DONE');
+    if (AGENT_TOKEN) {
+      await agentAction(
+        task.id,
+        execution.code === 0 ? 'complete' : 'fail',
+        task.assigneeKind,
+        summary,
+      );
+    } else {
+      await updateTask(task.id, { agentSummary: summary });
+      if (execution.code === 0) await setStatus(task.id, 'DONE');
+    }
     console.log(`[${task.id}] finished with code ${execution.code}`);
   } catch (error) {
     const missing = error.code === 'ENOENT';
@@ -227,7 +256,12 @@ async function handleTask(task) {
       : `Ошибка локального агента: ${error.message}`;
     console.error(`[${task.id}]`, error);
     try {
-      await updateTask(task.id, { agentSummary: message.slice(0, 8_000) });
+      const summary = message.slice(0, 4_000);
+      if (AGENT_TOKEN) {
+        await agentAction(task.id, 'fail', task.assigneeKind, summary);
+      } else {
+        await updateTask(task.id, { agentSummary: summary });
+      }
     } catch (reportError) {
       console.error(`[${task.id}] cannot report error:`, reportError.message);
     }
@@ -240,18 +274,25 @@ async function handleTask(task) {
 async function reportUnavailableTask(task) {
   if (unavailableReported.has(task.id)) return;
   unavailableReported.add(task.id);
-  await updateTask(task.id, {
-    agentSummary: 'Claude Code пока не установлен на ноутбуке. Задача останется новой и запустится после установки и входа в Claude Code.',
-  });
+  const summary = 'Claude Code пока не авторизован на ноутбуке. Задача останется новой и запустится после входа в Claude Code.';
+  if (AGENT_TOKEN) {
+    await agentAction(task.id, 'note', task.assigneeKind, summary);
+  } else {
+    await updateTask(task.id, { agentSummary: summary });
+  }
 }
 
 async function tick() {
   if (ticking) return;
   ticking = true;
   try {
-    if (!token) await login();
+    if (!AGENT_TOKEN && !token) await login();
     for (const agent of ENABLED_AGENTS) {
-      const tasks = await request(`/tasks?assigneeKind=${agent}`);
+      const tasks = await request(
+        AGENT_TOKEN
+          ? `/local-agent/tasks?assigneeKind=${agent}`
+          : `/tasks?assigneeKind=${agent}`,
+      );
       for (const task of tasks.filter((item) => item.status === 'OPEN')) {
         if (agent === 'CLOUD_CODE' && !CLAUDE_ENABLED) {
           await reportUnavailableTask(task);
