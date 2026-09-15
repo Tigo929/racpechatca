@@ -1,16 +1,16 @@
 # Graph Report - raspechatka  (2026-09-15)
 
 ## Corpus Check
-- 635 files · ~662,908 words
+- 635 files · ~662,912 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 6548 nodes · 12593 edges · 301 communities (273 shown, 28 thin omitted)
+- 6548 nodes · 12593 edges · 303 communities (275 shown, 28 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 415 edges (avg confidence: 0.79)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `df93590a`
+- Built from commit: `539c7078`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -192,7 +192,7 @@
 - MetrikaOrderOutboxProcessorService
 - DailyPlanService
 - @nestjs/config
-- telegram-update.service.ts
+- DtoUpdateOrder
 - image-card-placement.ts
 - 29. EXECUTOR REPORT FORMAT
 - task-reminder.service.spec.ts
@@ -275,6 +275,7 @@
 - 18. DASHBOARD UI
 - 23. Тесты
 - 23. Попытка live write по команде владельца — 12.09.2026 (POST не выполнялся)
+- fixtures.ts
 - 13. Потоки данных
 - 4. Текущий известный контекст проекта
 - 8. Себестоимость
@@ -294,6 +295,7 @@
 - 70. Команда исполнителю
 - 11. MINIMUM ISSUE RULES
 - 5. FUNNEL TYPES
+- site-lead-token.guard.ts
 - Этап 02 — Аналитическая модель данных CRM
 - Этап 04 — Единая модель событий, first-touch и корректная семантика конверсий
 - Этап 05 — Подключение CRM к API Яндекс Метрики: OAuth, read-only client и live smoke test
@@ -338,7 +340,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (301 total, 28 thin omitted)
+## Communities (303 total, 28 thin omitted)
 
 ### Community 0 - "DtoCreateOzonPrint"
 Cohesion: 0.07
@@ -530,11 +532,11 @@ Nodes (12): MetrikaOrdersModule, Module, SalaryController, Controller, Delete, G
 
 ### Community 47 - "order-photo.service.ts"
 Cohesion: 0.03
-Nodes (82): buildCommunicationUrl(), buildMaxUrl(), DEFAULT_MAX_LINK_TEMPLATE, formatPhoneForDisplay(), normalizePhone(), validateCommunicationValue(), DtoAllOrdersforQuery, IsEnum (+74 more)
+Nodes (76): buildCommunicationUrl(), buildMaxUrl(), DEFAULT_MAX_LINK_TEMPLATE, formatPhoneForDisplay(), normalizePhone(), validateCommunicationValue(), DtoAllOrdersforQuery, IsEnum (+68 more)
 
 ### Community 48 - "salary-integrity.spec.ts"
-Cohesion: 0.09
-Nodes (19): FinancialClient, calculateManagerSalarySnapshot(), earnsStaffSalary(), ManagerSalarySnapshot, SalarySnapshot, AccrualByIdRow, AsyncMock, createOrderService() (+11 more)
+Cohesion: 0.13
+Nodes (14): AccrualByIdRow, AsyncMock, createOrderService(), CreatePaymentArgs, createPrismaStub(), HarnessAccrual, makeOrder(), metrikaOutboxStub (+6 more)
 
 ### Community 49 - "ReportsPage.tsx"
 Cohesion: 0.06
@@ -621,8 +623,8 @@ Cohesion: 0.10
 Nodes (22): BulkStockInput, BulkStockItem, BulkStockMode, BulkStockOperation, BulkStockPreview, BulkStockWarehouseInput, COLOR_CODES, COLOR_SUFFIX (+14 more)
 
 ### Community 70 - "PrismaService"
-Cohesion: 0.06
-Nodes (17): JwtPayload, JwtStrategy, Injectable, GulianOutboxService, Injectable, HealthController, Controller, Get (+9 more)
+Cohesion: 0.05
+Nodes (31): JwtPayload, JwtStrategy, Injectable, GulianOutboxService, OrderForOutbox, Injectable, calcGulianPayout(), Item (+23 more)
 
 ### Community 71 - "seed.js"
 Cohesion: 0.40
@@ -921,16 +923,16 @@ Cohesion: 0.43
 Nodes (3): delivery_line(), Строка доставки — своя для каждого способа. Пустую строку возвращать нельзя: в…, TestDeliveryLine
 
 ### Community 152 - "analytics-view.ts"
-Cohesion: 0.08
-Nodes (29): AttentionCard, CHANNEL_LABELS, COVERAGE_WARNING, DEVICE_LABELS, LABELS, MATCHING_INSUFFICIENT, MetricLabel, MONTHS_GEN (+21 more)
+Cohesion: 0.12
+Nodes (18): AttentionCard, CHANNEL_LABELS, COVERAGE_WARNING, DEVICE_LABELS, LABELS, MATCHING_INSUFFICIENT, MetricLabel, MONTHS_GEN (+10 more)
 
 ### Community 153 - "items_list"
 Cohesion: 0.43
 Nodes (3): items_list(), Список позиций — по строке на позицию. Именно он отличает ответ на действие от…, TestItemsList
 
 ### Community 154 - "DtoUpdateItemOrder"
-Cohesion: 0.08
-Nodes (26): DtoUpdateItemOrder, IsBoolean, IsEnum, IsInt, IsOptional, IsString, MaxLength, Min (+18 more)
+Cohesion: 0.06
+Nodes (30): DtoUpdateItemOrder, IsBoolean, IsEnum, IsInt, IsOptional, IsString, MaxLength, Min (+22 more)
 
 ### Community 155 - "canvas.pricing.ts"
 Cohesion: 0.16
@@ -1020,9 +1022,9 @@ Nodes (11): crmPeriodSets, GOALS, inputs(), lead(), metrika(), NOW, PERIOD, phot
 Cohesion: 0.29
 Nodes (3): isWithinPlanWindow(), DailyPlanService, Injectable
 
-### Community 181 - "telegram-update.service.ts"
-Cohesion: 0.13
-Nodes (18): OrderForOutbox, calcGulianPayout(), Item, PayoutResult, toGulianStatus(), buildPartnerButtons(), buildPartnerCaption(), calcSettlement() (+10 more)
+### Community 181 - "DtoUpdateOrder"
+Cohesion: 0.17
+Nodes (11): DtoUpdateOrder, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Matches, MaxLength (+3 more)
 
 ### Community 182 - "image-card-placement.ts"
 Cohesion: 0.07
@@ -1061,8 +1063,8 @@ Cohesion: 0.22
 Nodes (9): 34. FIX_01 — PARTIAL PERIOD FUNNEL DROPOFF (15.09.2026), BEFORE / AFTER (production-данные 15.09 ~10:57 MSK, read-only через туннель; before = сборка HEAD 4d5a027, after = f2db719), GIT, IMPLEMENTATION, PRODUCTION_UNTOUCHED, READY_FOR_REVIEW, REGRESSION, ROOT_CAUSE (+1 more)
 
 ### Community 193 - "client-greeting.service.ts"
-Cohesion: 0.07
-Nodes (33): clientNameFromNote(), GREETING_STATUSES, GreetingStatus, isGreetingStatus(), ClientGreetingService, PendingGreeting, Injectable, telegramUsernameFromUrl() (+25 more)
+Cohesion: 0.09
+Nodes (26): clientNameFromNote(), GREETING_STATUSES, GreetingStatus, isGreetingStatus(), ClientGreetingService, PendingGreeting, Injectable, telegramUsernameFromUrl() (+18 more)
 
 ### Community 194 - "metrika-order-outbox-processor.service.ts"
 Cohesion: 0.15
@@ -1300,6 +1302,10 @@ Nodes (5): 23. Тесты, first-touch, если реализован, lead_subm
 Cohesion: 0.40
 Nodes (5): 23. Попытка live write по команде владельца — 12.09.2026 (POST не выполнялся), Read-only перепроверка кандидата на бою (12.09.2026, повторно), RESULT, Что нужно от владельца (одно действие), Что проверено
 
+### Community 266 - "fixtures.ts"
+Cohesion: 0.23
+Nodes (11): baseOverview(), comparison(), DeepPartial, DeepPartialValue, flat(), KEYS, makeOverview(), merge() (+3 more)
+
 ### Community 267 - "13. Потоки данных"
 Cohesion: 0.50
 Nodes (4): 13.1. Сайт → CRM, 13.2. CRM → Метрика, 13.3. Метрика → Analytics, 13. Потоки данных
@@ -1376,6 +1382,10 @@ Nodes (6): 11.1 Large funnel drop-off, 11.2 Device conversion gap, 11.3 Form err
 Cohesion: 0.40
 Nodes (5): 5.1 Global lead funnel, 5.2 Photo funnel, 5.3 T-shirt configurator funnel, 5.4 Canvas funnel, 5. FUNNEL TYPES
 
+### Community 286 - "site-lead-token.guard.ts"
+Cohesion: 0.33
+Nodes (7): constantTimeEqual(), readBearerToken(), readHeader(), SignedRequest, SiteLeadTokenGuard, stripPrefix(), Injectable
+
 ### Community 297 - "10_BEHAVIOR_AND_FUNNELS.md"
 Cohesion: 0.50
 Nodes (3): PURPOSE, STAGE, STATUS
@@ -1420,7 +1430,7 @@ _Questions this graph is uniquely positioned to answer:_
   _High betweenness centrality (0.112) - this node is a cross-community bridge._
 - **Why does `BatchView()` connect `getErrorMessage` to `Param`?**
   _High betweenness centrality (0.109) - this node is a cross-community bridge._
-- **Why does `PrismaService` connect `PrismaService` to `approval.service.ts`, `tasks.controller.ts`, `DtoUpdateUser`, `sticker.service.ts`, `canvas-item.service.ts`, `order-photo.controller.ts`, `analytics-metrics.service.ts`, `auth.controller.ts`, `reports.service.ts`, `daily-plan-rules.ts`, `AvitoService`, `metrika-order-outbox-processor.spec.ts`, `ozon-bulk-stock.service.ts`, `DtoUpdateItemOrder`, `MarketplaceAccountService`, `marketplace.module.ts`, `review-reminder.service.ts`, `TechSpecStorageService`, `ApprovalStorageService`, `salary.service.ts`, `metrika-period-snapshot.service.ts`, `scenario.controller.ts`, `PushService`, `ozon-product-catalog.service.ts`, `SalaryService`, `order-photo.service.ts`, `salary-integrity.spec.ts`, `MetrikaOrderOutboxProcessorService`, `DailyPlanService`, `telegram-update.service.ts`, `metrika-orders.ts`, `image-card-batch.service.ts`, `image-card-placement.ts`, `task-reminder.service.spec.ts`, `GulianService`, `PartnerApiController`, `metrika-analytics-sync.service.ts`, `client-greeting.service.ts`, `metrika-order-outbox-processor.service.ts`, `app.module.ts`, `shipment-reminder-rules.ts`, `metrika-sync.ts`, `OzonPrintService`, `OzonApiClient`, `image-card-template.controller.ts`, `ozon-warehouse.service.ts`, `ImageCardStorageService`, `behavior-compute.ts`, `analytics-dashboard.controller.ts`, `metrika-api.client.ts`, `tshirt-partner-telegram.service.ts`, `image-card-processor.service.ts`, `metrika-order-outbox.service.ts`, `ImageCardBatchService`, `scenario-draft.spec.ts`, `task-reminder-rules.ts`, `prisma.service.ts`, `metrics-report.ts`, `TelegramService`?**
+- **Why does `PrismaService` connect `PrismaService` to `approval.service.ts`, `tasks.controller.ts`, `DtoUpdateUser`, `sticker.service.ts`, `canvas-item.service.ts`, `order-photo.controller.ts`, `analytics-metrics.service.ts`, `auth.controller.ts`, `reports.service.ts`, `daily-plan-rules.ts`, `AvitoService`, `metrika-order-outbox-processor.spec.ts`, `ozon-bulk-stock.service.ts`, `DtoUpdateItemOrder`, `MarketplaceAccountService`, `marketplace.module.ts`, `review-reminder.service.ts`, `TechSpecStorageService`, `ApprovalStorageService`, `salary.service.ts`, `metrika-period-snapshot.service.ts`, `scenario.controller.ts`, `PushService`, `ozon-product-catalog.service.ts`, `SalaryService`, `order-photo.service.ts`, `salary-integrity.spec.ts`, `MetrikaOrderOutboxProcessorService`, `DailyPlanService`, `image-card-batch.service.ts`, `metrika-orders.ts`, `image-card-placement.ts`, `task-reminder.service.spec.ts`, `GulianService`, `PartnerApiController`, `metrika-analytics-sync.service.ts`, `client-greeting.service.ts`, `metrika-order-outbox-processor.service.ts`, `app.module.ts`, `shipment-reminder-rules.ts`, `metrika-sync.ts`, `OzonPrintService`, `OzonApiClient`, `image-card-template.controller.ts`, `ozon-warehouse.service.ts`, `ImageCardStorageService`, `behavior-compute.ts`, `analytics-dashboard.controller.ts`, `metrika-api.client.ts`, `tshirt-partner-telegram.service.ts`, `image-card-processor.service.ts`, `metrika-order-outbox.service.ts`, `ImageCardBatchService`, `scenario-draft.spec.ts`, `task-reminder-rules.ts`, `prisma.service.ts`, `metrics-report.ts`, `TelegramService`?**
   _High betweenness centrality (0.092) - this node is a cross-community bridge._
 - **What connects `$schema`, `collection`, `sourceRoot` to the rest of the system?**
   _2502 weakly-connected nodes found - possible documentation gaps or missing edges._

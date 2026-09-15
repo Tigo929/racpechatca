@@ -3124,71 +3124,6 @@
       "norm_label": "metriclabel"
     },
     {
-      "label": "DeepPartial",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
-      "source_location": "L78",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_tests_fixtures_deeppartial",
-      "community": 152,
-      "community_name": "analytics-view.ts",
-      "norm_label": "deeppartial"
-    },
-    {
-      "label": "DeepPartialValue",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
-      "source_location": "L77",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_tests_fixtures_deeppartialvalue",
-      "community": 152,
-      "community_name": "analytics-view.ts",
-      "norm_label": "deeppartialvalue"
-    },
-    {
-      "label": "ComparisonKey",
-      "file_type": "code",
-      "source_file": "frontend/src/types/analytics.ts",
-      "source_location": "L180",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "frontend_src_types_analytics_comparisonkey",
-      "community": 152,
-      "community_name": "analytics-view.ts",
-      "norm_label": "comparisonkey"
-    },
-    {
-      "label": "ComparisonSet",
-      "file_type": "code",
-      "source_file": "frontend/src/types/analytics.ts",
-      "source_location": "L201",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "frontend_src_types_analytics_comparisonset",
-      "community": 152,
-      "community_name": "analytics-view.ts",
-      "norm_label": "comparisonset"
-    },
-    {
-      "label": "Overview",
-      "file_type": "code",
-      "source_file": "frontend/src/types/analytics.ts",
-      "source_location": "L219",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "frontend_src_types_analytics_overview",
-      "community": 152,
-      "community_name": "analytics-view.ts",
-      "norm_label": "overview"
-    },
-    {
       "label": "PeriodPreset",
       "file_type": "code",
       "source_file": "frontend/src/types/analytics.ts",
@@ -3278,6 +3213,32 @@
       "community": 154,
       "community_name": "DtoUpdateItemOrder",
       "norm_label": "priceditem"
+    },
+    {
+      "label": "ShipmentLeadService",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/shipment-lead.service.ts",
+      "source_location": "L26",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_shipment_lead_service_shipmentleadservice",
+      "community": 154,
+      "community_name": "DtoUpdateItemOrder",
+      "norm_label": "shipmentleadservice"
+    },
+    {
+      "label": "ShipmentLeadView",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/shipment-lead.service.ts",
+      "source_location": "L10",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_shipment_lead_service_shipmentleadview",
+      "community": 154,
+      "community_name": "DtoUpdateItemOrder",
+      "norm_label": "shipmentleadview"
     },
     {
       "label": "TshirtItemService",
@@ -3904,82 +3865,17 @@
       "norm_label": "dailyplanservice"
     },
     {
-      "label": "OrderForOutbox",
+      "label": "DtoUpdateOrder",
       "file_type": "code",
-      "source_file": "crm-new/src/gulian/gulian-outbox.service.ts",
-      "source_location": "L10",
+      "source_file": "crm-new/src/order-photo/dto/update-order.dto.ts",
+      "source_location": "L19",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
-      "id": "crm_new_src_gulian_gulian_outbox_service_orderforoutbox",
+      "id": "crm_new_src_order_photo_dto_update_order_dto_dtoupdateorder",
       "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "orderforoutbox"
-    },
-    {
-      "label": "Item",
-      "file_type": "code",
-      "source_file": "crm-new/src/gulian/gulian-payout.ts",
-      "source_location": "L8",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_gulian_gulian_payout_item",
-      "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "item"
-    },
-    {
-      "label": "PayoutResult",
-      "file_type": "code",
-      "source_file": "crm-new/src/gulian/gulian-payout.ts",
-      "source_location": "L1",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_gulian_gulian_payout_payoutresult",
-      "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "payoutresult"
-    },
-    {
-      "label": "PartnerOrderData",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
-      "source_location": "L29",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_partner_telegram_format_partnerorderdata",
-      "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "partnerorderdata"
-    },
-    {
-      "label": "PartnerOrderItem",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
-      "source_location": "L16",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_partner_telegram_format_partnerorderitem",
-      "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "partnerorderitem"
-    },
-    {
-      "label": "TelegramCallback",
-      "file_type": "code",
-      "source_file": "crm-new/src/telegram/telegram-update.service.ts",
-      "source_location": "L11",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_telegram_telegram_update_service_telegramcallback",
-      "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "telegramcallback"
+      "community_name": "DtoUpdateOrder",
+      "norm_label": "dtoupdateorder"
     },
     {
       "label": "BulkAction",
@@ -4305,32 +4201,6 @@
       "community": 193,
       "community_name": "client-greeting.service.ts",
       "norm_label": "leadcontroller"
-    },
-    {
-      "label": "SignedRequest",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
-      "source_location": "L16",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_site_lead_token_guard_signedrequest",
-      "community": 193,
-      "community_name": "client-greeting.service.ts",
-      "norm_label": "signedrequest"
-    },
-    {
-      "label": "SiteLeadTokenGuard",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
-      "source_location": "L31",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_site_lead_token_guard_siteleadtokenguard",
-      "community": 193,
-      "community_name": "client-greeting.service.ts",
-      "norm_label": "siteleadtokenguard"
     },
     {
       "label": "SimpleOrderRow",
@@ -5022,6 +4892,71 @@
       "norm_label": "dtosendavitomessage"
     },
     {
+      "label": "DeepPartial",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
+      "source_location": "L78",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_tests_fixtures_deeppartial",
+      "community": 266,
+      "community_name": "fixtures.ts",
+      "norm_label": "deeppartial"
+    },
+    {
+      "label": "DeepPartialValue",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
+      "source_location": "L77",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_tests_fixtures_deeppartialvalue",
+      "community": 266,
+      "community_name": "fixtures.ts",
+      "norm_label": "deeppartialvalue"
+    },
+    {
+      "label": "ComparisonKey",
+      "file_type": "code",
+      "source_file": "frontend/src/types/analytics.ts",
+      "source_location": "L180",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "frontend_src_types_analytics_comparisonkey",
+      "community": 266,
+      "community_name": "fixtures.ts",
+      "norm_label": "comparisonkey"
+    },
+    {
+      "label": "ComparisonSet",
+      "file_type": "code",
+      "source_file": "frontend/src/types/analytics.ts",
+      "source_location": "L201",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "frontend_src_types_analytics_comparisonset",
+      "community": 266,
+      "community_name": "fixtures.ts",
+      "norm_label": "comparisonset"
+    },
+    {
+      "label": "Overview",
+      "file_type": "code",
+      "source_file": "frontend/src/types/analytics.ts",
+      "source_location": "L219",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "frontend_src_types_analytics_overview",
+      "community": 266,
+      "community_name": "fixtures.ts",
+      "norm_label": "overview"
+    },
+    {
       "label": "AccountRow",
       "file_type": "code",
       "source_file": "crm-new/src/marketplace/marketplace-account.service.ts",
@@ -5176,6 +5111,32 @@
       "community": 28,
       "community_name": "MarketplaceAccountService",
       "norm_label": "secretkeymissingerror"
+    },
+    {
+      "label": "SignedRequest",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
+      "source_location": "L16",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_site_lead_token_guard_signedrequest",
+      "community": 286,
+      "community_name": "site-lead-token.guard.ts",
+      "norm_label": "signedrequest"
+    },
+    {
+      "label": "SiteLeadTokenGuard",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
+      "source_location": "L31",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_site_lead_token_guard_siteleadtokenguard",
+      "community": 286,
+      "community_name": "site-lead-token.guard.ts",
+      "norm_label": "siteleadtokenguard"
     },
     {
       "label": "OzonCatalogTemplateService",
@@ -7310,19 +7271,6 @@
       "norm_label": "dtoassignexecutor"
     },
     {
-      "label": "DtoUpdateOrder",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/dto/update-order.dto.ts",
-      "source_location": "L19",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_dto_update_order_dto_dtoupdateorder",
-      "community": 47,
-      "community_name": "order-photo.service.ts",
-      "norm_label": "dtoupdateorder"
-    },
-    {
       "label": "UpdateStatus",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/dto/update-status.dto.ts",
@@ -7453,6 +7401,19 @@
       "norm_label": "leadmoneyresult"
     },
     {
+      "label": "FinancialClient",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/order-financial-integrity.service.ts",
+      "source_location": "L6",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_order_financial_integrity_service_financialclient",
+      "community": 47,
+      "community_name": "order-photo.service.ts",
+      "norm_label": "financialclient"
+    },
+    {
       "label": "OrderPhotoService",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
@@ -7466,19 +7427,6 @@
       "norm_label": "orderphotoservice"
     },
     {
-      "label": "FinancialClient",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/order-financial-integrity.service.ts",
-      "source_location": "L6",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_order_financial_integrity_service_financialclient",
-      "community": 48,
-      "community_name": "salary-integrity.spec.ts",
-      "norm_label": "financialclient"
-    },
-    {
       "label": "ManagerSalarySnapshot",
       "file_type": "code",
       "source_file": "crm-new/src/salary/salary-calculation.ts",
@@ -7487,8 +7435,8 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_calculation_managersalarysnapshot",
-      "community": 48,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 47,
+      "community_name": "order-photo.service.ts",
       "norm_label": "managersalarysnapshot"
     },
     {
@@ -7500,8 +7448,8 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_calculation_salarysnapshot",
-      "community": 48,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 47,
+      "community_name": "order-photo.service.ts",
       "norm_label": "salarysnapshot"
     },
     {
@@ -9299,6 +9247,45 @@
       "norm_label": "gulianoutboxservice"
     },
     {
+      "label": "OrderForOutbox",
+      "file_type": "code",
+      "source_file": "crm-new/src/gulian/gulian-outbox.service.ts",
+      "source_location": "L10",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_gulian_gulian_outbox_service_orderforoutbox",
+      "community": 70,
+      "community_name": "PrismaService",
+      "norm_label": "orderforoutbox"
+    },
+    {
+      "label": "Item",
+      "file_type": "code",
+      "source_file": "crm-new/src/gulian/gulian-payout.ts",
+      "source_location": "L8",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_gulian_gulian_payout_item",
+      "community": 70,
+      "community_name": "PrismaService",
+      "norm_label": "item"
+    },
+    {
+      "label": "PayoutResult",
+      "file_type": "code",
+      "source_file": "crm-new/src/gulian/gulian-payout.ts",
+      "source_location": "L1",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_gulian_gulian_payout_payoutresult",
+      "community": 70,
+      "community_name": "PrismaService",
+      "norm_label": "payoutresult"
+    },
+    {
       "label": "HealthController",
       "file_type": "code",
       "source_file": "crm-new/src/health.controller.ts",
@@ -9325,30 +9312,30 @@
       "norm_label": "orderfinancialintegrityservice"
     },
     {
-      "label": "ShipmentLeadService",
+      "label": "PartnerOrderData",
       "file_type": "code",
-      "source_file": "crm-new/src/order-photo/shipment-lead.service.ts",
-      "source_location": "L26",
+      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
+      "source_location": "L29",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
-      "id": "crm_new_src_order_photo_shipment_lead_service_shipmentleadservice",
+      "id": "crm_new_src_order_photo_partner_telegram_format_partnerorderdata",
       "community": 70,
       "community_name": "PrismaService",
-      "norm_label": "shipmentleadservice"
+      "norm_label": "partnerorderdata"
     },
     {
-      "label": "ShipmentLeadView",
+      "label": "PartnerOrderItem",
       "file_type": "code",
-      "source_file": "crm-new/src/order-photo/shipment-lead.service.ts",
-      "source_location": "L10",
+      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
+      "source_location": "L16",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
-      "id": "crm_new_src_order_photo_shipment_lead_service_shipmentleadview",
+      "id": "crm_new_src_order_photo_partner_telegram_format_partnerorderitem",
       "community": 70,
       "community_name": "PrismaService",
-      "norm_label": "shipmentleadview"
+      "norm_label": "partnerorderitem"
     },
     {
       "label": "PrismaService",
@@ -9375,6 +9362,19 @@
       "community": 70,
       "community_name": "PrismaService",
       "norm_label": "browsersubscription"
+    },
+    {
+      "label": "TelegramCallback",
+      "file_type": "code",
+      "source_file": "crm-new/src/telegram/telegram-update.service.ts",
+      "source_location": "L11",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_telegram_telegram_update_service_telegramcallback",
+      "community": 70,
+      "community_name": "PrismaService",
+      "norm_label": "telegramcallback"
     },
     {
       "label": "DtoSetShipmentLead",
@@ -16561,7 +16561,7 @@
       "label": "buildDailyPlanMessage()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L232",
+      "source_location": "L227",
       "_callable": true,
       "_origin": "ast",
       "id": "crm_new_src_order_photo_daily_plan_rules_builddailyplanmessage",
@@ -16585,7 +16585,7 @@
       "label": "dayMonth()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L193",
+      "source_location": "L188",
       "_callable": true,
       "_origin": "ast",
       "id": "crm_new_src_order_photo_daily_plan_rules_daymonth",
@@ -16609,7 +16609,7 @@
       "label": "executorKey()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L207",
+      "source_location": "L202",
       "_callable": true,
       "_origin": "ast",
       "id": "crm_new_src_order_photo_daily_plan_rules_executorkey",
@@ -16633,7 +16633,7 @@
       "label": "moscowHm()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L200",
+      "source_location": "L195",
       "_callable": true,
       "_origin": "ast",
       "id": "crm_new_src_order_photo_daily_plan_rules_moscowhm",
@@ -16669,7 +16669,7 @@
       "label": "orderWord()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L212",
+      "source_location": "L207",
       "_callable": true,
       "_origin": "ast",
       "id": "crm_new_src_order_photo_daily_plan_rules_orderword",
@@ -17530,66 +17530,6 @@
       "norm_label": "periodselector()"
     },
     {
-      "label": "baseOverview()",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
-      "source_location": "L34",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_tests_fixtures_baseoverview",
-      "community": 152,
-      "community_name": "analytics-view.ts",
-      "norm_label": "baseoverview()"
-    },
-    {
-      "label": "comparison()",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
-      "source_location": "L21",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_tests_fixtures_comparison",
-      "community": 152,
-      "community_name": "analytics-view.ts",
-      "norm_label": "comparison()"
-    },
-    {
-      "label": "flat()",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
-      "source_location": "L7",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_tests_fixtures_flat",
-      "community": 152,
-      "community_name": "analytics-view.ts",
-      "norm_label": "flat()"
-    },
-    {
-      "label": "makeOverview()",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
-      "source_location": "L90",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_tests_fixtures_makeoverview",
-      "community": 152,
-      "community_name": "analytics-view.ts",
-      "norm_label": "makeoverview()"
-    },
-    {
-      "label": "merge()",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
-      "source_location": "L80",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_tests_fixtures_merge",
-      "community": 152,
-      "community_name": "analytics-view.ts",
-      "norm_label": "merge()"
-    },
-    {
       "label": "items_list()",
       "file_type": "code",
       "source_file": "greeter/greeting_text.py",
@@ -17722,6 +17662,18 @@
       "norm_label": ".updateitemorder()"
     },
     {
+      "label": ".constructor()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/order-photo.controller.ts",
+      "source_location": "L69",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_constructor",
+      "community": 154,
+      "community_name": "DtoUpdateItemOrder",
+      "norm_label": ".constructor()"
+    },
+    {
       "label": "calcItemPricePosition()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-pricing.ts",
@@ -17744,6 +17696,42 @@
       "community": 154,
       "community_name": "DtoUpdateItemOrder",
       "norm_label": "calcordertotal()"
+    },
+    {
+      "label": ".constructor()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/shipment-lead.service.ts",
+      "source_location": "L27",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_shipment_lead_service_shipmentleadservice_constructor",
+      "community": 154,
+      "community_name": "DtoUpdateItemOrder",
+      "norm_label": ".constructor()"
+    },
+    {
+      "label": ".get()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/shipment-lead.service.ts",
+      "source_location": "L29",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_shipment_lead_service_shipmentleadservice_get",
+      "community": 154,
+      "community_name": "DtoUpdateItemOrder",
+      "norm_label": ".get()"
+    },
+    {
+      "label": ".set()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/shipment-lead.service.ts",
+      "source_location": "L50",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_shipment_lead_service_shipmentleadservice_set",
+      "community": 154,
+      "community_name": "DtoUpdateItemOrder",
+      "norm_label": ".set()"
     },
     {
       "label": ".addTshirtItem()",
@@ -19846,90 +19834,6 @@
       "norm_label": ".scanandnotify()"
     },
     {
-      "label": "calcGulianPayout()",
-      "file_type": "code",
-      "source_file": "crm-new/src/gulian/gulian-payout.ts",
-      "source_location": "L17",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_gulian_gulian_payout_calcgulianpayout",
-      "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "calcgulianpayout()"
-    },
-    {
-      "label": "toGulianStatus()",
-      "file_type": "code",
-      "source_file": "crm-new/src/gulian/gulian-status.ts",
-      "source_location": "L3",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_gulian_gulian_status_togulianstatus",
-      "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "togulianstatus()"
-    },
-    {
-      "label": "buildPartnerButtons()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
-      "source_location": "L129",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_partner_telegram_format_buildpartnerbuttons",
-      "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "buildpartnerbuttons()"
-    },
-    {
-      "label": "buildPartnerCaption()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
-      "source_location": "L82",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_partner_telegram_format_buildpartnercaption",
-      "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "buildpartnercaption()"
-    },
-    {
-      "label": "calcSettlement()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
-      "source_location": "L62",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_partner_telegram_format_calcsettlement",
-      "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "calcsettlement()"
-    },
-    {
-      "label": "esc()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
-      "source_location": "L54",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_partner_telegram_format_esc",
-      "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "esc()"
-    },
-    {
-      "label": "rub()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
-      "source_location": "L58",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_partner_telegram_format_rub",
-      "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "rub()"
-    },
-    {
       "label": ".constructor()",
       "file_type": "code",
       "source_file": "crm-new/src/marketplace/image-cards/image-card-batch.controller.ts",
@@ -20828,90 +20732,6 @@
       "community": 193,
       "community_name": "client-greeting.service.ts",
       "norm_label": ".pendinggreetings()"
-    },
-    {
-      "label": "constantTimeEqual()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
-      "source_location": "L110",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_site_lead_token_guard_constanttimeequal",
-      "community": 193,
-      "community_name": "client-greeting.service.ts",
-      "norm_label": "constanttimeequal()"
-    },
-    {
-      "label": "readBearerToken()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
-      "source_location": "L99",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_site_lead_token_guard_readbearertoken",
-      "community": 193,
-      "community_name": "client-greeting.service.ts",
-      "norm_label": "readbearertoken()"
-    },
-    {
-      "label": "readHeader()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
-      "source_location": "L105",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_site_lead_token_guard_readheader",
-      "community": 193,
-      "community_name": "client-greeting.service.ts",
-      "norm_label": "readheader()"
-    },
-    {
-      "label": ".canActivate()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
-      "source_location": "L36",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_site_lead_token_guard_siteleadtokenguard_canactivate",
-      "community": 193,
-      "community_name": "client-greeting.service.ts",
-      "norm_label": ".canactivate()"
-    },
-    {
-      "label": ".constructor()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
-      "source_location": "L34",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_site_lead_token_guard_siteleadtokenguard_constructor",
-      "community": 193,
-      "community_name": "client-greeting.service.ts",
-      "norm_label": ".constructor()"
-    },
-    {
-      "label": ".verifySignature()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
-      "source_location": "L53",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_site_lead_token_guard_siteleadtokenguard_verifysignature",
-      "community": 193,
-      "community_name": "client-greeting.service.ts",
-      "norm_label": ".verifysignature()"
-    },
-    {
-      "label": "stripPrefix()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
-      "source_location": "L95",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_site_lead_token_guard_stripprefix",
-      "community": 193,
-      "community_name": "client-greeting.service.ts",
-      "norm_label": "stripprefix()"
     },
     {
       "label": "buildSimpleOrdersCsv()",
@@ -22486,6 +22306,66 @@
       "norm_label": ".getreviews()"
     },
     {
+      "label": "baseOverview()",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
+      "source_location": "L34",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_tests_fixtures_baseoverview",
+      "community": 266,
+      "community_name": "fixtures.ts",
+      "norm_label": "baseoverview()"
+    },
+    {
+      "label": "comparison()",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
+      "source_location": "L21",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_tests_fixtures_comparison",
+      "community": 266,
+      "community_name": "fixtures.ts",
+      "norm_label": "comparison()"
+    },
+    {
+      "label": "flat()",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
+      "source_location": "L7",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_tests_fixtures_flat",
+      "community": 266,
+      "community_name": "fixtures.ts",
+      "norm_label": "flat()"
+    },
+    {
+      "label": "makeOverview()",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
+      "source_location": "L90",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_tests_fixtures_makeoverview",
+      "community": 266,
+      "community_name": "fixtures.ts",
+      "norm_label": "makeoverview()"
+    },
+    {
+      "label": "merge()",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
+      "source_location": "L80",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_tests_fixtures_merge",
+      "community": 266,
+      "community_name": "fixtures.ts",
+      "norm_label": "merge()"
+    },
+    {
       "label": ".check()",
       "file_type": "code",
       "source_file": "crm-new/src/marketplace/marketplace-account.service.ts",
@@ -22700,6 +22580,90 @@
       "community": 28,
       "community_name": "MarketplaceAccountService",
       "norm_label": ".constructor()"
+    },
+    {
+      "label": "constantTimeEqual()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
+      "source_location": "L110",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_site_lead_token_guard_constanttimeequal",
+      "community": 286,
+      "community_name": "site-lead-token.guard.ts",
+      "norm_label": "constanttimeequal()"
+    },
+    {
+      "label": "readBearerToken()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
+      "source_location": "L99",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_site_lead_token_guard_readbearertoken",
+      "community": 286,
+      "community_name": "site-lead-token.guard.ts",
+      "norm_label": "readbearertoken()"
+    },
+    {
+      "label": "readHeader()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
+      "source_location": "L105",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_site_lead_token_guard_readheader",
+      "community": 286,
+      "community_name": "site-lead-token.guard.ts",
+      "norm_label": "readheader()"
+    },
+    {
+      "label": ".canActivate()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
+      "source_location": "L36",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_site_lead_token_guard_siteleadtokenguard_canactivate",
+      "community": 286,
+      "community_name": "site-lead-token.guard.ts",
+      "norm_label": ".canactivate()"
+    },
+    {
+      "label": ".constructor()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
+      "source_location": "L34",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_site_lead_token_guard_siteleadtokenguard_constructor",
+      "community": 286,
+      "community_name": "site-lead-token.guard.ts",
+      "norm_label": ".constructor()"
+    },
+    {
+      "label": ".verifySignature()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
+      "source_location": "L53",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_site_lead_token_guard_siteleadtokenguard_verifysignature",
+      "community": 286,
+      "community_name": "site-lead-token.guard.ts",
+      "norm_label": ".verifysignature()"
+    },
+    {
+      "label": "stripPrefix()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
+      "source_location": "L95",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_site_lead_token_guard_stripprefix",
+      "community": 286,
+      "community_name": "site-lead-token.guard.ts",
+      "norm_label": "stripprefix()"
     },
     {
       "label": ".constructor()",
@@ -25522,18 +25486,6 @@
       "norm_label": ".getsummary()"
     },
     {
-      "label": ".enqueue()",
-      "file_type": "code",
-      "source_file": "crm-new/src/gulian/gulian-outbox.service.ts",
-      "source_location": "L42",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_gulian_gulian_outbox_service_gulianoutboxservice_enqueue",
-      "community": 47,
-      "community_name": "order-photo.service.ts",
-      "norm_label": ".enqueue()"
-    },
-    {
       "label": "buildCommunicationUrl()",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/communication-url.ts",
@@ -25736,6 +25688,18 @@
       "community": 47,
       "community_name": "order-photo.service.ts",
       "norm_label": "resolveleadmoney()"
+    },
+    {
+      "label": ".recalcPendingAccrual()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/order-financial-integrity.service.ts",
+      "source_location": "L43",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_order_financial_integrity_service_orderfinancialintegrityservice_recalcpendingaccrual",
+      "community": 47,
+      "community_name": "order-photo.service.ts",
+      "norm_label": ".recalcpendingaccrual()"
     },
     {
       "label": "buildLeadPosition()",
@@ -26062,6 +26026,18 @@
       "norm_label": "clientpaidatpatch()"
     },
     {
+      "label": "calculateManagerSalarySnapshot()",
+      "file_type": "code",
+      "source_file": "crm-new/src/salary/salary-calculation.ts",
+      "source_location": "L87",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_salary_salary_calculation_calculatemanagersalarysnapshot",
+      "community": 47,
+      "community_name": "order-photo.service.ts",
+      "norm_label": "calculatemanagersalarysnapshot()"
+    },
+    {
       "label": "calculateSalarySnapshot()",
       "file_type": "code",
       "source_file": "crm-new/src/salary/salary-calculation.ts",
@@ -26074,6 +26050,18 @@
       "norm_label": "calculatesalarysnapshot()"
     },
     {
+      "label": "earnsStaffSalary()",
+      "file_type": "code",
+      "source_file": "crm-new/src/salary/salary-calculation.ts",
+      "source_location": "L18",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_salary_salary_calculation_earnsstaffsalary",
+      "community": 47,
+      "community_name": "order-photo.service.ts",
+      "norm_label": "earnsstaffsalary()"
+    },
+    {
       "label": "fullDate()",
       "file_type": "code",
       "source_file": "crm-new/src/utils/full-date.ts",
@@ -26084,42 +26072,6 @@
       "community": 47,
       "community_name": "order-photo.service.ts",
       "norm_label": "fulldate()"
-    },
-    {
-      "label": ".recalcPendingAccrual()",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/order-financial-integrity.service.ts",
-      "source_location": "L43",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_order_financial_integrity_service_orderfinancialintegrityservice_recalcpendingaccrual",
-      "community": 48,
-      "community_name": "salary-integrity.spec.ts",
-      "norm_label": ".recalcpendingaccrual()"
-    },
-    {
-      "label": "calculateManagerSalarySnapshot()",
-      "file_type": "code",
-      "source_file": "crm-new/src/salary/salary-calculation.ts",
-      "source_location": "L87",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_salary_salary_calculation_calculatemanagersalarysnapshot",
-      "community": 48,
-      "community_name": "salary-integrity.spec.ts",
-      "norm_label": "calculatemanagersalarysnapshot()"
-    },
-    {
-      "label": "earnsStaffSalary()",
-      "file_type": "code",
-      "source_file": "crm-new/src/salary/salary-calculation.ts",
-      "source_location": "L18",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_salary_salary_calculation_earnsstaffsalary",
-      "community": 48,
-      "community_name": "salary-integrity.spec.ts",
-      "norm_label": "earnsstaffsalary()"
     },
     {
       "label": "createOrderService()",
@@ -28534,6 +28486,18 @@
       "norm_label": ".constructor()"
     },
     {
+      "label": ".enqueue()",
+      "file_type": "code",
+      "source_file": "crm-new/src/gulian/gulian-outbox.service.ts",
+      "source_location": "L42",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_gulian_gulian_outbox_service_gulianoutboxservice_enqueue",
+      "community": 70,
+      "community_name": "PrismaService",
+      "norm_label": ".enqueue()"
+    },
+    {
       "label": ".getOutboxForOrder()",
       "file_type": "code",
       "source_file": "crm-new/src/gulian/gulian-outbox.service.ts",
@@ -28556,6 +28520,30 @@
       "community": 70,
       "community_name": "PrismaService",
       "norm_label": ".retryfailed()"
+    },
+    {
+      "label": "calcGulianPayout()",
+      "file_type": "code",
+      "source_file": "crm-new/src/gulian/gulian-payout.ts",
+      "source_location": "L17",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_gulian_gulian_payout_calcgulianpayout",
+      "community": 70,
+      "community_name": "PrismaService",
+      "norm_label": "calcgulianpayout()"
+    },
+    {
+      "label": "toGulianStatus()",
+      "file_type": "code",
+      "source_file": "crm-new/src/gulian/gulian-status.ts",
+      "source_location": "L3",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_gulian_gulian_status_togulianstatus",
+      "community": 70,
+      "community_name": "PrismaService",
+      "norm_label": "togulianstatus()"
     },
     {
       "label": ".check()",
@@ -28644,18 +28632,6 @@
     {
       "label": ".constructor()",
       "file_type": "code",
-      "source_file": "crm-new/src/order-photo/order-photo.controller.ts",
-      "source_location": "L69",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_order_photo_controller_orderphotocontroller_constructor",
-      "community": 70,
-      "community_name": "PrismaService",
-      "norm_label": ".constructor()"
-    },
-    {
-      "label": ".constructor()",
-      "file_type": "code",
       "source_file": "crm-new/src/order-photo/order-photo.service.ts",
       "source_location": "L209",
       "_callable": true,
@@ -28666,40 +28642,64 @@
       "norm_label": ".constructor()"
     },
     {
-      "label": ".constructor()",
+      "label": "buildPartnerButtons()",
       "file_type": "code",
-      "source_file": "crm-new/src/order-photo/shipment-lead.service.ts",
-      "source_location": "L27",
+      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
+      "source_location": "L129",
       "_callable": true,
       "_origin": "ast",
-      "id": "crm_new_src_order_photo_shipment_lead_service_shipmentleadservice_constructor",
+      "id": "crm_new_src_order_photo_partner_telegram_format_buildpartnerbuttons",
       "community": 70,
       "community_name": "PrismaService",
-      "norm_label": ".constructor()"
+      "norm_label": "buildpartnerbuttons()"
     },
     {
-      "label": ".get()",
+      "label": "buildPartnerCaption()",
       "file_type": "code",
-      "source_file": "crm-new/src/order-photo/shipment-lead.service.ts",
-      "source_location": "L29",
+      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
+      "source_location": "L82",
       "_callable": true,
       "_origin": "ast",
-      "id": "crm_new_src_order_photo_shipment_lead_service_shipmentleadservice_get",
+      "id": "crm_new_src_order_photo_partner_telegram_format_buildpartnercaption",
       "community": 70,
       "community_name": "PrismaService",
-      "norm_label": ".get()"
+      "norm_label": "buildpartnercaption()"
     },
     {
-      "label": ".set()",
+      "label": "calcSettlement()",
       "file_type": "code",
-      "source_file": "crm-new/src/order-photo/shipment-lead.service.ts",
-      "source_location": "L50",
+      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
+      "source_location": "L62",
       "_callable": true,
       "_origin": "ast",
-      "id": "crm_new_src_order_photo_shipment_lead_service_shipmentleadservice_set",
+      "id": "crm_new_src_order_photo_partner_telegram_format_calcsettlement",
       "community": 70,
       "community_name": "PrismaService",
-      "norm_label": ".set()"
+      "norm_label": "calcsettlement()"
+    },
+    {
+      "label": "esc()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
+      "source_location": "L54",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_partner_telegram_format_esc",
+      "community": 70,
+      "community_name": "PrismaService",
+      "norm_label": "esc()"
+    },
+    {
+      "label": "rub()",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
+      "source_location": "L58",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_partner_telegram_format_rub",
+      "community": 70,
+      "community_name": "PrismaService",
+      "norm_label": "rub()"
     },
     {
       "label": ".constructor()",
@@ -42465,28 +42465,6 @@
       "norm_label": "periodselector.tsx"
     },
     {
-      "label": "fixtures.ts",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_tests_fixtures",
-      "community": 152,
-      "community_name": "analytics-view.ts",
-      "norm_label": "fixtures.ts"
-    },
-    {
-      "label": "KEYS",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
-      "source_location": "L15",
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_tests_fixtures_keys",
-      "community": 152,
-      "community_name": "analytics-view.ts",
-      "norm_label": "keys"
-    },
-    {
       "label": "\u0421\u043f\u0438\u0441\u043e\u043a \u043f\u043e\u0437\u0438\u0446\u0438\u0439 \u2014 \u043f\u043e \u0441\u0442\u0440\u043e\u043a\u0435 \u043d\u0430 \u043f\u043e\u0437\u0438\u0446\u0438\u044e. \u0418\u043c\u0435\u043d\u043d\u043e \u043e\u043d \u043e\u0442\u043b\u0438\u0447\u0430\u0435\u0442 \u043e\u0442\u0432\u0435\u0442 \u043d\u0430 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435 \u043e\u0442\u2026",
       "file_type": "rationale",
       "source_file": "greeter/greeting_text.py",
@@ -42738,6 +42716,39 @@
       "community": 154,
       "community_name": "DtoUpdateItemOrder",
       "norm_label": "order-pricing.ts"
+    },
+    {
+      "label": "shipment-lead.service.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/shipment-lead.service.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_shipment_lead_service",
+      "community": 154,
+      "community_name": "DtoUpdateItemOrder",
+      "norm_label": "shipment-lead.service.ts"
+    },
+    {
+      "label": "ELIGIBLE_ROLES",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/shipment-lead.service.ts",
+      "source_location": "L8",
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_shipment_lead_service_eligible_roles",
+      "community": 154,
+      "community_name": "DtoUpdateItemOrder",
+      "norm_label": "eligible_roles"
+    },
+    {
+      "label": "Injectable",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_shipment_lead_service_ts_injectable",
+      "community": 154,
+      "community_name": "DtoUpdateItemOrder",
+      "norm_label": "injectable"
     },
     {
       "label": "tshirt-item.service.ts",
@@ -46920,114 +46931,125 @@
       "norm_label": "@nestjs/config"
     },
     {
-      "label": "gulian-outbox.service.ts",
+      "label": "update-order.dto.ts",
       "file_type": "code",
-      "source_file": "crm-new/src/gulian/gulian-outbox.service.ts",
+      "source_file": "crm-new/src/order-photo/dto/update-order.dto.ts",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "crm_new_src_gulian_gulian_outbox_service",
+      "id": "crm_new_src_order_photo_dto_update_order_dto",
       "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "gulian-outbox.service.ts"
+      "community_name": "DtoUpdateOrder",
+      "norm_label": "update-order.dto.ts"
     },
     {
-      "label": "gulian-payout.ts",
+      "label": "IsBoolean",
       "file_type": "code",
-      "source_file": "crm-new/src/gulian/gulian-payout.ts",
-      "source_location": "L1",
+      "source_file": "",
+      "source_location": "",
       "_origin": "ast",
-      "id": "crm_new_src_gulian_gulian_payout",
+      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_isboolean",
       "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "gulian-payout.ts"
+      "community_name": "DtoUpdateOrder",
+      "norm_label": "isboolean"
     },
     {
-      "label": "gulian-status.ts",
+      "label": "IsEnum",
       "file_type": "code",
-      "source_file": "crm-new/src/gulian/gulian-status.ts",
-      "source_location": "L1",
+      "source_file": "",
+      "source_location": "",
       "_origin": "ast",
-      "id": "crm_new_src_gulian_gulian_status",
+      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_isenum",
       "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "gulian-status.ts"
+      "community_name": "DtoUpdateOrder",
+      "norm_label": "isenum"
     },
     {
-      "label": "partner-telegram-format.ts",
+      "label": "IsInt",
       "file_type": "code",
-      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
-      "source_location": "L1",
+      "source_file": "",
+      "source_location": "",
       "_origin": "ast",
-      "id": "crm_new_src_order_photo_partner_telegram_format",
+      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_isint",
       "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "partner-telegram-format.ts"
+      "community_name": "DtoUpdateOrder",
+      "norm_label": "isint"
     },
     {
-      "label": "PRINT_LOCATION_LABELS",
+      "label": "IsOptional",
       "file_type": "code",
-      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
-      "source_location": "L37",
+      "source_file": "",
+      "source_location": "",
       "_origin": "ast",
-      "id": "crm_new_src_order_photo_partner_telegram_format_print_location_labels",
+      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_isoptional",
       "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "print_location_labels"
+      "community_name": "DtoUpdateOrder",
+      "norm_label": "isoptional"
     },
     {
-      "label": "PRINT_TYPE_LABELS",
+      "label": "IsString",
       "file_type": "code",
-      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
-      "source_location": "L47",
+      "source_file": "",
+      "source_location": "",
       "_origin": "ast",
-      "id": "crm_new_src_order_photo_partner_telegram_format_print_type_labels",
+      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_isstring",
       "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "print_type_labels"
+      "community_name": "DtoUpdateOrder",
+      "norm_label": "isstring"
     },
     {
-      "label": "STATUS_LABELS",
+      "label": "Matches",
       "file_type": "code",
-      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
-      "source_location": "L3",
+      "source_file": "",
+      "source_location": "",
       "_origin": "ast",
-      "id": "crm_new_src_order_photo_partner_telegram_format_status_labels",
+      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_matches",
       "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "status_labels"
+      "community_name": "DtoUpdateOrder",
+      "norm_label": "matches"
     },
     {
-      "label": "telegram-update.service.ts",
+      "label": "MaxLength",
       "file_type": "code",
-      "source_file": "crm-new/src/telegram/telegram-update.service.ts",
-      "source_location": "L1",
+      "source_file": "",
+      "source_location": "",
       "_origin": "ast",
-      "id": "crm_new_src_telegram_telegram_update_service",
+      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_maxlength",
       "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "telegram-update.service.ts"
+      "community_name": "DtoUpdateOrder",
+      "norm_label": "maxlength"
     },
     {
-      "label": "ACTION_STATUS",
+      "label": "Min",
       "file_type": "code",
-      "source_file": "crm-new/src/telegram/telegram-update.service.ts",
-      "source_location": "L26",
+      "source_file": "",
+      "source_location": "",
       "_origin": "ast",
-      "id": "crm_new_src_telegram_telegram_update_service_action_status",
+      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_min",
       "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "action_status"
+      "community_name": "DtoUpdateOrder",
+      "norm_label": "min"
     },
     {
-      "label": "STATUS_TOAST",
+      "label": "Type",
       "file_type": "code",
-      "source_file": "crm-new/src/telegram/telegram-update.service.ts",
-      "source_location": "L34",
+      "source_file": "",
+      "source_location": "",
       "_origin": "ast",
-      "id": "crm_new_src_telegram_telegram_update_service_status_toast",
+      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_type",
       "community": 181,
-      "community_name": "telegram-update.service.ts",
-      "norm_label": "status_toast"
+      "community_name": "DtoUpdateOrder",
+      "norm_label": "type"
+    },
+    {
+      "label": "ValidateIf",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_validateif",
+      "community": 181,
+      "community_name": "DtoUpdateOrder",
+      "norm_label": "validateif"
     },
     {
       "label": "image-card-bulk.dto.ts",
@@ -48546,28 +48568,6 @@
       "community": 193,
       "community_name": "client-greeting.service.ts",
       "norm_label": "useguards"
-    },
-    {
-      "label": "site-lead-token.guard.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_site_lead_token_guard",
-      "community": 193,
-      "community_name": "client-greeting.service.ts",
-      "norm_label": "site-lead-token.guard.ts"
-    },
-    {
-      "label": "Injectable",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_site_lead_token_guard_ts_injectable",
-      "community": 193,
-      "community_name": "client-greeting.service.ts",
-      "norm_label": "injectable"
     },
     {
       "label": "HttpCode",
@@ -58932,6 +58932,28 @@
       "norm_label": "\u0447\u0442\u043e \u043f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043e"
     },
     {
+      "label": "fixtures.ts",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_tests_fixtures",
+      "community": 266,
+      "community_name": "fixtures.ts",
+      "norm_label": "fixtures.ts"
+    },
+    {
+      "label": "KEYS",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
+      "source_location": "L15",
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_tests_fixtures_keys",
+      "community": 266,
+      "community_name": "fixtures.ts",
+      "norm_label": "keys"
+    },
+    {
       "label": "13.1. \u0421\u0430\u0439\u0442 \u2192 CRM",
       "file_type": "document",
       "source_file": "docs/analytics/00_MASTER_PLAN.md",
@@ -60096,6 +60118,28 @@
       "community": 285,
       "community_name": "5. FUNNEL TYPES",
       "norm_label": "5. funnel types"
+    },
+    {
+      "label": "site-lead-token.guard.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/site-lead-token.guard.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_site_lead_token_guard",
+      "community": 286,
+      "community_name": "site-lead-token.guard.ts",
+      "norm_label": "site-lead-token.guard.ts"
+    },
+    {
+      "label": "Injectable",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_site_lead_token_guard_ts_injectable",
+      "community": 286,
+      "community_name": "site-lead-token.guard.ts",
+      "norm_label": "injectable"
     },
     {
       "label": "\u0421\u0442\u0430\u0442\u0443\u0441",
@@ -65290,127 +65334,6 @@
       "norm_label": "isuuid"
     },
     {
-      "label": "update-order.dto.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/dto/update-order.dto.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_dto_update_order_dto",
-      "community": 47,
-      "community_name": "order-photo.service.ts",
-      "norm_label": "update-order.dto.ts"
-    },
-    {
-      "label": "IsBoolean",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_isboolean",
-      "community": 47,
-      "community_name": "order-photo.service.ts",
-      "norm_label": "isboolean"
-    },
-    {
-      "label": "IsEnum",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_isenum",
-      "community": 47,
-      "community_name": "order-photo.service.ts",
-      "norm_label": "isenum"
-    },
-    {
-      "label": "IsInt",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_isint",
-      "community": 47,
-      "community_name": "order-photo.service.ts",
-      "norm_label": "isint"
-    },
-    {
-      "label": "IsOptional",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_isoptional",
-      "community": 47,
-      "community_name": "order-photo.service.ts",
-      "norm_label": "isoptional"
-    },
-    {
-      "label": "IsString",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_isstring",
-      "community": 47,
-      "community_name": "order-photo.service.ts",
-      "norm_label": "isstring"
-    },
-    {
-      "label": "Matches",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_matches",
-      "community": 47,
-      "community_name": "order-photo.service.ts",
-      "norm_label": "matches"
-    },
-    {
-      "label": "MaxLength",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_maxlength",
-      "community": 47,
-      "community_name": "order-photo.service.ts",
-      "norm_label": "maxlength"
-    },
-    {
-      "label": "Min",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_min",
-      "community": 47,
-      "community_name": "order-photo.service.ts",
-      "norm_label": "min"
-    },
-    {
-      "label": "Type",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_type",
-      "community": 47,
-      "community_name": "order-photo.service.ts",
-      "norm_label": "type"
-    },
-    {
-      "label": "ValidateIf",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_dto_update_order_dto_ts_validateif",
-      "community": 47,
-      "community_name": "order-photo.service.ts",
-      "norm_label": "validateif"
-    },
-    {
       "label": "update-status.dto.ts",
       "file_type": "code",
       "source_file": "crm-new/src/order-photo/dto/update-status.dto.ts",
@@ -65552,6 +65475,17 @@
       "community": 47,
       "community_name": "order-photo.service.ts",
       "norm_label": "lead-pricing.spec.ts"
+    },
+    {
+      "label": "order-financial-integrity.service.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/order-financial-integrity.service.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_order_financial_integrity_service",
+      "community": 47,
+      "community_name": "order-photo.service.ts",
+      "norm_label": "order-financial-integrity.service.ts"
     },
     {
       "label": "order-photo.service.ts",
@@ -65741,36 +65675,14 @@
       "norm_label": "paid-at.spec.ts"
     },
     {
-      "label": "full-date.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/utils/full-date.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_utils_full_date",
-      "community": 47,
-      "community_name": "order-photo.service.ts",
-      "norm_label": "full-date.ts"
-    },
-    {
-      "label": "order-financial-integrity.service.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/order-photo/order-financial-integrity.service.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_order_photo_order_financial_integrity_service",
-      "community": 48,
-      "community_name": "salary-integrity.spec.ts",
-      "norm_label": "order-financial-integrity.service.ts"
-    },
-    {
       "label": "manager-salary.spec.ts",
       "file_type": "code",
       "source_file": "crm-new/src/salary/manager-salary.spec.ts",
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_salary_manager_salary_spec",
-      "community": 48,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 47,
+      "community_name": "order-photo.service.ts",
       "norm_label": "manager-salary.spec.ts"
     },
     {
@@ -65780,9 +65692,20 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "crm_new_src_salary_salary_calculation",
-      "community": 48,
-      "community_name": "salary-integrity.spec.ts",
+      "community": 47,
+      "community_name": "order-photo.service.ts",
       "norm_label": "salary-calculation.ts"
+    },
+    {
+      "label": "full-date.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/utils/full-date.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_utils_full_date",
+      "community": 47,
+      "community_name": "order-photo.service.ts",
+      "norm_label": "full-date.ts"
     },
     {
       "label": "salary-integrity.spec.ts",
@@ -69360,6 +69283,17 @@
       "norm_label": "injectable"
     },
     {
+      "label": "gulian-outbox.service.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/gulian/gulian-outbox.service.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_gulian_gulian_outbox_service",
+      "community": 70,
+      "community_name": "PrismaService",
+      "norm_label": "gulian-outbox.service.ts"
+    },
+    {
       "label": "Injectable",
       "file_type": "code",
       "source_file": "",
@@ -69369,6 +69303,28 @@
       "community": 70,
       "community_name": "PrismaService",
       "norm_label": "injectable"
+    },
+    {
+      "label": "gulian-payout.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/gulian/gulian-payout.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_gulian_gulian_payout",
+      "community": 70,
+      "community_name": "PrismaService",
+      "norm_label": "gulian-payout.ts"
+    },
+    {
+      "label": "gulian-status.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/gulian/gulian-status.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_gulian_gulian_status",
+      "community": 70,
+      "community_name": "PrismaService",
+      "norm_label": "gulian-status.ts"
     },
     {
       "label": "health.controller.ts",
@@ -69415,37 +69371,48 @@
       "norm_label": "injectable"
     },
     {
-      "label": "shipment-lead.service.ts",
+      "label": "partner-telegram-format.ts",
       "file_type": "code",
-      "source_file": "crm-new/src/order-photo/shipment-lead.service.ts",
+      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "crm_new_src_order_photo_shipment_lead_service",
+      "id": "crm_new_src_order_photo_partner_telegram_format",
       "community": 70,
       "community_name": "PrismaService",
-      "norm_label": "shipment-lead.service.ts"
+      "norm_label": "partner-telegram-format.ts"
     },
     {
-      "label": "ELIGIBLE_ROLES",
+      "label": "PRINT_LOCATION_LABELS",
       "file_type": "code",
-      "source_file": "crm-new/src/order-photo/shipment-lead.service.ts",
-      "source_location": "L8",
+      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
+      "source_location": "L37",
       "_origin": "ast",
-      "id": "crm_new_src_order_photo_shipment_lead_service_eligible_roles",
+      "id": "crm_new_src_order_photo_partner_telegram_format_print_location_labels",
       "community": 70,
       "community_name": "PrismaService",
-      "norm_label": "eligible_roles"
+      "norm_label": "print_location_labels"
     },
     {
-      "label": "Injectable",
+      "label": "PRINT_TYPE_LABELS",
       "file_type": "code",
-      "source_file": "",
-      "source_location": "",
+      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
+      "source_location": "L47",
       "_origin": "ast",
-      "id": "crm_new_src_order_photo_shipment_lead_service_ts_injectable",
+      "id": "crm_new_src_order_photo_partner_telegram_format_print_type_labels",
       "community": 70,
       "community_name": "PrismaService",
-      "norm_label": "injectable"
+      "norm_label": "print_type_labels"
+    },
+    {
+      "label": "STATUS_LABELS",
+      "file_type": "code",
+      "source_file": "crm-new/src/order-photo/partner-telegram-format.ts",
+      "source_location": "L3",
+      "_origin": "ast",
+      "id": "crm_new_src_order_photo_partner_telegram_format_status_labels",
+      "community": 70,
+      "community_name": "PrismaService",
+      "norm_label": "status_labels"
     },
     {
       "label": "Injectable",
@@ -69468,6 +69435,39 @@
       "community": 70,
       "community_name": "PrismaService",
       "norm_label": "push.service.ts"
+    },
+    {
+      "label": "telegram-update.service.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/telegram/telegram-update.service.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_telegram_telegram_update_service",
+      "community": 70,
+      "community_name": "PrismaService",
+      "norm_label": "telegram-update.service.ts"
+    },
+    {
+      "label": "ACTION_STATUS",
+      "file_type": "code",
+      "source_file": "crm-new/src/telegram/telegram-update.service.ts",
+      "source_location": "L26",
+      "_origin": "ast",
+      "id": "crm_new_src_telegram_telegram_update_service_action_status",
+      "community": 70,
+      "community_name": "PrismaService",
+      "norm_label": "action_status"
+    },
+    {
+      "label": "STATUS_TOAST",
+      "file_type": "code",
+      "source_file": "crm-new/src/telegram/telegram-update.service.ts",
+      "source_location": "L34",
+      "_origin": "ast",
+      "id": "crm_new_src_telegram_telegram_update_service_status_toast",
+      "community": 70,
+      "community_name": "PrismaService",
+      "norm_label": "status_toast"
     },
     {
       "label": "seed.js",
@@ -85369,7 +85369,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L241",
+      "source_location": "L236",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_builddailyplanmessage",
@@ -85381,7 +85381,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L245",
+      "source_location": "L240",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_builddailyplanmessage",
@@ -85394,7 +85394,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L252",
+      "source_location": "L247",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_builddailyplanmessage",
@@ -85405,7 +85405,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L258",
+      "source_location": "L253",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_builddailyplanmessage",
@@ -85417,7 +85417,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L260",
+      "source_location": "L255",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_builddailyplanmessage",
@@ -85429,7 +85429,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L260",
+      "source_location": "L255",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_builddailyplanmessage",
@@ -85441,7 +85441,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L260",
+      "source_location": "L255",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_builddailyplanmessage",
@@ -85454,7 +85454,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L260",
+      "source_location": "L255",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_builddailyplanmessage",
@@ -85465,7 +85465,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L268",
+      "source_location": "L263",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_builddailyplanmessage",
@@ -85477,7 +85477,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L277",
+      "source_location": "L272",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_builddailyplanmessage",
@@ -85489,7 +85489,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L277",
+      "source_location": "L272",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_builddailyplanmessage",
@@ -85501,7 +85501,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L279",
+      "source_location": "L274",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_builddailyplanmessage",
@@ -85513,7 +85513,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L282",
+      "source_location": "L277",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_builddailyplanmessage",
@@ -85549,7 +85549,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L195",
+      "source_location": "L190",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_daymonth",
@@ -85561,7 +85561,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L209",
+      "source_location": "L204",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_executorkey",
@@ -85610,7 +85610,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L203",
+      "source_location": "L198",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_moscowhm",
@@ -171488,11 +171488,22 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L193",
+      "source_location": "L188",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules",
       "target": "crm_new_src_order_photo_daily_plan_rules_daymonth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
+      "source_location": "L195",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "crm_new_src_order_photo_daily_plan_rules",
+      "target": "crm_new_src_order_photo_daily_plan_rules_moscowhm",
       "confidence_score": 1.0
     },
     {
@@ -171510,18 +171521,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L200",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "crm_new_src_order_photo_daily_plan_rules",
-      "target": "crm_new_src_order_photo_daily_plan_rules_moscowhm",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L207",
+      "source_location": "L202",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules",
@@ -171532,11 +171532,22 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L212",
+      "source_location": "L207",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules",
       "target": "crm_new_src_order_photo_daily_plan_rules_orderword",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
+      "source_location": "L227",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "crm_new_src_order_photo_daily_plan_rules",
+      "target": "crm_new_src_order_photo_daily_plan_rules_builddailyplanmessage",
       "confidence_score": 1.0
     },
     {
@@ -171548,17 +171559,6 @@
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules",
       "target": "crm_new_src_order_photo_daily_plan_rules_plan_in_work_statuses",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L232",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "crm_new_src_order_photo_daily_plan_rules",
-      "target": "crm_new_src_order_photo_daily_plan_rules_builddailyplanmessage",
       "confidence_score": 1.0
     },
     {
@@ -216512,7 +216512,7 @@
       "context": "argument",
       "confidence": "INFERRED",
       "source_file": "crm-new/src/order-photo/daily-plan-rules.ts",
-      "source_location": "L186",
+      "source_location": "L185",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_order_photo_daily_plan_rules_buildshipmentblock",
@@ -221465,5 +221465,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "df93590a40d5293660ddfcb9e2107b8096532258"
+  "built_at_commit": "539c7078289f687d25c3c4bdd560ed24bc4be7e4"
 }
