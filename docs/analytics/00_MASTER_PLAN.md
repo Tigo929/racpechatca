@@ -1236,9 +1236,11 @@ Reports API (цели по устройствам и страницам вход
 посетители), направления с неизмеримыми шагами текстом, ошибки форм по полям/устройствам/входам, страницы и
 устройства с порогом выборки 30, пути V1 агрегатами, правила 11.1–11.5 с FACT / HYPOTHESIS / RECOMMENDATION
 и прозрачными порогами; read-only API /analytics/dashboard/behavior/* (ADMIN, флаг, кэш) и вкладка «Поведение».
-Копия production: HTTP = service = SQL diff 0 (3 периода), тесты CRM 955 / панель 30. Production не тронут.
-Документы: BEHAVIOR_EVENT_CONTRACT.md, BEHAVIOR_DATA_MODEL.md, BEHAVIOR_RULES.md; отчёт — 10_BEHAVIOR_AND_FUNNELS.md § 32.
-DONE ставит Reviewer; rollout — отдельный gate.
+Копия production: HTTP = service = SQL diff 0 (3 периода), тесты CRM 955 / панель 30.
+В production с 15.09.2026 00:22 MSK по 10_PRODUCTION_ROLLOUT.md (master 80921d9): миграция применена, initial
+sync 13.08–15.09, сверки на бою diff 0, privacy/perf/auth проверены, расписание включено 00:31 — 10 тиков SUCCESS;
+owner smoke (§ 15) ожидает владельца. Отчёты — 10_BEHAVIOR_AND_FUNNELS.md § 32 / § 33, 10_PRODUCTION_ROLLOUT.md § 21.
+Документы: BEHAVIOR_EVENT_CONTRACT.md, BEHAVIOR_DATA_MODEL.md, BEHAVIOR_RULES.md. DONE ставит Reviewer.
 ```
 
 Цель:
@@ -1607,8 +1609,10 @@ production rollout выполнен 12.09.2026 22:02–23:00 MSK (master = e7e93
 поведенческие наборы Метрики (миграция 20260914200000, 6 таблиц), BehaviorMetricsService + API + раздел
 «Поведение» с воронками, ошибками форм, устройствами, страницами, путями-агрегатами и rule-based «Требует
 внимания» (FACT / HYPOTHESIS / RECOMMENDATION). На бою (копия 14.09): телефоны 64 визита и 0 начатых форм при
-13 на компьютерах — правило 11.2 CRITICAL как наблюдение. Production не тронут; выкладка — отдельный gate.
-Отчёт — `10_BEHAVIOR_AND_FUNNELS.md` § 32.
+13 на компьютерах — правило 11.2 CRITICAL как наблюдение. Production rollout выполнен 15.09.2026 00:13–00:42 MSK
+строго по `10_PRODUCTION_ROLLOUT.md` (master 80921d9, миграция на старте контейнера, initial sync, сверки на бою
+diff 0, расписание — 10 тиков SUCCESS до 10:23) — отчёт § 21; остановлено на owner-smoke gate (§ 15). Маршрут `/analytics`
+на домене raspechatkaa.ru исправлен 15.09 00:01 (второй белый список nginx). Отчёт этапа — `10_BEHAVIOR_AND_FUNNELS.md` § 32 / § 33.
 ```
 
 История: `00`, `01`, `02` (с FIX_01), `03`, `04` (с FIX_01), `05` (live smoke

@@ -5,8 +5,10 @@
 `REVIEW` — реализовано 14.09.2026 в `feature/analytics-foundation`: аудит событий
 (`BEHAVIOR_EVENT_CONTRACT.md`), пять наборов Метрики и снимок посетителей по целям
 (`BEHAVIOR_DATA_MODEL.md`), сервис/API/раздел «Поведение», правила «Требует внимания»
-(`BEHAVIOR_RULES.md`); сверка на копии production diff 0. Production не тронут. Отчёт — § 32.
-DONE ставит Reviewer.
+(`BEHAVIOR_RULES.md`); сверка на копии production diff 0 — отчёт § 32. **В production с 15.09.2026
+00:22 MSK** (master 80921d9) по `10_PRODUCTION_ROLLOUT.md`: миграция применена, initial sync 13.08–15.09,
+сверки на бою diff 0, расписание с 00:31 — 10 тиков SUCCESS (daily + 9 hourly); owner smoke (§ 15 rollout) ожидает
+§ 33. DONE ставит Reviewer.
 
 ## STAGE
 
@@ -1149,3 +1151,33 @@ docs/analytics/screenshots/10_behavior/*.png                          9 скри
    требуют ручной проверки; данных о согласии по устройствам нет.
 5. Security debt без изменений (ротация токена/секрета Яндекса).
 ```
+
+---
+
+# 33. PRODUCTION ROLLOUT — 15.09.2026
+
+Выполнен по `10_PRODUCTION_ROLLOUT.md` (команда «СТАРТ» 14.09 23:5x, продолжение с § 4 после NEEDS_FIX по маршруту
+`/analytics` на домене raspechatkaa.ru — исправлено 15.09 00:01, § 18.14 отчёта этапа 09). Полный
+`EXECUTOR_REPORT_PRODUCTION_ROLLOUT` — `10_PRODUCTION_ROLLOUT.md` § 21. Ключевое:
+
+```text
+master be591d3 → 80921d9 (ff, 00:18:31 MSK); backend d8c9dd7313da (00:21:33–00:22:06), frontend 844bb9f8704a
+(00:22:11–00:22:44); миграция 20260914200000 применена на старте контейнера (78 applied, только CREATE);
+initial sync 13.08–15.09 из контейнера при выключенном расписании: 994 / 1722 / 348 / 390 / 71 строк, снимки целей
+8/8 × 14 = 112; сверки на бою: HTTP = service (702 / 1015 / 1332 листьев, diff 0), HTTP = SQL (9 / 31 / 31, diff 0);
+privacy — только ключи белого списка, PII нет; perf — summary 25 SQL, HTTP 61–249 мс, кэш 9–20 мс;
+расписание включено 00:31:41 — тики 00:33 (daily) и 01:31–09:31 (9 hourly) SUCCESS, дублей 0, overlap 0;
+Stage 06 (outbox 8) и Stage 09 (recon diff 0, P&L август = /reports/monthly) без регресса.
+Бой 09–15.09: 116 визитов → 13 начали форму (25 событий, 3 посетителя) → 4 отправили → 4 заявки — все на
+компьютерах; телефоны 51 визит / 0 начатых форм → DEVICE_GAP CRITICAL как наблюдение.
+```
+
+DEVIATION к правилу 11.1 (для решения Reviewer): в окнах, начинающихся до 12.09, воронки photo/canvas сравнивают шаг
+«по параметрам визита» (данные с 13.08) с целью направления (с 12.09) — карточка FUNNEL_DROPOFF за 30 дней
+(«117 → 2, отвал 98,3 %») структурно завышена; воронка несёт `PARTIAL_BEHAVIOR_PERIOD`, но карточка об этом не
+говорит. Предложение FIX_01: считать param-шаги направлений только с даты доступности цели направления и/или не
+создавать FUNNEL_DROPOFF при `PARTIAL_BEHAVIOR_PERIOD`. Без решения смещение исчезает само: 7 дней — с 19.09,
+30 дней — с 12.10. Код в ходе rollout не менялся.
+
+Owner smoke — § 15 `10_PRODUCTION_ROLLOUT.md`: `https://raspechatkaa.ru/crm/analytics` → «Поведение»; фиксирует
+только владелец.
