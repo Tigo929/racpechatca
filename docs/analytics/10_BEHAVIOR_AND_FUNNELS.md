@@ -1296,7 +1296,7 @@ React в тестах) — внутренние <table> убраны, разме
 ```text
 feature/analytics-foundation: f2db719 fix(FIX_01) — 7 файлов (+479 / −45): behavior-contract.ts, behavior-compute.ts,
 behavior-compute.spec.ts, frontend types/behavior.ts, behavior-view.ts, behavior-sections.tsx, __tests__/behavior.test.tsx;
-be7a282 fix(панель) — вложенные таблицы; <docs> — документация FIX_01 (этот раздел, BEHAVIOR_RULES.md,
+be7a282 fix(панель) — вложенные таблицы; e24afb9 — документация FIX_01 (этот раздел, BEHAVIOR_RULES.md,
 BEHAVIOR_EVENT_CONTRACT.md § 3, DASHBOARD_CONTRACT.md § 11a, BEHAVIOR_DATA_MODEL.md, 10_PRODUCTION_ROLLOUT.md § 21,
 00_MASTER_PLAN.md, 01_CURRENT_STATE.md). master = 80921d9 — не менялся.
 ```
