@@ -180,7 +180,6 @@ export function FormErrorsBlock({ errors }: { errors: FormErrors | undefined }) 
               <p className="text-xs text-gray-400">Поле ошибки в параметрах визита не передано</p>
             ) : (
               <TableWrap>
-                <table className="min-w-full">
                   <thead><tr><Th>Поле</Th><Th right>Событий</Th><Th right>Визитов</Th><Th right>Доля</Th></tr></thead>
                   <tbody>
                     {errors.byField.map((f) => (
@@ -189,14 +188,12 @@ export function FormErrorsBlock({ errors }: { errors: FormErrors | undefined }) 
                       </tr>
                     ))}
                   </tbody>
-                </table>
               </TableWrap>
             )}
           </div>
           <div className="min-w-0">
             <h3 className="text-xs font-semibold text-gray-600 mb-2">По устройствам</h3>
             <TableWrap>
-              <table className="min-w-full">
                 <thead><tr><Th>Устройство</Th><Th right>Ошибок (визиты)</Th><Th right>Начали форму</Th><Th right>Доля</Th></tr></thead>
                 <tbody>
                   {errors.byDevice.map((d) => (
@@ -205,13 +202,11 @@ export function FormErrorsBlock({ errors }: { errors: FormErrors | undefined }) 
                     </tr>
                   ))}
                 </tbody>
-              </table>
             </TableWrap>
             {errors.byLanding.length > 0 && (
               <>
                 <h3 className="text-xs font-semibold text-gray-600 mt-4 mb-2">По страницам входа</h3>
                 <TableWrap>
-                  <table className="min-w-full">
                     <thead><tr><Th>Страница входа</Th><Th right>Ошибок</Th><Th right>Начали форму</Th><Th right>Доля</Th></tr></thead>
                     <tbody>
                       {errors.byLanding.slice(0, 10).map((l) => (
@@ -220,7 +215,6 @@ export function FormErrorsBlock({ errors }: { errors: FormErrors | undefined }) 
                         </tr>
                       ))}
                     </tbody>
-                  </table>
                 </TableWrap>
               </>
             )}
@@ -256,7 +250,6 @@ export function DevicesBlock({ devices }: { devices: DevicesBehavior | undefined
   return (
     <Card title="Устройства" subtitle="Шаги воронки и вовлечённость по типу устройства; доли — от визитов устройства">
       <TableWrap>
-        <table className="min-w-full">
           <thead>
             <tr>
               <Th>Устройство</Th><Th right>Визиты</Th><Th right>Начали форму</Th><Th right>Отправили</Th><Th right>Заявки</Th><Th right>Ошибки</Th><Th right>Начало формы</Th><Th right>В заявку</Th><Th right>Отказы</Th><Th right>Глубина</Th><Th right>Время</Th>
@@ -279,7 +272,6 @@ export function DevicesBlock({ devices }: { devices: DevicesBehavior | undefined
               </tr>
             ))}
           </tbody>
-        </table>
       </TableWrap>
       <p className="mt-3 text-xs text-gray-600" data-testid="device-gap">{gapText}</p>
       <QualityNotices notes={devices.quality.notes} tone="gray" />
@@ -302,7 +294,6 @@ export function PagesBlock({ pages }: { pages: PagesBehavior | undefined }) {
         <StateBlock kind="empty" />
       ) : (
         <TableWrap>
-          <table className="min-w-full">
             <thead>
               <tr>
                 <Th>Страница входа</Th><Th right>Визиты</Th><Th right>Начали форму</Th><Th right>Заявки</Th><Th right>Ошибки</Th><Th right>Начало формы</Th><Th right>В заявку</Th><Th right>К среднему</Th>
@@ -324,7 +315,6 @@ export function PagesBlock({ pages }: { pages: PagesBehavior | undefined }) {
                 </tr>
               ))}
             </tbody>
-          </table>
         </TableWrap>
       )}
       {pages.rows.length > 15 && (
