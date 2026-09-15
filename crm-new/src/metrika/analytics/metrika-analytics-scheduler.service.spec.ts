@@ -142,6 +142,52 @@ describe('MetrikaAnalyticsSchedulerService.tick', () => {
     ]);
   });
 
+  it('хуки после тика (этап 11): вызываются после снимков при SUCCESS/PARTIAL, не при FAILED; ошибка хука не ломает тик', async () => {
+    const order: string[] = [];
+    const snapshots = {
+      refreshPresets: jest.fn(() => {
+        order.push('snapshots');
+        return Promise.resolve();
+      }),
+    };
+    const { sync, release } = fakeSync();
+    const scheduler = new MetrikaAnalyticsSchedulerService(
+      sync,
+      { enabled: true, configured: true },
+      () => new Date('2026-09-12T10:00:00.000Z'),
+      snapshots,
+    );
+    scheduler.registerAfterSync('boom', () => {
+      order.push('boom');
+      return Promise.reject(new Error('упал'));
+    });
+    scheduler.registerAfterSync('growth', () => {
+      order.push('growth');
+      return Promise.resolve();
+    });
+    const t = scheduler.tick();
+    release();
+    await t;
+    expect(order).toEqual(['snapshots', 'boom', 'growth']);
+
+    const failed = fakeSync({ status: 'FAILED' });
+    const s2 = new MetrikaAnalyticsSchedulerService(
+      failed.sync,
+      { enabled: true, configured: true },
+      () => new Date('2026-09-12T10:00:00.000Z'),
+      snapshots,
+    );
+    const ran: string[] = [];
+    s2.registerAfterSync('growth', () => {
+      ran.push('growth');
+      return Promise.resolve();
+    });
+    const t2 = s2.tick();
+    failed.release();
+    await t2;
+    expect(ran).toEqual([]);
+  });
+
   it('выключенный рубильник — таймеры не ставятся', () => {
     jest.useFakeTimers();
     try {

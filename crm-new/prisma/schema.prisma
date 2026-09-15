@@ -1934,3 +1934,82 @@ model PushConfig {
   vapidSubject    String   @default("mailto:admin@raspechatkaa.ru")
   createdAt       DateTime @default(now())
 }
+
+// ── Аналитика: рост и изменения (этап 11) ─────────────────────────────────────
+// Реестр изменений продукта/сайта/CRM и версии их оценок «до / после».
+// Без PII: только внутренние описания для администратора и аналитические
+// измерения (устройство, источник, UTM, страница входа). Оценки не
+// перезаписываются — каждая новая оценка получает следующий номер версии,
+// чтобы прежние выводы оставались воспроизводимыми.
+
+model AnalyticsChange {
+  id                 String    @id @default(uuid())
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  name               String
+  description        String    @default("")
+  /// DRAFT | ACTIVE | COMPLETED | CANCELLED
+  status             String
+  /// SITE | CRM | MARKETING | PRICING | OPERATIONS | ANALYTICS | OTHER
+  changeType         String
+  /// Момент фактического выхода в production (UTC в БД; календарный день — Europe/Moscow).
+  startedAt          DateTime
+  endedAt            DateTime?
+  /// Коммит / деплой — справочно, не источник истины.
+  deploymentRef      String?
+  /// Затронутая поверхность: site:form | site:catalog | site:mobile | crm:workflow | … (короткий код).
+  surface            String
+  /// { dimension: 'device' | 'source' | 'utm' | 'landing', values: string[] } или null — вся аудитория.
+  audienceDefinition Json?
+  /// Ключ метрики из каталога этапа 11 (GROWTH_DATA_CONTRACT.md); фиксируется при первой оценке.
+  primaryMetric      String
+  /// string[] — исследовательские метрики.
+  secondaryMetrics   Json
+  /// INCREASE | DECREASE | NEUTRAL
+  expectedDirection  String
+  /// Гипотеза, записанная до оценки.
+  hypothesis         String?
+  /// Дней созревания CRM-исходов; null — политика по умолчанию из эмпирики (GROWTH_STATISTICS.md).
+  maturityDays       Int?
+  /// Длина окна оценки в днях (7 / 14 / 21 / 28); null — по доступным полным дням после cutover.
+  evaluationDays     Int?
+  /// Первая оценка фиксирует первичную метрику: после этого менять её нельзя.
+  primaryLockedAt    DateTime?
+
+  evaluations AnalyticsChangeEvaluation[]
+
+  @@index([status, startedAt])
+}
+
+model AnalyticsChangeEvaluation {
+  id                String          @id @default(uuid())
+  changeId          String
+  change            AnalyticsChange @relation(fields: [changeId], references: [id], onDelete: Cascade)
+  /// Порядковый номер оценки изменения: 1, 2, … — прежние версии не меняются.
+  version           Int
+  evaluatedAt       DateTime
+  /// manual | scheduler
+  trigger           String
+  /// Последний полный московский день, вошедший в данные оценки.
+  observationCutoff DateTime        @db.Date
+  beforeFrom        DateTime        @db.Date
+  beforeTo          DateTime        @db.Date
+  afterFrom         DateTime        @db.Date
+  afterTo           DateTime        @db.Date
+  /// Версия определений метрик/правил (GROWTH_DATA_CONTRACT.md).
+  metricVersion     String
+  primaryMetric     String
+  /// POSITIVE_SIGNAL | NEGATIVE_SIGNAL | NO_CLEAR_CHANGE | INSUFFICIENT_DATA | IMMATURE | INCOMPARABLE
+  verdict           String
+  /// MATURE | PARTIALLY_MATURE | IMMATURE
+  maturity          String
+  /// Полный результат оценки (GrowthEvaluation) — как отдан API.
+  result            Json
+  /// Коды качества данных / confounders (string[]).
+  flags             Json
+  /// Последний успешный запуск синхронизации Метрики на момент оценки — свидетельство свежести.
+  lastSyncRunId     String?
+
+  @@unique([changeId, version])
+  @@index([changeId, evaluatedAt])
+}

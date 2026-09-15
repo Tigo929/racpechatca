@@ -58,6 +58,6 @@ import { PrismaMetrikaSyncStore } from './metrika-sync-store';
         ),
     },
   ],
-  exports: [MetrikaPeriodSnapshotService],
+  exports: [MetrikaPeriodSnapshotService, MetrikaAnalyticsSchedulerService],
 })
 export class MetrikaAnalyticsModule {}

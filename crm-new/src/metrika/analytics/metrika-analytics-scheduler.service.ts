@@ -45,6 +45,13 @@ export interface PeriodSnapshots {
   refreshPresets(): Promise<unknown>;
 }
 
+/**
+ * Хук после успешного тика (этап 11): другие модули регистрируют работу, которая
+ * должна идти после обновления таблиц и снимков (оценка изменений). Ошибка хука
+ * логируется и не влияет ни на синхронизацию, ни на следующий тик.
+ */
+export type AfterSyncHook = () => Promise<unknown>;
+
 export interface SchedulerOptions {
   enabled: boolean;
   configured: boolean;
@@ -85,6 +92,7 @@ export class MetrikaAnalyticsSchedulerService
   private running = false;
   /** Московское число, за которое суточный пересчёт уже прошёл успешно (или частично). */
   private lastDailyDate: string | null = null;
+  private readonly afterSyncHooks: { name: string; run: AfterSyncHook }[] = [];
 
   constructor(
     private readonly sync: MetrikaAnalyticsSyncService,
@@ -119,6 +127,11 @@ export class MetrikaAnalyticsSchedulerService
     if (this.firstTick) clearTimeout(this.firstTick);
   }
 
+  /** Зарегистрировать работу после тика (этап 11: автооценка изменений и точные снимки окон). */
+  registerAfterSync(name: string, run: AfterSyncHook): void {
+    this.afterSyncHooks.push({ name, run });
+  }
+
   async tick(): Promise<void> {
     if (this.running) return;
     this.running = true;
@@ -147,6 +160,17 @@ export class MetrikaAnalyticsSchedulerService
         summary.status !== 'NOT_CONFIGURED'
       ) {
         await this.snapshots.refreshPresets();
+      }
+      if (summary.status === 'SUCCESS' || summary.status === 'PARTIAL') {
+        for (const hook of this.afterSyncHooks) {
+          try {
+            await hook.run();
+          } catch (error) {
+            this.logger.warn(
+              `Метрика: хук после тика «${hook.name}» завершился ошибкой — ${(error as Error).message}`,
+            );
+          }
+        }
       }
     } catch (error) {
       this.logger.error(
