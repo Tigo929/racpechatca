@@ -833,7 +833,7 @@ regular tick: 12:25:23–12:25:34 (scheduler:hourly 13.09–15.09, ровно ч
 
 ```text
 origin/master: 80921d9 → b04681f (ff, 11:20:48 MSK) — production = b04681f
-feature/analytics-foundation: b04681f + 5b3d9fb (§ 22 план) + <этот отчёт>; docs-коммиты в master не пушились
+feature/analytics-foundation: b04681f + 5b3d9fb (§ 22 план) + bf9bb62 (§ 23 отчёт, скриншоты); docs-коммиты в master не пушились
 (деплой только candidate)
 ```
 
