@@ -1283,7 +1283,9 @@ confounders; ADMIN API /analytics/dashboard/growth/* под флагом даш�
 расписания (точные снимки окон, автооценка ACTIVE). Сверка A (HTTP) = B (service) = C (SQL) diff 0; 76 SQL на оценку;
 тесты CRM 1012 / панель 35. Production не тронут (Logs API OFF, A/B-разделения нет, event model сайта не менялась);
 rollout — отдельный gate. Отчёт — 11_GROWTH_AND_EXPERIMENTS.md § 31; контракты — GROWTH_DATA_CONTRACT.md,
-GROWTH_STATISTICS.md. Verdict ставит Reviewer.
+GROWTH_STATISTICS.md. Reviewer 15.09: READY_FOR_PRODUCTION_ROLLOUT → план 11_PRODUCTION_ROLLOUT.md
+(READY_FOR_REVIEW; кандидат 0c3b84a = 8d10b7c + FIX_00 «свой флаг ANALYTICS_GROWTH_ENABLED»); production не менялся,
+ждёт «СТАРТ».
 ```
 
 Цель:

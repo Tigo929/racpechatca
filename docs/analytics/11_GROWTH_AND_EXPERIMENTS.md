@@ -816,8 +816,12 @@ Build: nest build OK, tsc -b && vite build OK; lint: eslint growth/ 0 пробл
 ```text
 feature/analytics-foundation: 51f850d docs спецификация; 41be79b feat backend; e2583cb feat панель; 70f4aab merge
 origin/master 3ac9be8 (владелец: Telegram-темы исполнителей, локальные агенты — 11 коммитов 15.09); 5328917 fix правила
-после сверки; <docs> — GROWTH_DATA_CONTRACT.md, GROWTH_STATISTICS.md, отчёт § 31, DASHBOARD_CONTRACT § 11b, master plan,
-current state, скриншоты. master = 3ac9be8 (production CRM, задеплоен владельцем 15.09 15:55–17:49); master ⊂ feature.
+после сверки; 8d10b7c docs — GROWTH_DATA_CONTRACT.md, GROWTH_STATISTICS.md, отчёт § 31, DASHBOARD_CONTRACT § 11b, master
+plan, current state, скриншоты; 0c3b84a FIX_00 (после verdict Reviewer READY_FOR_PRODUCTION_ROLLOUT, для требования
+rollout-плана «выкатывать выключенным») — свой флаг ANALYTICS_GROWTH_ENABLED поверх флага дашборда: growth-flags.ts,
+гейт хука в growth.module.ts, строка compose-шаблона, текст вкладки, +3 теста (CRM 1015 / 94 suites).
+master = 3ac9be8 (production CRM, задеплоен владельцем 15.09 15:55–17:49); master ⊂ feature. Rollout-план —
+11_PRODUCTION_ROLLOUT.md (READY_FOR_REVIEW), кандидат 0c3b84a на подтверждение Reviewer.
 ```
 
 ### PRODUCTION_UNTOUCHED

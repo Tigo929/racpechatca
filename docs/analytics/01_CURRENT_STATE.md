@@ -404,7 +404,9 @@ CANCELLED, PROBLEM — вне цепочки
 | API / UI | `/analytics/dashboard/growth/*` (ADMIN, флаг): status, changes CRUD, evaluate, evaluations/версии; вкладка «Рост / Изменения» — список, форма, оценка с FACT / ИНТЕРПРЕТАЦИЯ / ЧТО ДЕЛАТЬ, дисклеймер, оговорки, сегменты; скриншоты `screenshots/11_growth/` |
 | Сверка на копии | A (HTTP) = B (service) 501 / 378 листьев diff 0; A = C (SQL + когорты этапа 08) 12 / 8 проверок diff 0; 76 SQL на оценку без N+1, 2,2–2,7 с через туннель (на бою ожидается ≤ 1,5 с) |
 | A/B | NO_VARIANT_ASSIGNMENT — только наблюдательные «до / после»; контракт вариантов описан, web-photo не менялся |
-| Тесты | CRM 1012 (93 suites; этап 11 — 50), панель 35 (growth 5); build OK; lint чист по аналитике |
+| Тесты | CRM 1015 (94 suites; этап 11 — 53), панель 35 (growth 5); build OK; lint чист по аналитике |
+| Rollout | Reviewer 15.09: READY_FOR_PRODUCTION_ROLLOUT; план `11_PRODUCTION_ROLLOUT.md` (READY_FOR_REVIEW), кандидат 0c3b84a = 8d10b7c + FIX_00 (свой флаг `ANALYTICS_GROWTH_ENABLED`, default false — раздел выкатывается выключенным); ждёт «СТАРТ» |
+| Известный confounder | инцидент 14.09 18:20 → 15.09 20:32 MSK: сайт ~26 ч работал на августовской сборке (пуш устаревшей ветки `feature/print-card-lead-form` перезаписал `latest`); цели `lead_submitted` / `form_started` за этот период неполные, визиты корректны; в реестре Stage 11 регистрируется как завершённое изменение-граница (rollout § 11 B) → `OVERLAPPING_CHANGE` для пересекающих окон; CI-долг и безопасная схема — rollout § 31 |
 
 ---
 # 6. Что уже готово из целевой картины
