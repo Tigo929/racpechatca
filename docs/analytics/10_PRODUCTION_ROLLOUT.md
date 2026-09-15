@@ -9,7 +9,8 @@ REVIEW — technical rollout выполнен 15.09.2026 00:13–00:42 MSK по 
 правила / privacy / perf / auth проверены на боевых данных, расписание включено 00:31 — 10 тиков SUCCESS
 (daily 00:33 + hourly 01:31–09:31, контроль до 10:23), дублей 0, overlap 0.
 Отчёт — § 21. Owner smoke § 15 ПРОЙДЕН владельцем 15.09.2026 (~10:34 MSK, «OWNER SMOKE STAGE 10 ПРОЙДЕН») —
-§ 21.16. Все пункты Acceptance Gate (§ 18) закрыты со стороны исполнителя; DONE ставит Reviewer.
+§ 21.16. FIX_01 выложен в production 15.09 11:20–11:26 MSK по § 22 (master = b04681f), 12 проверок § 22.3 пройдены —
+§ 23. Все пункты Acceptance Gate (§ 18) закрыты со стороны исполнителя; DONE ставит Reviewer.
 ```
 
 ## STAGE
@@ -663,8 +664,8 @@ Stage 09: probes 401/403/200/400 без изменений; HTTP = service = met
 
 ```text
 1. Verdict Reviewer (10_BEHAVIOR_AND_FUNNELS / 10_PRODUCTION_ROLLOUT → DONE) — owner smoke § 15 пройден 15.09.
-2. FIX_01 к правилу 11.1 на частичных периодах (DEVIATIONS 1) — реализован в feature (f2db719, READY_FOR_REVIEW,
-   § 34 этапа); выкладка в production — отдельный gate по команде «СТАРТ» (миграций/env нет).
+2. FIX_01 к правилу 11.1 на частичных периодах (DEVIATIONS 1) — реализован (f2db719) и выложен в production
+   15.09 11:26 MSK по § 22 (candidate b04681f) — отчёт § 23; ждёт verdict Reviewer.
 3. Data gaps G2/G3/G4/G5 (цели submit_tshirt_order / view_product / canvas_size_select, событие серверной ошибки,
    дедупликация, Logs API) — решения владельца/Reviewer, production event model не менялся.
 4. Наблюдение по данным (не вывод): 0 начатых форм на телефонах при 51 (7д) / 280 (30д) визитах — нужна ручная проверка
@@ -732,3 +733,113 @@ Pending или новая миграция; backend не healthy > 5 мин; `FU
 
 `EXECUTOR_REPORT_STAGE10_FIX01_ROLLOUT`: DEPLOY, SMOKE, BEFORE/AFTER, REGRESSION, SCHEDULER, GIT, FINAL_STATUS.
 После прохождения production больше не менять.
+
+---
+
+# 23. EXECUTOR_REPORT_STAGE10_FIX01_ROLLOUT — 15.09.2026
+
+## 1. DEPLOY
+
+```text
+команда:      «СТАРТ — Stage 10 FIX_01 production rollout», candidate b04681f, только § 22
+pre-gate:     origin/master = 80921d9 ✓; b04681f — descendant (merge-base --is-ancestor) ✓; 6 коммитов master..candidate,
+              автор один (Tigran/Executor), owner-коммитов 0; 15 файлов: 7 кода (behavior-contract/compute/spec,
+              frontend types/behavior-view/behavior-sections/behavior.test) + 8 docs; prisma/, .env, compose, scheduler,
+              metrika/, web-photo — не тронуты ✓
+prod state:   11:19 MSK — backend d8c9dd7313da / frontend 844bb9f8704a healthy; тики 08:31, 09:31, 10:31 SUCCESS 12/12;
+              RUNNING 0, FAILED 24ч 0; миграций 78/78; outbox 8; .env mtime 00:31:17 (без изменений) ✓
+BEFORE:       11:20:19 UTC+0 (= 11:20 MSK) — 30 ответов production API через raspechatkaa.ru (временный ADMIN-токен
+              подписан в контейнере, жил в переменной серверной оболочки; в файле снимка секретов нет)
+push:         git push origin b04681f:master — fast-forward 80921d9..b04681f, 11:20:48 MSK; force нет
+CI:           образы backend 34a822713545 (created 11:22:51), frontend 23e12a797033 (11:22:45)
+auto-update:  11:24:57 «Обновляю backend …» → 11:25:29 здоров; 11:25:35 «Обновляю frontend …» → 11:26:08 здоров,
+              nginx перечитан; ошибок 0; действий на сервере — 0 (env/compose не менялись)
+boot log:     «78 migrations found … No pending migrations to apply.»; BehaviorModule / BehaviorDashboardController
+              смонтированы; FIX_01 в образе: PARTIAL_BEHAVIOR_PERIOD ×4 в behavior-compute.js, текст «окна измерения
+              не совпадают» в bundle панели
+```
+
+## 2. SMOKE (§ 22.3, все 12 пунктов)
+
+```text
+1  healthy:      backend running:healthy (started 11:25:09), frontend running:healthy (11:25:37); /health ok ✓
+2  migrations:   migrate status «Database schema is up to date!»; applied 78, failed 0, в образе 78; последняя —
+                 20260914200000_metrika_behavior_tables; новых миграций FIX_01 нет ✓
+3  FUNNEL_DROPOFF: /behavior/issues 7д и 30д — карточек photo / canvas / tshirt нет (7д было 1, 30д было 2) ✓
+4  skipped:      по 3 записи FUNNEL_DROPOFF с code PARTIAL_BEHAVIOR_PERIOD — Фотопечать (7д: 09.09 и 12.09; 30д:
+                 17.08 и 12.09), Футболки (10.09 и 12.09), Холсты (7д: 09.09; 30д: 17.08 — и 12.09); каждая —
+                 «конверсия шага несопоставима; правило вернётся для периодов, начинающихся не раньше 12.09.2026» ✓
+5  числа воронок: BEFORE = AFTER по 18 шагам × 3 периода (visits / events / users / availability / stepConversion /
+                 cumulativeConversion / dropoff / dropoffRate) — diffs 0; те же данные (lastSuccessRun 10:31:49 в обоих
+                 снимках, тика между ними не было); summary headline и блоки errors / devices / pages / paths идентичны ✓
+6  not_measured: catalog, choose_type_color, submit_tshirt_order, canvas_upload — visits/events/users = null (7д, 30д) ✓
+7  DEVICE_GAP:   CRITICAL, факт дословно тот же (7д: телефоны 0 % / 52, компьютеры 7,8 % / 64; 30д: 0 % / 281 vs
+                 1,7 % / 295; отношение 0.00) ✓
+8  другие правила: набор issues без FUNNEL_DROPOFF идентичен; skipped FORM_ERROR_SPIKE / LEAD_RATE_ANOMALY те же
+                 (коды LOW_SAMPLE / COMPARISON_UNAVAILABLE); A (HTTP) = B (service) по всем листьям 854 / 1071 / 1360
+                 diff 0; A = C (SQL) 21 / 31 / 31 метрик diff 0; Σ по устройствам = итогам; auth 401 / 403 / 400 ✓
+9  Stage 09:     status / overview 7д+30д / trend / sources / utm / landings / devices / products / sales-channels — 200,
+                 ответы BEFORE = AFTER байт в байт (кроме generatedAt / возраста данных); reports/monthly 2026 идентичен;
+                 probes 401 / 403 / 200 / 400, кэш ✓
+10 Stage 06:     «воркер отправки заказов запущен» после recreate; outbox skipped/no_client_id = 8 без изменений ✓
+11 scheduler:    тик при старте 11:26:53 (scheduler:daily 26.08–15.09) — 12/12 SUCCESS, 22 запроса, 3735 строк,
+                 снимки 8/8 + 112 целей (fetchedAt 11:27:08); дублей 0 во всех таблицах; overlap 0; RUNNING 0; FAILED 0;
+                 регулярный тик: 12:25:23–12:25:34 (scheduler:hourly 13.09–15.09, ровно через 60 мин после старта) — 12/12 SUCCESS (behavior 5/5), 22 + 1 запросов, 440 строк, снимки 8/8 (16 req) + 112 целей обновлены (fetchedAt 12:25:34); RUNNING 0, FAILED 0, overlap 0, дублей 0 (dev 1022 / land 1750 / params 351 / paths 401 / eng 73); outbox 8 без изменений ✓
+12 UI:           production-JSON ответов после deploy отрендерен production-сборкой панели (frontend/dist из b04681f):
+                 карточек FUNNEL_DROPOFF нет, DEVICE_GAP на месте; пометка «окна измерения не совпадают — доля не
+                 сравнивается» у 4 переходов (visit → form_started, lead_submitted_photo / tshirt / canvas) с подсказкой;
+                 в списке «Правила без вывода (мало данных или несопоставимые периоды): 7» — три записи
+                 «Отвал на шаге воронки · несопоставимые окна измерения: …»; «шаг не измеряется» ×4; телефон 390 px —
+                 scrollWidth 390 (без горизонтального скролла). Скриншоты: docs/analytics/screenshots/10_behavior/
+                 fix01-behavior-desktop-7d.png, fix01-behavior-desktop-30d.png, fix01-behavior-mobile-30d.png.
+                 Под учётной записью владельца исполнитель не входил ✓
+```
+
+## 3. BEFORE / AFTER (production, одни и те же данные)
+
+```text
+                     BEFORE 11:20 (d8c9dd7313da)                          AFTER 11:26 (34a822713545)
+7д  09–15.09         DEVICE_GAP CRITICAL; FUNNEL_DROPOFF photo 26 → 2      DEVICE_GAP CRITICAL; dropoff нет;
+                     issuesBySeverity {ATTENTION 1, CRITICAL 1}            skipped PARTIAL ×3; {ATTENTION 0, CRITICAL 1}
+30д 17.08–15.09      DEVICE_GAP CRITICAL; photo 118 → 2; canvas 20 → 0     DEVICE_GAP CRITICAL; dropoff нет;
+                     {ATTENTION 2, CRITICAL 1}                             skipped PARTIAL ×3; {ATTENTION 0, CRITICAL 1}
+today                issues 0, skipped 9                                   issues 0, skipped 9 [LOW_SAMPLE]
+воронки 7д           global 119 → 14 → 5 → 5; photo 26 → 2; tshirt 12 → 2 → 1 → 0; canvas 9 → 0; contact 0 → 0
+воронки 30д          global 582 → 14 → 5 → 5; photo 118 → 2; tshirt 12 → 2 → 1 → 0; canvas 20 → 0; contact 1 → 0
+                     (числа идентичны; AFTER добавил measuredFrom / transition, PARTIAL_BEHAVIOR_PERIOD сохранён)
+skipped codes        отсутствовали                                         LOW_SAMPLE / PARTIAL_BEHAVIOR_PERIOD / COMPARISON_UNAVAILABLE
+```
+
+## 4. REGRESSION
+
+```text
+Stage 10: errors / devices / pages / paths / summary headline — идентичны BEFORE; A = B = C diff 0; auth без изменений.
+Stage 09: все 9 маршрутов + P&L — идентичны; probes 401/403/200/400; кэш работает (8 → 12 мс).
+Stage 06: воркер запущен, outbox 8.
+Панель: раздел «Поведение» рендерится; попутный фикс be7a282 (вложенные <table>) — таблицы ошибок / устройств /
+страниц на месте, горизонтального скролла на 390 px нет.
+```
+
+## 5. SCHEDULER
+
+```text
+boot tick 11:26:53 daily 26.08–15.09: 12/12 SUCCESS, req 22 (+1 список целей), rows 3735, снимки 8/8 (16 req) + 112
+целей; дублей 0 (6 новых + 4 старых таблиц); overlap 0; RUNNING 0; FAILED 24ч 0; env flags orders_sync=true
+analytics_sync=true dashboard=true (не менялись).
+regular tick: 12:25:23–12:25:34 (scheduler:hourly 13.09–15.09, ровно через 60 мин после старта) — 12/12 SUCCESS (behavior 5/5), 22 + 1 запросов, 440 строк, снимки 8/8 (16 req) + 112 целей обновлены (fetchedAt 12:25:34); RUNNING 0, FAILED 0, overlap 0, дублей 0 (dev 1022 / land 1750 / params 351 / paths 401 / eng 73); outbox 8 без изменений ✓
+```
+
+## 6. GIT
+
+```text
+origin/master: 80921d9 → b04681f (ff, 11:20:48 MSK) — production = b04681f
+feature/analytics-foundation: b04681f + 5b3d9fb (§ 22 план) + <этот отчёт>; docs-коммиты в master не пушились
+(деплой только candidate)
+```
+
+## 7. FINAL_STATUS
+
+```text
+STAGE10_FIX01_ROLLOUT = DONE_PENDING_REVIEW — все 12 проверок § 22.3 пройдены, STOP-условий не возникло,
+production больше не меняется. Verdict (DONE) ставит Reviewer.
+```

@@ -9,7 +9,8 @@
 00:22 MSK** (master 80921d9) по `10_PRODUCTION_ROLLOUT.md`: миграция применена, initial sync 13.08–15.09,
 сверки на бою diff 0, расписание с 00:31 — 10 тиков SUCCESS (daily + 9 hourly); owner smoke (§ 15 rollout)
 ПРОЙДЕН владельцем 15.09.2026 — § 33. FIX_01 (правило 11.1 на несопоставимых окнах измерения) реализован
-15.09 в feature (f2db719), production не менялся — § 34, READY_FOR_REVIEW. DONE ставит Reviewer.
+15.09 (f2db719, § 34) и **выложен в production 15.09 11:26 MSK** (master b04681f) — 12 проверок § 22.3
+rollout-документа пройдены, `10_PRODUCTION_ROLLOUT.md` § 23. DONE ставит Reviewer.
 
 ## STAGE
 
@@ -1313,8 +1314,8 @@ production-агрегатов через SSH-туннель с рабочей с
 ## READY_FOR_REVIEW
 
 ```text
-FIX_01 = READY_FOR_REVIEW. Для выкладки достаточно ff master → f2db719/be7a282 + docs (миграций и env нет; контракт только
-расширен). Предложение: включить в 10_PRODUCTION_ROLLOUT как § 22 «FIX_01 rollout» по команде «СТАРТ» — deploy через
-auto-update, smoke: /behavior/issues 7д/30д без FUNNEL_DROPOFF photo/canvas и с PARTIAL-пропусками, DEVICE_GAP на месте,
-воронки без изменений чисел.
+FIX_01 = READY_FOR_REVIEW → выложен в production 15.09.2026 11:20–11:26 MSK по команде «СТАРТ — Stage 10 FIX_01
+production rollout» (10_PRODUCTION_ROLLOUT.md § 22 план, § 23 отчёт): master = b04681f, миграций/env нет, BEFORE = AFTER
+по числам воронок, FUNNEL_DROPOFF photo/canvas/tshirt на 7д/30д заменён на skipped PARTIAL_BEHAVIOR_PERIOD, DEVICE_GAP
+без изменений, Stage 06/09 без регресса, тики SUCCESS. Verdict — Reviewer.
 ```
