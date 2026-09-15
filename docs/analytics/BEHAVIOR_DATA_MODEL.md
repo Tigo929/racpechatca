@@ -101,7 +101,9 @@ submit_tshirt_order_error, messenger_click, phone_click
 
 Даты доступности: `BEHAVIOR_GOALS_AVAILABLE_FROM = 2026-09-10`, `DIRECTION_GOALS_AVAILABLE_FROM = 2026-09-12`
 (BEHAVIOR_EVENT_CONTRACT § 3). Период до даты → `insufficient_data`/`unavailable`; частично — `PARTIAL_BEHAVIOR_PERIOD`;
-сравнение только с периодом целиком после даты и с синхронизированными строками.
+сравнение только с периодом целиком после даты и с синхронизированными строками. Параметры визита
+(`MetrikaDailyVisitParam`) хранятся с начала счётчика (13.08) — у параметр-шагов `availableFrom = null`; переход
+«параметр → цель» внутри одного периода сопоставим только при совпадающих окнах измерения (`transition`, FIX_01).
 
 ---
 

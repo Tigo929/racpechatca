@@ -651,6 +651,8 @@ Stage 09: probes 401/403/200/400 без изменений; HTTP = service = met
    сама карточка об этом не говорит. Правило не подгонялось (§ 10). Предложение FIX_01 (решение Reviewer): для
    направлений считать param-шаги только с даты доступности цели направления и/или не создавать FUNNEL_DROPOFF при
    PARTIAL_BEHAVIOR_PERIOD. Смещение исчезает само: для 7 дней — с 19.09, для 30 дней — с 12.10.
+   → FIX_01 принят Reviewer и реализован 15.09 в feature (f2db719, 10_BEHAVIOR_AND_FUNNELS.md § 34); production
+   пока на старом правиле — выкладка отдельным gate.
 2. HEAD выкатки 80921d9 — reviewed 6f6f644 + docs + комментарий в frontend/nginx.conf (без изменения поведения).
 3. Frontend пересоздан auto-update (новый образ) — плановое; дополнительных сервисов compose не трогал.
 4. § 7 «до deploy prisma migrate status» выполнен с рабочей станции через туннель к production (read-only) — новая
@@ -661,7 +663,8 @@ Stage 09: probes 401/403/200/400 без изменений; HTTP = service = met
 
 ```text
 1. Verdict Reviewer (10_BEHAVIOR_AND_FUNNELS / 10_PRODUCTION_ROLLOUT → DONE) — owner smoke § 15 пройден 15.09.
-2. FIX_01 к правилу 11.1 на частичных периодах (DEVIATIONS 1) — по решению Reviewer, отдельным gate.
+2. FIX_01 к правилу 11.1 на частичных периодах (DEVIATIONS 1) — реализован в feature (f2db719, READY_FOR_REVIEW,
+   § 34 этапа); выкладка в production — отдельный gate по команде «СТАРТ» (миграций/env нет).
 3. Data gaps G2/G3/G4/G5 (цели submit_tshirt_order / view_product / canvas_size_select, событие серверной ошибки,
    дедупликация, Logs API) — решения владельца/Reviewer, production event model не менялся.
 4. Наблюдение по данным (не вывод): 0 начатых форм на телефонах при 51 (7д) / 280 (30д) визитах — нужна ручная проверка

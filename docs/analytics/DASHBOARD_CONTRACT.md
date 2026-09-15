@@ -470,6 +470,13 @@ acceptedOrders, paidOrders, realizedRevenue, cogs, netProfit, paidAov.
 периода из снимка или `null`). Шаг без цели в счётчике — `availability: 'not_measured'` с `note`; период до
 даты доступности — `insufficient_data`. UI: вкладка «Поведение» (`?tab=behavior`).
 
+FIX_01 (15.09.2026, feature): у измеренного шага `measuredFrom` (первый день периода, с которого шаг реально
+измерен) и `transition: { status: 'comparable' | 'partial', comparableFrom } | null` — сопоставимость с предыдущим
+измеренным шагом; при `partial` конверсия шага показывается, но подписана как несравнимая, а правило
+`FUNNEL_DROPOFF` молчит. `BehaviorIssues.skipped[]` — `{ rule, code, reason }`, `code ∈ LOW_SAMPLE |
+PARTIAL_BEHAVIOR_PERIOD | COMPARISON_UNAVAILABLE | NO_LEADS` (BEHAVIOR_RULES.md «Коды skipped[]»). Поля
+добавлены, ничего не удалено — старые клиенты совместимы.
+
 # 12. Чего в V1 нет (намеренно)
 
 - Фильтров по источнику/каналу/товару, комбинированных срезов.

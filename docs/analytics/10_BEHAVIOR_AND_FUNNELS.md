@@ -8,7 +8,8 @@
 (`BEHAVIOR_RULES.md`); сверка на копии production diff 0 — отчёт § 32. **В production с 15.09.2026
 00:22 MSK** (master 80921d9) по `10_PRODUCTION_ROLLOUT.md`: миграция применена, initial sync 13.08–15.09,
 сверки на бою diff 0, расписание с 00:31 — 10 тиков SUCCESS (daily + 9 hourly); owner smoke (§ 15 rollout)
-ПРОЙДЕН владельцем 15.09.2026 — § 33. Со стороны исполнителя всё закрыто; DONE ставит Reviewer.
+ПРОЙДЕН владельцем 15.09.2026 — § 33. FIX_01 (правило 11.1 на несопоставимых окнах измерения) реализован
+15.09 в feature (f2db719), production не менялся — § 34, READY_FOR_REVIEW. DONE ставит Reviewer.
 
 ## STAGE
 
@@ -1182,3 +1183,138 @@ DEVIATION к правилу 11.1 (для решения Reviewer): в окнах
 Owner smoke — § 15 `10_PRODUCTION_ROLLOUT.md` (`https://raspechatkaa.ru/crm/analytics` → «Поведение»): **ПРОЙДЕН**
 владельцем 15.09.2026 (~10:34 MSK, «OWNER SMOKE STAGE 10 ПРОЙДЕН») — зафиксировано в § 21.16 rollout-документа.
 Production после включения расписания (00:31) не менялся. Открыты только решения Reviewer: verdict DONE и FIX_01.
+
+---
+
+# 34. FIX_01 — PARTIAL PERIOD FUNNEL DROPOFF (15.09.2026)
+
+Задание Reviewer: не создавать `FUNNEL_DROPOFF`, если сравниваемые шаги воронки имеют несовместимые периоды
+доступности данных; числа и пороги не подгонять; историю не превращать в 0; причину подавления вернуть в
+`issues`; после наступления сопоставимого периода правило должно включаться само; через метаданные шагов, не
+hardcode. Выполнено на `feature/analytics-foundation`; production не тронут.
+
+## ROOT_CAUSE
+
+```text
+Правило 11.1 считало отвал между соседними измеренными шагами, не проверяя, что оба шага измерены за один и тот же
+отрезок периода. У воронок photo/canvas первый шаг — параметр визита (productSlug / product=canvas): параметры
+reachGoal записываются в Метрику независимо от целей, поэтому в MetrikaDailyVisitParam они есть с начала счётчика
+(13.08; на бою до 10.09 — 108 визитов с productSlug). Второй шаг — цель направления, созданная 12.09. За 30 дней
+(17.08–15.09) отношение 2 / 118 сравнивало 4 дня цели с 30 днями параметра — математически верно по хранимым
+строкам, аналитически несопоставимо. Дополнительно метаданные параметр-шагов утверждали availableFrom = 10.09,
+хотя данные шага старше, — окно шага в контракте описывалось неверно. У футболок тот же дефект на переходе
+add_tshirt_lead (10.09) → lead_submitted_tshirt (12.09).
+```
+
+## IMPLEMENTATION
+
+```text
+crm-new/src/analytics/behavior/behavior-contract.ts
+  FunnelStep.measuredFrom: string | null — первый день периода, с которого шаг реально измерен (max(period.from, availableFrom))
+  FunnelStep.transition: StepTransition | null — { status: 'comparable' | 'partial', comparableFrom } к предыдущему измеренному шагу
+  BehaviorIssues.skipped: SkippedRule[] = { rule, code: SkipCode, reason }; SkipCode = LOW_SAMPLE | PARTIAL_BEHAVIOR_PERIOD |
+  COMPARISON_UNAVAILABLE | NO_LEADS
+crm-new/src/analytics/behavior/behavior-compute.ts
+  measuredFrom(availableFrom, period); transitionOf(prev, step, period): окна совпадают → comparable, иначе partial;
+  comparableFrom = поздняя из дат доступности двух шагов (null, если обе null)
+  FUNNEL_DEFS: параметр-шаги (photo form_started_photo, canvas canvas_interaction, contact contact_form / contact_lead) —
+  availableFrom: null (с начала счётчика) вместо 2026-09-10; goal-шаги без изменений (10.09 / 12.09)
+  computeFunnel: заполняет measuredFrom и transition; числа, conversions, not_measured, insufficient_data — без изменений
+  computeIssues 11.1: переход с transition.status === 'partial' пропускается ДО проверки входа ≥ 20 и порогов; в skipped[]
+  — код PARTIAL_BEHAVIOR_PERIOD и текст «<воронка>: «A» → «B» — шаги измерены с разных дат (ДД.ММ.ГГГГ и ДД.ММ.ГГГГ),
+  конверсия шага несопоставима; правило вернётся для периодов, начинающихся не раньше ДД.ММ.ГГГГ». Переход «визит →
+  первое действие» по-прежнему не оценивается. Пороги (90 %, 15 п.п., 20 входов) не тронуты.
+  Остальные пропуски получили коды: DEVICE_GAP / FORM_ERROR_SPIKE / LANDING (нет страниц) — LOW_SAMPLE; LANDING (нет заявок)
+  — NO_LEADS; LEAD_RATE_ANOMALY — COMPARISON_UNAVAILABLE (нет сопоставимого периода) или LOW_SAMPLE (< 30 визитов).
+frontend/src/types/behavior.ts — зеркало контракта
+frontend/src/features/analytics/behavior-view.ts — SKIP_CODE_LABELS, partialTransitionText()
+frontend/src/features/analytics/behavior-sections.tsx — у шага с partial: доля серым + строка «окна измерения не совпадают —
+  доля не сравнивается» с подсказкой (даты обоих шагов, с какого начала периода сопоставимо); список пропущенных правил
+  переименован в «Правила без вывода (мало данных или несопоставимые периоды)», у каждого пункта — подпись кода
+Автоматический возврат: transition считается от period.from и availableFrom при каждом запросе — для 7 дней правило по
+photo/canvas/tshirt вернётся с 19.09 (окно 12–18.09 → 13–19.09), для 30 дней — с 12.10; переключателей нет.
+```
+
+## TESTS
+
+```text
+CRM (jest): 960 / 960, 86 suites (было 955) — behavior-compute.spec.ts +5:
+  • «30 дней сейчас»: боевые числа 117 → 2 (photo) и 20 → 0 (canvas) на 17.08–15.09 — в воронке числа те же
+    (117, 2; stepConversion 1,71 %), PARTIAL_BEHAVIOR_PERIOD, transition partial / comparableFrom 2026-09-12;
+    FUNNEL_DROPOFF нет; skipped PARTIAL для Фотопечать / Футболки / Холсты с датами «17.08.2026 и 12.09.2026»;
+    catalog и canvas_upload остаются not_measured с visits null; DEVICE_GAP по-прежнему CRITICAL
+  • «период целиком после дат доступности» (19–25.09, те же числа): transition comparable, карточка photo 28 → 2
+    ATTENTION появляется сама, PARTIAL-пропусков нет
+  • «искусственная воронка ≥ 90 %»: photo 40 → 2 на 12–18.09 — карточка; те же числа на 11–17.09 — карточки нет,
+    причина «(11.09.2026 и 12.09.2026) … не раньше 12.09.2026» (граница даты)
+  • «одинаковые даты доступности»: общая воронка 40 → 2 на 05–11.09 — окна совпадают (обе цели с 10.09), правило
+    работает и на частичном периоде; переход «визит → начали форму» помечен partial, но 11.1 его не оценивает
+  • measuredFrom / transitionOf: max(period.from, availableFrom), null-даты, comparableFrom
+  Обновлены: «на боевых данных недели» (08–14.09) — карточки photo больше нет, 3 PARTIAL-пропуска с текстом;
+  «малая выборка» — все коды из допустимого множества; LEAD_RATE_ANOMALY без сопоставимого периода —
+  COMPARISON_UNAVAILABLE. Регресс DEVICE_GAP / FORM_ERROR_SPIKE / LANDING_UNDERPERFORMANCE / LEAD_RATE_ANOMALY —
+  прежние тесты зелёные без правок ожиданий по этим правилам.
+Панель (vitest): 30 / 30 — фикстуры с measuredFrom/transition/code; FunnelCard показывает пометку у partial-перехода и
+  не показывает у comparable; IssuesBlock показывает код «несопоставимые окна измерения» и текст причины.
+Build: nest build OK; tsc -b && vite build OK. Lint: eslint src/analytics (без правила prettier) — в behavior/ 0
+  проблем (7 прежних no-unnecessary-type-assertion в backfill/metrika-orders — вне этапа); prettier --check
+  (end-of-line auto) behavior/*.ts — чисто; frontend eslint src/features/analytics src/types src/api — 0 проблем
+  (19 проблем репозитория вне аналитики — как на HEAD).
+```
+
+## BEFORE / AFTER (production-данные 15.09 ~10:57 MSK, read-only через туннель; before = сборка HEAD 4d5a027, after = f2db719)
+
+```text
+period        BEFORE (код production)                                        AFTER (FIX_01)
+today         issues 0, skipped 9 (все < порогов)                              issues 0, skipped 9 [LOW_SAMPLE]
+last_7_days   DEVICE_GAP CRITICAL (52 / 64 визитов, 0 % vs 7,8 %);             DEVICE_GAP CRITICAL — без изменений;
+09–15.09      FUNNEL_DROPOFF photo 26 → 2 (ATTENTION)                          FUNNEL_DROPOFF нет; skipped [PARTIAL_BEHAVIOR_PERIOD]:
+                                                                               Фотопечать (09.09 и 12.09), Футболки (10.09 и 12.09),
+                                                                               Холсты (09.09 и 12.09) — «не раньше 12.09.2026»
+last_30_days  DEVICE_GAP CRITICAL (281 / 295, 0 % vs 1,7 %);                   DEVICE_GAP CRITICAL — без изменений;
+17.08–15.09   FUNNEL_DROPOFF photo 118 → 2; FUNNEL_DROPOFF canvas 20 → 0       FUNNEL_DROPOFF нет; skipped [PARTIAL]: Фотопечать
+                                                                               (17.08 и 12.09), Футболки (10.09 и 12.09), Холсты (17.08 и 12.09)
+воронки       photo 118 → 2, canvas 20 → 0, tshirt 12 → 2 → 1 → 0 (PARTIAL)   те же числа; у шага-цели transition partial (from 12.09);
+                                                                               not_measured — не 0; PARTIAL_BEHAVIOR_PERIOD сохранён
+LEAD_RATE     skipped «< 30 визитов или предыдущий период до целей»            skipped [COMPARISON_UNAVAILABLE] с точной причиной
+```
+
+## REGRESSION
+
+```text
+DEVICE_GAP — те же карточки и severity на 7д/30д (см. выше) и в тестах; FORM_ERROR_SPIKE — тесты ×2/×3 и «< 5» без
+изменений; LANDING_UNDERPERFORMANCE — тест ≤ 50 % без изменений, пропуски получили коды; LEAD_RATE_ANOMALY — падение /
+рост / несопоставимость без изменений. Воронки: числа, stepConversion, cumulativeConversion, dropoff, not_measured,
+insufficient_data, comparison — идентичны (изменились только новые поля и availableFrom параметр-шагов 10.09 → null).
+Панель: FunnelCard / FormErrorsBlock / DevicesBlock / IssuesBlock тесты зелёные. Попутно (отдельный коммит be7a282):
+пять таблиц раздела «Поведение» вкладывали <table> внутрь <table> обёртки TableWrap (невалидный DOM, предупреждение
+React в тестах) — внутренние <table> убраны, разметка как в разделах этапа 09; тесты/сборка зелёные.
+```
+
+## GIT
+
+```text
+feature/analytics-foundation: f2db719 fix(FIX_01) — 7 файлов (+479 / −45): behavior-contract.ts, behavior-compute.ts,
+behavior-compute.spec.ts, frontend types/behavior.ts, behavior-view.ts, behavior-sections.tsx, __tests__/behavior.test.tsx;
+be7a282 fix(панель) — вложенные таблицы; <docs> — документация FIX_01 (этот раздел, BEHAVIOR_RULES.md,
+BEHAVIOR_EVENT_CONTRACT.md § 3, DASHBOARD_CONTRACT.md § 11a, BEHAVIOR_DATA_MODEL.md, 10_PRODUCTION_ROLLOUT.md § 21,
+00_MASTER_PLAN.md, 01_CURRENT_STATE.md). master = 80921d9 — не менялся.
+```
+
+## PRODUCTION_UNTOUCHED
+
+```text
+Ни одного изменения на сервере: master 80921d9, контейнеры backend d8c9dd7313da / frontend 844bb9f8704a, .env и compose
+не редактировались, деплоя не было (auto-update.log после 00:28 — пусто). Для BEFORE/AFTER выполнялись только SELECT
+production-агрегатов через SSH-туннель с рабочей станции (пароль БД — в переменных процесса, в выводе редактируется);
+туннель закрыт. Production API по-прежнему отдаёт карточки photo/canvas до выкладки FIX_01 — отдельный gate.
+```
+
+## READY_FOR_REVIEW
+
+```text
+FIX_01 = READY_FOR_REVIEW. Для выкладки достаточно ff master → f2db719/be7a282 + docs (миграций и env нет; контракт только
+расширен). Предложение: включить в 10_PRODUCTION_ROLLOUT как § 22 «FIX_01 rollout» по команде «СТАРТ» — deploy через
+auto-update, smoke: /behavior/issues 7д/30д без FUNNEL_DROPOFF photo/canvas и с PARTIAL-пропусками, DEVICE_GAP на месте,
+воронки без изменений чисел.
+```

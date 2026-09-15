@@ -116,7 +116,7 @@ read-only, 14.09.2026 22:29 MSK). Документация этапа 04 (04_EVE
 | Счётчик (визиты, страницы, устройства) | 2026-08-13 | `COUNTER_DATA_SINCE` |
 | `form_started`, `lead_submit_attempt`, `lead_submitted`, `view_custom_tshirt`, `choose_size`, `add_tshirt_lead`, `submit_tshirt_order_*`, `messenger_click`, `phone_click` (id 611379430–611386291) | **2026-09-10** | первые достижения 10–11.09; цели одной серии; в GOALS_MANIFEST помечены `configured` до 12.09 |
 | `lead_submitted_photo/canvas/tshirt`, `form_error` (612290270–612290566) | **2026-09-12 13:19 MSK** | созданы владельцем 12.09 ≈ 13:00 (`GOALS_MANIFEST.md`), сайт с событиями выложен 13:19:22 (`FALSE_BROWSER_PURCHASE_STOPPED_AT`) |
-| Параметры визита (`field`, `product`, …) | вместе с событиями, которые их несут (10.09 / 12.09) | |
+| Параметры визита (`field`, `product`, `productSlug`, `size`, `value`, …) | **2026-08-13** — с начала данных счётчика: параметры `reachGoal` записываются как параметры визита независимо от того, есть ли цель; их несли и прежние события сайта | проверено на бою 15.09: до 10.09 — `productSlug` 108 визитов, `value` 118, `intent` 63, `size` 26 (`MetrikaDailyVisitParam`); в `FUNNEL_DEFS` параметр-шаги — `availableFrom: null`. Поэтому переход «параметр → цель направления» на периодах, начинающихся раньше 12.09, имеет разные окна измерения — правило 11.1 по нему молчит (FIX_01, BEHAVIOR_RULES.md) |
 | Новые агрегаты этапа 10 (по устройствам/входам, параметры, пути) | дата первой синхронизации набора; история подтягивается запросами за прошлые дни в пределах Reports API (цели — не раньше своего создания) | |
 
 Константы: `BEHAVIOR_GOALS_AVAILABLE_FROM = '2026-09-10'`, `DIRECTION_GOALS_AVAILABLE_FROM = '2026-09-12'`
