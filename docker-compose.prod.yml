@@ -68,6 +68,10 @@ services:
       # Дашборд руководителя (этап 09): раздел «Аналитика» в панели. Выключен —
       # API отвечает 404, пункт меню скрыт. Включать по команде владельца.
       ANALYTICS_DASHBOARD_ENABLED: ${ANALYTICS_DASHBOARD_ENABLED:-false}
+      # Рост / Изменения (этап 11): свой флаг поверх флага дашборда — раздел
+      # выкатывается выключенным. Выключен — API роста 404 (кроме status),
+      # вкладка «раздел выключен», хук расписания не подключён.
+      ANALYTICS_GROWTH_ENABLED: ${ANALYTICS_GROWTH_ENABLED:-false}
       PARTNER_WEBHOOK_URL: ${PARTNER_WEBHOOK_URL:-}
       PARTNER_WEBHOOK_TOKEN: ${PARTNER_WEBHOOK_TOKEN:-}
       PARTNER_STATUS_POLL_ENABLED: ${PARTNER_STATUS_POLL_ENABLED:-false}

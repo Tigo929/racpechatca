@@ -480,8 +480,10 @@ PARTIAL_BEHAVIOR_PERIOD | COMPARISON_UNAVAILABLE | NO_LEADS` (BEHAVIOR_RULES.md 
 # 11b. Рост и изменения (этап 11) — `/analytics/dashboard/growth/*`
 
 Контракт — `crm-new/src/analytics/growth/growth-contract.ts` (зеркало `frontend/src/types/growth.ts`), данные и правила —
-`GROWTH_DATA_CONTRACT.md`, статистика — `GROWTH_STATISTICS.md`. Те же guards (ADMIN) и флаг `ANALYTICS_DASHBOARD_ENABLED`
-(выключен → 404 кроме `status`); списки не кэшируются (реестр маленький, правки должны быть видны сразу).
+`GROWTH_DATA_CONTRACT.md`, статистика — `GROWTH_STATISTICS.md`. Те же guards (ADMIN) и **два** флага:
+`ANALYTICS_DASHBOARD_ENABLED` и свой `ANALYTICS_GROWTH_ENABLED` (default false; `growth-flags.ts`) — раздел включён
+только при обоих, иначе 404 кроме `status` (`enabled: false`), вкладка показывает «раздел выключен», хук расписания не
+регистрируется. Списки не кэшируются (реестр маленький, правки должны быть видны сразу).
 
 | Путь | Метод сервиса | Ответ |
 |---|---|---|

@@ -479,7 +479,7 @@ export function GrowthTab() {
   if (status.isPending) return <Card title="Рост / Изменения"><StateBlock kind="loading" /></Card>;
   if (status.isError) return <Card title="Рост / Изменения"><StateBlock kind="error" message={errorMessage(status.error)} onRetry={() => void status.refetch()} /></Card>;
   const st = status.data!;
-  if (!st.enabled) return <Card title="Рост / Изменения"><StateBlock kind="empty" message="Раздел аналитики выключен" /></Card>;
+  if (!st.enabled) return <Card title="Рост / Изменения"><StateBlock kind="empty" message="Раздел «Рост / Изменения» выключен" /></Card>;
   const changes = list.data ?? [];
   const selected = changes.find((c) => c.id === selectedId) ?? changes[0] ?? null;
   const metricOf = (k: GrowthMetricKey) => st.metrics.find((m) => m.key === k);

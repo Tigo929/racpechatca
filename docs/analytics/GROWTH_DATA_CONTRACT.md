@@ -101,7 +101,7 @@ Confounders (описательно, причина не утверждаетс�
 `MATCHED_COVERAGE_LOW`, `COGS_INCOMPLETE`, `IMMATURE_OUTCOME`. Оговорки о метриках — только по заявленным
 (первичная + вторичные); контекст несёт свои вердикты.
 
-## 6. API (`/analytics/dashboard/growth`, ADMIN, флаг `ANALYTICS_DASHBOARD_ENABLED`)
+## 6. API (`/analytics/dashboard/growth`, ADMIN, флаги `ANALYTICS_DASHBOARD_ENABLED` + `ANALYTICS_GROWTH_ENABLED`)
 
 | Маршрут | Ответ |
 |---|---|
@@ -111,7 +111,8 @@ Confounders (описательно, причина не утверждаетс�
 | `POST changes/:id/evaluate` | новая версия `GrowthEvaluation` (200); CANCELLED не оценивается; без полного дня после cutover — 400 `NO_COMPLETE_DAYS_AFTER` |
 | `GET changes/:id/evaluations`, `…/latest`, `…/:version` | сводки версий / полная оценка (неизменяемая) |
 
-Выключенный флаг → 404 на всё, кроме `status`. К API Метрики из этих маршрутов обращений нет.
+Раздел включён только при обоих флагах (`growth-flags.ts`; свой флаг default false — Stage 11 выкатывается выключенным).
+Выключен → 404 на всё, кроме `status`, и хук расписания не регистрируется. К API Метрики из этих маршрутов обращений нет.
 
 ## 7. Расписание (`GrowthModule.onModuleInit → scheduler.registerAfterSync`)
 
