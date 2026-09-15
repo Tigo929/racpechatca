@@ -320,6 +320,8 @@ export interface AppUser {
   /** Ставка премии за разработку дизайна (сотые процента). Для менеджера. */
   designRateBasisPoints: number | null;
   telegramUsername: string | null;
+  /** id темы исполнителя в рабочей группе Telegram (message_thread_id). */
+  telegramTopicId: number | null;
   createdAt: string;
   /** Заказов в работе — считаются до статуса «Готов» (текущая загрузка). */
   activeOrdersCount?: number;
@@ -584,12 +586,19 @@ export interface CreateExpenseDto {
 /* ---------- Задачи ---------- */
 
 export type EnumTaskStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
+export type EnumTaskAssigneeKind = 'USER' | 'CODEX' | 'CLOUD_CODE';
 
 export const TASK_STATUS_LABELS: Record<EnumTaskStatus, string> = {
   OPEN: 'Новая',
   IN_PROGRESS: 'В работе',
   DONE: 'Выполнена',
   CANCELLED: 'Отменена',
+};
+
+export const TASK_ASSIGNEE_KIND_LABELS: Record<EnumTaskAssigneeKind, string> = {
+  USER: 'Сотрудник',
+  CODEX: 'Codex',
+  CLOUD_CODE: 'Claude Code',
 };
 
 /** Порядок в интерфейсе: сначала то, что ещё в работе. */
@@ -602,10 +611,11 @@ export interface Task {
   title: string;
   description: string | null;
   status: EnumTaskStatus;
+  assigneeKind: EnumTaskAssigneeKind;
   deadline: string | null;
   completedAt: string | null;
-  assigneeId: string;
-  assignee: { id: string; username: string; telegramUsername: string | null };
+  assigneeId: string | null;
+  assignee: { id: string; username: string; telegramUsername: string | null } | null;
   createdById: string;
   createdBy: { id: string; username: string };
   orderId: string | null;
@@ -614,16 +624,23 @@ export interface Task {
   rewardAmount?: number;
   /** Начисление, созданное при выполнении (если задача платная). */
   rewardAccrualId?: string | null;
+  /** Короткий результат локального агента: что сделано и где смотреть. */
+  agentSummary?: string | null;
+  /** Последний пинг локального агента. */
+  agentLastHeartbeatAt?: string | null;
 }
 
 export interface CreateTaskDto {
   title: string;
   description?: string;
-  assigneeId: string;
+  assigneeKind?: EnumTaskAssigneeKind;
+  assigneeId?: string;
   deadline?: string;
   orderId?: string;
   /** Оплата за выполнение задачи. Начислится сотруднику при закрытии. */
   rewardAmount?: number;
+  /** Короткий результат локального агента: что сделано и где смотреть. */
+  agentSummary?: string;
 }
 
 export interface TaskCountResponse {

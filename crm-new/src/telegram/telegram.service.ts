@@ -155,15 +155,19 @@ export class TelegramService {
     }
   }
 
-  /** Отправляет сообщение в общую рабочую группу (id из TELEGRAM_GROUP_CHAT_ID). */
-  async sendToGroup(text: string): Promise<boolean> {
+  /**
+   * Отправляет сообщение в общую рабочую группу (id из TELEGRAM_GROUP_CHAT_ID).
+   * threadId — id темы (форум-топика) внутри этой группы: с ним сообщение
+   * попадёт прямо в нужную тему (например, тему исполнителя).
+   */
+  async sendToGroup(text: string, threadId?: string): Promise<boolean> {
     if (!this.groupChatId) {
       this.logger.warn(
         'TELEGRAM_GROUP_CHAT_ID not set — group notification skipped',
       );
       return false;
     }
-    return this.sendMessage(this.groupChatId, text);
+    return this.sendMessage(this.groupChatId, text, threadId);
   }
 
   /**

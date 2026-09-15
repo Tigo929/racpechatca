@@ -36,6 +36,10 @@ deploy-*.tar.gz
 .agents/
 .claude/
 skills-lock.json
+local-agent/config.local.json
+local-agent/runs/
+local-agent/inbox/
+local-agent/service-logs/
 
 # Тестовые PDF-стикеры, которые генерируются при отладке
 crm-new/client-*.pdf

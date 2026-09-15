@@ -180,14 +180,9 @@ export function buildShipmentBlock(
     ? `🚚 <b>ОТГРУЗКИ (${orders.length})</b> · старший дня: ${mentionFor(lead)}`
     : `🚚 <b>ОТГРУЗКИ (${orders.length})</b>\n⚠️ Старший дня не назначен — назначьте в Настройках.`;
 
-  return [
-    head,
-    '',
-    ...orders.map(shipmentLine),
-    '',
-    '👉 Оформи поставки и проконтролируй отгрузку.',
-    'После отправки переведи заказ в «Отправлен».',
-  ].join('\n');
+  // Хвостовые инструкции убраны по просьбе владельца: список заказов и так
+  // понятен, а лишний текст только удлинял сообщение.
+  return [head, '', ...orders.map(shipmentLine)].join('\n');
 }
 
 function dayMonth(now: Date): string {
