@@ -135,8 +135,8 @@ function commandFor(agent, run) {
     return {
       executable: process.env.CODEX_EXECUTABLE ?? config.codexExecutable ?? 'codex',
       args: [
-        'exec', '--cd', WORKING_DIRECTORY, '--sandbox', 'workspace-write',
-        '--approve-for-me', '--output-last-message', run.resultFile, '-',
+        'exec', '--cd', WORKING_DIRECTORY, '--approve-for-me',
+        '--output-last-message', run.resultFile, '-',
       ],
     };
   }
