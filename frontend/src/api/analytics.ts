@@ -21,6 +21,13 @@ import type {
   PagesBehavior,
   PathsBehavior,
 } from '../types/behavior';
+import type {
+  AnalyticsChangeRecord,
+  ChangeInput,
+  GrowthEvaluation,
+  GrowthEvaluationSummary,
+  GrowthStatus,
+} from '../types/growth';
 import { api } from './client';
 
 /**
@@ -59,6 +66,20 @@ export const behaviorApi = {
   devices: (q: PeriodQuery) => get<DevicesBehavior>('behavior/devices', q),
   paths: (q: PeriodQuery) => get<PathsBehavior>('behavior/paths', q),
   issues: (q: PeriodQuery) => get<BehaviorIssues>('behavior/issues', q),
+};
+
+/** Рост и изменения (этап 11): реестр и оценки — ADMIN only; окна задаёт изменение, а не пресет периода. */
+const GROWTH = '/analytics/dashboard/growth';
+export const growthApi = {
+  status: async () => (await api.get<GrowthStatus>(`${GROWTH}/status`)).data,
+  list: async () => (await api.get<AnalyticsChangeRecord[]>(`${GROWTH}/changes`)).data,
+  get: async (id: string) => (await api.get<AnalyticsChangeRecord>(`${GROWTH}/changes/${id}`)).data,
+  create: async (input: ChangeInput) => (await api.post<AnalyticsChangeRecord>(`${GROWTH}/changes`, input)).data,
+  update: async (id: string, patch: Partial<ChangeInput>) => (await api.patch<AnalyticsChangeRecord>(`${GROWTH}/changes/${id}`, patch)).data,
+  evaluate: async (id: string) => (await api.post<GrowthEvaluation>(`${GROWTH}/changes/${id}/evaluate`)).data,
+  evaluations: async (id: string) => (await api.get<GrowthEvaluationSummary[]>(`${GROWTH}/changes/${id}/evaluations`)).data,
+  latestEvaluation: async (id: string) => (await api.get<GrowthEvaluation>(`${GROWTH}/changes/${id}/evaluations/latest`)).data,
+  evaluation: async (id: string, version: number) => (await api.get<GrowthEvaluation>(`${GROWTH}/changes/${id}/evaluations/${version}`)).data,
 };
 
 /** Ключ кэша react-query — тот же, что ключ серверного кэша: вид + период. */

@@ -41,6 +41,7 @@ import {
   PathsBlock,
 } from '../features/analytics/behavior-sections';
 import { behaviorWarnings } from '../features/analytics/behavior-view';
+import { GrowthTab } from '../features/analytics/growth-sections';
 
 /**
  * Дашборд руководителя (этап 09). Все числа — из `AnalyticsMetricsService`
@@ -48,11 +49,12 @@ import { behaviorWarnings } from '../features/analytics/behavior-view';
  * показывает, подписывает и предупреждает о неполных данных.
  */
 
-type Tab = 'overview' | 'behavior' | 'sources' | 'products' | 'pages' | 'quality';
+type Tab = 'overview' | 'behavior' | 'growth' | 'sources' | 'products' | 'pages' | 'quality';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'overview', label: 'Обзор' },
   { key: 'behavior', label: 'Поведение' },
+  { key: 'growth', label: 'Рост / Изменения' },
   { key: 'sources', label: 'Источники' },
   { key: 'products', label: 'Товары' },
   { key: 'pages', label: 'Страницы' },
@@ -222,6 +224,7 @@ export function AnalyticsPage() {
                     )}
                   </div>
                 )}
+                {tab === 'growth' && <GrowthTab />}
                 {tab === 'sources' && (
                   <div className="space-y-4">
                     {sources.isError ? <StateBlock kind="error" message={getErrorMessage(sources.error)} onRetry={() => void sources.refetch()} /> : <SourcesTable slice={sources.data} />}
