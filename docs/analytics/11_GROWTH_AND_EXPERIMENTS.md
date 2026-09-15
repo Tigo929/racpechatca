@@ -1,0 +1,622 @@
+# 11_GROWTH_AND_EXPERIMENTS.md
+
+## STATUS
+
+TODO — implementation may start only after Reviewer approval of this specification.
+
+## 1. Goal
+
+Build a trustworthy growth/experiments layer that records product/site changes and evaluates what happened before and after them without inventing causality.
+
+The system must answer:
+
+- what changed;
+- when it reached production;
+- what surface/audience it affected;
+- what metric was declared primary before evaluation;
+- what happened before vs after;
+- whether the compared windows are actually comparable;
+- whether CRM outcomes had enough time to mature;
+- how large the observed change is in absolute and relative terms;
+- whether the sample is sufficient to make a useful conclusion;
+- what confounders/data gaps exist;
+- what should be checked next.
+
+Stage 11 is not allowed to turn correlation into proof. Every result must separate FACT / INTERPRETATION / RECOMMENDATION and expose `causality = NOT_ESTABLISHED` unless a future randomized experiment supports a stronger claim.
+
+## 2. Current production baseline
+
+Stage 10 is accepted DONE. Production master at the Stage 11 planning gate: `b04681f`.
+
+Already available:
+
+- local daily Metrika aggregates from 2026-08-13;
+- hourly refresh;
+- true period-user snapshots only for supported presets;
+- Stage 09 trend metrics for site + CRM + P&L;
+- Stage 10 behavior datasets and availability/comparability metadata;
+- canonical CRM lifecycle and canonical P&L logic;
+- known cutovers/deploy timestamps, including event-model production cutover 2026-09-12 13:19 Europe/Moscow;
+- source/UTM/device/landing slices where local aggregate data supports them.
+
+Do not duplicate existing metric formulas.
+
+## 3. Non-goals
+
+Stage 11 must NOT:
+
+- enable Metrika Logs API without a separate Reviewer/owner decision;
+- claim session-level paths that aggregates cannot prove;
+- implement a client-side A/B assignment system by default;
+- silently modify the `web-photo` event model;
+- calculate ROAS/ROMI without ad-spend data;
+- use total CRM orders as the denominator/numerator for a site-only experiment;
+- sum daily unique users and label the result unique users;
+- call an observed before/after difference a proven effect;
+- use an LLM to decide statistical significance or manufacture explanations;
+- alter production during implementation/review.
+
+## 4. Core concept: Change / Experiment Registry
+
+Create a persistent registry for changes that may affect business/product metrics.
+
+Recommended entity: `AnalyticsChange` (final naming may follow project conventions).
+
+Minimum fields:
+
+- `id`
+- `name`
+- `description`
+- `status`: DRAFT | ACTIVE | COMPLETED | CANCELLED
+- `changeType`: SITE | CRM | MARKETING | PRICING | OPERATIONS | ANALYTICS | OTHER
+- `startedAt` — actual production exposure timestamp in Europe/Moscow semantics / stored canonically as project convention requires
+- `endedAt` nullable
+- `deploymentRef` nullable — commit/deploy identifier, informational
+- `surface` / affected area
+- `audienceDefinition` structured JSON, nullable
+- `primaryMetric`
+- `secondaryMetrics` structured list
+- `expectedDirection`: INCREASE | DECREASE | NEUTRAL/UNKNOWN
+- `hypothesis` nullable text written before evaluation
+- `maturityDays` or metric-specific maturity policy
+- `createdAt`, `updatedAt`
+
+No PII.
+
+Do not infer an experiment from every git commit automatically in V1. The registry is explicit and auditable. A deploy/commit may be attached as evidence.
+
+## 5. Change types and evidence strength
+
+The UI/API must distinguish at least:
+
+### 5.1 Observational change
+
+A production change where everyone receives the new version and comparison is before/after.
+
+Evidence label: `OBSERVATIONAL_BEFORE_AFTER`.
+
+Causality: `NOT_ESTABLISHED`.
+
+### 5.2 Randomized experiment
+
+Stage 11 may define the data contract for future A/B tests, but MUST NOT claim support unless stable variant assignment and exposure events actually exist.
+
+If current production lacks variant assignment, return capability `NOT_AVAILABLE` / data gap `NO_VARIANT_ASSIGNMENT`.
+
+Any implementation of variant assignment in `web-photo` requires a separate owner/Reviewer decision and separate rollout gate.
+
+## 6. Metric catalog for evaluation
+
+Reuse canonical metrics. Each metric must carry scope/unit/source/maturity semantics.
+
+### Site metrics
+
+Examples:
+- visits
+- site leads / canonical lead goal
+- form starts
+- lead attempts where measurable
+- form errors
+- site lead rate
+- device/source/UTM/landing slices when supported
+
+### Matched site→CRM metrics
+
+Examples:
+- matched accepted
+- matched paid
+
+These are subject to ClientID coverage. Low coverage must be surfaced and must not be generalized to all CRM orders.
+
+### CRM business metrics
+
+Examples:
+- crmLeads
+- acceptedOrders
+- paidOrders
+- contractValue
+- paidOrderValue
+- realizedRevenue
+- COGS
+- netProfit
+- paidAov
+
+These describe the business, not automatically the effect of a website change.
+
+### Product metrics
+
+Use only existing canonical product categorization and supported financial fields. Do not invent realized per-product profit if the canonical model cannot attribute it.
+
+## 7. Scope compatibility
+
+Every evaluation must validate that the metric can answer the change's question.
+
+Examples:
+
+- website form change → site lead rate is valid primary metric;
+- website form change → total CRM accepted orders is contextual only unless reliable site→CRM matching supports attribution;
+- CRM workflow change → CRM lifecycle metrics may be primary;
+- landing-specific change → landing slice only if aggregate dataset can isolate the affected landing;
+- mobile-only change → device=phone/mobile slice if supported.
+
+Return `METRIC_SCOPE_MISMATCH` rather than producing a misleading number.
+
+## 8. Comparison windows
+
+V1 comparison must support an explicit evaluation window and a baseline of equal duration immediately preceding it, aligned to complete Europe/Moscow days where daily aggregates are used.
+
+For an `startedAt` during a day:
+
+- do not mix a partial cutover day into a clean daily before/after comparison by default;
+- mark the cutover day `EXCLUDED_CUTOVER_DAY` unless an existing dataset supports honest sub-day measurement;
+- first full post day begins next Moscow calendar day;
+- baseline uses the same number of complete days immediately before the cutover day.
+
+Also expose day-of-week composition. Prefer equal whole-week windows (7, 14, 21, 28 days) when possible. If weekday composition differs, add `WEEKDAY_MIX_MISMATCH`.
+
+Do not silently cherry-pick a favorable baseline.
+
+## 9. Data availability / comparability
+
+Reuse the Stage 10 concept of `availableFrom`, `measuredFrom`, `transition/comparable` rather than creating unrelated logic.
+
+For every evaluated metric/slice:
+
+- determine earliest reliable data date;
+- determine effective before window;
+- determine effective after window;
+- require equivalent measurement semantics in both windows;
+- detect analytics/event-model cutovers;
+- return `PARTIAL_MEASUREMENT_PERIOD` / `INCOMPARABLE_WINDOWS` when necessary.
+
+A metric with incompatible before/after semantics must not get an uplift percentage.
+
+The 2026-09-12 event-model cutover is an explicit regression fixture: pre/post lead-event semantics must not be presented as a clean experiment result if the metric definition changed.
+
+## 10. Unique users
+
+Critical rule:
+
+- true unique users are available only from period snapshots for supported preset windows;
+- never sum daily users and call them period unique users;
+- arbitrary experiment windows without a true snapshot must return periodUsers = null / `UNAVAILABLE_FOR_CUSTOM_WINDOW` unless Stage 11 deliberately adds a local snapshot for that exact registered evaluation window.
+
+Preferred implementation: when an ACTIVE/COMPLETED change has a defined evaluation window, allow the existing Metrika snapshot mechanism to persist a true period snapshot for the exact before/after windows, without making dashboard requests call live Metrika.
+
+If this is implemented, it must use the existing sync/client/retry/lock patterns and remain asynchronous/local-first.
+
+## 11. Maturity / lag
+
+Site actions can be evaluated quickly; accepted/paid/revenue/profit can mature later.
+
+Implement explicit metric maturity.
+
+Minimum behavior:
+
+- immediate metrics: visits, form starts, site leads, errors;
+- accepted metrics: evaluate by cohort where possible and expose observation cutoff;
+- paid/revenue/profit: do not treat immature post cohorts as final.
+
+For cohort metrics, define orders/leads by origin/cohort date and observe their lifecycle through a maturity cutoff. Do not simply compare calendar payments in the before period vs calendar payments in the after period and call it site-change conversion.
+
+Return:
+- `MATURE`
+- `IMMATURE`
+- `PARTIALLY_MATURE`
+with `maturityUntil` / observation date.
+
+Do not invent a universal lag. Derive an empirical distribution where current CRM history supports it (e.g. lead/accepted→paid delay), document sample size, median/p75/p90 if valid, and use a conservative configurable policy. If history is insufficient, require an explicit configured maturity period and flag the limitation.
+
+## 12. Minimum data and statistical honesty
+
+Traffic is currently low. Stage 11 must be designed to return `INSUFFICIENT_DATA` frequently and correctly.
+
+For every primary comparison expose:
+
+- before denominator / numerator;
+- after denominator / numerator;
+- absolute difference;
+- relative difference only when denominator semantics permit;
+- sample sizes;
+- confidence interval where mathematically appropriate;
+- statistical test/method name;
+- minimum detectable effect (MDE) for the current sample/power assumptions;
+- required sample estimate for a configured target effect;
+- verdict.
+
+Default assumptions must be documented, not hidden. Recommended conventional defaults for planning: two-sided alpha 0.05, power 0.80. These are configuration/metadata, not proof thresholds to game.
+
+For proportions (e.g. lead rate), use an appropriate two-proportion method and CI. For sparse counts, do not rely blindly on normal approximations; use an exact/robust method where needed.
+
+For money/AOV with very small or skewed samples, do not manufacture significance from aggregate totals. If raw order-level canonical CRM data is available locally, a documented robust/bootstrap approach may be used; otherwise show descriptive comparison + `STATISTICAL_TEST_UNAVAILABLE`.
+
+No p-hacking: primary metric must be declared on the change before the result is finalized. Secondary metrics are exploratory.
+
+## 13. Verdict model
+
+Suggested machine-readable result:
+
+- `POSITIVE_SIGNAL`
+- `NEGATIVE_SIGNAL`
+- `NO_CLEAR_CHANGE`
+- `INSUFFICIENT_DATA`
+- `IMMATURE`
+- `INCOMPARABLE`
+
+`POSITIVE_SIGNAL` is not “proved caused by change”.
+
+Each result must include:
+
+- `evidenceType`
+- `causality: NOT_ESTABLISHED`
+- `primaryMetric`
+- `before`
+- `after`
+- `difference`
+- `dataQuality`
+- `maturity`
+- `statistics`
+- `confounders[]`
+- `FACT`
+- `INTERPRETATION`
+- `RECOMMENDATION`
+
+Wording must be deterministic/rule-based in Stage 11; no LLM required.
+
+## 14. Confounders
+
+At minimum detect/surface, not necessarily “correct away”:
+
+- weekday composition mismatch;
+- source mix shift;
+- device mix shift;
+- major landing mix shift where measurable;
+- analytics/event definition cutover;
+- another registered overlapping change;
+- partial data/freshness issue;
+- low sample;
+- low ClientID coverage for matched metrics;
+- COGS incompleteness for profit metrics;
+- immature CRM outcomes.
+
+For source/device mix, provide descriptive before/after shares and flag material shifts using documented thresholds. Do not claim the mix shift caused the outcome.
+
+## 15. Overlapping changes
+
+If two ACTIVE/completed changes overlap in time and affect the same surface/audience or have unknown scope overlap, flag `OVERLAPPING_CHANGE`.
+
+The system must not attribute the observed difference exclusively to one change.
+
+## 16. Segmentation
+
+V1 segmentation only where existing local aggregate data supports honest comparison:
+
+- device;
+- canonical Metrika source/sourceEngine;
+- UTM;
+- landing/startURLPath.
+
+Do not fabricate cross-dimensional segments that are not present in stored aggregates (e.g. mobile × UTM × landing) unless a real dataset supports that combination.
+
+Segment results are exploratory unless explicitly declared primary before evaluation. Apply sample gates.
+
+## 17. Natural historical changes / fixtures
+
+Use known changes only to validate mechanics, not to claim business uplift retroactively.
+
+Required fixtures:
+
+1. 2026-09-12 13:19 Europe/Moscow event-model cutover — must demonstrate that a changed measurement definition can make a before/after metric INCOMPARABLE.
+2. One known `web-photo` deploy timestamp with a metric whose semantics did not change — may validate window construction, but result should remain observational and likely INSUFFICIENT_DATA.
+3. Synthetic deterministic datasets for positive, negative, no-change, low-sample, immature, overlapping-change and weekday-mismatch cases.
+
+Do not backfill hypotheses after seeing outcomes and present them as pre-registered.
+
+## 18. A/B readiness contract — no rollout by default
+
+Document a future variant contract, e.g.:
+
+- `experimentId`
+- `variantId`
+- stable anonymous assignment key
+- assignment timestamp
+- exposure event
+- variant persistence rules
+- consent/privacy behavior
+- no PII
+
+But mark current capability `NO_VARIANT_ASSIGNMENT` unless separately implemented.
+
+Do not modify `web-photo` to add this during Stage 11 implementation without Reviewer approval of a separate sub-stage/spec.
+
+## 19. Persistence
+
+Persist registry and evaluation outputs so conclusions are reproducible and do not change silently when queried later.
+
+Recommended:
+
+- `AnalyticsChange`
+- `AnalyticsChangeEvaluation`
+- optional exact-window snapshot table/reuse of existing snapshot model if schema supports it cleanly.
+
+Evaluation record should include:
+
+- evaluatedAt
+- observationCutoff
+- before/after window
+- metric definition/version
+- result JSON or normalized fields
+- data-quality flags
+- maturity status
+- statistics metadata
+- source sync run IDs / freshness evidence where practical
+
+Re-evaluation may create a new version rather than overwrite prior evidence silently.
+
+## 20. Service/API
+
+Implement a canonical service, e.g. `AnalyticsGrowthService`, consuming Stage 08–10 canonical services/data.
+
+Read/write registry actions are ADMIN only.
+
+Suggested API shape (adapt to conventions):
+
+- `GET /analytics/dashboard/growth/status`
+- `GET /analytics/dashboard/growth/changes`
+- `GET /analytics/dashboard/growth/changes/:id`
+- `POST /analytics/dashboard/growth/changes`
+- `PATCH /analytics/dashboard/growth/changes/:id`
+- `POST /analytics/dashboard/growth/changes/:id/evaluate`
+- `GET /analytics/dashboard/growth/changes/:id/evaluations`
+
+Mutation endpoints need DTO validation and auditability. No public endpoint.
+
+If the project already has an audit-log convention, reuse it. Otherwise document the gap; do not build an unrelated giant audit subsystem.
+
+## 21. Dashboard V1
+
+Add section/tab `Рост / Изменения` to `/crm/analytics`.
+
+Minimum UI:
+
+- list/timeline of registered changes;
+- status and production start time;
+- affected surface/audience;
+- primary metric;
+- before/after window;
+- compact before → after result;
+- absolute/relative delta where valid;
+- data sufficiency/maturity/comparability badge;
+- MDE / sample explanation in understandable Russian;
+- confounder warnings;
+- FACT / INTERPRETATION / RECOMMENDATION;
+- explicit “Совпадение по времени не доказывает, что изменение вызвало результат” for observational changes;
+- segment drill-down only for supported slices.
+
+Never show `+40%` as a success headline if verdict is INSUFFICIENT_DATA.
+
+Example desired UX:
+
+> Конверсия в заявку: 3,4% → 4,8% (+1,4 п.п.). Данных недостаточно, чтобы отличить изменение от обычных колебаний. При текущем объёме трафика обнаружим только крупный эффект; продолжить наблюдение.
+
+This is an illustrative wording pattern, not a hardcoded factual result.
+
+## 22. Automatic evaluation
+
+A registered ACTIVE change may be re-evaluated after successful analytics sync, but:
+
+- no more than necessary;
+- use existing scheduler/lock patterns;
+- failures must not break Stage 07/10 sync or Stage 06 order worker;
+- dashboard remains local-first;
+- no live Metrika request per page load;
+- immutable prior evaluations should remain inspectable.
+
+If automatic evaluation materially increases Metrika requests, report exact request delta. Prefer calculations from local tables; exact-window user snapshots are the main allowed reason for additional API calls.
+
+## 23. Data quality gates
+
+An evaluation must be blocked or downgraded when relevant:
+
+- analytics freshness stale;
+- metric unavailable for part of either window;
+- measurement definition changed;
+- cutover day contaminates comparison;
+- sample below minimum;
+- required unique-user snapshot unavailable;
+- CRM cohort immature;
+- ClientID coverage inadequate for matched metric;
+- COGS incomplete for profit metric;
+- overlapping change;
+- unsupported segment.
+
+Never replace blocked values with zero.
+
+## 24. Performance
+
+Targets:
+
+- growth list/status <= 1 s typical production local DB;
+- single evaluation retrieval <= 1 s typical;
+- evaluation compute <= 3 s for normal windows excluding asynchronous Metrika snapshot acquisition;
+- no N+1;
+- cache read-heavy results where consistent with existing dashboard behavior.
+
+Report SQL query counts and timings on production-like data.
+
+## 25. Security/privacy
+
+- ADMIN only;
+- no OAuth token/client secret exposure;
+- no ClientID in UI/evaluation payloads;
+- no names, phones, email, Telegram/MAX handles, free-text customer content;
+- audience definitions must be constrained to approved analytical dimensions, not arbitrary PII filters;
+- hypotheses/descriptions are internal admin text and must never be sent to Metrika.
+
+Existing Yandex OAuth rotation debt remains separate and nonblocking for Stage 11 implementation unless security state changes.
+
+## 26. Tests — mandatory
+
+At minimum cover:
+
+1. exact equal before/after window construction;
+2. cutover day exclusion;
+3. 7/14/21/28-day weekday alignment;
+4. measurement availableFrom mismatch → INCOMPARABLE;
+5. event-model cutover fixture 12.09 → no false uplift;
+6. unique users not summed from daily rows;
+7. arbitrary-window unique users unavailable or exact snapshot only;
+8. low sample → INSUFFICIENT_DATA despite large percentage delta;
+9. zero denominator semantics;
+10. positive/negative/no-clear-change synthetic cases;
+11. MDE and required-sample calculations against independently checked fixtures;
+12. maturity: immediate vs accepted vs paid/profit;
+13. immature post cohort not treated as final;
+14. site metric vs total CRM scope mismatch;
+15. low ClientID coverage gate;
+16. COGS quality gate;
+17. overlapping changes;
+18. source/device mix confounder;
+19. unsupported cross-segment rejected;
+20. observational result always causality NOT_ESTABLISHED;
+21. primary metric locked/traceable once evaluation begins (define mutation policy explicitly);
+22. auth 401/403; validation 400;
+23. no PII in API/UI/persistence intended analytics payloads;
+24. Stage 09/10 regression;
+25. Stage 06 worker/scheduler unaffected by implementation.
+
+Statistical formulas must have deterministic unit tests against independent reference values. Do not accept “library returned a number” as the only validation.
+
+## 27. Implementation workflow
+
+Implementation must happen on `feature/analytics-foundation` (or a Reviewer-approved descendant) with production untouched.
+
+Executor sequence:
+
+1. audit current Stage 08–10 services/schema and write `GROWTH_DATA_CONTRACT.md`;
+2. write `GROWTH_STATISTICS.md` documenting formulas, assumptions, MDE and verdict rules;
+3. propose final Prisma model/migration;
+4. implement registry;
+5. implement window/comparability engine;
+6. implement maturity engine;
+7. implement statistical/descriptive evaluation;
+8. implement confounder detection;
+9. implement API;
+10. implement dashboard section;
+11. implement optional exact-window snapshot integration only if justified;
+12. tests/reconciliation/performance/privacy;
+13. update Stage 11 report.
+
+Do not deploy production.
+
+## 28. Required executor report
+
+Return:
+
+### RESULT
+`READY_FOR_REVIEW` / `BLOCKED`
+
+### AUDIT
+What was reused from Stages 08–10; actual schemas/services; any contradictions with this spec.
+
+### DATA MODEL
+Tables/migration/indexes; destructive SQL check.
+
+### CHANGE REGISTRY
+Fields, validation, lifecycle, auditability.
+
+### COMPARISON ENGINE
+Window rules, cutover handling, availability/comparability.
+
+### MATURITY
+Empirical lag analysis and chosen policy with sample sizes.
+
+### STATISTICS
+Methods, alpha/power assumptions, MDE, required sample, sparse-data handling, independent fixture verification.
+
+### METRICS / SCOPE
+Which site/matched/CRM/P&L metrics are supported and which are context-only.
+
+### CONFOUNDERS
+Weekday/source/device/landing/overlap/data-quality behavior.
+
+### A/B CAPABILITY
+Must explicitly say whether real variant assignment exists. Do not call observational comparisons A/B tests.
+
+### API / UI
+Routes, auth, screenshots desktop/mobile, empty/loading/error/insufficient/immature/incomparable states.
+
+### RECONCILIATION
+Service/API/local SQL/source comparisons and diffs.
+
+### PERFORMANCE
+SQL counts/timings/cache and any additional Metrika request cost.
+
+### PRIVACY
+PII audit.
+
+### TESTS
+Counts and relevant cases.
+
+### GIT
+Branch/commits/master state.
+
+### PRODUCTION_UNTOUCHED
+Explicit confirmation.
+
+### NEW FACTS / DEVIATIONS / OPEN DECISIONS
+Anything discovered; do not silently reinterpret requirements.
+
+## 29. Decision gate
+
+Reviewer may mark Stage 11 implementation `READY_FOR_PRODUCTION_ROLLOUT` only if:
+
+- no causal overclaim;
+- low traffic produces honest INSUFFICIENT_DATA;
+- MDE/sample requirement is implemented and verified;
+- before/after windows are comparable and cutovers handled;
+- maturity prevents premature paid/revenue/profit conclusions;
+- site and total CRM metrics are not mixed;
+- unique-user semantics remain correct;
+- confounders are visible;
+- A/B capability is not falsely claimed;
+- API/UI use canonical services/local data;
+- no PII;
+- tests/reconciliation/performance pass;
+- Stage 06/09/10 do not regress;
+- production remained untouched.
+
+Production rollout will be a separate MD/gate after Reviewer review.
+
+## 30. Reviewer decisions fixed for Stage 11
+
+For this implementation gate:
+
+- Logs API remains OFF / not required.
+- Real A/B variant assignment is NOT part of default Stage 11 implementation.
+- G2–G5 event-model changes from Stage 10 are NOT bundled into Stage 11.
+- Before/after observational analysis is the primary Stage 11 deliverable.
+- Exact-window unique-user snapshots may be added only if they fit existing local-sync architecture; never fake unique users by summing days.
+- Statistical uncertainty is mandatory; “percentage went up” is never enough.
+- Business outcomes must respect cohort maturity and attribution scope.
+
