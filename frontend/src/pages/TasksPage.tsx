@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import {
-  AlertTriangle, CalendarClock, Check, Pencil, Play, Plus, Trash2, X,
+  AlertTriangle, Bot, CalendarClock, Check, Cloud, Pencil, Play, Plus, Trash2, X,
 } from 'lucide-react';
 import { AppShell } from '../components/layout/AppShell';
 import { Modal } from '../components/ui/Modal';
@@ -14,8 +14,8 @@ import { usersApi } from '../api/users';
 import { useAuth } from '../context/useAuth';
 import { getErrorMessage } from '../utils/get-error-message';
 import {
-  TASK_STATUS_LABELS, type AppUser, type CreateTaskDto, type EnumTaskStatus,
-  type Task,
+  TASK_ASSIGNEE_KIND_LABELS, TASK_STATUS_LABELS, type AppUser,
+  type CreateTaskDto, type EnumTaskAssigneeKind, type EnumTaskStatus, type Task,
 } from '../types/index';
 
 type StatusFilter = EnumTaskStatus | 'ACTIVE';
@@ -77,19 +77,61 @@ function DeadlineChip({ deadline, closed }: { deadline: string; closed: boolean 
 interface FormState {
   title: string;
   description: string;
-  assigneeId: string;
+  assigneeTarget: string;
   deadline: string;
   /** Оплата за выполнение. Пусто или 0 — задача без оплаты. */
   rewardAmount: string;
+  /** Короткий результат локального агента. */
+  agentSummary: string;
 }
 
 const EMPTY_FORM: FormState = {
   title: '',
   description: '',
-  assigneeId: '',
+  assigneeTarget: '',
   deadline: '',
   rewardAmount: '',
+  agentSummary: '',
 };
+
+const AGENT_OPTIONS: { kind: Exclude<EnumTaskAssigneeKind, 'USER'>; label: string }[] = [
+  { kind: 'CODEX', label: 'Codex' },
+  { kind: 'CLOUD_CODE', label: 'Claude Code' },
+];
+
+function userTarget(id: string) {
+  return `user:${id}`;
+}
+
+function agentTarget(kind: Exclude<EnumTaskAssigneeKind, 'USER'>) {
+  return `agent:${kind}`;
+}
+
+function parseAssigneeTarget(target: string): {
+  assigneeKind: EnumTaskAssigneeKind;
+  assigneeId?: string;
+} | null {
+  if (target.startsWith('user:')) {
+    const assigneeId = target.slice(5);
+    return assigneeId ? { assigneeKind: 'USER', assigneeId } : null;
+  }
+  if (target === 'agent:CODEX') return { assigneeKind: 'CODEX' };
+  if (target === 'agent:CLOUD_CODE') return { assigneeKind: 'CLOUD_CODE' };
+  return null;
+}
+
+function taskAssigneeTarget(task: Task) {
+  if (task.assigneeKind === 'CODEX' || task.assigneeKind === 'CLOUD_CODE') {
+    return agentTarget(task.assigneeKind);
+  }
+  return task.assigneeId ? userTarget(task.assigneeId) : '';
+}
+
+function AgentIcon({ kind }: { kind: EnumTaskAssigneeKind }) {
+  if (kind === 'CLOUD_CODE') return <Cloud size={12} aria-hidden="true" />;
+  if (kind === 'CODEX') return <Bot size={12} aria-hidden="true" />;
+  return null;
+}
 
 export default function TasksPage() {
   const { user } = useAuth();
@@ -163,7 +205,7 @@ export default function TasksPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ ...EMPTY_FORM, assigneeId: assignable[0]?.id ?? '' });
+    setForm({ ...EMPTY_FORM, assigneeTarget: assignable[0]?.id ? userTarget(assignable[0].id) : '' });
     setFormOpen(true);
   };
 
@@ -172,10 +214,11 @@ export default function TasksPage() {
     setForm({
       title: task.title,
       description: task.description ?? '',
-      assigneeId: task.assigneeId,
+      assigneeTarget: taskAssigneeTarget(task),
       // <input type="date"> понимает только YYYY-MM-DD.
       deadline: task.deadline ? task.deadline.slice(0, 10) : '',
       rewardAmount: task.rewardAmount ? String(task.rewardAmount) : '',
+      agentSummary: task.agentSummary ?? '',
     });
     setFormOpen(true);
   };
@@ -185,22 +228,32 @@ export default function TasksPage() {
       toast.error('Опишите задачу подробнее — минимум 3 символа');
       return;
     }
-    if (!form.assigneeId) {
+    const assignee = parseAssigneeTarget(form.assigneeTarget);
+    if (!assignee) {
       toast.error('Выберите ответственного');
       return;
     }
+    const isAgentTask = assignee.assigneeKind !== 'USER';
     saveMutation.mutate({
       title: form.title.trim(),
       description: form.description.trim() || undefined,
-      assigneeId: form.assigneeId,
+      assigneeKind: assignee.assigneeKind,
+      assigneeId: assignee.assigneeId,
       // Срок ставим на конец дня: задача со сроком «сегодня» не должна
       // считаться просроченной с самого утра.
       deadline: form.deadline ? `${form.deadline}T23:59:00` : undefined,
-      rewardAmount: Math.max(0, Math.round(Number(form.rewardAmount)) || 0),
+      rewardAmount: isAgentTask ? 0 : Math.max(0, Math.round(Number(form.rewardAmount)) || 0),
+      agentSummary: form.agentSummary.trim() || undefined,
     });
   };
 
-  const selectedAssignee = assignable.find((u) => u.id === form.assigneeId);
+  const parsedAssignee = parseAssigneeTarget(form.assigneeTarget);
+  const selectedAssignee = parsedAssignee?.assigneeKind === 'USER'
+    ? assignable.find((u) => u.id === parsedAssignee.assigneeId)
+    : undefined;
+  const selectedAgentKind = parsedAssignee?.assigneeKind !== 'USER'
+    ? parsedAssignee?.assigneeKind
+    : undefined;
   const noTelegram = !!selectedAssignee && !selectedAssignee.telegramUsername;
 
   return (
@@ -266,8 +319,11 @@ export default function TasksPage() {
                     )}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 text-xs font-medium">
-                        {task.assignee.username}
-                        {!task.assignee.telegramUsername && (
+                        <AgentIcon kind={task.assigneeKind} />
+                        {task.assigneeKind === 'USER'
+                          ? task.assignee?.username ?? 'Ответственный не выбран'
+                          : TASK_ASSIGNEE_KIND_LABELS[task.assigneeKind]}
+                        {task.assigneeKind === 'USER' && !task.assignee?.telegramUsername && (
                           <span title="Telegram-ник не указан — напоминание не разбудит уведомлением">
                             <AlertTriangle size={12} className="text-amber-500" aria-hidden="true" />
                           </span>
@@ -282,12 +338,25 @@ export default function TasksPage() {
                           заказ {task.order.numberOrder}
                         </Link>
                       )}
+                      {task.agentLastHeartbeatAt && (
+                        <span className="text-xs text-gray-400">
+                          пинг {new Date(task.agentLastHeartbeatAt).toLocaleString('ru-RU', {
+                            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+                          })}
+                        </span>
+                      )}
                       {closed && (
                         <span className="text-xs text-gray-400">
                           {TASK_STATUS_LABELS[task.status]}
                         </span>
                       )}
                     </div>
+                    {task.agentSummary && (
+                      <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2">
+                        <p className="text-xs font-semibold text-emerald-800">Результат агента</p>
+                        <p className="mt-1 whitespace-pre-wrap text-sm text-emerald-900">{task.agentSummary}</p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1 flex-shrink-0">
@@ -392,18 +461,37 @@ export default function TasksPage() {
           <label className="block">
             <span className="text-sm font-medium text-gray-700">Ответственный</span>
             <select
-              value={form.assigneeId}
-              onChange={(e) => setForm({ ...form, assigneeId: e.target.value })}
+              value={form.assigneeTarget}
+              onChange={(e) => setForm({ ...form, assigneeTarget: e.target.value })}
               className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="">— выберите —</option>
+              <optgroup label="Сотрудники">
               {assignable.map((u) => (
-                <option key={u.id} value={u.id}>
+                <option key={u.id} value={userTarget(u.id)}>
                   {u.username}{u.role === 'ADMIN' ? ' (админ)' : ''}
                 </option>
               ))}
+              </optgroup>
+              <optgroup label="Локальные агенты на ноутбуке">
+                {AGENT_OPTIONS.map((agent) => (
+                  <option key={agent.kind} value={agentTarget(agent.kind)}>
+                    {agent.label}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </label>
+
+          {selectedAgentKind && (
+            <div className="flex gap-2 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-2.5">
+              <Bot size={16} className="text-indigo-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-xs text-indigo-900">
+                Задача попадёт в очередь для локального агента <b>{TASK_ASSIGNEE_KIND_LABELS[selectedAgentKind]}</b>.
+                Ноутбук должен быть включён: локальный диспетчер заберёт описание, откроет инструмент и обновит статус в CRM.
+              </p>
+            </div>
+          )}
 
           {/* Ошибку лучше показать здесь, чем ловить «мне не пришло» через неделю */}
           {noTelegram && (
@@ -441,14 +529,30 @@ export default function TasksPage() {
               min={0}
               placeholder="0"
               value={form.rewardAmount}
+              disabled={!!selectedAgentKind}
               onChange={(e) => setForm({ ...form, rewardAmount: e.target.value })}
               className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
             <span className="mt-1 block text-xs text-gray-500">
-              Когда сотрудник отметит задачу выполненной, сумма начислится ему
-              в зарплату и попадёт в долг. Пусто или 0 — задача без оплаты.
+              {selectedAgentKind
+                ? 'Локальным агентам оплата не начисляется: они работают через ваш ноутбук.'
+                : 'Когда сотрудник отметит задачу выполненной, сумма начислится ему в зарплату и попадёт в долг. Пусто или 0 — задача без оплаты.'}
             </span>
           </label>
+
+          {(selectedAgentKind || form.agentSummary) && (
+            <label className="block">
+              <span className="text-sm font-medium text-gray-700">
+                Короткий результат <span className="text-gray-400">— заполнит агент или администратор</span>
+              </span>
+              <textarea
+                value={form.agentSummary}
+                onChange={(e) => setForm({ ...form, agentSummary: e.target.value })}
+                rows={3}
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </label>
+          )}
 
           <div className="flex gap-2 pt-1">
             <button

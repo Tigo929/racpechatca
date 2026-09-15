@@ -1,5 +1,8 @@
 import { IsEnum, IsOptional, IsUUID } from 'class-validator';
-import { EnumTaskStatus } from 'src/generated/prisma/enums';
+import {
+  EnumTaskAssigneeKind,
+  EnumTaskStatus,
+} from 'src/generated/prisma/enums';
 
 export class DtoQueryTasks {
   @IsOptional()
@@ -9,4 +12,8 @@ export class DtoQueryTasks {
   @IsOptional()
   @IsUUID()
   assigneeId?: string;
+
+  @IsOptional()
+  @IsEnum(EnumTaskAssigneeKind)
+  assigneeKind?: EnumTaskAssigneeKind;
 }

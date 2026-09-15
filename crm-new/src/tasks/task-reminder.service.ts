@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TelegramService } from 'src/telegram/telegram.service';
+import { EnumTaskAssigneeKind } from 'src/generated/prisma/enums';
 import {
   DigestGroup,
   OPEN_TASK_STATUSES,
@@ -66,6 +67,8 @@ export class TaskReminderService implements OnModuleInit, OnModuleDestroy {
 
       const candidates = await this.prisma.task.findMany({
         where: {
+          assigneeKind: EnumTaskAssigneeKind.USER,
+          assigneeId: { not: null },
           status: { in: OPEN_TASK_STATUSES },
           deadline: { not: null },
           NOT: { lastRemindedOn: todayKey },
@@ -93,6 +96,7 @@ export class TaskReminderService implements OnModuleInit, OnModuleDestroy {
 
       const byAssignee = new Map<string, DigestGroup>();
       for (const task of due) {
+        if (!task.assigneeId || !task.assignee) continue;
         let group = byAssignee.get(task.assigneeId);
         if (!group) {
           group = { assignee: task.assignee, tasks: [] };

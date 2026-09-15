@@ -4,7 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EnumRole, EnumTaskStatus } from 'src/generated/prisma/enums';
+import {
+  EnumRole,
+  EnumTaskAssigneeKind,
+  EnumTaskStatus,
+} from 'src/generated/prisma/enums';
 import type { Prisma } from 'src/generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DtoCreateTask } from './dto/create-task.dto';
@@ -19,6 +23,12 @@ const TASK_INCLUDE = {
   createdBy: { select: { id: true, username: true } },
   order: { select: { id: true, numberOrder: true } },
 } as const;
+
+function assigneeKindLabel(kind: EnumTaskAssigneeKind) {
+  if (kind === EnumTaskAssigneeKind.CODEX) return 'Codex';
+  if (kind === EnumTaskAssigneeKind.CLOUD_CODE) return 'Claude Code';
+  return 'сотрудник';
+}
 
 @Injectable()
 export class TasksService {
@@ -37,17 +47,34 @@ export class TasksService {
     }
   }
 
+  private async resolveAssignee(dto: {
+    assigneeKind?: EnumTaskAssigneeKind;
+    assigneeId?: string;
+  }) {
+    const assigneeKind = dto.assigneeKind ?? EnumTaskAssigneeKind.USER;
+    if (assigneeKind === EnumTaskAssigneeKind.USER) {
+      if (!dto.assigneeId) {
+        throw new BadRequestException('Выберите ответственного сотрудника.');
+      }
+      await this.assertAssigneeExists(dto.assigneeId);
+      return { assigneeKind, assigneeId: dto.assigneeId };
+    }
+    return { assigneeKind, assigneeId: null };
+  }
+
   async create(dto: DtoCreateTask, authorId: string) {
-    await this.assertAssigneeExists(dto.assigneeId);
+    const assignee = await this.resolveAssignee(dto);
     return this.prisma.task.create({
       data: {
         title: dto.title.trim(),
         description: dto.description?.trim() || null,
-        assigneeId: dto.assigneeId,
+        assigneeKind: assignee.assigneeKind,
+        assigneeId: assignee.assigneeId,
         createdById: authorId,
         deadline: dto.deadline ? new Date(dto.deadline) : null,
         orderId: dto.orderId ?? null,
         rewardAmount: dto.rewardAmount ?? 0,
+        agentSummary: dto.agentSummary?.trim() || null,
       },
       include: TASK_INCLUDE,
     });
@@ -62,6 +89,9 @@ export class TasksService {
     return this.prisma.task.findMany({
       where: {
         status: query.status,
+        assigneeKind: isExecutor
+          ? EnumTaskAssigneeKind.USER
+          : query.assigneeKind,
         // Исполнитель видит только свои задачи. Фильтр по ответственному из
         // запроса для него игнорируется — иначе можно было бы посмотреть чужие.
         assigneeId: isExecutor ? currentUserId : query.assigneeId,
@@ -96,9 +126,16 @@ export class TasksService {
   async update(id: string, dto: DtoUpdateTask) {
     const task = await this.prisma.task.findUnique({ where: { id } });
     if (!task) throw new NotFoundException('Задача не найдена.');
-    if (dto.assigneeId) await this.assertAssigneeExists(dto.assigneeId);
+    const assignee =
+      dto.assigneeKind !== undefined || dto.assigneeId !== undefined
+        ? await this.resolveAssignee({
+            assigneeKind: dto.assigneeKind ?? task.assigneeKind,
+            assigneeId: dto.assigneeId,
+          })
+        : undefined;
 
     const statusChanged = dto.status && dto.status !== task.status;
+    const effectiveAssigneeKind = assignee?.assigneeKind ?? task.assigneeKind;
     // Статус можно поменять и здесь (форма редактирования у админа), поэтому
     // начисление синхронизируем той же логикой, что и в updateStatus.
     return this.prisma.$transaction(async (tx) => {
@@ -114,11 +151,21 @@ export class TasksService {
           dto.description === undefined
             ? undefined
             : dto.description.trim() || null,
-        assigneeId: dto.assigneeId,
+        assigneeKind: assignee?.assigneeKind,
+        assigneeId: assignee?.assigneeId,
         deadline:
           dto.deadline === undefined ? undefined : new Date(dto.deadline),
         orderId: dto.orderId,
         rewardAmount: dto.rewardAmount,
+        agentSummary:
+          dto.agentSummary === undefined
+            ? undefined
+            : dto.agentSummary.trim() || null,
+        agentLastHeartbeatAt:
+          dto.agentSummary !== undefined &&
+          effectiveAssigneeKind !== EnumTaskAssigneeKind.USER
+            ? new Date()
+            : undefined,
         status: dto.status,
         ...(statusChanged ? this.statusSideEffects(dto.status!) : {}),
       },
@@ -139,11 +186,19 @@ export class TasksService {
   ) {
     const task = await this.prisma.task.findUnique({
       where: { id },
-      select: { id: true, assigneeId: true, status: true },
+      select: {
+        id: true,
+        assigneeId: true,
+        assigneeKind: true,
+        status: true,
+      },
     });
     if (!task) throw new NotFoundException('Задача не найдена.');
     if (currentUserRole === EnumRole.EXECUTOR) {
-      if (task.assigneeId !== currentUserId) {
+      if (
+        task.assigneeKind !== EnumTaskAssigneeKind.USER ||
+        task.assigneeId !== currentUserId
+      ) {
         throw new ForbiddenException('Нет доступа к чужой задаче.');
       }
       if (status === EnumTaskStatus.CANCELLED) {
@@ -158,6 +213,7 @@ export class TasksService {
         select: {
           title: true,
           assigneeId: true,
+          assigneeKind: true,
           rewardAmount: true,
           rewardAccrualId: true,
           createdById: true,
@@ -169,7 +225,15 @@ export class TasksService {
 
       return tx.task.update({
         where: { id },
-        data: { status, ...this.statusSideEffects(status), rewardAccrualId },
+        data: {
+          status,
+          ...this.statusSideEffects(status),
+          rewardAccrualId,
+          agentLastHeartbeatAt:
+            full.assigneeKind === EnumTaskAssigneeKind.USER
+              ? undefined
+              : new Date(),
+        },
         include: TASK_INCLUDE,
       });
     });
@@ -186,7 +250,8 @@ export class TasksService {
     tx: Prisma.TransactionClient,
     task: {
       title: string;
-      assigneeId: string;
+      assigneeId: string | null;
+      assigneeKind: EnumTaskAssigneeKind;
       rewardAmount: number;
       rewardAccrualId: string | null;
       createdById: string;
@@ -195,6 +260,21 @@ export class TasksService {
   ): Promise<string | null> {
     const isDone = status === EnumTaskStatus.DONE;
     let rewardAccrualId = task.rewardAccrualId;
+
+    if (task.assigneeKind !== EnumTaskAssigneeKind.USER) {
+      if (isDone && task.rewardAmount > 0) {
+        throw new BadRequestException(
+          `Оплату можно начислять только сотруднику, а не ${assigneeKindLabel(
+            task.assigneeKind,
+          )}.`,
+        );
+      }
+      return rewardAccrualId;
+    }
+
+    if (!task.assigneeId) {
+      throw new BadRequestException('У задачи не выбран ответственный.');
+    }
 
     if (isDone && task.rewardAmount > 0 && !rewardAccrualId) {
       // Оплата задачи — обычное начисление вне заказа (kind=BONUS): попадает
@@ -254,7 +334,9 @@ export class TasksService {
     const isExecutor = currentUserRole === EnumRole.EXECUTOR;
     const where = {
       status: { in: OPEN_TASK_STATUSES },
-      ...(isExecutor ? { assigneeId: currentUserId } : {}),
+      ...(isExecutor
+        ? { assigneeKind: EnumTaskAssigneeKind.USER, assigneeId: currentUserId }
+        : {}),
     };
     const [open, overdue] = await this.prisma.$transaction([
       this.prisma.task.count({ where }),

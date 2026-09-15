@@ -1,11 +1,12 @@
 import type {
-  CreateTaskDto, EnumTaskStatus, Task, TaskCountResponse,
+  CreateTaskDto, EnumTaskAssigneeKind, EnumTaskStatus, Task, TaskCountResponse,
 } from '../types/index';
 import { api } from './client';
 
 export interface TasksQuery {
   status?: EnumTaskStatus;
   assigneeId?: string;
+  assigneeKind?: EnumTaskAssigneeKind;
 }
 
 export const tasksApi = {
@@ -13,6 +14,7 @@ export const tasksApi = {
     const params = new URLSearchParams();
     if (query.status) params.set('status', query.status);
     if (query.assigneeId) params.set('assigneeId', query.assigneeId);
+    if (query.assigneeKind) params.set('assigneeKind', query.assigneeKind);
     const qs = params.toString();
     const { data } = await api.get<Task[]>(`/tasks${qs ? `?${qs}` : ''}`);
     return data;

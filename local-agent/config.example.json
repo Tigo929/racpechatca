@@ -1,0 +1,11 @@
+{
+  "crmBaseUrl": "https://raspechatkaa.ru",
+  "crmUsername": "admin",
+  "crmPassword": "change-me",
+  "workingDirectory": "C:\\Users\\User\\Desktop\\1Проекты\\racpechatca",
+  "pollIntervalMs": 15000,
+  "agents": "CODEX,CLOUD_CODE",
+  "claudeEnabled": false,
+  "codexExecutable": "codex",
+  "claudeExecutable": "claude"
+}

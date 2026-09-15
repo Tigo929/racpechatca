@@ -1,0 +1,72 @@
+# Локальный исполнитель задач Codex / Claude Code
+
+CRM служит очередью, а этот процесс постоянно работает на ноутбуке. После
+создания задачи с ответственным Codex или Claude Code он автоматически:
+
+1. забирает новую задачу и ставит статус «В работе»;
+2. запускает выбранный CLI в каталоге проекта;
+3. передаёт ему заголовок и подробное ТЗ;
+4. сохраняет журнал и финальный ответ;
+5. записывает ответ в карточку и ставит статус «Выполнена».
+
+Платный API отдельно подключать не нужно. Codex CLI использует текущий вход в
+ChatGPT. Claude Code может использовать вход в Claude Pro/Max; доступность и
+лимиты зависят от подписки соответствующего сервиса.
+
+## Настройка на этом ноутбуке
+
+Скопируйте `config.example.json` в `config.local.json` и заполните логин и
+пароль CRM. `config.local.json`, ТЗ, ответы и журналы исключены из Git.
+
+```powershell
+Copy-Item .\local-agent\config.example.json .\local-agent\config.local.json
+notepad .\local-agent\config.local.json
+node .\local-agent\dispatcher.mjs
+```
+
+Чтобы процесс запускался после входа в Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\local-agent\install-windows-task.ps1
+```
+
+Задание Windows называется `CRM Local Code Agents`. Проверить его можно в
+«Планировщике заданий» или командой:
+
+```powershell
+Get-ScheduledTask -TaskName "CRM Local Code Agents"
+```
+
+## Codex
+
+На этом ноутбуке Codex уже установлен и авторизован через ChatGPT. Исполнитель
+запускает его в фоновом режиме примерно так:
+
+```powershell
+codex exec --cd <проект> --sandbox workspace-write --approve-for-me --output-last-message <отчёт> -
+```
+
+## Claude Code
+
+В интерфейсе используется правильное название Claude Code. CLI уже установлен
+на этом ноутбуке, но аккаунт пока не авторизован. До входа задачи для Claude
+останутся в статусе «Новая» с пояснением. Выполните вход один раз:
+
+```powershell
+claude
+```
+
+Затем измените `claudeEnabled` на `true` в локальном конфиге и перезапустите
+задание Windows. Исполнитель использует официальный неинтерактивный режим
+`claude -p` с автоматическим режимом разрешений.
+
+## Файлы выполнения
+
+Для каждой задачи создаётся каталог `local-agent/runs/<task-id>/`:
+
+- `prompt.md` — полученное из CRM ТЗ;
+- `execution.log` — полный журнал команды;
+- `result.md` — финальный ответ Codex (для Claude итог берётся из вывода).
+
+По умолчанию рабочий каталог — корень этого репозитория. Его можно изменить в
+`config.local.json` полем `workingDirectory`.
