@@ -18,10 +18,10 @@ function globalFunnel(): Funnel {
     title: 'Общая воронка заявки',
     description: 'Все формы сайта',
     steps: [
-      { key: 'visit', label: 'Визиты', event: null, basis: 'visits', availability: 'measured', availableFrom: null, events: null, visits: 145, users: 94, stepConversion: null, cumulativeConversion: null, dropoff: null, dropoffRate: null, note: null },
-      { key: 'form_started', label: 'Начали заполнять форму', event: 'form_started', basis: 'goal', availability: 'measured', availableFrom: '2026-09-10', events: 25, visits: 13, users: 3, stepConversion: 8.9655, cumulativeConversion: 8.9655, dropoff: 132, dropoffRate: 91.03, note: null },
-      { key: 'lead_submit_attempt', label: 'Отправили форму (проверка пройдена)', event: 'lead_submit_attempt', basis: 'goal', availability: 'measured', availableFrom: '2026-09-10', events: 4, visits: 4, users: 1, stepConversion: 30.77, cumulativeConversion: 2.76, dropoff: 9, dropoffRate: 69.23, note: null },
-      { key: 'lead_submitted', label: 'Заявка принята сервером', event: 'lead_submitted', basis: 'goal', availability: 'measured', availableFrom: '2026-09-10', events: 4, visits: 4, users: 1, stepConversion: 100, cumulativeConversion: 2.76, dropoff: 0, dropoffRate: 0, note: null },
+      { key: 'visit', label: 'Визиты', event: null, basis: 'visits', availability: 'measured', availableFrom: null, measuredFrom: '2026-09-08', transition: null, events: null, visits: 145, users: 94, stepConversion: null, cumulativeConversion: null, dropoff: null, dropoffRate: null, note: null },
+      { key: 'form_started', label: 'Начали заполнять форму', event: 'form_started', basis: 'goal', availability: 'measured', availableFrom: '2026-09-10', measuredFrom: '2026-09-10', transition: { status: 'partial', comparableFrom: '2026-09-10' }, events: 25, visits: 13, users: 3, stepConversion: 8.9655, cumulativeConversion: 8.9655, dropoff: 132, dropoffRate: 91.03, note: null },
+      { key: 'lead_submit_attempt', label: 'Отправили форму (проверка пройдена)', event: 'lead_submit_attempt', basis: 'goal', availability: 'measured', availableFrom: '2026-09-10', measuredFrom: '2026-09-10', transition: { status: 'comparable', comparableFrom: '2026-09-10' }, events: 4, visits: 4, users: 1, stepConversion: 30.77, cumulativeConversion: 2.76, dropoff: 9, dropoffRate: 69.23, note: null },
+      { key: 'lead_submitted', label: 'Заявка принята сервером', event: 'lead_submitted', basis: 'goal', availability: 'measured', availableFrom: '2026-09-10', measuredFrom: '2026-09-10', transition: { status: 'comparable', comparableFrom: '2026-09-10' }, events: 4, visits: 4, users: 1, stepConversion: 100, cumulativeConversion: 2.76, dropoff: 0, dropoffRate: 0, note: null },
     ],
     sample: { visits: 145, status: 'OK' },
     comparison: null,
@@ -38,6 +38,10 @@ describe('FunnelCard', () => {
     expect(started).toHaveTextContent('3 посетители');
     expect(started).toHaveTextContent('8,97 % от пред. шага');
     expect(started).toHaveTextContent('отвал 91,03 %');
+    // FIX_01: «визиты с 08.09 → начали форму с 10.09» — окна не совпадают, доля подписана как несравнимая;
+    // переход между целями с одной даты — без пометки
+    expect(screen.getByTestId('partial-transition-form_started')).toHaveTextContent('окна измерения не совпадают');
+    expect(screen.queryByTestId('partial-transition-lead_submit_attempt')).not.toBeInTheDocument();
     // сравнение недоступно — дельт нет, предупреждение есть
     expect(screen.queryByText(/к пред\. периоду|\+\d+ \(/)).not.toBeInTheDocument();
     expect(screen.getByText('Сравнение с предыдущим периодом недоступно')).toBeInTheDocument();
@@ -50,8 +54,8 @@ describe('FunnelCard', () => {
       key: 'tshirt',
       title: 'Футболки',
       steps: [
-        { key: 'view_custom_tshirt', label: 'Открыли конструктор', event: 'view_custom_tshirt', basis: 'goal', availability: 'measured', availableFrom: '2026-09-10', events: 21, visits: 11, users: null, stepConversion: null, cumulativeConversion: null, dropoff: null, dropoffRate: null, note: null },
-        { key: 'submit_tshirt_order', label: 'Отправили форму', event: null, basis: 'goal', availability: 'not_measured', availableFrom: null, events: null, visits: null, users: null, stepConversion: null, cumulativeConversion: null, dropoff: null, dropoffRate: null, note: 'Событие есть, цели в счётчике нет.' },
+        { key: 'view_custom_tshirt', label: 'Открыли конструктор', event: 'view_custom_tshirt', basis: 'goal', availability: 'measured', availableFrom: '2026-09-10', measuredFrom: '2026-09-10', transition: null, events: 21, visits: 11, users: null, stepConversion: null, cumulativeConversion: null, dropoff: null, dropoffRate: null, note: null },
+        { key: 'submit_tshirt_order', label: 'Отправили форму', event: null, basis: 'goal', availability: 'not_measured', availableFrom: null, measuredFrom: null, transition: null, events: null, visits: null, users: null, stepConversion: null, cumulativeConversion: null, dropoff: null, dropoffRate: null, note: 'Событие есть, цели в счётчике нет.' },
       ],
       sample: { visits: 11, status: 'LOW_SAMPLE' },
       quality: { completeness: 'partial', notes: ['LOW_SAMPLE', 'NO_PERIOD_GOAL_SNAPSHOT'] },
@@ -92,7 +96,14 @@ describe('IssuesBlock', () => {
           scope: { kind: 'device', key: 'mobile' },
         },
       ],
-      skipped: [{ rule: 'LEAD_RATE_ANOMALY', reason: 'в одном из периодов меньше 30 визитов' }],
+      skipped: [
+        { rule: 'LEAD_RATE_ANOMALY', code: 'LOW_SAMPLE', reason: 'в одном из периодов меньше 30 визитов' },
+        {
+          rule: 'FUNNEL_DROPOFF',
+          code: 'PARTIAL_BEHAVIOR_PERIOD',
+          reason: 'Фотопечать: «Начали форму фотопечати» → «Заявка на фото принята» — шаги измерены с разных дат (17.08.2026 и 12.09.2026), конверсия шага несопоставима; правило вернётся для периодов, начинающихся не раньше 12.09.2026',
+        },
+      ],
       thresholds: {},
       quality: { completeness: 'complete', notes: [] },
     };
@@ -103,7 +114,10 @@ describe('IssuesBlock', () => {
     expect(card).toHaveTextContent('Что проверить:');
     expect(card).toHaveTextContent('Критично');
     expect(card).toHaveTextContent('Причина не установлена');
-    expect(screen.getByText(/Правила без вывода из-за недостатка данных: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Правила без вывода \(мало данных или несопоставимые периоды\): 2/)).toBeInTheDocument();
+    // FIX_01: причина подавления видна с кодом — тишина не читается как «всё хорошо»
+    expect(screen.getByTestId('skipped-PARTIAL_BEHAVIOR_PERIOD')).toHaveTextContent('Отвал на шаге воронки · несопоставимые окна измерения: Фотопечать');
+    expect(screen.getByTestId('skipped-PARTIAL_BEHAVIOR_PERIOD')).toHaveTextContent('не раньше 12.09.2026');
   });
 
   it('без карточек — честная формулировка, а не пустота', () => {

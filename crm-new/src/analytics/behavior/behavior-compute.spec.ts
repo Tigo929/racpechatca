@@ -10,12 +10,19 @@ import {
   computeSummary,
   deviceGap,
   FUNNEL_KEYS,
+  measuredFrom,
   paramVisits,
   sampleStatus,
+  transitionOf,
   type BehaviorInput,
   type GoalCount,
 } from './behavior-compute';
-import { MIN_SAMPLE_VISITS, THRESHOLDS } from './behavior-rules';
+import {
+  BEHAVIOR_GOALS_AVAILABLE_FROM,
+  DIRECTION_GOALS_AVAILABLE_FROM,
+  MIN_SAMPLE_VISITS,
+  THRESHOLDS,
+} from './behavior-rules';
 
 /**
  * Поведенческий слой (этап 10, раздел 23): воронки в трёх единицах,
@@ -566,20 +573,37 @@ describe('«Требует внимания»: правила, пороги, к�
     expect(gap?.fact).toMatch(/телефоны 0 %/);
     expect(gap?.hypothesis).toMatch(/^Возможн/);
     expect(gap?.recommendation).toMatch(/360–430/);
-    // «визит → начали форму» отвалом не считается (природа трафика); отвал ловится между
-    // действиями — у фото: начали форму фотопечати 28 → заявка 2 (92,9 %)
-    const drops = issues.issues.filter((i) => i.rule === 'FUNNEL_DROPOFF');
-    expect(drops.map((d) => d.scope.key)).toEqual([
-      'photo:lead_submitted_photo',
+    // «визит → начали форму» отвалом не считается (природа трафика). Отвал фото «начали форму
+    // фотопечати 28 → заявка 2» за 08–14.09 карточкой НЕ становится (FIX_01): параметр визита
+    // измерен с 08.09, цель направления — с 12.09, окна не совпадают → причина в skipped.
+    expect(issues.issues.filter((i) => i.rule === 'FUNNEL_DROPOFF')).toEqual(
+      [],
+    );
+    const partial = issues.skipped.filter(
+      (s) => s.code === 'PARTIAL_BEHAVIOR_PERIOD',
+    );
+    // фото (параметр → цель 12.09), футболки (дошли до формы 10.09 → заявка 12.09), холсты
+    expect(partial.map((s) => s.rule)).toEqual([
+      'FUNNEL_DROPOFF',
+      'FUNNEL_DROPOFF',
+      'FUNNEL_DROPOFF',
     ]);
-    expect(drops[0]).toMatchObject({ severity: 'ATTENTION' });
-    expect(drops[0].fact).toMatch(/28 → 2/);
-    // порядок: CRITICAL раньше ATTENTION
+    expect(partial[0].reason).toMatch(
+      /Фотопечать: «Начали форму фотопечати» → «Заявка на фото принята» — шаги измерены с разных дат \(08\.09\.2026 и 12\.09\.2026\)/,
+    );
+    expect(partial[0].reason).toMatch(/не раньше 12\.09\.2026/);
+    expect(partial[1].reason).toMatch(
+      /^Футболки: «Дошли до формы заявки» → «Заявка на футболку принята» — шаги измерены с разных дат \(10\.09\.2026 и 12\.09\.2026\)/,
+    );
+    expect(partial[2].reason).toMatch(/^Холсты:/);
     expect(issues.issues[0].severity).toBe('CRITICAL');
     // без сопоставимого периода — правило про lead rate пропущено с причиной
     expect(issues.skipped.map((s) => s.rule)).toEqual(
       expect.arrayContaining(['LEAD_RATE_ANOMALY', 'FORM_ERROR_SPIKE']),
     );
+    expect(
+      issues.skipped.find((s) => s.rule === 'LEAD_RATE_ANOMALY')?.code,
+    ).toBe('COMPARISON_UNAVAILABLE');
     expect(issues.thresholds.MIN_SAMPLE_VISITS).toBe(MIN_SAMPLE_VISITS);
     expect(issues.thresholds.deviceGapCriticalRatio).toBe(
       THRESHOLDS.deviceGapCriticalRatio,
@@ -601,6 +625,238 @@ describe('«Требует внимания»: правила, пороги, к�
     expect(issues.issues).toEqual([]);
     expect(issues.skipped.length).toBeGreaterThanOrEqual(4);
     expect(issues.skipped.every((s) => s.reason.length > 0)).toBe(true);
+    expect(
+      issues.skipped.every((s) =>
+        [
+          'LOW_SAMPLE',
+          'PARTIAL_BEHAVIOR_PERIOD',
+          'COMPARISON_UNAVAILABLE',
+          'NO_LEADS',
+        ].includes(s.code),
+      ),
+    ).toBe(true);
+  });
+
+  describe('FIX_01: отвал не считается между шагами с разными окнами измерения', () => {
+    // Числа боя 15.09 за 30 дней (17.08–15.09): параметр productSlug — 117 визитов с начала
+    // счётчика, цель lead_submitted_photo — 2 визита с 12.09; холст 20 → 0.
+    const thirtyDays = () =>
+      input({
+        period: customPeriod('2026-08-17', '2026-09-15'),
+        visits: 579,
+        params: [
+          {
+            deviceCategory: 'desktop',
+            key: 'productSlug',
+            value: 'foto-10x15-bez-polej',
+            visits: 117,
+            users: 90,
+            paramsNumber: 200,
+          },
+          {
+            deviceCategory: 'desktop',
+            key: 'product',
+            value: 'canvas',
+            visits: 20,
+            users: 12,
+            paramsNumber: 90,
+          },
+        ],
+        goalTotals: new Map([
+          ['form_started', g(25, 13)],
+          ['lead_submit_attempt', g(4, 4)],
+          ['lead_submitted', g(4, 4)],
+          ['lead_submitted_photo', g(2, 2)],
+          ['lead_submitted_canvas', g(0, 0)],
+        ]),
+      });
+
+    it('30 дней сейчас: 117 → 2 остаётся в воронке с PARTIAL_BEHAVIOR_PERIOD, но карточки FUNNEL_DROPOFF нет', () => {
+      const cur = thirtyDays();
+      const funnels = FUNNEL_KEYS.map((k) => computeFunnel(k, cur, null));
+      const photo = funnels.find((f) => f.key === 'photo')!;
+      const started = photo.steps.find((s) => s.key === 'form_started_photo')!;
+      const lead = photo.steps.find((s) => s.key === 'lead_submitted_photo')!;
+      // числа не подгоняются и не обнуляются
+      expect(started).toMatchObject({
+        visits: 117,
+        availableFrom: null,
+        measuredFrom: '2026-08-17',
+      });
+      expect(lead).toMatchObject({
+        visits: 2,
+        availableFrom: DIRECTION_GOALS_AVAILABLE_FROM,
+        measuredFrom: DIRECTION_GOALS_AVAILABLE_FROM,
+        transition: {
+          status: 'partial',
+          comparableFrom: DIRECTION_GOALS_AVAILABLE_FROM,
+        },
+      });
+      expect(lead.stepConversion).toBeCloseTo((2 / 117) * 100, 6);
+      expect(photo.quality.notes).toContain('PARTIAL_BEHAVIOR_PERIOD');
+      // not_measured не превращается в 0
+      expect(photo.steps.find((s) => s.key === 'catalog')).toMatchObject({
+        availability: 'not_measured',
+        visits: null,
+      });
+      expect(
+        funnels
+          .find((f) => f.key === 'canvas')!
+          .steps.find((s) => s.key === 'canvas_upload'),
+      ).toMatchObject({ availability: 'not_measured', visits: null });
+
+      const issues = computeIssues(cur, null, {
+        ...ctxFor(cur, null),
+        funnels,
+      });
+      expect(issues.issues.filter((i) => i.rule === 'FUNNEL_DROPOFF')).toEqual(
+        [],
+      );
+      const partial = issues.skipped.filter(
+        (s) => s.code === 'PARTIAL_BEHAVIOR_PERIOD',
+      );
+      expect(partial.map((s) => s.reason.split(':')[0])).toEqual([
+        'Фотопечать',
+        'Футболки',
+        'Холсты',
+      ]);
+      expect(partial[0].reason).toMatch(
+        /Фотопечать: .* — шаги измерены с разных дат \(17\.08\.2026 и 12\.09\.2026\)/,
+      );
+      expect(partial[2].reason).toMatch(
+        /Холсты: .* — шаги измерены с разных дат \(17\.08\.2026 и 12\.09\.2026\)/,
+      );
+      // остальные правила не тронуты: разрыв устройств по-прежнему CRITICAL
+      expect(issues.issues.find((i) => i.rule === 'DEVICE_GAP')?.severity).toBe(
+        'CRITICAL',
+      );
+    });
+
+    it('период целиком после дат доступности обоих шагов: те же числа — правило работает само, без переключателя', () => {
+      const cur = input({ period: customPeriod('2026-09-19', '2026-09-25') });
+      const funnels = FUNNEL_KEYS.map((k) => computeFunnel(k, cur, null));
+      const lead = funnels
+        .find((f) => f.key === 'photo')!
+        .steps.find((s) => s.key === 'lead_submitted_photo')!;
+      expect(lead.transition).toEqual({
+        status: 'comparable',
+        comparableFrom: DIRECTION_GOALS_AVAILABLE_FROM,
+      });
+      const issues = computeIssues(cur, null, {
+        ...ctxFor(cur, null),
+        funnels,
+      });
+      const drops = issues.issues.filter((i) => i.rule === 'FUNNEL_DROPOFF');
+      expect(drops.map((d) => d.scope.key)).toEqual([
+        'photo:lead_submitted_photo',
+      ]);
+      expect(drops[0]).toMatchObject({ severity: 'ATTENTION' });
+      expect(drops[0].fact).toMatch(/28 → 2/);
+      expect(
+        issues.skipped.some((s) => s.code === 'PARTIAL_BEHAVIOR_PERIOD'),
+      ).toBe(false);
+    });
+
+    it('искусственная воронка с отвалом ≥ 90 %: на сопоставимом периоде — карточка, на частичном с теми же числами — нет', () => {
+      const numbers = {
+        params: [
+          {
+            deviceCategory: 'desktop' as const,
+            key: 'productSlug',
+            value: 'foto-10x15-bez-polej',
+            visits: 40,
+            users: 30,
+            paramsNumber: 60,
+          },
+        ],
+        goalTotals: new Map([
+          ['form_started', g(25, 13)],
+          ['lead_submit_attempt', g(4, 4)],
+          ['lead_submitted', g(4, 4)],
+          ['lead_submitted_photo', g(2, 2)],
+        ]),
+      };
+      const full = input({
+        ...numbers,
+        period: customPeriod('2026-09-12', '2026-09-18'),
+      });
+      const fullIssues = computeIssues(full, null, ctxFor(full, null));
+      expect(
+        fullIssues.issues.find(
+          (i) => i.scope.key === 'photo:lead_submitted_photo',
+        ),
+      ).toMatchObject({ rule: 'FUNNEL_DROPOFF', severity: 'ATTENTION' });
+      // граница: период начинается за день до цели направления — окна уже разные
+      const partial = input({
+        ...numbers,
+        period: customPeriod('2026-09-11', '2026-09-17'),
+      });
+      const partialIssues = computeIssues(partial, null, ctxFor(partial, null));
+      expect(
+        partialIssues.issues.find((i) => i.rule === 'FUNNEL_DROPOFF'),
+      ).toBeUndefined();
+      expect(
+        partialIssues.skipped.find(
+          (s) =>
+            s.code === 'PARTIAL_BEHAVIOR_PERIOD' && /Фотопечать/.test(s.reason),
+        )?.reason,
+      ).toMatch(/\(11\.09\.2026 и 12\.09\.2026\).*не раньше 12\.09\.2026/);
+    });
+
+    it('одинаковые даты доступности: окна совпадают даже на частичном периоде — правило работает (общая воронка 40 → 2)', () => {
+      const cur = input({
+        period: customPeriod('2026-09-05', '2026-09-11'),
+        goalTotals: new Map([
+          ['form_started', g(60, 40)],
+          ['lead_submit_attempt', g(2, 2)],
+          ['lead_submitted', g(2, 2)],
+        ]),
+      });
+      const funnel = computeFunnel('global', cur, null);
+      const attempt = funnel.steps.find(
+        (s) => s.key === 'lead_submit_attempt',
+      )!;
+      expect(attempt.transition).toEqual({
+        status: 'comparable',
+        comparableFrom: BEHAVIOR_GOALS_AVAILABLE_FROM,
+      });
+      // «визит → начали форму» помечен partial (визиты с 05.09, цель с 10.09), но правилом 11.1 не оценивается
+      expect(
+        funnel.steps.find((s) => s.key === 'form_started')!.transition,
+      ).toEqual({
+        status: 'partial',
+        comparableFrom: BEHAVIOR_GOALS_AVAILABLE_FROM,
+      });
+      expect(funnel.quality.notes).toContain('PARTIAL_BEHAVIOR_PERIOD');
+      const issues = computeIssues(cur, null, ctxFor(cur, null));
+      expect(
+        issues.issues.find((i) => i.scope.key === 'global:lead_submit_attempt'),
+      ).toMatchObject({ rule: 'FUNNEL_DROPOFF', severity: 'ATTENTION' });
+    });
+
+    it('measuredFrom / transitionOf: max(period.from, availableFrom); сопоставимо при равных окнах', () => {
+      const period = customPeriod('2026-08-17', '2026-09-15');
+      expect(measuredFrom(null, period)).toBe('2026-08-17');
+      expect(measuredFrom('2026-09-12', period)).toBe('2026-09-12');
+      expect(measuredFrom('2026-08-01', period)).toBe('2026-08-17');
+      expect(
+        transitionOf(
+          { availableFrom: null },
+          { availableFrom: '2026-09-12' },
+          period,
+        ),
+      ).toEqual({ status: 'partial', comparableFrom: '2026-09-12' });
+      expect(
+        transitionOf({ availableFrom: null }, { availableFrom: null }, period),
+      ).toEqual({ status: 'comparable', comparableFrom: null });
+      expect(
+        transitionOf(
+          { availableFrom: '2026-09-10' },
+          { availableFrom: '2026-09-12' },
+          customPeriod('2026-09-12', '2026-09-18'),
+        ),
+      ).toEqual({ status: 'comparable', comparableFrom: '2026-09-12' });
+    });
   });
 
   it('всплеск ошибок формы: ×2 к сопоставимому периоду — ATTENTION, ×3 — CRITICAL; поле в факте', () => {

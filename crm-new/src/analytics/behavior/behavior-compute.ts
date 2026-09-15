@@ -24,6 +24,7 @@ import type {
   PathsBehavior,
   SampleStatus,
   StepBasis,
+  StepTransition,
 } from './behavior-contract';
 import {
   BEHAVIOR_GOALS_AVAILABLE_FROM,
@@ -184,6 +185,43 @@ export function comparable(
   );
 }
 
+/** Первый день периода, с которого шаг реально измерен: max(period.from, availableFrom). */
+export function measuredFrom(
+  availableFrom: string | null,
+  period: AnalyticsPeriod,
+): string {
+  return availableFrom !== null && availableFrom > period.from
+    ? availableFrom
+    : period.from;
+}
+
+/**
+ * Сопоставимость перехода A → B внутри периода (FIX_01): окна измерения обоих
+ * шагов должны совпадать. Если A измерен с начала периода, а B — с даты
+ * создания своей цели, отношение visits(B) / visits(A) сравнивает разные
+ * отрезки времени и не является конверсией шага. Сопоставимо для периодов,
+ * начинающихся не раньше поздней из дат доступности — без ручного переключателя.
+ */
+export function transitionOf(
+  prev: { availableFrom: string | null },
+  step: { availableFrom: string | null },
+  period: AnalyticsPeriod,
+): StepTransition {
+  const dates = [prev.availableFrom, step.availableFrom].filter(
+    (d): d is string => d !== null,
+  );
+  const comparableFrom =
+    dates.length > 0 ? dates.reduce((a, b) => (a > b ? a : b)) : null;
+  return {
+    status:
+      measuredFrom(prev.availableFrom, period) ===
+      measuredFrom(step.availableFrom, period)
+        ? 'comparable'
+        : 'partial',
+    comparableFrom,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Воронки
 
@@ -266,7 +304,10 @@ const FUNNEL_DEFS: Record<
         label: 'Начали форму фотопечати',
         basis: 'param',
         ref: 'productSlug',
-        availableFrom: BEHAVIOR_GOALS_AVAILABLE_FROM,
+        // Параметры визита хранятся с начала данных счётчика (их несли и прежние события сайта):
+        // на бою до 10.09 — 108 визитов с productSlug. Это не дата цели направления (12.09) —
+        // разницу окон измерения фиксирует `transition` шага, а не подгонка чисел (FIX_01).
+        availableFrom: null,
       },
       {
         key: 'lead_submitted_photo',
@@ -341,7 +382,7 @@ const FUNNEL_DEFS: Record<
         label: 'Выбирали формат / размер холста',
         basis: 'param',
         ref: 'product=canvas',
-        availableFrom: BEHAVIOR_GOALS_AVAILABLE_FROM,
+        availableFrom: null,
       },
       {
         key: 'canvas_upload',
@@ -372,14 +413,14 @@ const FUNNEL_DEFS: Record<
         label: 'Начали форму контактов',
         basis: 'param',
         ref: 'form=contact',
-        availableFrom: BEHAVIOR_GOALS_AVAILABLE_FROM,
+        availableFrom: null,
       },
       {
         key: 'contact_lead',
         label: 'Обращение принято',
         basis: 'param',
         ref: 'product=contact',
-        availableFrom: BEHAVIOR_GOALS_AVAILABLE_FROM,
+        availableFrom: null,
       },
     ],
   },
@@ -414,6 +455,7 @@ export function computeFunnel(
   const steps: FunnelStep[] = [];
   let prevVisits: number | null = null;
   let firstVisits: number | null = null;
+  let prevMeasured: StepDef | null = null;
   const unavailable = input.period.to < def.availableFrom;
   for (const s of def.steps) {
     const counts =
@@ -433,6 +475,14 @@ export function computeFunnel(
       basis: s.basis,
       availability,
       availableFrom: s.availableFrom,
+      measuredFrom:
+        availability === 'measured'
+          ? measuredFrom(s.availableFrom, input.period)
+          : null,
+      transition:
+        availability === 'measured' && prevMeasured !== null
+          ? transitionOf(prevMeasured, s, input.period)
+          : null,
       events: counts.events,
       visits,
       users: counts.users,
@@ -458,6 +508,7 @@ export function computeFunnel(
     if (availability === 'measured' && visits !== null) {
       if (firstVisits === null) firstVisits = visits;
       prevVisits = visits;
+      prevMeasured = s;
     }
   }
   const entrants =
@@ -822,6 +873,9 @@ const fmtPct = (v: number | null): string =>
   v === null ? '—' : `${(Math.round(v * 10) / 10).toLocaleString('ru-RU')} %`;
 const fmtInt = (v: number | null): string =>
   v === null ? '—' : Math.round(v).toLocaleString('ru-RU');
+/** ISO-дата → ДД.ММ.ГГГГ для текста причин. */
+const fmtDate = (iso: string | null): string =>
+  iso === null ? '—' : iso.split('-').reverse().join('.');
 
 function issue(
   rule: IssueRule,
@@ -869,15 +923,28 @@ export function computeIssues(
     const measured = f.steps.filter(
       (s) => s.availability === 'measured' && s.visits !== null,
     );
-    let anyChecked = false;
+    let checked = 0;
+    let partial = 0;
     for (let i = 1; i < measured.length; i++) {
       const prevStep = measured[i - 1];
       const step = measured[i];
       // Переход «визит → первое действие» — не отвал воронки: большинство визитов формы не начинает
       // по природе трафика; эту долю показывает сводка, а её аномалии ловят правила 11.2, 11.4, 11.5.
       if (prevStep.basis === 'visits') continue;
+      // FIX_01: шаги измерены с разных дат внутри периода (параметр визита — с начала счётчика, цель
+      // направления — с даты создания) — отношение не является конверсией шага. Числа в воронке
+      // остаются как есть с пометкой PARTIAL_BEHAVIOR_PERIOD; карточки нет, причина — в skipped.
+      if (step.transition?.status === 'partial') {
+        partial++;
+        skipped.push({
+          rule: 'FUNNEL_DROPOFF',
+          code: 'PARTIAL_BEHAVIOR_PERIOD',
+          reason: `${f.title}: «${prevStep.label}» → «${step.label}» — шаги измерены с разных дат (${fmtDate(prevStep.measuredFrom)} и ${fmtDate(step.measuredFrom)}), конверсия шага несопоставима; правило вернётся для периодов, начинающихся не раньше ${fmtDate(step.transition.comparableFrom)}`,
+        });
+        continue;
+      }
       if ((prevStep.visits ?? 0) < MIN_STEP_ENTRANTS) continue;
-      anyChecked = true;
+      checked++;
       const drop = step.dropoffRate ?? 0;
       const cmp =
         f.comparison?.find((c) => c.key === step.key)?.stepConversion ?? null;
@@ -928,9 +995,10 @@ export function computeIssues(
         );
       }
     }
-    if (!anyChecked)
+    if (checked === 0 && partial === 0)
       skipped.push({
         rule: 'FUNNEL_DROPOFF',
+        code: 'LOW_SAMPLE',
         reason: `${f.title}: на входе шагов меньше ${MIN_STEP_ENTRANTS} визитов`,
       });
   }
@@ -983,6 +1051,7 @@ export function computeIssues(
   } else {
     skipped.push({
       rule: 'DEVICE_GAP',
+      code: 'LOW_SAMPLE',
       reason: `у телефонов или компьютеров меньше ${MIN_SAMPLE_VISITS} визитов, либо заявок и начал формы нет у обоих`,
     });
   }
@@ -1044,6 +1113,7 @@ export function computeIssues(
   } else {
     skipped.push({
       rule: 'FORM_ERROR_SPIKE',
+      code: 'LOW_SAMPLE',
       reason: `визитов с ошибкой формы меньше ${MIN_FORM_ERROR_VISITS}`,
     });
   }
@@ -1095,11 +1165,13 @@ export function computeIssues(
     if (checked === 0)
       skipped.push({
         rule: 'LANDING_UNDERPERFORMANCE',
+        code: 'LOW_SAMPLE',
         reason: `нет страниц с ≥ ${MIN_SAMPLE_VISITS} визитами и ожидаемыми ≥ ${THRESHOLDS.landingMinExpectedLeads} заявками`,
       });
   } else {
     skipped.push({
       rule: 'LANDING_UNDERPERFORMANCE',
+      code: 'NO_LEADS',
       reason: 'по сайту нет заявок за период — сравнивать страницы не с чем',
     });
   }
@@ -1156,10 +1228,18 @@ export function computeIssues(
         );
       }
     }
+  } else if (!prevRate || !comparable(previous)) {
+    skipped.push({
+      rule: 'LEAD_RATE_ANOMALY',
+      code: 'COMPARISON_UNAVAILABLE',
+      reason:
+        'нет сопоставимого предыдущего периода (он раньше появления целей или без поведенческих данных)',
+    });
   } else {
     skipped.push({
       rule: 'LEAD_RATE_ANOMALY',
-      reason: `в одном из периодов меньше ${MIN_SAMPLE_VISITS} визитов или предыдущий период до появления целей`,
+      code: 'LOW_SAMPLE',
+      reason: `в одном из периодов меньше ${MIN_SAMPLE_VISITS} визитов`,
     });
   }
 

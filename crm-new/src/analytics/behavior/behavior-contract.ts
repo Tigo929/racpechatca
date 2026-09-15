@@ -43,6 +43,19 @@ export type StepAvailability =
 /** На чём построен шаг: целевые визиты цели или визиты с параметром визита. */
 export type StepBasis = 'visits' | 'goal' | 'param';
 
+/**
+ * Сопоставимость перехода с предыдущего измеренного шага (FIX_01 этапа 10).
+ * `comparable` — оба шага измерены внутри периода с одной даты, конверсию шага
+ * можно обсуждать; `partial` — шаги измерены с разных дат (например, параметр
+ * визита хранится с начала счётчика, а цель направления создана позже):
+ * конверсия и отвал структурно смещены, правило 11.1 по такому переходу молчит.
+ */
+export interface StepTransition {
+  status: 'comparable' | 'partial';
+  /** С какого дня начала периода переход сопоставим (поздняя из дат доступности двух шагов); null — с любого. */
+  comparableFrom: string | null;
+}
+
 export interface FunnelStep {
   key: string;
   label: string;
@@ -52,6 +65,10 @@ export interface FunnelStep {
   availability: StepAvailability;
   /** С какого дня шаг измеряется; null — измеряется с начала счётчика или не измеряется вовсе. */
   availableFrom: string | null;
+  /** Первый день периода, с которого шаг реально измерен: max(period.from, availableFrom); null — шаг не измерен. */
+  measuredFrom: string | null;
+  /** Переход с предыдущего измеренного шага; null — предыдущего измеренного шага нет или этот шаг не измерен. */
+  transition: StepTransition | null;
   events: number | null;
   visits: number | null;
   users: number | null;
@@ -284,12 +301,30 @@ export interface BehaviorIssue {
   scope: { kind: 'funnel' | 'device' | 'page' | 'form' | 'site'; key: string };
 }
 
+/**
+ * Почему правило промолчало. LOW_SAMPLE — данных меньше порога;
+ * PARTIAL_BEHAVIOR_PERIOD — шаги перехода измерены с разных дат внутри периода
+ * (окна несопоставимы, FIX_01); COMPARISON_UNAVAILABLE — нет сопоставимого
+ * предыдущего периода; NO_LEADS — по сайту нет заявок, сравнивать не с чем.
+ */
+export type SkipCode =
+  | 'LOW_SAMPLE'
+  | 'PARTIAL_BEHAVIOR_PERIOD'
+  | 'COMPARISON_UNAVAILABLE'
+  | 'NO_LEADS';
+
+export interface SkippedRule {
+  rule: IssueRule;
+  code: SkipCode;
+  reason: string;
+}
+
 export interface BehaviorIssues {
   period: AnalyticsPeriod;
   previousPeriod: AnalyticsPeriod;
   issues: BehaviorIssue[];
-  /** Правила, которые не сработали из-за недостатка данных (не тишина, а причина). */
-  skipped: { rule: IssueRule; reason: string }[];
+  /** Правила, которые не сработали (не тишина, а причина): код для программ, текст для людей. */
+  skipped: SkippedRule[];
   thresholds: Record<string, number>;
   quality: BehaviorQuality;
 }

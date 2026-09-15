@@ -26,6 +26,12 @@ export type SampleStatus = 'OK' | 'LOW_SAMPLE' | 'INSUFFICIENT_DATA';
 export type StepAvailability = 'measured' | 'not_measured' | 'insufficient_data';
 export type StepBasis = 'visits' | 'goal' | 'param';
 
+/** Сопоставимость перехода с предыдущего измеренного шага (FIX_01): partial — шаги измерены с разных дат. */
+export interface StepTransition {
+  status: 'comparable' | 'partial';
+  comparableFrom: string | null;
+}
+
 export interface FunnelStep {
   key: string;
   label: string;
@@ -33,6 +39,8 @@ export interface FunnelStep {
   basis: StepBasis;
   availability: StepAvailability;
   availableFrom: string | null;
+  measuredFrom: string | null;
+  transition: StepTransition | null;
   events: number | null;
   visits: number | null;
   users: number | null;
@@ -192,11 +200,19 @@ export interface BehaviorIssue {
   scope: { kind: 'funnel' | 'device' | 'page' | 'form' | 'site'; key: string };
 }
 
+export type SkipCode = 'LOW_SAMPLE' | 'PARTIAL_BEHAVIOR_PERIOD' | 'COMPARISON_UNAVAILABLE' | 'NO_LEADS';
+
+export interface SkippedRule {
+  rule: IssueRule;
+  code: SkipCode;
+  reason: string;
+}
+
 export interface BehaviorIssues {
   period: AnalyticsPeriod;
   previousPeriod: AnalyticsPeriod;
   issues: BehaviorIssue[];
-  skipped: { rule: IssueRule; reason: string }[];
+  skipped: SkippedRule[];
   thresholds: Record<string, number>;
   quality: BehaviorQuality;
 }

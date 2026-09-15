@@ -1,4 +1,4 @@
-import type { BehaviorQualityNote, IssueRule, IssueSeverity, SampleStatus } from '../../types/behavior';
+import type { BehaviorQualityNote, FunnelStep, IssueRule, IssueSeverity, SampleStatus, SkipCode } from '../../types/behavior';
 import type { Warning } from './analytics-view';
 
 /**
@@ -95,6 +95,32 @@ export const RULE_LABELS: Record<IssueRule, string> = {
   LANDING_UNDERPERFORMANCE: 'Слабая страница входа',
   LEAD_RATE_ANOMALY: 'Скачок доли заявок',
 };
+
+/** Почему правило промолчало — короткая подпись к коду из `skipped[]`. */
+export const SKIP_CODE_LABELS: Record<SkipCode, string> = {
+  LOW_SAMPLE: 'мало данных',
+  PARTIAL_BEHAVIOR_PERIOD: 'несопоставимые окна измерения',
+  COMPARISON_UNAVAILABLE: 'нет сопоставимого периода',
+  NO_LEADS: 'нет заявок за период',
+};
+
+const shortDate = (iso: string | null): string => (iso ? iso.split('-').reverse().join('.') : '—');
+
+/**
+ * Текст ограничения для перехода с разными окнами измерения (FIX_01): числа шагов
+ * честные, но их отношение — не конверсия шага, потому что предыдущий шаг измерен
+ * с одной даты, а этот — с другой (например, параметр визита хранится с начала
+ * счётчика, а цель направления создана позже).
+ */
+export function partialTransitionText(step: FunnelStep, prev: FunnelStep | null): string {
+  const from = step.transition?.comparableFrom;
+  return (
+    `Окна измерения не совпадают: «${prev?.label ?? 'предыдущий шаг'}» измерен с ${shortDate(prev?.measuredFrom ?? null)}, ` +
+    `«${step.label}» — с ${shortDate(step.measuredFrom)}. Доля от предыдущего шага и отвал за этот период структурно смещены ` +
+    `и правилами «Требует внимания» не оцениваются.` +
+    (from ? ` Сопоставимо для периодов, начинающихся не раньше ${shortDate(from)}.` : '')
+  );
+}
 
 export const DEVICE_LABELS_BEHAVIOR: Record<string, string> = {
   desktop: 'Компьютер',

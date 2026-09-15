@@ -19,10 +19,12 @@ import {
   SAMPLE_LABELS,
   SEVERITY_LABELS,
   SEVERITY_TONE,
+  SKIP_CODE_LABELS,
   UNIT_LABELS,
   UNIT_TOOLTIPS,
   behaviorWarnings,
   formatSeconds,
+  partialTransitionText,
 } from './behavior-view';
 import { Card, Hint, Notice, StateBlock, TableWrap, Td, Th } from './ui';
 
@@ -51,10 +53,11 @@ function SampleBadge({ status }: { status: 'OK' | 'LOW_SAMPLE' | 'INSUFFICIENT_D
 
 // ── Воронка ────────────────────────────────────────────────────────────────
 
-function StepRow({ step, max, cmp }: { step: FunnelStep; max: number; cmp: Funnel['comparison'] }) {
+function StepRow({ step, prev, max, cmp }: { step: FunnelStep; prev: FunnelStep | null; max: number; cmp: Funnel['comparison'] }) {
   const measured = step.availability === 'measured';
   const width = measured && step.visits !== null && max > 0 ? Math.max(2, (step.visits / max) * 100) : 0;
   const c = cmp?.find((x) => x.key === step.key);
+  const partial = step.transition?.status === 'partial';
   return (
     <li className={`rounded-lg px-3 py-2 ${measured ? 'bg-indigo-50' : 'bg-gray-50'}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -85,13 +88,19 @@ function StepRow({ step, max, cmp }: { step: FunnelStep; max: number; cmp: Funne
             <div className="h-1.5 rounded bg-indigo-500" style={{ width: `${width}%` }} />
           </div>
           {step.stepConversion !== null && (
-            <span className="text-xs tabular-nums text-gray-700 whitespace-nowrap">
+            <span className={`text-xs tabular-nums whitespace-nowrap ${partial ? 'text-gray-400' : 'text-gray-700'}`}>
               {formatPercent(step.stepConversion)} от пред. шага
               {step.dropoffRate !== null && <span className="text-gray-400"> · отвал {formatPercent(step.dropoffRate)}</span>}
               {c && <span className={`ml-1 ${deltaTone(c.visits, 'higher-good') === 'negative' ? 'text-rose-600' : deltaTone(c.visits, 'higher-good') === 'positive' ? 'text-emerald-600' : 'text-gray-400'}`}>{formatDelta(c.visits, 'count')}</span>}
             </span>
           )}
         </div>
+      )}
+      {measured && partial && step.stepConversion !== null && (
+        <p className="mt-1 text-[11px] text-amber-700" data-testid={`partial-transition-${step.key}`}>
+          окна измерения не совпадают — доля не сравнивается
+          <Hint text={partialTransitionText(step, prev)} label="окна измерения" />
+        </p>
       )}
     </li>
   );
@@ -114,8 +123,14 @@ export function FunnelCard({ funnel, compact }: { funnel: Funnel; compact?: bool
         <StateBlock kind="empty" message="За этот период поведенческих данных нет" />
       ) : (
         <ol className="space-y-2" aria-label={`Шаги воронки: ${funnel.title}`}>
-          {funnel.steps.map((s) => (
-            <StepRow key={s.key} step={s} max={max} cmp={funnel.comparison} />
+          {funnel.steps.map((s, i) => (
+            <StepRow
+              key={s.key}
+              step={s}
+              prev={funnel.steps.slice(0, i).reverse().find((p) => p.availability === 'measured') ?? null}
+              max={max}
+              cmp={funnel.comparison}
+            />
           ))}
         </ol>
       )}
@@ -395,10 +410,12 @@ export function IssuesBlock({ issues }: { issues: BehaviorIssues | undefined }) 
       )}
       {issues.skipped.length > 0 && (
         <details className="mt-3 text-xs text-gray-500">
-          <summary className="cursor-pointer">Правила без вывода из-за недостатка данных: {issues.skipped.length}</summary>
+          <summary className="cursor-pointer">Правила без вывода (мало данных или несопоставимые периоды): {issues.skipped.length}</summary>
           <ul className="mt-1 list-disc pl-5 space-y-0.5">
             {issues.skipped.map((s, i) => (
-              <li key={`${s.rule}-${i}`}>{RULE_LABELS[s.rule]}: {s.reason}</li>
+              <li key={`${s.rule}-${i}`} data-testid={`skipped-${s.code}`}>
+                {RULE_LABELS[s.rule]} <span className="text-gray-400">· {SKIP_CODE_LABELS[s.code]}</span>: {s.reason}
+              </li>
             ))}
           </ul>
         </details>
