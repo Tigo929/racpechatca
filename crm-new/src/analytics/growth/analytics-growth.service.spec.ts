@@ -143,6 +143,22 @@ function memoryPrisma(now: () => Date) {
         }),
       ),
     },
+    metrikaDailySource: {
+      groupBy: jest.fn(() =>
+        Promise.resolve([
+          {
+            trafficSource: 'organic',
+            trafficSourceName: 'Переходы из поисковых систем',
+            _sum: { visits: 400, leadReaches: 12 },
+          },
+          {
+            trafficSource: 'direct',
+            trafficSourceName: 'Прямые заходы',
+            _sum: { visits: 300, leadReaches: 8 },
+          },
+        ]),
+      ),
+    },
     metrikaDailyTraffic: {
       aggregate: jest.fn(() =>
         Promise.resolve({

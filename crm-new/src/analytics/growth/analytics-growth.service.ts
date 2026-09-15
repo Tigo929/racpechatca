@@ -18,6 +18,7 @@ import {
   freshnessOf,
   type OrderWithLifecycle,
 } from '../metrics/metrics-compute';
+import type { Slice, SourceRow } from '../metrics/metrics-contract';
 import {
   computeEvaluation,
   type CohortData,
@@ -542,17 +543,20 @@ export class AnalyticsGrowthService {
     row: ChangeRow,
   ): Promise<WindowData> {
     const audience = row.audienceDefinition as AudienceDefinition | null;
-    const [overview, behavior, devices, sources, landings, utm] =
-      await Promise.all([
-        this.metrics.getOverview(period, false),
-        this.behavior.loadInput(period),
-        this.metrics.getDevices(period),
-        this.metrics.getTrafficSources(period),
-        this.metrics.getLandings(period),
-        audience?.dimension === 'utm'
-          ? this.metrics.getUtm(period)
-          : Promise.resolve(null),
-      ]);
+    // Устройства и страницы входа берутся из поведенческих агрегатов (loadInput): в них те же визиты
+    // и достижения lead_submitted, лишние загрузки заказов срезами этапа 09 не нужны. Полный срез
+    // источников (с сопоставленными заказами) нужен только для сегментов по аудитории source; для
+    // confounder «сдвиг источников» хватает визитов по источникам из дневной таблицы одним запросом.
+    const [overview, behavior, sources, utm] = await Promise.all([
+      this.metrics.getOverview(period, false),
+      this.behavior.loadInput(period),
+      audience?.dimension === 'source'
+        ? this.metrics.getTrafficSources(period)
+        : this.sourceVisits(period),
+      audience?.dimension === 'utm'
+        ? this.metrics.getUtm(period)
+        : Promise.resolve(null),
+    ]);
     return {
       period,
       overview,
@@ -566,7 +570,52 @@ export class AnalyticsGrowthService {
         acceptedContractValues: [],
         acceptedPaidValues: [],
       },
-      slices: { devices, sources, landings, utm },
+      slices: { sources, utm },
+    };
+  }
+
+  /** Визиты и достижения lead по источникам за окно одним запросом — для описательного сдвига смеси. */
+  private async sourceVisits(
+    period: AnalyticsPeriod,
+  ): Promise<Slice<SourceRow>> {
+    const rows = await this.prisma.metrikaDailySource.groupBy({
+      by: ['trafficSource', 'trafficSourceName'],
+      where: {
+        date: {
+          gte: new Date(`${period.from}T00:00:00.000Z`),
+          lte: new Date(`${period.to}T00:00:00.000Z`),
+        },
+      },
+      _sum: { visits: true, leadReaches: true },
+    });
+    const empty = {
+      matchedAccepted: 0,
+      matchedPaid: 0,
+      visitToLead: null,
+      visitToAccepted: null,
+      visitToPaid: null,
+      leadToAccepted: null,
+      acceptedToPaid: null,
+    };
+    const out: SourceRow[] = rows.map((r) => ({
+      trafficSource: r.trafficSource,
+      trafficSourceName: r.trafficSourceName,
+      sourceEngine: '',
+      sourceEngineName: '',
+      pageviews: 0,
+      visits: r._sum.visits ?? 0,
+      siteLeads: r._sum.leadReaches ?? 0,
+      ...empty,
+    }));
+    return {
+      period,
+      rows: out,
+      totals: {
+        visits: out.reduce((s, r) => s + r.visits, 0),
+        siteLeads: out.reduce((s, r) => s + r.siteLeads, 0),
+        ...empty,
+      },
+      quality: { completeness: 'complete', notes: [] },
     };
   }
 

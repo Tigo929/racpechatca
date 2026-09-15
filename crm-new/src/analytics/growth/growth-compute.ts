@@ -1,9 +1,7 @@
 import type { BehaviorInput } from '../behavior/behavior-compute';
 import type { AnalyticsPeriod } from '../metrics/analytics-period';
 import type {
-  DeviceRow,
   Freshness,
-  LandingRow,
   Overview,
   Slice,
   SourceRow,
@@ -40,6 +38,7 @@ import {
   MIN_EVENTS,
   MIN_ORDERS,
   MIN_SAMPLE_VISITS,
+  MIN_WINDOW_DAYS_FOR_SIGNAL,
   MIX_MIN_SHARE_PCT,
   MIX_SHIFT_POINTS_ATTENTION,
   TARGET_RELATIVE_EFFECT,
@@ -82,12 +81,12 @@ export interface CohortData {
 export interface WindowData {
   period: AnalyticsPeriod;
   overview: Overview;
-  behavior: BehaviorInput | null;
+  /** Поведенческие агрегаты этапа 10: цели, устройства и страницы входа (с достижениями и визитами). */
+  behavior: BehaviorInput;
   cohorts: CohortData;
+  /** Срезы этапа 09, которых нет в поведенческих агрегатах: источники всегда, UTM — только для аудитории по UTM. */
   slices: {
-    devices: Slice<DeviceRow>;
     sources: Slice<SourceRow>;
-    landings: Slice<LandingRow>;
     utm: Slice<UtmRow> | null;
   };
 }
@@ -127,8 +126,7 @@ export interface EvaluationInputs {
 // ---------------------------------------------------------------------------
 // Значения метрик из данных окна
 
-function goalVisits(b: BehaviorInput | null, event: string): number | null {
-  if (!b) return null;
+function goalVisits(b: BehaviorInput, event: string): number {
   return b.goalTotals.get(event)?.visits ?? 0;
 }
 
@@ -506,6 +504,8 @@ export function evaluateMetric(
   if (maturity.status !== 'MATURE') flags.push('IMMATURE_OUTCOME');
   flags.push(...sampleGate(def, before, after));
   if (inputs.freshness.status === 'STALE') flags.push('ANALYTICS_STALE');
+  // (a) Меньше недели полных дней — состав дней недели не уравновешен и объём мал: сигнала быть не может.
+  if (windows.days < MIN_WINDOW_DAYS_FOR_SIGNAL) flags.push('SHORT_WINDOW');
 
   const stats = computeStatistics(def, before, after, windows.days);
   if (stats.method === 'descriptive_only')
@@ -520,7 +520,11 @@ export function evaluateMetric(
   )
     verdict = 'INSUFFICIENT_DATA';
   else if (maturity.status !== 'MATURE') verdict = 'IMMATURE';
-  else if (flags.includes('ZERO_DENOMINATOR') || flags.includes('LOW_SAMPLE'))
+  else if (
+    flags.includes('ZERO_DENOMINATOR') ||
+    flags.includes('LOW_SAMPLE') ||
+    flags.includes('SHORT_WINDOW')
+  )
     verdict = 'INSUFFICIENT_DATA';
   else if (stats.method === 'descriptive_only') verdict = 'INSUFFICIENT_DATA';
   else verdict = signalVerdict(def, change.expectedDirection, stats);
@@ -567,15 +571,14 @@ function segmentRows(
 ): SegmentRows {
   switch (dimension) {
     case 'device':
-      return w.slices.devices.rows.map((r) => ({
-        key: r.deviceCategory,
-        visits: r.visits,
-        siteLeads: r.siteLeads,
-        matchedAccepted: r.matchedAccepted,
-        matchedPaid: r.matchedPaid,
-        goals: w.behavior?.byDevice.find(
-          (d) => d.deviceCategory === r.deviceCategory,
-        )?.goals,
+      // Достижения lead_submitted по устройствам — из поведенческого набора (те же reaches, что siteLeads).
+      return w.behavior.byDevice.map((d) => ({
+        key: d.deviceCategory,
+        visits: d.visits,
+        siteLeads: d.goals.get('lead_submitted')?.reaches ?? 0,
+        matchedAccepted: d.matchedAccepted,
+        matchedPaid: 0,
+        goals: d.goals,
       }));
     case 'source':
       return w.slices.sources.rows.map((r) => ({
@@ -594,15 +597,13 @@ function segmentRows(
         matchedPaid: r.matchedPaid,
       }));
     case 'landing':
-      return w.slices.landings.rows.map((r) => ({
-        key: r.normalizedPath,
-        visits: r.visits,
-        siteLeads: r.siteLeads,
-        matchedAccepted: r.matchedAccepted,
-        matchedPaid: r.matchedPaid,
-        goals: w.behavior?.byLanding.find(
-          (l) => l.normalizedPath === r.normalizedPath,
-        )?.goals,
+      return w.behavior.byLanding.map((l) => ({
+        key: l.normalizedPath,
+        visits: l.visits,
+        siteLeads: l.goals.get('lead_submitted')?.reaches ?? 0,
+        matchedAccepted: l.matchedAccepted,
+        matchedPaid: 0,
+        goals: l.goals,
       }));
   }
 }
@@ -620,7 +621,6 @@ const SEGMENT_METRICS: Partial<
     countValue(r?.matchedAccepted ?? 0, d, r?.visits ?? 0),
   matchedAcceptedRate: (r) =>
     ratioValue(r?.matchedAccepted ?? 0, r?.visits ?? 0),
-  matchedPaid: (r, d) => countValue(r?.matchedPaid ?? 0, d, r?.visits ?? 0),
   formStarts: (r, d) =>
     r?.goals
       ? countValue(r.goals.get('form_started')?.visits ?? 0, d, r.visits)
@@ -637,6 +637,7 @@ export function segmentSupported(
   dimension: AudienceDefinition['dimension'],
 ): boolean {
   if (!(metric in SEGMENT_METRICS)) return false;
+  if (metric === 'matchedPaid') return false;
   if (
     (metric === 'formStarts' || metric === 'formStartRate') &&
     dimension !== 'device' &&
@@ -711,7 +712,9 @@ export function evaluateSegments(
         ? 'INCOMPARABLE'
         : primary.maturity.status !== 'MATURE'
           ? 'IMMATURE'
-          : flags.includes('LOW_SAMPLE') || flags.includes('ZERO_DENOMINATOR')
+          : flags.includes('LOW_SAMPLE') ||
+              flags.includes('ZERO_DENOMINATOR') ||
+              windows.days < MIN_WINDOW_DAYS_FOR_SIGNAL
             ? 'INSUFFICIENT_DATA'
             : signalVerdict(def, change.expectedDirection, stats);
       out.push({
@@ -800,11 +803,11 @@ export function computeConfounders(
   const dev = mixShift(
     'DEVICE_MIX_SHIFT',
     'Устройства',
-    before.slices.devices.rows.map((r) => ({
+    before.behavior.byDevice.map((r) => ({
       key: r.deviceCategory,
       visits: r.visits,
     })),
-    after.slices.devices.rows.map((r) => ({
+    after.behavior.byDevice.map((r) => ({
       key: r.deviceCategory,
       visits: r.visits,
     })),
@@ -813,24 +816,27 @@ export function computeConfounders(
   const land = mixShift(
     'LANDING_MIX_SHIFT',
     'Страницы входа',
-    before.slices.landings.rows.map((r) => ({
+    before.behavior.byLanding.map((r) => ({
       key: r.normalizedPath,
       visits: r.visits,
     })),
-    after.slices.landings.rows.map((r) => ({
+    after.behavior.byLanding.map((r) => ({
       key: r.normalizedPath,
       visits: r.visits,
     })),
   );
   if (land) out.push(land);
+  // (b) оговорки о метриках — только по заявленным (первичная + вторичные): контекст показан рядом
+  // со своими вердиктами и не должен окрашивать вывод об изменении.
+  const declared = metrics.filter((m) => m.role !== 'context');
   const cutovers = [
-    ...new Set(metrics.flatMap((m) => m.comparability.cutoversInside)),
+    ...new Set(declared.flatMap((m) => m.comparability.cutoversInside)),
   ];
   if (cutovers.length > 0)
     out.push({
       code: 'MEASUREMENT_DEFINITION_CHANGED',
       severity: 'ATTENTION',
-      fact: `Внутри сравнения менялось определение метрик (${cutovers.map(fmtDate).join(', ')}): ${metrics
+      fact: `Внутри сравнения менялось определение метрик (${cutovers.map(fmtDate).join(', ')}): ${declared
         .filter((m) => m.comparability.cutoversInside.length)
         .map((m) => m.label)
         .join(', ')} — окна несопоставимы.`,
@@ -855,13 +861,13 @@ export function computeConfounders(
       severity: 'ATTENTION',
       fact: `Выборка первичной метрики ниже порога (визитов ${fmtInt(primary.before.sample)} / ${fmtInt(primary.after.sample)}, событий ${fmtInt((primary.before.numerator ?? 0) + (primary.after.numerator ?? 0))}).`,
     });
-  if (metrics.some((m) => m.flags.includes('MATCHED_COVERAGE_LOW')))
+  if (declared.some((m) => m.flags.includes('MATCHED_COVERAGE_LOW')))
     out.push({
       code: 'MATCHED_COVERAGE_LOW',
       severity: 'ATTENTION',
       fact: `Покрытие ClientID у принятых заказов ниже ${MATCHED_COVERAGE_MIN_PCT} % — сопоставленные метрики не переносятся на все заказы CRM.`,
     });
-  if (metrics.some((m) => m.flags.includes('COGS_INCOMPLETE')))
+  if (declared.some((m) => m.flags.includes('COGS_INCOMPLETE')))
     out.push({
       code: 'COGS_INCOMPLETE',
       severity: 'ATTENTION',
@@ -966,13 +972,15 @@ export function interpretationText(
       const req = s?.requiredSample
         ? ` (для ${fmtInt(s.requiredSample.targetRelativeEffect * 100)} % нужно ≈ ${fmtInt(s.requiredSample.perWindow)} ${m.kind === 'count' ? 'событий' : m.scope === 'crm' ? 'заказов' : 'визитов'} на окно)`
         : '';
-      const why = m.flags.includes('MATCHED_COVERAGE_LOW')
-        ? ' Покрытие ClientID недостаточно, чтобы доверять сопоставлению.'
-        : m.flags.includes('COGS_INCOMPLETE')
-          ? ' Себестоимость части заказов ненадёжна — прибыль неполная.'
-          : m.flags.includes('STATISTICAL_TEST_UNAVAILABLE')
-            ? ' Для этой метрики нет статистического теста — только описательное сравнение.'
-            : '';
+      const why = m.flags.includes('SHORT_WINDOW')
+        ? ' Окно короче недели — состав дней недели не уравновешен; сигнал возможен только от 7 полных дней.'
+        : m.flags.includes('MATCHED_COVERAGE_LOW')
+          ? ' Покрытие ClientID недостаточно, чтобы доверять сопоставлению.'
+          : m.flags.includes('COGS_INCOMPLETE')
+            ? ' Себестоимость части заказов ненадёжна — прибыль неполная.'
+            : m.flags.includes('STATISTICAL_TEST_UNAVAILABLE')
+              ? ' Для этой метрики нет статистического теста — только описательное сравнение.'
+              : '';
       return `Данных недостаточно, чтобы отличить изменение от обычных колебаний.${mde}${req}.${why}${confText}`;
     }
     case 'NO_CLEAR_CHANGE':

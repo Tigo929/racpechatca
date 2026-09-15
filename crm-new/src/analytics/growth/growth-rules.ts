@@ -22,6 +22,8 @@ export const MIN_BOOTSTRAP_SAMPLE = 5;
 export const BOOTSTRAP_ITERATIONS = 2000;
 export const BOOTSTRAP_SEED = 20260915;
 
+/** Минимум полных дней в окне, чтобы вердикт мог быть сигналом (короче — INSUFFICIENT_DATA, состав дней недели не уравновешен). */
+export const MIN_WINDOW_DAYS_FOR_SIGNAL = 7;
 /** Предпочтительные длины окон — целые недели, состав дней недели совпадает. */
 export const EVALUATION_DAYS_OPTIONS = [7, 14, 21, 28] as const;
 /** Максимум дней окна при автоматическом выборе. */

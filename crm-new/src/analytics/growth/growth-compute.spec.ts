@@ -1,9 +1,7 @@
 import type { BehaviorInput } from '../behavior/behavior-compute';
 import { customPeriod } from '../metrics/analytics-period';
 import type {
-  DeviceRow,
   Freshness,
-  LandingRow,
   Overview,
   Slice,
   SourceRow,
@@ -173,10 +171,21 @@ function behavior(
       visits: d.visits,
       sumDailyUsers: 0,
       matchedAccepted: 0,
-      goals: new Map([['form_started', g(d.formStarts ?? 0)]]),
+      goals: new Map([
+        ['form_started', g(d.formStarts ?? 0)],
+        ['lead_submitted', g(d.siteLeads)],
+      ]),
       engagement: null,
     })),
-    byLanding: [],
+    byLanding: [
+      {
+        normalizedPath: '/',
+        visits: f.visits,
+        sumDailyUsers: 0,
+        matchedAccepted: 0,
+        goals: new Map([['lead_submitted', g(f.siteLeads)]]),
+      },
+    ],
     params: [],
     paths: { entry_lead: [], viewed_lead: [], exit_all: [], exit_nolead: [] },
     behaviorRows: 10,
@@ -249,13 +258,6 @@ function windowData(
       ...(f.cohorts ?? {}),
     },
     slices: {
-      devices: slice<DeviceRow>(
-        period,
-        devices.map((d) => ({
-          deviceCategory: d.device,
-          ...rate(d.visits, d.siteLeads),
-        })),
-      ),
       sources: slice<SourceRow>(
         period,
         sources.map((s) => ({
@@ -267,9 +269,6 @@ function windowData(
           ...rate(s.visits, 0),
         })),
       ),
-      landings: slice<LandingRow>(period, [
-        { normalizedPath: '/', ...rate(f.visits, f.siteLeads) },
-      ]),
       utm: null,
     },
   };
@@ -538,6 +537,26 @@ describe('оценка первичной метрики', () => {
       inputs({ visits: 1000, siteLeads: 50 }, { visits: 1000, siteLeads: 52 }),
     );
     expect(small.verdict).toBe('INSUFFICIENT_DATA');
+  });
+
+  it('окно короче недели: даже сильный контраст — INSUFFICIENT_DATA с SHORT_WINDOW, а не сигнал (состав дней недели не уравновешен)', () => {
+    // после cutover 24.09 доступно 5 полных дней (25–29.09) → окна по 5 дней
+    const e = computeEvaluation(
+      inputs(
+        { visits: 1000, siteLeads: 5 },
+        { visits: 1000, siteLeads: 40 },
+        { evaluationDays: null, now: new Date('2026-09-30T08:00:00Z') },
+      ),
+    );
+    expect(e.windows.days).toBe(5);
+    expect(e.primary.flags).toContain('SHORT_WINDOW');
+    expect(e.windows.flags).toContain('WEEKDAY_MIX_MISMATCH');
+    expect(e.dataQuality.flags).toEqual(
+      expect.arrayContaining(['SHORT_WINDOW', 'WEEKDAY_MIX_MISMATCH']),
+    );
+    expect(e.verdict).toBe('INSUFFICIENT_DATA');
+    expect(e.INTERPRETATION).toMatch(/Окно короче недели/);
+    expect(e.segments.every((s) => s.verdict !== 'POSITIVE_SIGNAL')).toBe(true);
   });
 
   it('уникальные посетители — только из снимка: без снимка null и флаг, сумма дневных не подставляется', () => {
