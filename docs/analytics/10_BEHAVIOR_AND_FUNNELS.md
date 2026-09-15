@@ -7,8 +7,8 @@
 (`BEHAVIOR_DATA_MODEL.md`), сервис/API/раздел «Поведение», правила «Требует внимания»
 (`BEHAVIOR_RULES.md`); сверка на копии production diff 0 — отчёт § 32. **В production с 15.09.2026
 00:22 MSK** (master 80921d9) по `10_PRODUCTION_ROLLOUT.md`: миграция применена, initial sync 13.08–15.09,
-сверки на бою diff 0, расписание с 00:31 — 10 тиков SUCCESS (daily + 9 hourly); owner smoke (§ 15 rollout) ожидает
-§ 33. DONE ставит Reviewer.
+сверки на бою diff 0, расписание с 00:31 — 10 тиков SUCCESS (daily + 9 hourly); owner smoke (§ 15 rollout)
+ПРОЙДЕН владельцем 15.09.2026 — § 33. Со стороны исполнителя всё закрыто; DONE ставит Reviewer.
 
 ## STAGE
 
@@ -1179,5 +1179,6 @@ DEVIATION к правилу 11.1 (для решения Reviewer): в окнах
 создавать FUNNEL_DROPOFF при `PARTIAL_BEHAVIOR_PERIOD`. Без решения смещение исчезает само: 7 дней — с 19.09,
 30 дней — с 12.10. Код в ходе rollout не менялся.
 
-Owner smoke — § 15 `10_PRODUCTION_ROLLOUT.md`: `https://raspechatkaa.ru/crm/analytics` → «Поведение»; фиксирует
-только владелец.
+Owner smoke — § 15 `10_PRODUCTION_ROLLOUT.md` (`https://raspechatkaa.ru/crm/analytics` → «Поведение»): **ПРОЙДЕН**
+владельцем 15.09.2026 (~10:34 MSK, «OWNER SMOKE STAGE 10 ПРОЙДЕН») — зафиксировано в § 21.16 rollout-документа.
+Production после включения расписания (00:31) не менялся. Открыты только решения Reviewer: verdict DONE и FIX_01.

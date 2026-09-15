@@ -1239,7 +1239,7 @@ Reports API (цели по устройствам и страницам вход
 Копия production: HTTP = service = SQL diff 0 (3 периода), тесты CRM 955 / панель 30.
 В production с 15.09.2026 00:22 MSK по 10_PRODUCTION_ROLLOUT.md (master 80921d9): миграция применена, initial
 sync 13.08–15.09, сверки на бою diff 0, privacy/perf/auth проверены, расписание включено 00:31 — 10 тиков SUCCESS;
-owner smoke (§ 15) ожидает владельца. Отчёты — 10_BEHAVIOR_AND_FUNNELS.md § 32 / § 33, 10_PRODUCTION_ROLLOUT.md § 21.
+owner smoke (§ 15) пройден владельцем 15.09. Отчёты — 10_BEHAVIOR_AND_FUNNELS.md § 32 / § 33, 10_PRODUCTION_ROLLOUT.md § 21.
 Документы: BEHAVIOR_EVENT_CONTRACT.md, BEHAVIOR_DATA_MODEL.md, BEHAVIOR_RULES.md. DONE ставит Reviewer.
 ```
 
@@ -1611,7 +1611,8 @@ production rollout выполнен 12.09.2026 22:02–23:00 MSK (master = e7e93
 внимания» (FACT / HYPOTHESIS / RECOMMENDATION). На бою (копия 14.09): телефоны 64 визита и 0 начатых форм при
 13 на компьютерах — правило 11.2 CRITICAL как наблюдение. Production rollout выполнен 15.09.2026 00:13–00:42 MSK
 строго по `10_PRODUCTION_ROLLOUT.md` (master 80921d9, миграция на старте контейнера, initial sync, сверки на бою
-diff 0, расписание — 10 тиков SUCCESS до 10:23) — отчёт § 21; остановлено на owner-smoke gate (§ 15). Маршрут `/analytics`
+diff 0, расписание — 10 тиков SUCCESS до 10:23) — отчёт § 21; owner smoke § 15 пройден владельцем 15.09 (~10:34) —
+ждёт verdict Reviewer (DONE) и решения по FIX_01 к правилу 11.1. Маршрут `/analytics`
 на домене raspechatkaa.ru исправлен 15.09 00:01 (второй белый список nginx). Отчёт этапа — `10_BEHAVIOR_AND_FUNNELS.md` § 32 / § 33.
 ```
 
