@@ -49,7 +49,9 @@ Production меняется только после отдельной кома�
 CRM repo racpechatca
 production master (до rollout):     3ac9be8  (коммиты владельца 15.09: Telegram-темы, локальные агенты)
 reviewed implementation HEAD:       8d10b7c  (Stage 11 backend + панель + docs § 31)
-rollout candidate:                  0c3b84a  = 8d10b7c + FIX_00 (свой флаг ANALYTICS_GROWTH_ENABLED)
+rollout candidate (код):            0c3b84a  = 8d10b7c + FIX_00 (свой флаг ANALYTICS_GROWTH_ENABLED)
+fast-forward до:                    docs-only потомка 0c3b84a на feature (этот план и его правки; код тот же —
+                                    проверять `git diff --stat 0c3b84a..<tip> -- . ':!docs'` = пусто)
 ветка:                              feature/analytics-foundation (master ⊂ feature, fast-forward возможен)
 ```
 
@@ -65,6 +67,7 @@ rollout candidate:                  0c3b84a  = 8d10b7c + FIX_00 (свой фла
 | 5328917 | правила после сверки: SHORT_WINDOW, оговорки по заявленным метрикам, меньше загрузок заказов | growth |
 | 8d10b7c | docs: § 31 отчёт, GROWTH_DATA_CONTRACT, GROWTH_STATISTICS, § 11b, скриншоты | docs |
 | 0c3b84a | FIX_00: `growth-flags.ts`, гейт хука в `growth.module.ts`, строка compose-шаблона, текст вкладки, 3 теста | growth, compose, frontend |
+| df276fb… | этот план и правки docs после него — только `docs/analytics/` | docs |
 
 Изменённые **существующие** файлы (`git diff --diff-filter=M 3ac9be8..0c3b84a`; 17 удалённых строк — все в docs):
 `prisma/schema.prisma` (+79, только новые модели), `app.module.ts` (+2), `metrika-analytics-scheduler.service.ts`
