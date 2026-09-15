@@ -671,3 +671,64 @@ Stage 09: probes 401/403/200/400 без изменений; HTTP = service = met
    формы на 360–430 px и доли согласия на cookie по устройствам.
 5. Security debt без изменений (ротация токена/секрета Яндекса).
 ```
+
+---
+
+## 22. FIX_01 ROLLOUT (правило 11.1 — окна измерения шагов)
+
+Ограниченная выкладка FIX_01 (`10_BEHAVIOR_AND_FUNNELS.md` § 34) по команде владельца «СТАРТ — Stage 10 FIX_01
+production rollout» (15.09.2026). Candidate: **b04681f** (код f2db719 + be7a282, документация e24afb9 / b04681f).
+
+Не меняются: `.env` и compose, Prisma schema / migrations, Metrika event model сайта, конфигурация scheduler,
+production data. Только код backend/frontend штатным deploy (push в `master` → CI «Сборка образов» → auto-update).
+
+### 22.1 Pre-deploy gate
+
+- `origin/master = 80921d9` (production); candidate — descendant master (`git merge-base --is-ancestor`),
+  owner-коммитов между review и deploy нет;
+- `git diff --stat 80921d9..candidate` — только ожидаемые файлы: `crm-new/src/analytics/behavior/
+  {behavior-contract,behavior-compute,behavior-compute.spec}.ts`, `frontend/src/types/behavior.ts`,
+  `frontend/src/features/analytics/{behavior-view.ts,behavior-sections.tsx,__tests__/behavior.test.tsx}`,
+  `docs/analytics/*`; `prisma/`, `.env`, compose, scheduler, web-photo — без изменений;
+- production state: backend/frontend healthy, последний тик SUCCESS, FAILED 0, RUNNING 0, outbox 8;
+- BEFORE-снимок production API (временный ADMIN-токен подписывается в контейнере и живёт только в переменной
+  серверной оболочки): behavior `status / summary / funnels / issues` за today / 7d / 30d, Stage 09 `status /
+  overview 7d` → файл без секретов на рабочей станции.
+
+### 22.2 Deploy
+
+- `git push origin b04681f:master` (fast-forward, без force) → CI → auto-update (≈ 5–7 мин); действий на сервере
+  нет — env не меняется, backend/frontend пересоздаёт auto-update штатно.
+
+### 22.3 Post-deploy checks (все обязательны)
+
+1. backend / frontend healthy; `/health` ok; образы = сборка candidate.
+2. `prisma migrate status` — up to date; `_prisma_migrations` 78 applied; новых миграций FIX_01 нет (в образе
+   78 папок миграций).
+3. `/behavior/issues` за 7d и 30d — `FUNNEL_DROPOFF` для photo / canvas / tshirt отсутствует.
+4. Те же переходы — в `skipped` с `code = PARTIAL_BEHAVIOR_PERIOD` (даты обоих шагов, «не раньше 12.09.2026»).
+5. Числа воронок (visits / events / users по шагам) равны BEFORE; расхождения допустимы только от тиков
+   расписания между снимками — сверяются с журналом `MetrikaSyncRun`.
+6. `not_measured` шаги — `visits / events / users = null`.
+7. `DEVICE_GAP` на месте с прежним severity и фактом.
+8. Остальные правила — набор issues / skipped по `FORM_ERROR_SPIKE`, `LANDING_UNDERPERFORMANCE`,
+   `LEAD_RATE_ANOMALY` как в BEFORE (плюс коды); A (HTTP) = B (service) = C (SQL) по ключевым метрикам 7d / 30d.
+9. Stage 09: `status / overview / trend / sources / utm / landings / devices / products / sales-channels` → 200
+   через домен; P&L августа = `/reports/monthly`.
+10. Stage 06: воркер запущен после recreate; outbox 8 без изменений.
+11. Scheduler: тик при старте SUCCESS 12/12 + снимки 8/8, дублей 0, FAILED 0, overlap 0; следующий регулярный
+    тик — SUCCESS.
+12. UI `/crm/analytics → Поведение`: partial-переходы подписаны («окна измерения не совпадают»), причины пропуска
+    с кодами видны. Проверка — production-JSON ответов API, отрендеренный production-сборкой панели (тот же
+    bundle); под учётной записью владельца исполнитель не входит.
+
+### 22.4 STOP
+
+Pending или новая миграция; backend не healthy > 5 мин; `FUNNEL_DROPOFF` photo / canvas / tshirt всё ещё есть;
+числа воронок изменились без объяснения тиком; `DEVICE_GAP` исчез; регресс Stage 09 / 06; тик FAILED или дубли
+→ остановиться и вернуть отчёт. Rollback: force push запрещён — revert-коммит в `master` по решению владельца.
+
+### 22.5 Отчёт
+
+`EXECUTOR_REPORT_STAGE10_FIX01_ROLLOUT`: DEPLOY, SMOKE, BEFORE/AFTER, REGRESSION, SCHEDULER, GIT, FINAL_STATUS.
+После прохождения production больше не менять.
