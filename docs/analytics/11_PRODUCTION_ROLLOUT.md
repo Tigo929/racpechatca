@@ -964,6 +964,9 @@ A «Деплой сайта 12.09…» — «Окна несопоставимы
 ## 21. OPEN DECISIONS
 
 ```text
+0. GIT: отчёт § 35 и правки state-docs — коммит f45ad8e только в feature/analytics-foundation (docs-only); в master не
+   пушился, чтобы не запускать пересборку и auto-update production после отчёта. Влить в master — отдельным решением
+   (docs-only fast-forward без изменения кода образов).
 1. DEVIATION 1 — принять как есть или FIX (флаг в guard → 404 до валидации).
 2. definitionCutovers 14–15.09 для поведенческих метрик (окна, пересекающие инцидент, → INCOMPARABLE формально) — отдельный FIX.
 3. Owner smoke § 27 — владелец.
