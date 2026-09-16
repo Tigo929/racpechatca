@@ -3,11 +3,14 @@
 ## STATUS
 
 ```text
-READY_FOR_REVIEW — план production rollout Stage 11 подготовлен 15.09.2026 по решению Reviewer
-«11_GROWTH_AND_EXPERIMENTS = READY_FOR_PRODUCTION_ROLLOUT». Production НЕ менялся, rollout НЕ начат.
-Начало — только по отдельной команде Reviewer «СТАРТ» (§ 34). Кандидат — § 2 и требует подтверждения
-Reviewer: FIX_00 (0c3b84a) добавляет свой флаг раздела поверх reviewed 8d10b7c — без него требование
-«выкатывать выключенным» невыполнимо, потому что общий флаг дашборда в бою уже включён.
+REVIEW — technical rollout выполнен 15.09.2026 23:10–23:23 MSK по команде Reviewer «СТАРТ» (кандидат 0c3b84a,
+fast-forward до docs-only потомка 5922175): раздел выложен выключенным (23:13, миграция на старте контейнера, 59 таблиц),
+OFF-gate пройден (§ 9; отклонение § 9.5 — 400 от ValidationPipe до проверки флага, записей 0), controlled enable 23:17:35,
+изменения A (деплой 12.09) и B (инцидент 14–15.09) зарегистрированы реальными датами, сверка A = B = C diff 0, версии
+неизменяемы, лок первичной метрики, контракт наблюдательности без нарушений, тест 12.09 = INCOMPARABLE (не +88,9 %),
+инцидент = OVERLAPPING_CHANGE, P&L = /reports/weekly diff 0, PII 0, cold evaluate 2,23 с, 13 автоматических циклов
+(00:17…12:17 16.09) SUCCESS, Stage 06/09/10 diff 0. Остановка на owner-smoke gate (§ 27). Отчёт — § 35. Production после
+отчёта не менялся; DONE ставит Reviewer после owner smoke.
 ```
 
 ## STAGE
@@ -628,3 +631,342 @@ Rollout начинается только после отдельной кома
 
 с указанием подтверждённого кандидата (`0c3b84a` с FIX_00 или иное решение по флагу). До команды production не
 менять; этот документ — план, не отчёт.
+
+---
+
+# 35. EXECUTOR_REPORT_STAGE11_PRODUCTION_ROLLOUT — 15–16.09.2026
+
+## RESULT
+
+```text
+DONE_PENDING_REVIEW — technical rollout выполнен 15.09.2026 23:10–23:23 MSK (техническая часть), контроль автоциклов до 16.09 13:18 MSK по команде Reviewer «СТАРТ»
+(кандидат 0c3b84a, fast-forward до docs-only потомка 5922175). Раздел выложен ВЫКЛЮЧЕННЫМ (23:13), OFF-gate пройден,
+controlled enable 23:17:35; изменения A (деплой 12.09) и B (инцидент 14–15.09) зарегистрированы реальными датами;
+сверка A = B = C diff 0; версии неизменяемы; лок первичной метрики работает; контракт наблюдательности без нарушений;
+тест 12.09: 3,92 % → 7,41 % (+88,9 %) = INCOMPARABLE, не POSITIVE_SIGNAL; инцидент — OVERLAPPING_CHANGE; P&L = /reports/weekly
+diff 0; PII 0; cold evaluate 2,23 с; автоматических циклов после включения: 13 (00:17…12:17 MSK 16.09) (все SUCCESS, хук без ошибок);
+Stage 06/09/10 без регрессий (diff 0). Остановка на owner-smoke gate (§ 27). Production после этого отчёта не менялся.
+Отклонения от плана — § 35.20 (главное: § 9.5 — при выключенном флаге POST с невалидным телом даёт 400 от ValidationPipe
+раньше проверки флага; данных не раскрывает, записей не создаёт; не трактовано как STOP — решение за Reviewer).
+```
+
+## 1. GIT / DEPLOY
+
+```text
+origin/master до:      3ac9be8 (проверено 22:2x и повторно перед push 23:10 — новых owner-коммитов нет)
+кандидат:              0c3b84a (код) → fast-forward до 5922175 (docs-only: план § 2 + правка § 2); diff 0c3b84a..5922175 -- ':!docs' = пусто
+диапазон:              3ac9be8..5922175 = 12 коммитов исполнителя, как в § 2 (5b3d9fb, bf9bb62, c78fac7, 51f850d, 41be79b, e2583cb,
+                       70f4aab, 5328917, 8d10b7c, 0c3b84a, df276fb, 5922175); области файлов — только перечисленные в § 2
+gate § 3:              prisma validate OK; CRM jest 1015/1015 (94 suites); панель 35/35; nest build, tsc -b, vite build OK; eslint growth 0
+push master:           15.09 23:10:16 MSK (fast-forward, без force); GitHub Actions «Сборка образов» → образы созданы 23:12:17 MSK
+auto-update:           23:12:55 «Обновляю backend» f8fa6cdfccfe → 191f27494fbc, 23:13:27 «Готово: backend обновлён и здоров»;
+                       23:13:32 «Обновляю frontend» 960bfeb81987 → 5022f7ad3030, 23:14:05 «Готово», nginx перечитан 23:14:05
+health:                backend running:healthy 23:13:27, frontend running:healthy 23:14:06; ошибок деплоя 0; побочных пересозданий нет
+                       (frontend не пересоздавал backend — env backend уже совпадал с compose)
+nginx:                 оба хоста → 401 JSON без токена на /analytics/dashboard/growth/status (raspechatkaa.ru и 195-2-75-249.sslip.io);
+                       новых префиксов не требовалось (/analytics/ в обоих белых списках с этапа 09)
+```
+
+## 2. BACKUPS (§ 4)
+
+```text
+compose:  /opt/raspechatka/docker-compose.prod.yml.bak-stage11-20260915-2226 (173 строки)
+.env:     /opt/raspechatka/.env.bak-stage11-20260915-2226 (50 строк; содержимое не выводилось)
+          /opt/raspechatka/.env.bak-stage11-enable-20260915-2317 (50 строк — перед включением флага)
+DB:       /opt/raspechatka/backups/premigration_stage11_growth_20260915_222656.sql.gz — 744 159 байт, 94 CREATE TABLE в дампе,
+          заголовок «PostgreSQL database dump» читается, запись в backups/backup.log (процесс backup-db.sh: pg_dump | gzip + размер)
+```
+
+## 3. MIGRATION (§ 5)
+
+```text
+файл:      20260915130000_analytics_change_registry/migration.sql — 60 строк: CREATE TABLE 2, CREATE INDEX 2, CREATE UNIQUE INDEX 1,
+           ALTER TABLE 1 (FK на новой таблице, ON DELETE CASCADE); DROP/TRUNCATE/DELETE/UPDATE/RENAME 0; существующих таблиц в файле 0
+предпроверка порядка (22:3x): на временной БД crm_stage11_mig из свежего дампа с ТЕКУЩИМ production-образом
+           `prisma migrate deploy` применил 20260915130000 после уже применённых 20260915170000/173000 владельца
+           («82 migrations found», 1 applied) → 59 таблиц; временная БД удалена; production не тронут (AnalyticsChange* = 0)
+production: применена на старте контейнера 23:13:13 MSK (лог: «Applying migration 20260915130000_analytics_change_registry …
+           All migrations have been successfully applied»); _prisma_migrations: applied 82, rolled_back_at null
+объекты:   таблиц public 59 (было 57); AnalyticsChange + AnalyticsChangeEvaluation (0 строк на момент деплоя); индексов 5 (3 + 2 PK); FK 1
+повторный старт 23:17 (enable): «No pending migrations to apply»
+```
+
+## 4. FLAG OFF CHECKS (§ 9) — 23:14–23:16 MSK, ANALYTICS_GROWTH_ENABLED не задан → false
+
+```text
+compose (§ 6, 22:29): + ANALYTICS_GROWTH_ENABLED: ${ANALYTICS_GROWTH_ENABLED:-false}; `compose config` → "false"; .env не менялся
+boot-лог 23:13:19:  [GrowthModule] Раздел «Рост / Изменения» выключен (ANALYTICS_GROWTH_ENABLED): хук расписания не подключён
+env в контейнере:   dashboard=true growth=false analytics_sync=true orders_sync=true
+1 без токена:       GET status → 401, GET changes → 401                                                        ✓
+2 EXECUTOR:         GET changes → 403 «Недостаточно прав», POST changes → 403                                    ✓
+3 ADMIN status:     200, enabled=false, abCapability NO_VARIANT_ASSIGNMENT, evidenceTypes [OBSERVATIONAL_BEFORE_AFTER],
+                    metrics 21, counts {DRAFT 0, ACTIVE 0, COMPLETED 0, CANCELLED 0}                              ✓
+4 ADMIN при OFF:    GET changes → 404 «Раздел аналитики выключен»; POST валидное тело → 404; GET …/evaluations/latest → 404;
+                    AnalyticsChange строк после проб 0                                                              ✓
+5 ADMIN POST {}:    → 400 (10 ошибок валидации), НЕ 404 — ValidationPipe отрабатывает до проверки флага в методе;
+                    записей 0, данных раздела не раскрывает                                                    ✗ ожидание плана (DEVIATION 1)
+6 Stage 09/10 JSON: status / overview 30d / overview 7d / behavior summary 7d / issues 7d / issues 30d / funnels 7d —
+                    BEFORE (22:25) vs AFTER (23:15): листьев 14/214/214/109/69/69/346, diffs 0 (без volatile-полей)   ✓
+7 UI (replay production-JSON в сборке кандидата): вкладка «Рост / Изменения» → карточка «Раздел «Рост / Изменения» выключен»,
+                    запросов к growth-маршрутам кроме status нет; вкладки Обзор / Поведение рендерятся без ошибок
+                    (скриншот screenshots/11_growth/off-growth-disabled.png)                                        ✓
+8 тик при OFF:      23:14:50–23:15:05 (scheduler:daily 26.08–15.09, первый тик после старта) — 12/12 SUCCESS, снимки 8/8,
+                    строк «growth:evaluate»/«автооценка» в логе 0; дублей MetrikaSyncRun 0; RUNNING 0                ✓
+```
+
+## 5. ENABLE (§ 10)
+
+```text
+23:17: .env + ANALYTICS_GROWTH_ENABLED=true (51 строка; backup .env.bak-stage11-enable-20260915-2317); compose config → "true"
+       RUNNING sync runs = 0 (окно после тика 23:15) → docker compose up -d --force-recreate --no-deps backend 23:17:10 →
+       healthy 23:17:38 (image 191f27494fbc, тот же); frontend не пересоздавался; nginx reload ok
+boot-лог 23:17:35: [GrowthModule] Раздел «Рост / Изменения» включён: хук расписания подключён; «No pending migrations»
+пробы (23:17:55): status enabled=true; без токена 401; EXECUTOR GET/POST 403; ADMIN POST {} → 400 (10 ошибок);
+       ADMIN POST с customerPhone → 400 «property customerPhone should not exist»; строк после проб 0
+```
+
+## 6. REGISTRY (§ 11) — только реальные события
+
+```text
+B  28b7033d-4136-400a-81c7-260112e9244d «Инцидент 14.09 18:20 → 15.09 20:32: сайт работал на августовской сборке»
+   SITE / site:rollback-incident / startedAt 2026-09-14T15:20Z (18:20 MSK) / endedAt 2026-09-15T17:32Z (20:32 MSK) /
+   deploymentRef «web-photo latest ← 8a9b33c (август) → cc9bc89» / primary visits, secondary [siteLeads, formStarts] / NEUTRAL /
+   status COMPLETED / hypothesis «не исследуемое изменение: граница данных / confounder…»; cutoverDay 2026-09-14
+A  222c1b8e-4c7f-428c-9383-3c3805b4f324 «Деплой сайта 12.09: единый lead_submitted, заявка ≠ покупка, first-touch (этап 04)»
+   SITE / site:forms / startedAt 2026-09-12T10:19Z (13:19 MSK) / deploymentRef «web-photo d9a6488 / cb2dd96 …» /
+   primary siteLeadRate, secondary [visits, formStarts, crmLeads, acceptedOrders, leadToPaidRate, paidOrders, netProfit] /
+   INCREASE / evaluationDays 7 / ACTIVE; cutoverDay 2026-09-12; PATCH description до первой оценки → 200
+C  не регистрировалось (по желанию владельца; § 11)
+Границы B — из /var/log/auto-update.log (14.09 18:20 пересоздание photo-web-1 из августовского образа; 15.09 20:32 восстановление cc9bc89).
+```
+
+## 7. RECONCILIATION (§ 12) — изменение A, 23:17:58 MSK (observationCutoff 14.09 = вчера по Москве)
+
+```text
+окна:      before 10–11.09.2026, after 13–14.09.2026 (2 дня; день изменения 12.09 исключён), flags [EXCLUDED_CUTOVER_DAY, SHORT_WINDOW, WEEKDAY_MIX_MISMATCH]
+A (HTTP POST evaluate, cold) 2231 ms → v1: verdict INCOMPARABLE, maturity MATURE (первичная)
+B (AnalyticsGrowthService.evaluate в контейнере, те же строки) → v2: A vs B по 617 листьям JSON — diffs 0 (service 2542 ms)
+C (SQL по MetrikaDailyTraffic / MetrikaDailyGoal 611379890 / MetrikaDailyBehaviorDevice form_started / MetrikaPeriodSnapshot
+   + когорты этапа 08 Overview.crmFunnel.cohorts + Overview.siteFunnel.matchedAccepted + Overview.financials.realized):
+   visits 51/27; siteLeads 2/2; siteLeadRate 3,922/7,407 %; formStarts 8/3; crmLeads 0/1; acceptedOrders 5/9; matchedAccepted 0/0;
+   realizedRevenue 14 740/26 537 ₽; netProfit 8 193/14 850 ₽; periodUsers null/null (снимков окон ещё не было) —
+   20 проверок, diffs 0
+реестр:    GET changes / GET changes/:id = строки AnalyticsChange 1:1 (id, даты, метрики, статус, primaryLockedAt)
+```
+
+## 8. VERSIONS / LOCK (§ 13)
+
+```text
+v1 (23:17:58, manual, INCOMPARABLE) → после v2 (service) и v3 (HTTP POST evaluate 23:2x): GET …/evaluations/1 байт в байт
+равен себе до и после новых оценок (true); строка БД v1 (result, flags, evaluatedAt) не изменилась (true);
+latest = последняя версия; history по убыванию версий; unique(changeId, version) — дублей 0.
+Всего версий A на момент отчёта: 9 (v1–v8 manual 15.09, v9 scheduler 16.09 00:17:50) (все manual, кроме scheduled из тика 00:19 — см. § 35.13); лишние ручные
+версии v4–v6 — повторный прогон сверочного скрипта (DEVIATION 3), все INCOMPARABLE, данные идентичны.
+PATCH primaryMetric → 400 «Первичная метрика зафиксирована первой оценкой и не меняется; создайте новое изменение»;
+PATCH expectedDirection → 400; PATCH description → 200; в БД primaryMetric siteLeadRate, expectedDirection INCREASE,
+primaryLockedAt = 23:17:58 (первая оценка).
+```
+
+## 9. OBSERVATIONAL CONTRACT (§ 14)
+
+```text
+по всем сохранённым оценкам A (v1…v9 (v1–v8 manual 15.09, v9 scheduler 16.09 00:17:50)): evidenceType OBSERVATIONAL_BEFORE_AFTER, causality NOT_ESTABLISHED,
+abCapability NO_VARIANT_ASSIGNMENT, disclaimer содержит «не доказывает», FACT/INTERPRETATION/RECOMMENDATION без слов
+«доказан/доказыва/причина/благодаря/привело к/вызвал» — нарушений 0. status: abCapability NO_VARIANT_ASSIGNMENT,
+evidenceTypes [OBSERVATIONAL_BEFORE_AFTER]. UI: плашка «A/B-тесты с разделением аудитории недоступны (NO_VARIANT_ASSIGNMENT) —
+все оценки наблюдательные» и дисклеймер «Совпадение по времени не доказывает, что изменение вызвало результат…» (в шапке и под оценкой).
+```
+
+## 10. VERDICTS (§ 15–16) — A, факт / ожидание
+
+```text
+siteLeadRate (primary)  INCOMPARABLE ✓ — codes [METRIC_UNAVAILABLE_BEFORE, MEASUREMENT_DEFINITION_CHANGED, INCOMPARABLE_WINDOWS],
+                         measuredFrom 13.09 / 13.09, cutoversInside [2026-09-13]
+                         3,92 % (2/51) → 7,41 % (2/27), +3,49 п.п. (+88,89 %), Фишер p = 0,606, 95 % ДИ [−7,24; +19,7] п.п.,
+                         MDE ±12,94 п.п. (±330 % базы), для 20 % нужно ≈ 10 533 визита на окно
+                         UI: заголовок «Окна несопоставимы», дельта приглушённая («не является выводом — см. вердикт»),
+                         FACT — числа с оговоркой, INTERPRETATION — «определение изменилось 13.09 … разница не является эффектом»,
+                         RECOMMENDATION — «сравнивать окна, целиком лежащие после смены определения» → тест 12.09 ПРОЙДЕН:
+                         verdict ≠ POSITIVE_SIGNAL, headlineIsDelta = false, confounders ∋ MEASUREMENT_DEFINITION_CHANGED
+visits (secondary)      INSUFFICIENT_DATA ✓ (51 → 27 за 2 дня); flags SHORT_WINDOW (< 7 дней), WEEKDAY_MIX_MISMATCH, LOW_SAMPLE
+formStarts              INSUFFICIENT_DATA ✓ (8 → 3)
+crmLeads / acceptedOrders (CRM для SITE)  scopeCompatibility context_only ✓ — в UI помечены «контекст», подпись
+                         «контекст описывает бизнес, а не эффект изменения»; вердикт INSUFFICIENT_DATA; в первичный вердикт не входят
+leadToPaidRate / paidOrders / netProfit / realizedRevenue  IMMATURE ✓ (класс paid, maturityUntil 28.09.2026 = after.to + 14 дн.),
+                         несмотря на +81 % прибыли (8 193 → 14 850 ₽) — UI «Исход ещё созревает · не созрело»
+matchedAccepted (context) INCOMPARABLE ✓ (availableFrom 13.09 → METRIC_UNAVAILABLE_BEFORE) + MATCHED_COVERAGE_LOW (покрытие 0 %/0 %)
+MDE / sample gate       заполнены (mde absolute/relative, requiredSample.perWindow); NO_CLEAR_CHANGE не появился ✓
+WEEKDAY_MIX_MISMATCH    есть (окна по 2 дня: чт–пт vs сб–вс) ✓; EXCLUDED_CUTOVER_DAY ✓
+confounders A           WEEKDAY_MIX_MISMATCH[ATTENTION], MEASUREMENT_DEFINITION_CHANGED[ATTENTION], OVERLAPPING_CHANGE[ATTENTION]→B, LOW_SAMPLE[ATTENTION]
+сегменты (устройства)   Компьютер 7,14 % → 13,33 % INCOMPARABLE; Телефон 0 % → 0 % INCOMPARABLE — как первичная
+A v9 (scheduler, 16.09 00:17:50, cutoff 15.09; окна 09–11.09 / 13–15.09, 3 дня): INCOMPARABLE — 2/78 = 2,56 % → 3/37 = 8,11 %,
+                         Фишер p 0,326, MDE ±8,84 п.п. (±345 %); flags EXCLUDED_CUTOVER_DAY, SHORT_WINDOW, WEEKDAY_MIX_MISMATCH;
+                         confounders WEEKDAY_MIX_MISMATCH, SOURCE_MIX_SHIFT (новый — смесь источников сдвинулась), MEASUREMENT_DEFINITION_CHANGED,
+                         OVERLAPPING_CHANGE [B]; periodUsers {54, 27} из точных снимков; visits 78 → 37 INSUFFICIENT_DATA; formStarts INCOMPARABLE
+                         (окно «до» 09–11.09 начинается раньше доступности form_started с 10.09 — PARTIAL_MEASUREMENT_PERIOD); crmLeads 2 → 2,
+                         acceptedOrders 15 → 15 INSUFFICIENT_DATA (контекст); paidOrders 3 → 1, netProfit 29 474 → 20 312 ₽ IMMATURE
+                         (падение прибыли тоже НЕ вердикт — исход не созрел); causality NOT_ESTABLISHED
+B как изменение         15.09: POST evaluate → 400 «После cutover (2026-09-14) ещё нет ни одного полного московского дня с данными —
+                         оценивать нечего (NO_COMPLETE_DAYS_AFTER)» — строже ожидания плана (INSUFFICIENT_DATA): оценка невозможна
+                         до 16.09; изменение в реестре, как confounder работает (см. § 35.11). Повторно 16.09 13:18 (cutoff 15.09): снова 400 NO_COMPLETE_DAYS_AFTER — у B нет ни одного полного московского дня
+                         внутри его жизни (начался 14.09 18:20, закончился 15.09 20:32), поэтому как самостоятельное изменение он
+                         не оценивается никогда — по замыслу; его роль — граница/confounder (OVERLAPPING_CHANGE у A v1–v9).
+```
+
+## 11. INCIDENT BOUNDARY (§ 17)
+
+```text
+B зарегистрирован COMPLETED с точными границами 14.09 18:20 → 15.09 20:32 MSK. Все оценки A (after-окно 13–14.09 пересекает
+14.09) получили confounder OVERLAPPING_CHANGE [28b7033d] — в UI «Другое изменение рядом: одновременно действовали другие
+изменения: «Инцидент 14.09 18:20 → 15.09 20:32: сайт работал на августовской сборке» … — разницу нельзя приписать одному
+изменению» ✓. Факт с последствиями (цели lead_submitted / form_started за вечер 14.09 и 15.09 до 20:32 неполные, визиты корректны)
+записан в 01_CURRENT_STATE.md § 5j. OPEN DECISION — definitionCutovers на 14–15.09 (§ 17 плана) остаётся за Reviewer.
+```
+
+## 12. MATURITY / SCOPE / COVERAGE / P&L / SNAPSHOTS (§ 18–22)
+
+```text
+maturityPolicy (бой):  daysByClass {immediate 0, accepted 1, paid 14}; leadToAccepted n 25, median 0, p90 0,6 дн. (empirical);
+                       acceptedToPaid n 212, median 10, p90 20 дн.; paid — default 14 дн. (пар заявка → оплата < 20)
+классы в оценке A:     immediate MATURE (visits, formStarts, crmLeads, acceptedOrders); accepted → matchedAccepted PARTIALLY_MATURE
+                       (до 15.09); paid → IMMATURE до 28.09 (leadToPaidRate, paidOrders, netProfit, realizedRevenue)
+site leads ≠ CRM:      siteLeads (цель Метрики) 2/2 и crmLeads (когорта CRM по дате заявки) 0/1 — разные строки/подписи;
+                       siteLeadRate = 2/51, не crmLeads/visits; CRM-метрики для SITE — context_only ✓
+ClientID coverage:     clientIdCoverageAccepted 0 % / 0 % (= overview.dataQuality) → matchedAccepted MATCHED_COVERAGE_LOW,
+                       вывода нет ✓ (данные сопоставления с 13.09, покрытие пока нулевое)
+P&L:                   контекст A realizedRevenue 14 740/26 537, netProfit 8 193/14 850 = overview(custom окна) diff 0;
+                       overview(custom) vs ReportsService.getWeeklyReport(2026, 9) (недели Пн–Вс): 07–13.09: totalRevenue 52 541 /
+                       netProfit 37 164 / orders 32 — diff 0; 01–06.09: 74 658 / 38 838 / 53 — diff 0; HTTP /reports/weekly = service.
+                       COGS: financials.quality.completeness = complete в обоих окнах → флага COGS_INCOMPLETE нет — корректно
+                       (прибыль при этом IMMATURE, не «растёт»)
+exact snapshots:       до первого тика periodUsers null/null (флаг UNIQUE_USERS_UNAVAILABLE_FOR_CUSTOM_WINDOW); тик 23:19 с хуком →
+                       MetrikaPeriodSnapshot preset=null: 10–11.09 users 35 visits 51; 13–14.09 users 21 visits 27 (fetchedAt 23:19:18);
+                       запросов снимков окон 4 (2 окна × stats+goals), ошибок 0; новая оценка (v7, 23:22) → periodUsers {before 35, after 21},
+                       флаг снят; снимок users < Σ дневных users (35 < 37, 21 < 23) — уникальные не суммируются ✓; visits = Σ дневных ✓
+```
+
+## 13. SCHEDULER (§ 23)
+
+```text
+тик 23:14:50 (после деплоя, флаг OFF):  12/12 SUCCESS, снимки 8/8, хука нет
+тик 23:19:05–23:19:18 (после enable):    12/12 SUCCESS, снимки 8/8 (16 req), хук: «Рост: автооценка — изменений 0,
+                                         запросов снимков окон 4, ошибок 0» (нового полного дня нет → переоценки 0) — цикл 1 ✓
+тик 00:17:35–00:17:44 16.09 (новый московский день): 12/12 SUCCESS, снимки 8/8; хук 00:17:51: «изменений 1, запросов снимков
+                                         окон 4, ошибок 0» → A v9 trigger scheduler, observationCutoff 15.09, окна 09–11.09 / 13–15.09 (3 дня),
+                                         lastSyncRunId = id тика (3a2b63f3…), INCOMPARABLE; снимки окон 09–11.09 (users 54, visits 78) и 13–15.09
+                                         (users 27, visits 37) — цикл 2 ✓; B (COMPLETED) не переоценивался
+тики 01:17 … 12:17 16.09 (11 циклов): каждый 12/12 SUCCESS, снимки 8/8; хук «изменений 0, запросов снимков окон 2,
+                                         ошибок 0» — переоценки без нового дня нет; 2 запроса/тик = обновление снимка after-окна 13–15.09,
+                                         пока оно не «устоялось» (w.to < cutoff станет true 17.09 00:17) — циклы 3–13 ✓
+дубли:     count(*) group by (changeId, observationCutoff, trigger='scheduled') ≤ 1 — 0 (одна scheduler-версия на cutoff 15.09); unique(changeId, version) цел
+гонки:     ручные оценки (manual) и хук — отдельные версии, ошибок в логе 0
+Metrika API из HTTP-запросов дашборда: 0 (все строки YandexMetrikaClient в логе — только внутри тиков 23:14:50–23:15:12,
+                                         23:19:05–23:19:18 и далее в :17 каждого часа 16.09; в остальные минуты строк клиента Метрики нет)
+```
+
+## 14. PERFORMANCE (§ 24, production-контейнер, БД в соседнем контейнере)
+
+```text
+POST evaluate A cold (первый после recreate 23:17):  2231 ms  (цель ≤ 3,0 с ✓)
+POST evaluate warm:                                  1902 / 1051 / 2797 / 2221 ms  (цель ≤ 2,0 с — 2 из 4 выше: 2797 ms при
+                                                      первой оценке с новыми снимками окон; ≤ 3 с все) — NEW FACT
+service evaluate (в контейнере):                      2542 ms
+GET status 257–355 ms (lifecycles для эмпирики; цель ≤ 1,0 с ✓); GET changes 22–81 ms (≤ 0,5 ✓); GET latest 11–18 ms (≤ 0,3 ✓)
+Stage 09 overview 30d после деплоя: 2,1 с BEFORE → 1,9–3,0 с AFTER (в пределах шума; первый вызов после recreate холодный)
+N+1: pg_stat_database.tup_returned за одну оценку +15 570 и +16 012 строк (±3 %, десятки тысяч, не миллионы);
+     xact_commit +79 ≈ число SQL-запросов (76 на копии + запись версии) — константа, не растёт с числом заказов
+```
+
+## 15. PRIVACY (§ 25)
+
+```text
+Строки AnalyticsChange (1 523 символа) + AnalyticsChangeEvaluation (result + flags, ~117–119 тыс. символов):
+телефоны (строгий паттерн с границами) 0; e-mail 0; @username 0; 19-значные ClientID 0; ссылки t.me/max.ru/wa.me 0;
+контакты клиентов из OrderPhoto.urlCommunication (12 значений, не печатались) — вхождений 0.
+Нестрогий паттерн 7\d{10} дал 60 «попаданий» — все внутри десятичных дробей статистики (например 7,4074074074…) — ложные.
+API JSON (changes, latest) и UI-скриншоты — те же тексты; секреты в логах/отчёте не выводились (JWT подписывались внутри
+контейнера и не печатались; .env — только имена backup-файлов и число строк).
+```
+
+## 16. REGRESSION Stage 06 / 09 / 10 (§ 26)
+
+```text
+06:  outbox delivered=1 skipped=9 до и после (без изменений); orders_sync=true; ошибок воркера в логе 0
+07/08: тики 23:09 (до), 23:14, 23:19 и далее в :17 каждого часа 16.09; в остальные минуты строк клиента Метрики нет — все SUCCESS, снимки 8/8; FAILED 0, RUNNING 0, дублей 0
+09:  /analytics/dashboard/status, overview 30d/7d — BEFORE 22:25 = AFTER 23:15 (OFF) = 23:3x (ON): diffs 0 (214 листьев)
+10:  /behavior/summary 7d, issues 7d/30d, funnels 7d — diffs 0 (109/69/69/346 листьев); skipped PARTIAL_BEHAVIOR_PERIOD (FIX_01) на месте
+UI:  production-JSON в сборке кандидата: вкладки Обзор и Поведение рендерятся (маркеры «Визит», «Требует внимания»), слов
+     «Ошибка / не удалось» 0; телефон 390 px — scrollWidth 390 (скриншоты prod-tab-overview/behavior в scratch, prod-growth-mobile-390.png в docs)
+CRM: backend один и тот же (191f27494fbc); health ok (uptime 50 393 с к 13:17 16.09 — с enable без перезапусков); Telegram-темы
+     владельца (3ac9be8) — код в образе, ошибок при старте 0; единственный ERROR в логе за ночь — 04:11 TelegramPollingService
+     «getUpdates падает 5 раз подряд: timeout» (сетевой таймаут Telegram, не Stage 11; polling восстановился)
+```
+
+## 17. UI (production-JSON → сборка кандидата; под учётной записью владельца исполнитель не входил)
+
+```text
+screenshots/11_growth/prod-growth-desktop-A.png — A: «Окна несопоставимы», 3,92 % → 7,41 %, дельта приглушённая, ДИ/p/метод/MDE словами,
+   ФАКТ / ИНТЕРПРЕТАЦИЯ / ЧТО ДЕЛАТЬ, дисклеймер, «Оговорки (4)» с инцидентом, «Другие метрики» (контекст подписан),
+   сегменты по устройствам, «Уникальные посетители за окна: до 35, после 21», созревание «принятые 1 дн., оплаты 14 дн. (по умолчанию —
+   истории мало)»; prod-growth-desktop-B.png — B: «Завершено», «Оценок ещё нет»; prod-growth-mobile-390.png — без горизонтальной прокрутки;
+   off-growth-disabled.png — состояние при выключенном флаге
+```
+
+## 18. OWNER SMOKE (§ 27)
+
+```text
+НЕ ВЫПОЛНЕН ИСПОЛНИТЕЛЕМ — gate владельца. Чек-лист § 27: /crm/analytics → «Рост / Изменения»: плашка NO_VARIANT_ASSIGNMENT и дисклеймер;
+A «Деплой сайта 12.09…» — «Окна несопоставимы» (не +88,9 %), B «Инцидент 14.09…» — завершено; в A — окна с исключённым 12.09,
+ФАКТ / ИНТЕРПРЕТАЦИЯ / ЧТО ДЕЛАТЬ, оговорки (в т. ч. инцидент), версии, «Оценить заново»; форма регистрации; телефон 390 px.
+Ориентиры для чтения: до 10–11.09 (3,92 %, 2 из 51), после 13–14.09 (7,41 %, 2 из 27) — при проверке владельца 16.09 после тика
+00:19 окна сдвинутся (after 13–15.09, before 09–11.09) и числа будут другими — это ожидаемо (новый полный день).
+Результат владелец фиксирует сам («OWNER SMOKE STAGE 11 ПРОЙДЕН» / замечания).
+```
+
+## 19. NEW FACTS
+
+```text
+1. Тики расписания в бою идут не в :31, а через 90 с после старта backend и далее ежечасно: после перезапуска владельцем 19:09 — в :09;
+   после деплоя 23:13 — 23:14:50; после enable 23:17 — 23:19:05 и далее в :19. Оба «тика при старте» — daily (окно 21 день), SUCCESS.
+2. Первое окно оценки A на 15.09: 2 дня (13–14.09) vs 2 дня (10–11.09) — SHORT_WINDOW; первое недельное окно после 12.09 — с 20.09.
+3. Покрытие ClientID у принятых заказов в окнах A = 0 % (сопоставление работает с 13.09, за 13–14.09 совпадений нет) → любые matched-метрики
+   пока INSUFFICIENT_DATA / INCOMPARABLE — честно.
+4. Заявок с сайта за 13–14.09 — 2 при 27 визитах; заказов CRM по дате заявки — 1 (0 до); принятых 9 (5 до) — контекст, не эффект.
+5. Точные снимки окон: 4 запроса к Метрике за тик на одно изменение, потом 0; users снимка меньше суммы дневных (35 vs 37, 21 vs 23) —
+   суммирование дневных завышало бы уникальных на 6–10 %.
+6. Инцидент B нельзя оценить как изменение до 16.09 (после endedAt 15.09 20:32 нет полного дня) — сервис отвечает 400
+   NO_COMPLETE_DAYS_AFTER, не выдумывает окно.
+7. P&L недельного отчёта владельца (Пн–Вс) и канонические метрики этапа 08 за те же даты совпадают до рубля (2 недели сентября).
+```
+
+## 20. DEVIATIONS
+
+```text
+1. § 9.5: при выключенном флаге ADMIN POST /growth/changes с телом {} → 400 (ValidationPipe), а не 404. Проверка флага — внутри метода
+   контроллера, глобальный ValidationPipe срабатывает раньше. Данные раздела не раскрываются, записей нет (0 строк), валидное тело → 404.
+   Формально попадает под STOP «любой маршрут кроме status отвечает не 404» — исполнитель НЕ остановил rollout (сочтено дефектом
+   ожидания плана, а не утечкой; поведение идентично другим DTO-маршрутам проекта). Решение — за Reviewer; предложение: FIX —
+   перенести проверку флага в guard (до пайпов) → 404 и на невалидное тело.
+2. A получил 7 secondary-метрик вместо 3 из § 11 (добавлены acceptedOrders, leadToPaidRate, paidOrders, netProfit — чтобы проверить
+   § 18/21 на реальном изменении, план § 18 это допускал «если добавлены»); для SITE они context_only и на вердикт не влияют.
+3. Лишние ручные версии A: v4–v6 созданы повторным прогоном сверочного скрипта (ошибка исполнителя в режиме запуска), v7–v8 — проверка
+   periodUsers/perf. Все manual, INCOMPARABLE, данные идентичны; версии неизменяемы, удалять их нельзя и не нужно.
+4. B (инцидент) 15.09 не оценивается (400 NO_COMPLETE_DAYS_AFTER) — план ожидал INSUFFICIENT_DATA + AFTER_WINDOW_TRUNCATED_BY_END; фактическое
+   поведение строже. Причина — endedAt 15.09 20:32 обрезает after-окно до нуля полных дней: изменение длительностью ~26 ч без единого
+   полного дня не оценивается как изменение вообще (ни 15.09, ни 16.09). Для роли «граница/confounder» это не мешает.
+5. § 21: сравнение с /reports/weekly выполнено для двух полных недель Пн–Вс (07–13.09, 01–06.09), а не для окон A (2-дневные окна
+   с неделей отчёта не совпадают) — цепочка «контекст A = overview(окна) = diff 0» + «overview(неделя) = weekly diff 0».
+6. Изменение C (правка шапки 15.09) не регистрировалось — решение владельца (§ 11).
+7. Тесты § 3 запускались до push на tip 5922175 (docs-only потомок кандидата), migrate diff со shadow-БД локально не выполнялся —
+   заменён предпроверкой migrate deploy на временной копии production-дампа.
+```
+
+## 21. OPEN DECISIONS
+
+```text
+1. DEVIATION 1 — принять как есть или FIX (флаг в guard → 404 до валидации).
+2. definitionCutovers 14–15.09 для поведенческих метрик (окна, пересекающие инцидент, → INCOMPARABLE формально) — отдельный FIX.
+3. Owner smoke § 27 — владелец.
+4. CI safety debt сайта (§ 31 плана) — отдельный технический gate после Stage 11; workflow и ветки web-photo не трогались.
+5. Warm evaluate до 2,8 с при первой оценке с новыми снимками окон (цель ≤ 2 с) — оптимизация не требуется до роста трафика; решение Reviewer.
+```

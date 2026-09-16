@@ -7,7 +7,10 @@
 сопоставимостью по датам доступности, эмпирическое созревание когорт, статистика с независимыми контрольными
 значениями и MDE, вердикты без причинности, confounders, API под флагом дашборда, вкладка «Рост / Изменения», хук
 расписания для точных снимков окон и автооценки. Сверка на копии production A = B = C diff 0. Production не тронут.
-Отчёт — § 31; контракты — `GROWTH_DATA_CONTRACT.md`, `GROWTH_STATISTICS.md`. READY_FOR_REVIEW; verdict — Reviewer.
+Отчёт — § 31; контракты — `GROWTH_DATA_CONTRACT.md`, `GROWTH_STATISTICS.md`. Reviewer 15.09: READY_FOR_PRODUCTION_ROLLOUT.
+**В production с 15.09.2026 23:17 MSK** (rollout по `11_PRODUCTION_ROLLOUT.md`, master = 5922175: выложен выключенным 23:13,
+включён 23:17:35; A «деплой 12.09» и B «инцидент 14–15.09» в реестре; сверки на бою diff 0; тест 12.09 = INCOMPARABLE;
+13 автоциклов SUCCESS) — отчёт `11_PRODUCTION_ROLLOUT.md` § 35; owner smoke § 27 ждёт владельца; DONE ставит Reviewer.
 
 ## 1. Goal
 
