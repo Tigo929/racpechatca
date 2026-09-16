@@ -268,6 +268,15 @@ unique key:  (periodStart, periodEnd, goalId)
 если нет:    periodUsers = null и флаг UNIQUE_USERS_UNAVAILABLE_FOR_CUSTOM_WINDOW, оценка не блокируется
 ```
 
+### Хук «Инсайты» — этап 12 (в production НЕ выложено)
+
+```text
+что:         registerAfterSync «insights:run» после снимков пресетов (при включённом ANALYTICS_INSIGHTS_ENABLED):
+             daily при новом полном московском дне — полный запуск детекторов по локальным таблицам (~150 SQL),
+             иначе hourly — свежесть и оценки этапа 11 (12 SQL)
+к Метрике:   0 запросов — движок читает только локальные агрегаты и снимки; чтение API ленты — только Postgres
+```
+
 ---
 
 ## Реестр канонических целей

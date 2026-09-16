@@ -497,10 +497,32 @@ PARTIAL_BEHAVIOR_PERIOD | COMPARISON_UNAVAILABLE | NO_LEADS` (BEHAVIOR_RULES.md 
 блокировке; уникальные посетители окон — только из `MetrikaPeriodSnapshot` по точным датам (иначе null +
 `UNIQUE_USERS_UNAVAILABLE_FOR_CUSTOM_WINDOW`). UI: вкладка «Рост / Изменения» (`?tab=growth`).
 
+# 11c. Инсайты (этап 12) — `/analytics/dashboard/insights/*`
+
+Контракт — `crm-new/src/analytics/insights/insights-contract.ts` (зеркало `frontend/src/types/insights.ts`), правила —
+`INSIGHTS_RULES.md`, язык — `INSIGHTS_LANGUAGE_POLICY.md`, данные — `INSIGHTS_DATA_CONTRACT.md`. Те же guards (ADMIN) и
+**два** флага: `ANALYTICS_DASHBOARD_ENABLED` + свой `ANALYTICS_INSIGHTS_ENABLED` (default false); флаг проверяется
+`InsightsEnabledGuard` **до** ValidationPipe — при выключенном разделе любой маршрут, кроме `status`, отвечает 404 даже
+на невалидное тело. Чтение — только материализованные строки Postgres (движок считает в хуке расписания), к API Метрики
+из запросов обращений нет.
+
+| Путь | Ответ |
+|---|---|
+| `GET …/insights/status` | `InsightsStatus` — enabled, engineVersion, словари, детекторы, пороги, counts, lastRun, границы данных (доступен при OFF) |
+| `GET …/insights/feed?status&severity&category&limit` | `InsightsFeed` — карточки (CRITICAL данных → CRITICAL деловые → ATTENTION → INFO; внутри — свежее выше), total, `suppressedSummary`, lastRun |
+| `GET …/insights/:id`, `GET …/insights/:id/versions` | карточка; неизменяемые версии |
+| `GET …/insights/quality` | последние запуски, причины молчания детекторов, активные по категориям |
+| `POST …/insights/:id/acknowledge`, `POST …/insights/:id/resolve {reason}` | OPEN → ACKNOWLEDGED; активная → RESOLVED «вручную: …» |
+| `POST …/insights/run` | ручной полный запуск движка (тот же код, что хук) |
+
+UI: вкладка «Инсайты» (`?tab=insights`): ФАКТ / ГИПОТЕЗА — НЕ ФАКТ / ЧТО ПРОВЕРИТЬ, `causality: NOT_ESTABLISHED` в каждой
+карточке, пустое состояние «Сейчас нет сигналов, требующих внимания».
+
 # 12. Чего в V1 нет (намеренно)
 
 - Фильтров по источнику/каналу/товару, комбинированных срезов.
 - Spend / CPL / CPA / ROAS / ROMI (`spend.status = UNAVAILABLE_NO_SPEND_DATA`).
 - Тепловых карт, session replay, рандомизированных A/B-тестов (этап 11 — только наблюдательные «до / после»).
+- LLM-выводов, авто-изменений сайта / рекламы / цен, психологических объяснений (этап 12 — только детерминированные сигналы).
 - Записи в БД и любых мутаций через API дашборда.
 - Live-обращений к Яндекс Метрике.

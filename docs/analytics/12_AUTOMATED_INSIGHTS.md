@@ -2,7 +2,15 @@
 
 ## 0. STATUS
 
-`READY_FOR_IMPLEMENTATION`
+`READY_FOR_REVIEW` — реализовано 16.09.2026 в `feature/analytics-foundation`: детерминированный движок сигналов
+FACT → HYPOTHESIS → RECOMMENDATION поверх этапов 08/10/11 (18 детекторов, окна 7/7 через строитель этапа 11, оценки
+метрик и confounders этапа 11, зеркало правил этапа 10, оценки этапа 11 в ленте дословно), реестр карточек с отпечатком,
+неизменяемыми версиями и журналом запусков (миграция 20260916120000 — только CREATE), хук после тика (daily / hourly),
+ADMIN API под своим флагом `ANALYTICS_INSIGHTS_ENABLED` (guard до валидации), вкладка «Инсайты». Сверка на копии
+production A = B = C diff 0; тесты CRM 1069 / панель 41. Production не тронут. Отчёт — § 49; контракты —
+`INSIGHTS_DATA_CONTRACT.md`, `INSIGHTS_RULES.md`, `INSIGHTS_LANGUAGE_POLICY.md`. Verdict — Reviewer.
+
+Исходный статус спецификации: `READY_FOR_IMPLEMENTATION`.
 
 Reviewer принимает Stage 11 как закрытый:
 
@@ -1548,4 +1556,273 @@ Production не менять.
 Сначала переиспользовать принятые Stage 07–11 contracts, затем реализовать минимальный deterministic insights layer.
 При конфликте с фактической архитектурой не обходить требование молча — вернуть deviation/blocker Reviewer.
 В конце вернуть EXECUTOR_REPORT_STAGE12_AUTOMATED_INSIGHTS по § 46.
+```
+
+---
+
+# 49. EXECUTOR_REPORT_STAGE12_AUTOMATED_INSIGHTS — 16.09.2026
+
+## RESULT
+
+```text
+READY_FOR_REVIEW
+```
+
+Реализовано в `feature/analytics-foundation` (коммиты b983676 backend, 0a0c6cf панель, 8753faf правки после сверки,
+docs), проверено на свежей копии production `crm_stage12_test` (снята 16.09 16:07 MSK, удалена после проверок).
+Production не менялся: master 5922175 не трогался; env / compose на сервере / миграции production / web-photo /
+event model / Logs API / CI сайта — без изменений. Раздел выкатывается выключенным (`ANALYTICS_INSIGHTS_ENABLED` default false).
+
+## AUDIT
+
+```text
+Переиспользовано (INSIGHTS_DATA_CONTRACT.md § 1): этап 07 — MetrikaSyncRun (свежесть), хук после тика registerAfterSync;
+этап 08 — AnalyticsMetricsService.getOverview / lifecycles / getTrafficSources / getLandings / getProducts (данные окон,
+когорты, покрытие ClientID, COGS_UNRELIABLE_ORDERS, paidWithoutDate, P&L); этап 09 — срезы Slice / CrmSlice, полярность
+каталога; этап 10 — BehaviorMetricsService.getIssues / getFunnels / loadInput (правила зеркалятся без пересчёта, skipped →
+причины молчания); этап 11 — buildWindows / observationCutoffOf / evaluateMetric / computeStatistics / computeConfounders /
+poissonRateComparison / maturityPolicyFrom / lagInputsFrom, AnalyticsGrowthService.loadWindow / overlappingChanges /
+lastDataDay (сделаны публичными — visibility-only, поведение и тесты этапа 11 без изменений), AnalyticsChange +
+последняя AnalyticsChangeEvaluation. Своих формул KPI / статистики / созревания нет. Границы данных — единый
+DATA_BOUNDARIES (13.08.2026, 12.09 13:19 MSK, инцидент 14.09 18:20 → 15.09 20:32 MSK).
+Противоречий с фактической архитектурой не нашлось; отклонения — DEVIATIONS.
+```
+
+## DATA_MODEL
+
+```text
+AnalyticsInsight (карточка-эпизод: fingerprint unique, baseFingerprint, episode, category, severity, status, scope,
+source, detectorId, metricKey, entityKey, periodStart/End, baselineStart/End DATE, title, fact / hypothesis /
+recommendation / evidence / limitations / quality JSONB, causality, link, first/lastDetectedAt, resolvedAt,
+resolvedReason, acknowledgedAt, latestVersion, payloadHash) + AnalyticsInsightVersion (insightId FK cascade, version,
+generatedAt, syncRunId, runId, payload JSONB, payloadHash; unique(insightId, version)) + AnalyticsInsightRun (журнал:
+kind, status RUNNING/SUCCESS/FAILED/LOCKED/SKIPPED, cutoff, счётчики, suppressed JSONB, errors, seenEvaluations).
+Миграция 20260916120000_analytics_insights — 97 строк: CREATE TABLE 3, CREATE INDEX 5 (2 unique), ALTER TABLE 1 (FK на
+новой таблице); DROP / TRUNCATE / DELETE / UPDATE / RENAME — 0; существующих таблиц в файле нет. Применена на копии
+(83 migrations found, 1 applied → 62 таблицы), в production — нет. Без PII, без токенов, без сырых user-level данных.
+```
+
+## DETECTORS
+
+```text
+18 детекторов V1 (INSIGHTS_RULES.md § 3, пороги § 2 — все в insights-rules.ts, отдаются в status.thresholds):
+traffic.visits (TRAFFIC_CHANGE, INFO всегда), site.leadRate (+ CRITICAL «заявки исчезли» ≥ 150 визитов / ≥ 3 в базе),
+site.formStartRate (FUNNEL_DROPOFF, + CRITICAL «обрыв воронки» ≥ 100 / ≥ 5), site.formErrorRate (≥ 5 визитов с ошибкой,
+CRITICAL ≥ 10), stage10.issues (зеркало правил этапа 10 → FUNNEL_DROPOFF / DEVICE_GAP / FORM_ERROR_CHANGE / LANDING_CHANGE /
+SITE_CONVERSION_CHANGE), source.mixShift (≥ 15 п.п.), source.performance и landing.change (≥ 30 визитов; визиты — Пуассон,
+доля заявок — статистика долей этапа 11; движущиеся с общим трафиком → DUPLICATE), product.change (принятые по категории),
+crm.leadToAccepted, crm.leadToPaid, money.realizedRevenue, money.netProfit, change.evaluation (hourly), quality.stale
+(hourly; STALE → ATTENTION, ≥ 6 ч / NO_DATA → CRITICAL), quality.clientIdCoverage (< 50 % при ≥ 5 принятых),
+quality.cogs, quality.paidWithoutDate.
+Существенность отдельно от статистики: доли 2 п.п.; счётчики 20 % и 10; деньги 5 000 ₽ и 10 %; ошибки 5 визитов.
+Полярность каталога этапа 11, visits — контекст. Каждый детектор детерминирован, возвращает evidence и причину молчания.
+```
+
+## FACT_HYPOTHESIS_RECOMMENDATION
+
+```text
+Контракт InsightPayload: fact (числа, знаменатели, окна, MDE/p), hypothesis {status SUPPORTED_BY_CONCURRENT_FACTS |
+NO_SUPPORTED_HYPOTHESIS, text «Гипотеза: … Причинность не установлена.», supportingFacts[]}, recommendation {text, kind},
+causality NOT_ESTABLISHED. Гипотезы — только rule-based связки (INSIGHTS_RULES.md § 5): device-mix, ошибки форм,
+источники, пересекающиеся изменения, прибыль при стабильном объёме; иначе NO_SUPPORTED_HYPOTHESIS. Рекомендации —
+проверить / сравнить / дождаться / зарегистрировать; бизнес-приказов нет.
+Language policy (INSIGHTS_LANGUAGE_POLICY.md): 15 запрещённых паттернов (из-за, благодаря, привело к, вызвал, причина,
+доказано, отпугивает, не нравится, не доверяют, слабый CTA, плохой дизайн, пользователи стали…) с исключениями для
+отрицаний; проверяется тестами F1–F3 на всех детекторах и движком перед записью (нарушение → ошибка запуска).
+Примеры с копии production (16.09): FACT «Визиты: за 09.09.2026–15.09.2026 126, в предыдущем сопоставимом окне
+(02.09.2026–08.09.2026) 244; разница −118 (−48,4 %); p = 0,000; при текущем объёме заметен эффект от ±25 % базы.»
+HYPOTHESIS «Гипотеза: визиты источника «Переходы по рекламе» снизились более чем вдвое. Причинность не установлена.»
+(поддерж. факт «181 → 79 визитов») RECOMMENDATION «Не делать вывода об эффекте до чистого окна без пересекающихся
+изменений; оценивать конкретное изменение — через «Рост / Изменения».» Запрещённых формулировок в ленте копии: 0.
+```
+
+## QUALITY_GATES
+
+```text
+Sample — гейт этапа 11 (30 визитов / 5 событий / 5 заказов) + 30 визитов на сущность; MDE и требуемая выборка — в каждой
+причине молчания словами («MDE ±… % от базы; для 20 % нужно ≈ N на окно»). Maturity — политика этапа 11 по эмпирике CRM:
+на копии accepted 1 дн., paid 14 дн. → realizedRevenue / netProfit / leadToPaidRate за последние 7 дней всегда IMMATURE
+(в диагностике «созревание до 29.09.2026»). Comparability — availableFrom / definitionCutovers: окна 02–08.09 → 09–15.09
+пересекают cutover 12.09 → siteLeadRate / formStartRate / formErrorRate MEASUREMENT_DEFINITION_CHANGED (на копии заявок
+до 12.09 в новом определении 0 → без гейта был бы «рост 0 → 4 %»). Coverage — clientIdCoverageAccepted 6,45 % <
+50 % → matched-метрики INSUFFICIENT_DATA и карточка DATA_QUALITY. COGS — COGS_UNRELIABLE_ORDERS → netProfit
+INSUFFICIENT_DATA + карточка quality.cogs. Freshness — STALE → ATTENTION/CRITICAL карточка, флаг ANALYTICS_STALE в
+ограничениях. Инцидент 14–15.09 — INCIDENT_BOUNDARY у всех карточек с окнами, пересекающими его.
+```
+
+## LIFECYCLE_DEDUPE
+
+```text
+fingerprint = sha1(category | detectorId | metricKey | entityKey) — без периода; канонический хэш нагрузки (сортировка
+ключей, округление 1e-6, без freshness и ссылок sync_run): тот же → только lastDetectedAt; другой → version + 1
+(неизменяемая строка). Условие пропало → RESOLVED «условие сигнала больше не выполняется»; вернулось ≤ 7 дн. → тот же
+эпизод OPEN (reopened); 7–10 дн. → COOLDOWN; позже → новый эпизод fingerprint#N, старый SUPERSEDED. Лимит 3 активных на
+детектор (лишние → COOLDOWN в диагностике). Один отпечаток за запуск (DUPLICATE). change.evaluation: версия оценки
+поднимается один раз (seenEvaluations в журнале), карточка живёт пока изменение в реестре. acknowledge / resolve с
+причиной; удаления нет. На копии: повторный запуск без новых данных → created 0, versioned 0, unchanged 3 ✓.
+```
+
+## STAGE10_REUSE
+
+```text
+stage10.issues читает BehaviorMetricsService.getIssues(after) и переносит issue.fact / hypothesis / recommendation /
+severity / evidence как есть (source STAGE10_RULE, ограничение STAGE10_RULE_MIRROR, подпись «вычислено правилом этапа
+10»); skipped этапа 10 → причины молчания PARTIAL_BEHAVIOR_PERIOD / LOW_SAMPLE / INCOMPARABLE_PERIODS; сам этап 12
+воронки не пересчитывает, DEVICE_GAP не дублирует (своего детектора устройств нет — только зеркало). На копии:
+DEVICE_GAP[CRITICAL] «На телефонах конверсия заметно ниже» — fact и severity равны правилу этапа 10 (C diff 0);
+FUNNEL_DROPOFF — 3 × PARTIAL_BEHAVIOR_PERIOD и 2 × LOW_SAMPLE в диагностике, карточек нет ✓ (C2).
+```
+
+## STAGE11_REUSE
+
+```text
+Все метрические детекторы — evaluateMetric этапа 11 на окнах buildWindows (псевдо-изменение ANALYTICS / NEUTRAL, роль
+secondary): вердикт, статистика, MDE, сопоставимость, созревание, флаги — без второй реализации. Confounders этапа 11
+(SOURCE/DEVICE/LANDING_MIX_SHIFT, OVERLAPPING_CHANGE, ANALYTICS_STALE, …) идут в evidence и в гипотезы. change.evaluation
+поднимает последнюю оценку каждого изменения дословно: FACT + «Вердикт этапа 11: …», гипотеза = INTERPRETATION,
+рекомендация = RECOMMENDATION (kind USE_STAGE11_RECOMMENDATION), evidence.verdict / metricEvaluation / confounders —
+из оценки. На копии: изменение 12.09 v9 INCOMPARABLE → карточка INFO «окна несопоставимы», FACT-префикс и
+RECOMMENDATION равны оценке (C diff 0); G1–G3 тестами: INCOMPARABLE не становится сигналом, IMMATURE сохраняется,
+OVERLAPPING_CHANGE — ограничение и рекомендация OBSERVE.
+```
+
+## RECONCILIATION
+
+```text
+Копия crm_stage12_test (16.09 16:07 MSK, 59 → 62 таблиц), backend :3000 (флаги ON), пользователи stage12_* только в копии.
+A = HTTP POST /insights/run (manual) + GET feed/get/versions; B = AnalyticsInsightsService.buildContext + runDetectors на
+тех же строках; C = SQL по MetrikaDailyTraffic / MetrikaDailyGoal(611379890) / MetrikaDailyBehaviorDevice + Overview этапа 08
++ getIssues этапа 10 + getEvaluation этапа 11.
+Окна 02–08.09 → 09–15.09 (cutoff 15.09). A: detected 4, created 4, suppressed 51; лента — [CRITICAL] DEVICE_GAP (этап 10),
+[INFO] CHANGE_EVALUATION (12.09, INCOMPARABLE), [INFO] DATA_QUALITY (ClientID 6 %), [INFO] TRAFFIC_CHANGE (244 → 126).
+A = B: 3 карточки по канонической нагрузке diff 0 (change.evaluation в B — DUPLICATE, версия уже поднята); причины
+молчания A = B по всем кодам. A/B = C: 13 чисел diff 0 (visits 244/126, siteLeads 0/5, rate 3,968 %, formStarts 17,
+formErrors 1, crmLeads 4, acceptedOrders 31, realizedRevenue 75 772, netProfit 43 521, coverage 6,452 %, paidWithoutDate 0)
++ 3 карточки (DEVICE_GAP fact/severity = этап 10; change.evaluation verdict/FACT/RECOMMENDATION = этап 11;
+clientIdCoverage = overview) diff 0.
+Фикстуры § 43: 1 small sample — site.leadRate молчит (MEASUREMENT_DEFINITION_CHANGED; 0 → 5 заявок не стало «ростом»);
+2 device gap — карточка CRITICAL из правила этапа 10; 3 form errors — молчит (0 → 1 ошибка, определение менялось);
+4 Stage 11 incomparable — INFO с STAGE11_VERDICT_PRESERVED; 5 immature paid — realizedRevenue / leadToPaid IMMATURE
+«созревание до 29.09»; 6 stale/quality — с часами +8 ч карточка CRITICAL «данные устарели: 9 ч назад», покрытие ClientID —
+карточка INFO; 7 no-signal — кроме качества данных и оценки этапа 11 всего 2 карточки (правило этапа 10 и трафик).
+Детерминизм: повторный запуск → created 0 / versioned 0 / unchanged 3; часовой запуск → 2 детектора, новых 0.
+```
+
+## SCHEDULER
+
+```text
+Хук insights:run после успешного тика этапа 07 (регистрируется только при включённом флаге): daily при новом полном дне
+(cutoff > cutoff последнего SUCCESS daily), иначе hourly (лёгкий контекст: свежесть + оценки этапа 11). Замок: флаг в
+процессе + строка журнала RUNNING моложе 10 мин (advisory lock отклонён — с пулом Prisma unlock уходил в другое
+соединение и блокировал все следующие запуски; найдено на копии). Идемпотентность: тот же контекст → без версий.
+Изоляция: ошибка контекста / записи → FAILED в журнале, тик расписания не затронут (юнит-тесты + существующий try/catch
+хуков этапа 11). Стоимость на копии: daily 153 SQL / 4,3–5,2 с через туннель (RTT ~120 мс; на бою ожидается ≤ 1,5 с);
+hourly 12 SQL / 1,4 с; запросов к API Метрики — 0.
+```
+
+## API_UI
+
+```text
+/analytics/dashboard/insights: GET status | feed | quality | :id | :id/versions; POST :id/acknowledge | :id/resolve |
+run — ADMIN (JwtAuthGuard + RolesGuard), флаги ANALYTICS_DASHBOARD_ENABLED + ANALYTICS_INSIGHTS_ENABLED, InsightsEnabledGuard
+до ValidationPipe (OFF → 404 на всё, кроме status, даже при невалидном теле — тест J3). На копии: без токена 401, EXECUTOR
+403, feed?severity=HIGH&customerPhone=1 → 400 whitelist, acknowledge 200 → повтор 400, resolve с PII-полем → 400.
+UI — вкладка «Инсайты» (`?tab=insights`): карточки ФАКТ / ГИПОТЕЗА — НЕ ФАКТ (пунктир, курсив, поддерж. факты) / ЧТО
+ПРОВЕРИТЬ, уровень, категория, окна, ограничения, качество, впервые/последний раз/версия/эпизод, источник, переход,
+«Принять к сведению», «Детали» (сила статистики и существенность отдельно, контекст, confounders, ручное закрытие),
+фильтры active/all/закрытые × уровень × категория, пустое состояние «Сейчас нет сигналов, требующих внимания», блок
+«Правил без вывода» с причинами. Скриншоты (копия production, 16.09): docs/analytics/screenshots/12_insights/
+insights-desktop-feed, insights-desktop-detail-and-diagnostics (детали + диагностика LOW_SAMPLE/IMMATURE/…),
+insights-desktop-data-quality, insights-desktop-empty, insights-desktop-error (500 через перехват), insights-desktop-disabled
+(status enabled:false), insights-loading, insights-mobile-390 (scrollWidth 390).
+```
+
+## PERFORMANCE
+
+```text
+Чтение (Postgres, копия через туннель RTT ~120 мс): GET feed 195–272 мс (3 SQL), status 193–235 мс, quality ~210 мс,
+get 198–264 мс — цель ≤ 3 с cold выполнена с запасом; лента не пересчитывает аналитику на запрос (материализованные
+строки). Полный запуск (manual/daily): 140 SQL контекста + запись = 153 SQL, 5,0–6,0 с HTTP через туннель (≈ 140 × RTT);
+на бою (БД рядом) ожидается ≤ 1,5 с. Число запросов не зависит от числа заказов/страниц (агрегаты: 2 окна × (overview,
+behavior, sources) + срезы + правила этапа 10 + реестр). hourly: 12 SQL. N+1 нет.
+```
+
+## PRIVACY
+
+```text
+Хранимые строки копии (4 карточки, 4 версии, ~34 тыс. символов): телефоны (строгий паттерн) 0, e-mail 0, @username 0,
+19-значные ClientID 0, ссылки t.me/max.ru/wa.me 0, токены 0; 12 контактов клиентов из OrderPhoto.urlCommunication —
+вхождений 0. Тексты содержат только агрегаты, коды, пути страниц, названия источников и id изменений. DTO whitelist
+(лишние поля → 400), ADMIN only, JWT/пароли в логах и отчёте не выводились.
+```
+
+## TESTS
+
+```text
+CRM jest: 1069 / 1069, 98 suites (этап 12 — 54: insights-engine.spec 38 [A детерминизм, B малые выборки, C сопоставимость,
+D созревание, E домены, F язык, G этап 11, H инцидент, I качество, сущности/товары/сдвиг, тихий период, реестр],
+analytics-insights.service.spec 11 [версии/RESOLVED/переоткрытие/эпизоды/кулдаун/лимит/acknowledge+resolve/замок/FAILED/
+daily vs hourly/SKIPPED/порядок ленты], insights-dashboard.controller.spec 5 [guards, J3 флаг до валидации, J4 DTO/PII,
+флаги], фикстура 1). Этапы 06/09/10/11 — прежние тесты зелёные без правок (L).
+Панель vitest: 41 / 41 (insights.test 6: K1 факт/гипотеза различимы, K2 пустое состояние, K3 loading/error/disabled,
+K5 фильтры, K6 acknowledged). Build: nest build OK; tsc -b + vite build OK. Lint: eslint insights/growth 0, prettier чист;
+frontend eslint по аналитике 0 (19 прежних проблем вне аналитики — как на HEAD).
+```
+
+## GIT
+
+```text
+feature/analytics-foundation: fdb483d (Stage 11 DONE + спецификация как получена) → b983676 backend → 0a0c6cf панель →
+8753faf замок/hourly/dedupe → <docs> (INSIGHTS_DATA_CONTRACT, INSIGHTS_RULES, INSIGHTS_LANGUAGE_POLICY, отчёт § 49,
+DASHBOARD_CONTRACT § 11c, master plan, current state, скриншоты). origin/master = 5922175 (production), не менялся;
+master ⊂ feature.
+```
+
+## NEW_FACTS
+
+```text
+1. За 09–15.09 трафик сайта 126 визитов против 244 за 02–08.09 (−48 %, Пуассон p < 0,001); рекламный источник 181 → 79
+   (движется с общим трафиком). Заявок сайта 5 (новое определение), в предыдущем окне 0 в новом определении — сравнение
+   конверсии несопоставимо до 20.09 (первое недельное окно после 12.09 — 13–19.09; оба окна в новом определении — с 27.09).
+2. Покрытие ClientID у принятых за 09–15.09 — 6,45 % (2 из 31): сопоставленные метрики бесполезны как KPI.
+3. Правило этапа 10 DEVICE_GAP на окне 09–15.09 — CRITICAL: телефоны 0 % (54 визита) против компьютеров 7,2 % (69).
+4. Advisory lock сессии Postgres через пул Prisma не подходит для долгих запусков — unlock попадает в другое соединение.
+5. Часовой запуск с полным контекстом стоил 81 SQL; лёгкий — 12.
+```
+
+## DEVIATIONS
+
+```text
+1. Manual run в API (POST /insights/run, ADMIN) — не требовался спецификацией; добавлен для сверки и ручной проверки
+   (тот же код, что хук). Убрать — по решению Reviewer.
+2. Ручной resolve оставлен (с обязательной причиной), а не только acknowledge — сложности не добавил.
+3. Источник / страница входа, чьи визиты движутся вместе с общим трафиком (< 20 п.п. разницы относительных изменений),
+   карточки не получают (DUPLICATE) — иначе одно падение трафика давало 3 карточки; сущность попадает в гипотезу
+   карточки визитов. Порог MIRRORS_GLOBAL_TRAFFIC_POINTS = 20.
+4. EVENT_NOT_MEASURED (35.5) отдельным детектором не реализован: not_measured шаги уже описаны в правилах этапа 10 и в
+   причинах молчания (PARTIAL_BEHAVIOR_PERIOD / LOW_SAMPLE); постоянная карточка «шаг не измеряется» шумела бы.
+5. Замок запуска — строка журнала RUNNING (≤ 10 мин) + флаг в процессе вместо pg advisory lock (см. NEW FACT 4).
+6. Длинное окно 28/28 (7.1) в V1 не строится: истории с 13.08 хватит на 28/28 только с 08.10; порог LONG_WINDOW_DAYS
+   заведён, детектор — при появлении истории (отдельным FIX).
+7. Загрузчики этапа 11 loadWindow / overlappingChanges / lastDataDay сделаны публичными (без изменения поведения).
+8. Реконсиляция stale выполнена через сервис со сдвинутыми часами (на копии данные свежие); через HTTP stale не
+   воспроизводится без остановки синхронизации.
+```
+
+## OPEN_DECISIONS
+
+```text
+1. Оставить ли POST /insights/run в API (DEVIATION 1).
+2. Пороги V1 (INSIGHTS_RULES.md § 2), особенно MAX_ACTIVE_PER_DETECTOR = 3 и MIRRORS_GLOBAL_TRAFFIC_POINTS = 20.
+3. Production rollout — отдельный документ/gate (миграция на старте контейнера, compose-строка флага, включение после
+   OFF-проверок; предложение — включать после 27.09, когда оба окна 7/7 целиком в новом определении заявок).
+4. Детектор длинного окна 28/28 — после накопления истории (08.10).
+```
+
+## PRODUCTION_UNTOUCHED
+
+```text
+Production CRM не менялся: master 5922175, образы и контейнеры не пересоздавались, env / compose на сервере не
+редактировались, миграция 20260916120000 применялась только на копии crm_stage12_test (удалена), таблиц AnalyticsInsight*
+в боевой базе нет. web-photo, event model сайта, Logs API, CI сайта и ветка feature/print-card-lead-form — не трогались.
 ```

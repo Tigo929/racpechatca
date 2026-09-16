@@ -409,6 +409,19 @@ CANCELLED, PROBLEM — вне цепочки
 | Известный confounder | инцидент 14.09 18:20 → 15.09 20:32 MSK: сайт ~26 ч работал на августовской сборке (пуш устаревшей ветки `feature/print-card-lead-form` перезаписал `latest`); цели `lead_submitted` / `form_started` за этот период неполные, визиты корректны; в реестре Stage 11 регистрируется как завершённое изменение-граница (rollout § 11 B) → `OVERLAPPING_CHANGE` для пересекающих окон; CI-долг и безопасная схема — rollout § 31 |
 
 ---
+# 5k. Инсайты — этап 12 (16.09.2026; в production НЕ выложен)
+
+| Факт | Подробности |
+|---|---|
+| Статус | Stage 12 = READY_FOR_REVIEW: реализовано в `feature/analytics-foundation` (b983676 / 0a0c6cf / 8753faf + docs), проверено на копии `crm_stage12_test` (удалена); production не тронут; отчёт `12_AUTOMATED_INSIGHTS.md` § 49 |
+| Данные | `AnalyticsInsight` (карточка-эпизод: отпечаток без периода, статус OPEN / ACKNOWLEDGED / RESOLVED / SUPERSEDED, FACT / HYPOTHESIS / RECOMMENDATION / evidence / limitations / quality JSONB, causality NOT_ESTABLISHED) + `AnalyticsInsightVersion` (неизменяемые версии) + `AnalyticsInsightRun` (журнал, причины молчания, seenEvaluations); миграция 20260916120000 — только CREATE |
+| Механика | окна 7/7 полных московских дней строителем этапа 11; все метрики каталога — `evaluateMetric` этапа 11 (статистика, MDE, сопоставимость, созревание); confounders этапа 11; правила этапа 10 зеркалятся (STAGE10_RULE); оценки этапа 11 дословно (STAGE11_EVALUATION); существенность отдельно от статистики; CRITICAL — только заявки исчезли / обрыв воронки / ошибки форм ≥ 10 / stale ≥ 6 ч / CRITICAL правила этапа 10; гипотезы rule-based или NO_SUPPORTED_HYPOTHESIS; языковая политика тестом и движком |
+| Расписание | хук после тика: daily при новом полном дне (~150 SQL), hourly — свежесть и оценки этапа 11 (12 SQL); замок — строка RUNNING ≤ 10 мин + флаг процесса; к API Метрики 0 обращений |
+| API / UI | `/analytics/dashboard/insights/*` (ADMIN, `ANALYTICS_DASHBOARD_ENABLED` + `ANALYTICS_INSIGHTS_ENABLED`, guard до валидации → 404 при OFF); вкладка «Инсайты»; скриншоты `screenshots/12_insights/` |
+| Сверка на копии | окна 02–08.09 → 09–15.09: 4 карточки ([CRITICAL] DEVICE_GAP этапа 10, [INFO] оценка 12.09 INCOMPARABLE, [INFO] покрытие ClientID 6 %, [INFO] визиты 244 → 126), 51 причина молчания (LOW_SAMPLE 30, MEASUREMENT_DEFINITION_CHANGED 3, IMMATURE 4, …); A = B = C diff 0; повторный запуск без версий; feed 0,2–0,3 с через туннель |
+| Тесты | CRM 1069 (98 suites; этап 12 — 54), панель 41 (insights 6); build OK; lint чист по аналитике |
+
+---
 # 6. Что уже готово из целевой картины
 
 - Сайт собирает всё нужное для атрибуции и доставляет в CRM — данные

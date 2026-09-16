@@ -1326,7 +1326,17 @@ author
 Статус:
 
 ```text
-TODO
+REVIEW (16.09.2026). Реализовано в feature/analytics-foundation, проверено на копии production crm_stage12_test
+(удалена): движок сигналов FACT → HYPOTHESIS → RECOMMENDATION — 18 детерминированных детекторов поверх сервисов этапов
+08/10/11 (окна 7/7 полных московских дней, evaluateMetric / confounders этапа 11, зеркало правил этапа 10, оценки этапа
+11 дословно), существенность отдельно от статистики, тишина при малых выборках (причины молчания в диагностике),
+CRITICAL по закрытому списку, rule-based гипотезы с языковой политикой (запрещённые причинные формулировки — тест и
+движок), causality NOT_ESTABLISHED; реестр AnalyticsInsight + неизменяемые версии + журнал запусков (миграция
+20260916120000, только CREATE), отпечаток без периода, RESOLVED / переоткрытие / эпизоды / кулдаун; хук после тика
+daily (~150 SQL) / hourly (12 SQL); ADMIN API /analytics/dashboard/insights под своим флагом ANALYTICS_INSIGHTS_ENABLED
+(default false, guard до валидации); вкладка «Инсайты». Сверка A = B = C diff 0; тесты CRM 1069 / панель 41.
+Production не тронут; rollout — отдельный gate. Отчёт — 12_AUTOMATED_INSIGHTS.md § 49; контракты —
+INSIGHTS_DATA_CONTRACT.md, INSIGHTS_RULES.md, INSIGHTS_LANGUAGE_POLICY.md. Verdict ставит Reviewer.
 ```
 
 Цель:
@@ -1645,8 +1655,13 @@ POSITIVE_SIGNAL … INCOMPARABLE без причинности, confounders, ADM
 NO_VARIANT_ASSIGNMENT. В production с 15.09 23:17 MSK (rollout § 35 `11_PRODUCTION_ROLLOUT.md`, master 5922175);
 DONE (Reviewer, 16.09.2026). Отчёт — `11_GROWTH_AND_EXPERIMENTS.md` § 31; rollout — `11_PRODUCTION_ROLLOUT.md` § 35.
 
-12_AUTOMATED_INSIGHTS — READY_FOR_IMPLEMENTATION (спецификация Reviewer получена 16.09.2026): детерминированный слой
-автоматических сигналов FACT → HYPOTHESIS → RECOMMENDATION поверх этапов 07–11; только feature-ветка, production не менять.
+12_AUTOMATED_INSIGHTS — REVIEW (16.09.2026): детерминированный движок сигналов FACT → HYPOTHESIS → RECOMMENDATION
+поверх этапов 08/10/11 — 18 детекторов на окнах 7/7 (оценки метрик, MDE, сопоставимость, созревание и confounders этапа
+11; зеркало правил этапа 10; оценки этапа 11 дословно), существенность отдельно от статистики, CRITICAL по закрытому
+списку, rule-based гипотезы с языковой политикой, реестр карточек с отпечатком / версиями / журналом (миграция
+20260916120000, только CREATE), хук daily/hourly, ADMIN API под флагом ANALYTICS_INSIGHTS_ENABLED (guard до валидации),
+вкладка «Инсайты». Копия production: A = B = C diff 0, 4 карточки / 51 причина молчания; тесты CRM 1069 / панель 41.
+Production не тронут; rollout — отдельный gate. Отчёт — `12_AUTOMATED_INSIGHTS.md` § 49.
 ```
 
 История: `00`, `01`, `02` (с FIX_01), `03`, `04` (с FIX_01), `05` (live smoke
