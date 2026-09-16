@@ -1287,7 +1287,7 @@ GROWTH_STATISTICS.md. Reviewer 15.09: READY_FOR_PRODUCTION_ROLLOUT → план 
 (кандидат 0c3b84a = 8d10b7c + FIX_00 «свой флаг ANALYTICS_GROWTH_ENABLED»). Production rollout выполнен 15.09.2026
 23:10–23:23 MSK по команде «СТАРТ» (master 5922175; выложен выключенным 23:13, включён 23:17:35; A/B в реестре; сверки
 на бою diff 0; тест 12.09 = INCOMPARABLE; 13 автоциклов 16.09 SUCCESS; Stage 06/09/10 diff 0) — отчёт
-11_PRODUCTION_ROLLOUT.md § 35; owner smoke ждёт владельца; DONE ставит Reviewer.
+11_PRODUCTION_ROLLOUT.md § 35; owner smoke § 27 пройден владельцем 16.09 (§ 35.18); DONE ставит Reviewer.
 ```
 
 Цель:
@@ -1641,7 +1641,7 @@ diff 0, расписание — 10 тиков SUCCESS до 10:23) — отчё�
 POSITIVE_SIGNAL … INCOMPARABLE без причинности, confounders, ADMIN API под флагом, вкладка «Рост / Изменения», хук
 расписания (точные снимки окон + автооценка). Копия production: A = B = C diff 0; тесты CRM 1012 / панель 35; A/B —
 NO_VARIANT_ASSIGNMENT. В production с 15.09 23:17 MSK (rollout § 35 `11_PRODUCTION_ROLLOUT.md`, master 5922175);
-owner smoke ждёт владельца. Отчёт — `11_GROWTH_AND_EXPERIMENTS.md` § 31.
+owner smoke пройден владельцем 16.09. Отчёт — `11_GROWTH_AND_EXPERIMENTS.md` § 31; rollout — `11_PRODUCTION_ROLLOUT.md` § 35.
 ```
 
 История: `00`, `01`, `02` (с FIX_01), `03`, `04` (с FIX_01), `05` (live smoke

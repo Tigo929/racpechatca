@@ -10,7 +10,8 @@
 Отчёт — § 31; контракты — `GROWTH_DATA_CONTRACT.md`, `GROWTH_STATISTICS.md`. Reviewer 15.09: READY_FOR_PRODUCTION_ROLLOUT.
 **В production с 15.09.2026 23:17 MSK** (rollout по `11_PRODUCTION_ROLLOUT.md`, master = 5922175: выложен выключенным 23:13,
 включён 23:17:35; A «деплой 12.09» и B «инцидент 14–15.09» в реестре; сверки на бою diff 0; тест 12.09 = INCOMPARABLE;
-13 автоциклов SUCCESS) — отчёт `11_PRODUCTION_ROLLOUT.md` § 35; owner smoke § 27 ждёт владельца; DONE ставит Reviewer.
+13 автоциклов SUCCESS) — отчёт `11_PRODUCTION_ROLLOUT.md` § 35; owner smoke § 27 ПРОЙДЕН владельцем 16.09 (§ 35.18);
+DONE ставит Reviewer.
 
 ## 1. Goal
 
