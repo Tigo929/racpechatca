@@ -178,7 +178,7 @@ describe('FIX_01 — EVENT_NOT_MEASURED', () => {
       /настройки счётчика, а не поведение клиентов/,
     );
     expect(p.recommendation.kind).toBe('IMPROVE_DATA_QUALITY');
-    expect(p.recommendation.text).toMatch(/завести цели/);
+    expect(p.recommendation.text).toMatch(/завести на него цель/);
     expect(p.recommendation.text).toMatch(/web-photo.*не менять/);
     expect(p.limitations).toEqual(
       expect.arrayContaining(['NOT_MEASURED_STEPS']),
