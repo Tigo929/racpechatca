@@ -8,6 +8,7 @@
 IMPLEMENTED 16.09.2026 — crm-new/src/analytics/insights/insights-engine.ts (детекторы), insights-rules.ts (все пороги V1,
 отдаются в GET /analytics/dashboard/insights/status → thresholds). Статистика, MDE, сопоставимость и созревание —
 из этапа 11 (evaluateMetric / computeConfounders на скользящих окнах 7/7), своих формул у этапа 12 нет.
+FIX_01 (16.09.2026): детектор quality.eventNotMeasured — 19 детекторов; пороги остальных не менялись.
 ```
 
 ## 1. Общее
@@ -44,6 +45,8 @@ IMPLEMENTED 16.09.2026 — crm-new/src/analytics/insights/insights-engine.ts (д
 | `CRITICAL_FORM_ERROR_VISITS` | 10 визитов | подтверждённый рост ошибок |
 | `CRITICAL_STALE_SECONDS` | 6 ч | просрочка данных (порог STALE этапа 08 — меньше, даёт ATTENTION) |
 | `CLIENT_ID_COVERAGE_MIN_PCT` / `…_MIN_ACCEPTED` | 50 % / 5 принятых | DATA_QUALITY покрытие ClientID |
+| `EVENT_GAP_MIN_FUNNEL_VISITS` | 20 визитов | FIX_01: не измеряемый шаг ограничивает анализ отвала, только если на входе измеренной части воронки в окне «после» не меньше этого числа (= `MIN_STEP_ENTRANTS` правила 11.1 этапа 10); меньше → `LOW_SAMPLE`, карточки нет |
+| `EVENT_GAP_STEP_KINDS` | catalog / choose_type_color / submit_tshirt_order → `INSTRUMENTATION_GAP`; canvas_upload → `NOT_ON_SITE` | FIX_01: вид пропуска по ключу шага этапа 10; `NOT_ON_SITE` (шага на сайте не существует) анализу не нужен — карточки нет (`NO_MATERIAL_CHANGE` с объяснением); неизвестный шаг — по примечанию этапа 10 («не существует» / «нет на сайте» → `NOT_ON_SITE`), иначе `INSTRUMENTATION_GAP` |
 | `REOPEN_WINDOW_DAYS` / `COOLDOWN_DAYS` / `MAX_ACTIVE_PER_DETECTOR` | 7 / 3 / 3 | жизненный цикл (INSIGHTS_DATA_CONTRACT.md § 4) |
 
 Статистические допущения — этапа 11: α 0,05 двусторонний, мощность 0,8, целевой эффект 20 %.
@@ -70,9 +73,19 @@ IMPLEMENTED 16.09.2026 — crm-new/src/analytics/insights/insights-engine.ts (д
 | `quality.clientIdCoverage` | DATA_QUALITY | clientIdCoverageAccepted (overview) | «после» | 5 принятых | < 50 % | — | — | INFO (одна продолжающаяся карточка) | LOW_SAMPLE, NO_MATERIAL_CHANGE | нет | IMPROVE_DATA_QUALITY |
 | `quality.cogs` | DATA_QUALITY | COGS_UNRELIABLE_ORDERS в окнах | 7/7 | — | — | — | — | INFO | NO_MATERIAL_CHANGE | нет | IMPROVE_DATA_QUALITY |
 | `quality.paidWithoutDate` | DATA_QUALITY | orders.paidWithoutDate (этап 08) | «после» | — | > 0 | — | — | INFO | NO_MATERIAL_CHANGE | нет | IMPROVE_DATA_QUALITY |
+| `quality.eventNotMeasured` (FIX_01) | DATA_QUALITY | воронки этапа 10 (`behavior.funnels`): шаги с `availability = not_measured` | «после» | ≥ 20 визитов на входе измеренной части (`EVENT_GAP_MIN_FUNNEL_VISITS`) | есть хотя бы один пропуск вида `INSTRUMENTATION_GAP` | — | — | INFO всегда (одна агрегированная карточка на воронку, `entityKey` = ключ воронки; уровень от числа пропусков не растёт) | LOW_SAMPLE (вход < 20 — анализ отвала не идёт, пропуск ничего не ограничивает), NO_MATERIAL_CHANGE (все пропуски `NOT_ON_SITE`) | `NO_SUPPORTED_HYPOTHESIS` («отсутствие измерения — факт настройки счётчика, а не поведение клиентов») | IMPROVE_DATA_QUALITY: проверить измерение шага в счётчике (цель на уже отправляемое событие; иначе зафиксировать шаг как намеренно неизмеряемый или запланировать измерение отдельным решением); event model web-photo не менять; выводов об отвале на этих шагах не делать |
 
 Режим обновления: `change.evaluation` и `quality.stale` — `hourly` (лёгкий контекст без загрузки окон, 12 SQL);
-остальные — `daily` (полный контекст, ~140–150 SQL, число не зависит от числа заказов/страниц).
+остальные — `daily` (полный контекст, ~140–157 SQL, число не зависит от числа заказов/страниц).
+
+FACT `quality.eventNotMeasured` называет: какой анализ ограничен (отвал воронки «X», правило этапа 10), какой шаг не
+измеряется (подпись шага и примечание этапа 10), что значение шага — `not_measured`, а не 0, и какие выводы нельзя
+сделать (по месту шага среди измеренных: «нельзя посчитать конверсию из «A» в «B»», «переход «A» → «B» нельзя разложить
+через «X»», «нельзя измерить завершение воронки после «A»»). Дневные числа шагов и окно в FACT не входят — иначе версия
+росла бы каждый день без изменения сути (числа — во вкладке «Поведение»); состав пропусков — суть: другой набор → новая
+версия при том же отпечатке. В `evidence.context` не измеряемые шаги — `before/after = null`; ограничения
+`NOT_MEASURED_STEPS`, `STAGE10_RULE_MIRROR`. Карточка живёт, пока шаг не измеряется; появилось измерение → `RESOLVED`
+(условие пропало), новый пропуск в окне переоткрытия → та же карточка, позже → новый эпизод (INSIGHTS_DATA_CONTRACT.md § 4).
 
 ## 4. Правила уровня CRITICAL (закрытый список)
 
@@ -96,6 +109,7 @@ IMPLEMENTED 16.09.2026 — crm-new/src/analytics/insights/insights-engine.ts (д
 | прибыль изменилась | принятые заказы ±20 %, COGS полная | при сопоставимом объёме заказов изменилась прибыль — проверить структуру выручки и затрат |
 | ошибки форм выросли | конверсия упала | совпадение по времени — проверить форму |
 | иначе | — | `NO_SUPPORTED_HYPOTHESIS` («Гипотезы нет: сопутствующих фактов … не найдено») |
+| пропуск измерения (`quality.eventNotMeasured`) | — | всегда `NO_SUPPORTED_HYPOTHESIS` («Гипотезы нет: отсутствие измерения — известный факт настройки счётчика, а не поведение клиентов») |
 
 Каждая гипотеза: префикс «Гипотеза: », суффикс «Причинность не установлена.», список поддерживающих фактов числами.
 Психологических объяснений («не нравится», «отпугивает», «слабый CTA») нет и быть не может (INSIGHTS_LANGUAGE_POLICY.md).
@@ -112,6 +126,7 @@ IMPLEMENTED 16.09.2026 — crm-new/src/analytics/insights/insights-engine.ts (д
 | иначе | OBSERVE | наблюдать; перед следующей правкой зарегистрировать изменение |
 | Stage 11 | USE_STAGE11_RECOMMENDATION | RECOMMENDATION оценки дословно |
 | качество данных | IMPROVE_DATA_QUALITY | конкретное действие по данным (COGS, даты оплат, покрытие, синхронизация) |
+| пропуск измерения шага | IMPROVE_DATA_QUALITY | проверить измерение шага в счётчике Метрики (цель на уже отправляемое событие; иначе зафиксировать шаг как намеренно неизмеряемый или запланировать измерение отдельным решением); event model web-photo в рамках этапа 12 не менять; выводов об отвале на этих шагах до появления измерения не делать |
 | источник / страница | COMPARE_SEGMENT | сравнить сегменты; объём трафика сам по себе не хороший и не плохой |
 
 Рекомендации никогда не предлагают отключить рекламу, менять бюджет, цены, удалять страницы или откатывать сайт.

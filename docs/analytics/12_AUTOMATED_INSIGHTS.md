@@ -2,12 +2,15 @@
 
 ## 0. STATUS
 
-`READY_FOR_REVIEW` — реализовано 16.09.2026 в `feature/analytics-foundation`: детерминированный движок сигналов
-FACT → HYPOTHESIS → RECOMMENDATION поверх этапов 08/10/11 (18 детекторов, окна 7/7 через строитель этапа 11, оценки
+`READY_FOR_REVIEW` (после `NEEDS_FIX` → `12_FIX_01` выполнен 16.09.2026, отчёт § 50: агрегированный детектор
+`quality.eventNotMeasured` — одна карточка на воронку, FACT про `not_measured ≠ 0` и ограниченные выводы,
+NO_SUPPORTED_HYPOTHESIS, IMPROVE_DATA_QUALITY без правок event model; 19 детекторов; CRM 1078 / панель 42) —
+реализовано 16.09.2026 в `feature/analytics-foundation`: детерминированный движок сигналов
+FACT → HYPOTHESIS → RECOMMENDATION поверх этапов 08/10/11 (19 детекторов, окна 7/7 через строитель этапа 11, оценки
 метрик и confounders этапа 11, зеркало правил этапа 10, оценки этапа 11 в ленте дословно), реестр карточек с отпечатком,
 неизменяемыми версиями и журналом запусков (миграция 20260916120000 — только CREATE), хук после тика (daily / hourly),
 ADMIN API под своим флагом `ANALYTICS_INSIGHTS_ENABLED` (guard до валидации), вкладка «Инсайты». Сверка на копии
-production A = B = C diff 0; тесты CRM 1069 / панель 41. Production не тронут. Отчёт — § 49; контракты —
+production A = B = C diff 0; тесты CRM 1078 / панель 42. Production не тронут. Отчёты — § 49, § 50 (FIX_01); контракты —
 `INSIGHTS_DATA_CONTRACT.md`, `INSIGHTS_RULES.md`, `INSIGHTS_LANGUAGE_POLICY.md`. Verdict — Reviewer.
 
 Исходный статус спецификации: `READY_FOR_IMPLEMENTATION`.
@@ -1825,4 +1828,198 @@ master ⊂ feature.
 Production CRM не менялся: master 5922175, образы и контейнеры не пересоздавались, env / compose на сервере не
 редактировались, миграция 20260916120000 применялась только на копии crm_stage12_test (удалена), таблиц AnalyticsInsight*
 в боевой базе нет. web-photo, event model сайта, Logs API, CI сайта и ветка feature/print-card-lead-form — не трогались.
+```
+
+---
+
+# 50. EXECUTOR_REPORT_STAGE12_FIX01 — 16.09.2026
+
+## RESULT
+
+```text
+READY_FOR_REVIEW (FIX_01 выполнен)
+```
+
+Реализован агрегированный детерминированный детектор `quality.eventNotMeasured` (EVENT_NOT_MEASURED, категория
+DATA_QUALITY) — одна карточка на воронку этапа 10, а не карточка на каждый отсутствующий event. Коммиты
+`feature/analytics-foundation`: 5f90e68 (детектор, пороги, тесты, UI-пометка), 0d7e901 (точная формулировка
+рекомендации), docs. Проверено на свежей копии production `crm_stage12_test` (снята 16.09 19:41 MSK, удалена после
+проверок). Production не менялся. Пороги остальных детекторов, архитектура планировщика, контракты этапов 10/11 —
+без изменений.
+
+## DETECTOR
+
+```text
+Вход: ctx.behavior.funnels этапа 10 (те же воронки, что во вкладке «Поведение»), шаги с availability = not_measured.
+Вид пропуска (EVENT_GAP_STEP_KINDS, insights-rules.ts): INSTRUMENTATION_GAP — шаг на сайте есть, измерения в счётчике
+нет (catalog, choose_type_color, submit_tshirt_order); NOT_ON_SITE — шага на сайте не существует (canvas_upload: фото
+холста присылают в переписке). Неизвестный ключ — по примечанию этапа 10 («не существует» / «нет на сайте» → NOT_ON_SITE),
+иначе INSTRUMENTATION_GAP.
+Правило: карточка только если в воронке есть хотя бы один INSTRUMENTATION_GAP и на входе измеренной части воронки в окне
+«после» ≥ EVENT_GAP_MIN_FUNNEL_VISITS = 20 визитов (= MIN_STEP_ENTRANTS правила 11.1 этапа 10 — анализ отвала реально идёт).
+  · все пропуски NOT_ON_SITE → suppressed NO_MATERIAL_CHANGE «шаг(и) … на сайте не существуют — ни одному анализу не нужны,
+    карточка не создаётся»;
+  · вход < 20 → suppressed LOW_SAMPLE «… но на входе измеренной части N визитов (< 20) — анализ отвала сейчас не идёт,
+    пропуск ничего не ограничивает».
+Карточка: severity INFO всегда (от числа пропусков не растёт), scope data, metricKey funnelSteps, entityKey = ключ воронки
+→ fingerprint стабилен (sha1(DATA_QUALITY|quality.eventNotMeasured|funnelSteps|<funnel>)).
+FACT называет: какой анализ ограничен («Анализ отвала воронки «X» (правило этапа 10) ограничен»), какой шаг не измеряется
+(подпись + примечание этапа 10, например «Выбрали фото / формат» (цели catalog в счётчике нет)), что значение —
+not_measured, не 0, какие выводы нельзя сделать (по месту шага: «нельзя посчитать конверсию из «A» в «B» и долю потерь до
+этого шага» / «переход «A» → «B» нельзя разложить через «X»» / «нельзя измерить завершение воронки после «A»»), и
+измеренную часть воронки. Дневных чисел и окна в тексте нет (иначе версия росла бы каждый день без изменения сути).
+HYPOTHESIS: status NO_SUPPORTED_HYPOTHESIS, «Гипотезы нет: отсутствие измерения — известный факт настройки счётчика, а не
+поведение клиентов». RECOMMENDATION (IMPROVE_DATA_QUALITY): проверить измерение шага в счётчике Метрики — если событие
+уже отправляется сайтом, завести на него цель; если события нет — зафиксировать шаг как намеренно неизмеряемый или
+запланировать измерение отдельным решением; event model web-photo в рамках этапа 12 не менять; до появления измерения
+выводы об отвале на этих шагах не делать.
+evidence.context: step:<key> с before/after = null (unit visits); statisticalStrength NONE, businessMateriality LOW;
+limitations NOT_MEASURED_STEPS + STAGE10_RULE_MIRROR; note «не измеряемые шаги отдаются как not_measured (null), в 0 не
+превращаются»; link → вкладка «Поведение». refresh daily; status.thresholds.eventGapMinFunnelVisits = 20; детектор в
+status.detectors (19).
+Жизненный цикл: тот же отпечаток день за днём → unchanged (версий 0; двигаются lastDetectedAt и окно карточки);
+измерение появилось → RESOLVED «условие сигнала больше не выполняется»; вернулось в 7 дней → та же карточка OPEN,
+позже → новый эпизод #N (общий механизм § 4 контракта). Каноническая нагрузка теперь без fact.period / baselinePeriod
+(для всех детекторов — окна сами по себе не новые данные; на прежних карточках копии хэши не изменились: повтор → unchanged 5).
+UI: карточки scope = data подписаны «Качество измерения — не поведение клиентов» (вместо «Гипотеза — не факт») и чипом
+«качество данных, не поведение»; ограничение NOT_MEASURED_STEPS — «часть шагов не измеряется».
+```
+
+## BEFORE
+
+```text
+Копия crm_stage12_test 16.09 16:07 MSK (отчёт § 49), окна 02–08.09 → 09–15.09: 18 детекторов, 4 карточки
+([CRITICAL] DEVICE_GAP этапа 10, [INFO] визиты 244 → 126, [INFO] покрытие ClientID 6 %, [INFO] оценка изменения 12.09),
+51 причина молчания. Пропуски измерения шагов воронок (photo: «Выбрали фото / формат» not_measured; tshirt: «Выбрали
+крой / цвет», «Отправили форму» not_measured; canvas: «Загрузили фото» not_measured) в ленте никак не отражались —
+только косвенно через skipped FUNNEL_DROPOFF правил этапа 10 (LOW_SAMPLE / PARTIAL_BEHAVIOR_PERIOD) в диагностике.
+Detector EVENT_NOT_MEASURED (35.5) отсутствовал (§ 49 DEVIATION 4) → NEEDS_FIX.
+```
+
+## AFTER
+
+```text
+Копия crm_stage12_test 16.09 19:41 MSK (свежее production), те же окна 02–08.09 → 09–15.09; ANALYTICS_INSIGHTS_ENABLED=true
+только у локального backend против копии:
+GET status: detectors=19 (quality.eventNotMeasured DATA_QUALITY daily STAGE12_DETECTOR), thresholds.eventGapMinFunnelVisits=20.
+POST run (manual = daily): detectors 19, detected 6, created 6, versioned 0, suppressed 52:
+  [CRITICAL] stage10.issues DEVICE_GAP (как было)
+  [INFO] traffic.visits 244 → 126 (как было)
+  [INFO] quality.clientIdCoverage 6 % (как было)
+  [INFO] quality.paidWithoutDate — 11 оплаченных без даты оплаты (новая карточка из более свежих данных production,
+         к FIX_01 не относится; на копии 16:07 было 0)
+  [INFO] quality.eventNotMeasured (photo) — «Воронка «Фотопечать»: шаг не измеряется — анализ отвала ограничен»:
+         не измеряется «Выбрали фото / формат» (цели catalog в счётчике нет); not_measured, не 0; нельзя посчитать
+         конверсию из «Выбрали фото / формат» в «Начали форму фотопечати» и долю потерь до этого шага; измеренная часть
+         «Открыли раздел фотопечати» → «Начали форму фотопечати» → «Заявка на фото принята»; на входе ≥ 20 визитов.
+         HYPOTHESIS NO_SUPPORTED_HYPOTHESIS; RECOMMENDATION IMPROVE_DATA_QUALITY; limitations NOT_MEASURED_STEPS,
+         STAGE10_RULE_MIRROR; evidence.context step:catalog before/after null.
+  [INFO] change.evaluation 12.09 (как было)
+Диагностика quality.eventNotMeasured (объясняет, почему карточки нет):
+  · tshirt LOW_SAMPLE: «воронка «Футболки»: не измеряются «Выбрали крой / цвет», «Отправили форму», но на входе измеренной
+    части 13 визитов (< 20) — анализ отвала сейчас не идёт, пропуск ничего не ограничивает»;
+  · canvas NO_MATERIAL_CHANGE: «воронка «Холсты»: шаг(и) «Загрузили фото» на сайте не существуют — ни одному анализу не
+    нужны, карточка не создаётся».
+Итого одна агрегированная карточка на 4 не измеряемых шага трёх воронок; ни одной карточки на отдельный event.
+Повторный run → created 0, versioned 0, unchanged 5 (в т. ч. eventNotMeasured v1), resolved 0.
+Часовой запуск: detectors 2 (quality.stale, change.evaluation) — набор hourly не изменился; 12 SQL.
+Скриншот: screenshots/12_insights/insights-fix01-event-not-measured.png (фильтр DATA_QUALITY, карточка раскрыта,
+подпись «Качество измерения — не поведение клиентов», чип, блок «Правил без вывода»).
+```
+
+## TESTS
+
+```text
+Новый файл insights-event-gap.spec.ts — 9 тестов (требуемые 1–8 Reviewer):
+ 1  анализ воронки с активностью + не измеряемый шаг → одна карточка DATA_QUALITY INFO, scope data, FACT с названием
+    анализа / шага / «not_measured, не 0» / «нельзя …», hypothesis NO_SUPPORTED_HYPOTHESIS, IMPROVE_DATA_QUALITY без
+    правок web-photo, limitations, link behavior;
+ 2  четыре не измеряемых шага одного анализа → одна карточка, не четыре; уровень остаётся INFO;
+ 3  шаг, не нужный ни одному анализу (canvas_upload не существует на сайте) → карточки нет, NO_MATERIAL_CHANGE с
+    объяснением; вход < 20 → LOW_SAMPLE с объяснением (карточки нет);
+ 3b входной не измеряемый шаг фото при активности → вывод «нельзя посчитать конверсию из … в …»;
+ 4  not_measured никогда не превращается в 0 — в fact.current/baseline/sample и evidence.context только null;
+ 5  жизненный цикл на memory-Prisma: карточка живёт, пока шаг не измеряется (повтор → unchanged, версий 0); измерение
+    появилось → RESOLVED «условие сигнала больше не выполняется»; версия неизменяемая;
+ 6  повторный запуск, другие дневные числа и другое окно → тот же отпечаток и тот же хэш (version churn 0); другой состав
+    пропусков → тот же отпечаток, другой хэш (новая версия);
+ 7  никаких причинных / психологических формулировок (violatesLanguagePolicy = null для title/fact/hypothesis/recommendation);
+ 8  реестр 19 детекторов, hourly-набор прежний [change.evaluation, quality.stale], INSIGHT_THRESHOLDS.eventGapMinFunnelVisits = 20,
+    прежние 18 детекторов дают те же payloadHash с funnels и без них.
+Панель: insights.test.tsx +1 (K7: карточка scope data → подпись «Качество измерения — не поведение клиентов» и чип
+«качество данных, не поведение»; обычная карточка — «Гипотеза — не факт», чипа нет).
+Итого: CRM jest 1078 / 1078 (99 suites; этап 12 — 63), панель vitest 42 / 42 (insights 7). nest build OK; tsc -b + vite build OK;
+eslint crm-new src/analytics/insights 0; prettier чист; frontend eslint по аналитике 0.
+```
+
+## RECONCILIATION
+
+```text
+Копия 16.09 19:41, окна 02–08.09 → 09–15.09, cutoff 15.09:
+A (HTTP, ADMIN JWT в процессе) = B (сервис против копии): matched 5, diffs 0 (канонические нагрузки карточек совпадают,
+  в т. ч. quality.eventNotMeasured; change.evaluation исключена как уже поднятая версия); причины молчания B — те же
+  коды/сущности (eventNotMeasured tshirt LOW_SAMPLE / canvas NO_MATERIAL_CHANGE в обоих).
+A/B = C (прямой SQL по копии): 13 контрольных чисел (визиты / заявки / формы / принятые / оплаты / выручка / прибыль /
+  покрытие ClientID / stale) + состав карточек — diffs 0. Шаги воронок в FACT совпадают с вкладкой «Поведение» этапа 10
+  (тот же BehaviorMetricsService: photo catalog not_measured; tshirt choose_type_color / submit_tshirt_order not_measured;
+  canvas canvas_upload not_measured; вход photo ≥ 20, tshirt 13).
+Повтор run: created 0 / versioned 0 / unchanged 5 / reopened 0. Язык: запрещённых формулировок 0; causality всех карточек
+NOT_ESTABLISHED; гипотез без пометки 0. PII: feed/quality/status/get/versions — только агрегаты; DTO с лишним полем → 400.
+Производительность: daily 157 SQL (было 153: +4 SQL воронок этапа 10 на 3 воронки), 5,5 с через туннель; hourly 12 SQL, 1,4 с;
+feed 3 SQL, 0,14 с.
+```
+
+## REGRESSION
+
+```text
+· Остальные 18 детекторов: те же payloadHash с funnels в контексте и без (тест 8); на копии карточки DEVICE_GAP / visits /
+  clientIdCoverage / change.evaluation — те же тексты и числа, что до FIX_01 (§ 49), причины молчания те же коды
+  (LOW_SAMPLE 30 → 31 только за счёт eventNotMeasured tshirt).
+· Пороги остальных детекторов (INSIGHTS_RULES.md § 2), окна 7/7, hourly-набор, замок RUNNING, хук после тика — не менялись.
+· Этапы 10/11: контракты (FunnelStep availability/not_measured, evaluateMetric, buildWindows) не трогались; их тесты —
+  прежние, зелёные (входят в 1078). Этапы 06/09 — без правок.
+· Побочная правка в insights-language.ts (в коммите 5f90e68): hypothesisText обрезает конечную пунктуацию тела и
+  ставит точку перед «Причинность не установлена.» — только формат текста гипотез, содержимого не меняет; тесты
+  языка зелёные.
+· UI: у карточек не data-scope подпись «Гипотеза — не факт» прежняя (тест K7 проверяет обе ветки); 390 px без прокрутки.
+```
+
+## GIT
+
+```text
+feature/analytics-foundation: bbbf4bf (§ 49 docs) → 5f90e68 детектор EVENT_NOT_MEASURED (+ пороги EVENT_GAP_*, тесты 1–8,
+UI-пометка data-scope, каноническая нагрузка без окон, unchanged двигает окно карточки) → 0d7e901 формулировка рекомендации
+→ <docs> (INSIGHTS_RULES.md § 2/3/5/6, INSIGHTS_DATA_CONTRACT.md § 4/7, этот отчёт § 50, STATUS, master plan, current state,
+скриншот). Изменённые файлы кода: insights-engine.ts, insights-rules.ts, insights-language.ts, analytics-insights.service.ts,
+insights-event-gap.spec.ts (новый), frontend insights-sections.tsx, insights.test.tsx. Схема Prisma и миграции — без изменений.
+origin/master = 5922175 (production), не менялся; master ⊂ feature. В main/master не сливалось.
+```
+
+## DEVIATIONS
+
+```text
+1. Для стабильности версии каноническая нагрузка всех детекторов больше не включает fact.period / baselinePeriod, а при
+   неизменной нагрузке обновляются столбцы окна карточки (periodStart/End, baselineStart/End). На прежних карточках копии
+   хэши не изменились (повтор → unchanged 5). Это уточнение § 4 контракта, а не смена архитектуры.
+2. Пороговое условие «анализ реально ограничен» взято равным MIN_STEP_ENTRANTS = 20 правила 11.1 этапа 10 (а не 30 визитов
+   MIN_SAMPLE_VISITS этапа 11): карточка появляется ровно тогда, когда правило отвала этапа 10 считалось бы, если бы шаг
+   измерялся. Константа своя (EVENT_GAP_MIN_FUNNEL_VISITS), в status.thresholds.
+3. Побочная правка формата hypothesisText (REGRESSION п. 4).
+```
+
+## OPEN_DECISIONS
+
+```text
+1. Классификация шагов EVENT_GAP_STEP_KINDS задана в коде по фактам этапа 10 (canvas_upload — не существует на сайте).
+   Если владелец решит считать какой-то шаг намеренно неизмеряемым — добавить ключ в NOT_ON_SITE (без изменения детектора).
+2. POST /insights/run и пороги V1 — прежние OPEN_DECISIONS § 49.
+```
+
+## PRODUCTION_UNTOUCHED
+
+```text
+Production CRM не менялся: master 5922175 (проверено git rev-parse origin/master), образы и контейнеры не пересоздавались,
+/opt/raspechatka/.env и compose на сервере не редактировались, миграции production не применялись (82 applied, как до
+FIX_01), таблиц AnalyticsInsight* в боевой базе crm нет (59 таблиц). Копия crm_stage12_test удалена, туннель закрыт,
+локальные backend/vite остановлены. web-photo, event model сайта, Logs API, CI сайта — не трогались.
 ```

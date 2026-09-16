@@ -1326,16 +1326,20 @@ author
 Статус:
 
 ```text
-REVIEW (16.09.2026). Реализовано в feature/analytics-foundation, проверено на копии production crm_stage12_test
-(удалена): движок сигналов FACT → HYPOTHESIS → RECOMMENDATION — 18 детерминированных детекторов поверх сервисов этапов
+REVIEW (16.09.2026; Reviewer NEEDS_FIX → 12_FIX_01 выполнен 16.09: агрегированный детектор quality.eventNotMeasured —
+одна INFO-карточка на воронку этапа 10 с не измеряемым шагом, только когда анализ отвала реально идёт (вход ≥ 20
+визитов); FACT: какой анализ ограничен, какой шаг, not_measured ≠ 0, какие выводы нельзя; NO_SUPPORTED_HYPOTHESIS;
+IMPROVE_DATA_QUALITY без правок event model; шаги, которых на сайте нет, карточки не дают; отчёт § 50).
+Реализовано в feature/analytics-foundation, проверено на копии production crm_stage12_test
+(удалена): движок сигналов FACT → HYPOTHESIS → RECOMMENDATION — 19 детерминированных детекторов поверх сервисов этапов
 08/10/11 (окна 7/7 полных московских дней, evaluateMetric / confounders этапа 11, зеркало правил этапа 10, оценки этапа
 11 дословно), существенность отдельно от статистики, тишина при малых выборках (причины молчания в диагностике),
 CRITICAL по закрытому списку, rule-based гипотезы с языковой политикой (запрещённые причинные формулировки — тест и
 движок), causality NOT_ESTABLISHED; реестр AnalyticsInsight + неизменяемые версии + журнал запусков (миграция
 20260916120000, только CREATE), отпечаток без периода, RESOLVED / переоткрытие / эпизоды / кулдаун; хук после тика
 daily (~150 SQL) / hourly (12 SQL); ADMIN API /analytics/dashboard/insights под своим флагом ANALYTICS_INSIGHTS_ENABLED
-(default false, guard до валидации); вкладка «Инсайты». Сверка A = B = C diff 0; тесты CRM 1069 / панель 41.
-Production не тронут; rollout — отдельный gate. Отчёт — 12_AUTOMATED_INSIGHTS.md § 49; контракты —
+(default false, guard до валидации); вкладка «Инсайты». Сверка A = B = C diff 0; тесты CRM 1078 / панель 42.
+Production не тронут; rollout — отдельный gate. Отчёты — 12_AUTOMATED_INSIGHTS.md § 49, § 50 (FIX_01); контракты —
 INSIGHTS_DATA_CONTRACT.md, INSIGHTS_RULES.md, INSIGHTS_LANGUAGE_POLICY.md. Verdict ставит Reviewer.
 ```
 
@@ -1655,13 +1659,14 @@ POSITIVE_SIGNAL … INCOMPARABLE без причинности, confounders, ADM
 NO_VARIANT_ASSIGNMENT. В production с 15.09 23:17 MSK (rollout § 35 `11_PRODUCTION_ROLLOUT.md`, master 5922175);
 DONE (Reviewer, 16.09.2026). Отчёт — `11_GROWTH_AND_EXPERIMENTS.md` § 31; rollout — `11_PRODUCTION_ROLLOUT.md` § 35.
 
-12_AUTOMATED_INSIGHTS — REVIEW (16.09.2026): детерминированный движок сигналов FACT → HYPOTHESIS → RECOMMENDATION
-поверх этапов 08/10/11 — 18 детекторов на окнах 7/7 (оценки метрик, MDE, сопоставимость, созревание и confounders этапа
+12_AUTOMATED_INSIGHTS — REVIEW (16.09.2026; FIX_01 выполнен): детерминированный движок сигналов FACT → HYPOTHESIS → RECOMMENDATION
+поверх этапов 08/10/11 — 19 детекторов на окнах 7/7 (оценки метрик, MDE, сопоставимость, созревание и confounders этапа
 11; зеркало правил этапа 10; оценки этапа 11 дословно), существенность отдельно от статистики, CRITICAL по закрытому
 списку, rule-based гипотезы с языковой политикой, реестр карточек с отпечатком / версиями / журналом (миграция
 20260916120000, только CREATE), хук daily/hourly, ADMIN API под флагом ANALYTICS_INSIGHTS_ENABLED (guard до валидации),
-вкладка «Инсайты». Копия production: A = B = C diff 0, 4 карточки / 51 причина молчания; тесты CRM 1069 / панель 41.
-Production не тронут; rollout — отдельный gate. Отчёт — `12_AUTOMATED_INSIGHTS.md` § 49.
+вкладка «Инсайты». Копия production: A = B = C diff 0, 6 карточек / 52 причины молчания (в т. ч. одна агрегированная
+карточка FIX_01 «шаг не измеряется» для воронки фотопечати); тесты CRM 1078 / панель 42.
+Production не тронут; rollout — отдельный gate. Отчёты — `12_AUTOMATED_INSIGHTS.md` § 49, § 50 (FIX_01).
 ```
 
 История: `00`, `01`, `02` (с FIX_01), `03`, `04` (с FIX_01), `05` (live smoke
