@@ -13,6 +13,7 @@ import type {
   BehaviorIssue,
   BehaviorIssues,
   Funnel,
+  FunnelStep,
 } from '../behavior/behavior-contract';
 import type {
   Confounder,
@@ -79,6 +80,8 @@ import {
   MIX_SHIFT_POINTS,
   INSIGHT_POLARITY_OVERRIDES,
   MIRRORS_GLOBAL_TRAFFIC_POINTS,
+  EVENT_GAP_MIN_FUNNEL_VISITS,
+  EVENT_GAP_STEP_KINDS,
 } from './insights-rules';
 
 // ---------------------------------------------------------------------------
@@ -157,7 +160,14 @@ export function canonicalPayload(p: InsightPayload): string {
       const o = v as Record<string, unknown>;
       const out: Record<string, unknown> = {};
       for (const k of Object.keys(o).sort()) {
-        if (k === 'freshness' || k === 'generatedAt') continue;
+        // окна сдвигаются каждый день — сами по себе они не «новые данные»; факт меняется через числа
+        if (
+          k === 'freshness' ||
+          k === 'generatedAt' ||
+          k === 'period' ||
+          k === 'baselinePeriod'
+        )
+          continue;
         out[k] = strip(o[k]);
       }
       return out;
@@ -425,6 +435,8 @@ function suppressionDetail(
   return parts.join('; ');
 }
 
+const fmtNum = (v: number | null): string =>
+  v === null ? '—' : (Math.round(v * 100) / 100).toString().replace('.', ',');
 const fmtDateIso = (iso: string) =>
   `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
 
@@ -1030,7 +1042,7 @@ export const stage10Detector: InsightDetector = {
             issue.hypothesis.replace(/^Гипотеза:\s*/i, '').replace(/\.$/, ''),
             issue.evidence.map(
               (e) =>
-                `${e.metric}: ${e.current ?? '—'} (база ${e.baseline ?? '—'}, выборка ${e.sample} ≥ ${e.minSample})`,
+                `${e.metric}: ${fmtNum(e.current)} (база ${fmtNum(e.baseline)}, выборка ${e.sample} ≥ ${e.minSample})`,
             ),
           ),
           recommendation: rec(issue.recommendation, 'CHECK_MANUALLY'),
@@ -2059,6 +2071,166 @@ export const paidWithoutDateDetector: InsightDetector = {
 };
 
 // ---------------------------------------------------------------------------
+// Пропуски измерения (FIX_01): один агрегированный сигнал на воронку, только если пропуск
+// реально ограничивает анализ отвала в текущем окне
+
+type GapKind = 'INSTRUMENTATION_GAP' | 'NOT_ON_SITE';
+
+function gapKindOf(step: FunnelStep): GapKind {
+  const configured = EVENT_GAP_STEP_KINDS[step.key];
+  if (configured) return configured;
+  return /не существует|нет на сайте/i.test(step.note ?? '')
+    ? 'NOT_ON_SITE'
+    : 'INSTRUMENTATION_GAP';
+}
+
+/** Что именно нельзя сделать без шага — по его месту среди измеренных шагов. */
+function gapConsequence(steps: FunnelStep[], idx: number): string {
+  const label = steps[idx].label;
+  const prev = [...steps.slice(0, idx)]
+    .reverse()
+    .find((s) => s.availability === 'measured');
+  const next = steps.slice(idx + 1).find((s) => s.availability === 'measured');
+  if (!prev && next)
+    return `нельзя посчитать конверсию из «${label}» в «${next.label}» и долю потерь до этого шага`;
+  if (prev && next)
+    return `переход «${prev.label}» → «${next.label}» нельзя разложить через «${label}»: потеря не локализуется между этими шагами`;
+  if (prev && !next)
+    return `нельзя измерить завершение воронки после «${prev.label}» (шаг «${label}»)`;
+  return `шаг «${label}» не измеряется`;
+}
+
+export const eventNotMeasuredDetector: InsightDetector = {
+  id: 'quality.eventNotMeasured',
+  category: 'DATA_QUALITY',
+  refresh: 'daily',
+  source: 'STAGE12_DETECTOR',
+  evaluate(ctx) {
+    const d = eventNotMeasuredDetector;
+    const funnels = ctx.behavior?.funnels;
+    if (!funnels) return { detected: [], suppressed: [] };
+    const detected: DetectedInsight[] = [];
+    const suppressed: SuppressedResult[] = [];
+    const thresholds = { eventGapMinFunnelVisits: EVENT_GAP_MIN_FUNNEL_VISITS };
+    for (const f of funnels) {
+      const gaps = f.steps
+        .map((s, idx) => ({ s, idx }))
+        .filter(({ s }) => s.availability === 'not_measured');
+      if (!gaps.length) continue;
+      const relevant = gaps.filter(
+        ({ s }) => gapKindOf(s) === 'INSTRUMENTATION_GAP',
+      );
+      const notOnSite = gaps.filter(({ s }) => gapKindOf(s) === 'NOT_ON_SITE');
+      const labels = (list: { s: FunnelStep }[]) =>
+        list.map(({ s }) => `«${s.label}»`).join(', ');
+      if (!relevant.length) {
+        suppressed.push(
+          suppress(
+            d,
+            'funnelSteps',
+            f.key,
+            'NO_MATERIAL_CHANGE',
+            `воронка «${f.title}»: шаг(и) ${labels(notOnSite)} на сайте не существуют — ни одному анализу не нужны, карточка не создаётся`,
+            null,
+          ),
+        );
+        continue;
+      }
+      // Анализ отвала возможен только при активности на входе измеренной части (порог правила 11.1 этапа 10)
+      const entry = f.steps.find(
+        (s) => s.availability === 'measured' && s.visits !== null,
+      );
+      const entryVisits = entry?.visits ?? null;
+      if (entryVisits === null || entryVisits < EVENT_GAP_MIN_FUNNEL_VISITS) {
+        suppressed.push(
+          suppress(
+            d,
+            'funnelSteps',
+            f.key,
+            'LOW_SAMPLE',
+            `воронка «${f.title}»: не измеряются ${labels(relevant)}, но на входе измеренной части ${entryVisits === null ? 'нет данных' : `${entryVisits} визитов`} (< ${EVENT_GAP_MIN_FUNNEL_VISITS}) — анализ отвала сейчас не идёт, пропуск ничего не ограничивает`,
+            entryVisits,
+          ),
+        );
+        continue;
+      }
+      const stepsText = relevant
+        .map(
+          ({ s }) =>
+            `«${s.label}» (${s.note ? s.note.replace(/\.$/, '') : 'цели в счётчике нет'})`,
+        )
+        .join('; ');
+      const consequences = relevant
+        .map(({ idx }) => gapConsequence(f.steps, idx))
+        .join('; ');
+      // Без чисел окна: карточка описывает пропуск измерения, а не дневные объёмы — иначе версия росла бы
+      // каждый день без изменения сути; текущие числа шагов — во вкладке «Поведение».
+      const measuredText = f.steps
+        .filter((s) => s.availability === 'measured' && s.visits !== null)
+        .map((s) => `«${s.label}»`)
+        .join(' → ');
+      const notOnSiteText = notOnSite.length
+        ? ` Шаг(и) ${labels(notOnSite)} на сайте не существуют и в анализе не нужны.`
+        : '';
+      const text =
+        `Анализ отвала воронки «${f.title}» (правило этапа 10) ограничен: не измеряется ${relevant.length === 1 ? 'шаг' : `шагов ${relevant.length}`} — ${stepsText}. ` +
+        `Значение таких шагов — not_measured, не 0. Нельзя сделать выводы: ${consequences}. ` +
+        `Измеренная часть воронки: ${measuredText || 'нет измеренных шагов'}; на входе в текущем окне не меньше ${EVENT_GAP_MIN_FUNNEL_VISITS} визитов — анализ актуален (числа шагов — во вкладке «Поведение»).${notOnSiteText}`;
+      detected.push(
+        build(d, ctx, {
+          severity: 'INFO',
+          scope: 'data',
+          metricKey: 'funnelSteps',
+          entityKey: f.key,
+          title: `Воронка «${f.title}»: ${relevant.length === 1 ? 'шаг не измеряется' : `${relevant.length} шага не измеряются`} — анализ отвала ограничен`,
+          fact: {
+            text,
+            metric: 'funnelSteps',
+            unit: null,
+            current: null,
+            baseline: null,
+            absoluteDelta: null,
+            relativeDelta: null,
+            sample: {
+              current: null,
+              baseline: null,
+              minimum: EVENT_GAP_MIN_FUNNEL_VISITS,
+            },
+            period: ctx.windows.after,
+            baselinePeriod: null,
+          },
+          hypothesis: {
+            status: 'NO_SUPPORTED_HYPOTHESIS',
+            text: 'Гипотезы нет: отсутствие измерения — известный факт настройки счётчика, а не поведение клиентов.',
+            supportingFacts: [],
+          },
+          recommendation: rec(
+            `Проверить настройку счётчика Метрики: завести цели для событий, которые сайт уже отправляет (${labels(relevant)}), либо зафиксировать шаг как намеренно неизмеряемый. Событийную модель сайта (web-photo) в рамках этапа 12 не менять; до появления измерения выводы об отвале на этих шагах не делать.`,
+            'IMPROVE_DATA_QUALITY',
+          ),
+          evidence: {
+            ...evidence(d.id, thresholds, null, ctx, 'NONE', 'LOW', [], []),
+            context: relevant.map(({ s }) => ({
+              metric: `step:${s.key}`,
+              before: null,
+              after: null,
+              unit: 'visits',
+            })),
+            confounders: [],
+          },
+          limitations: ['NOT_MEASURED_STEPS', 'STAGE10_RULE_MIRROR'],
+          link: { tab: 'behavior' },
+          notes: [
+            'Это качество измерения, а не проблема поведения клиентов: не измеряемые шаги отдаются как not_measured (null), в 0 не превращаются.',
+          ],
+        }),
+      );
+    }
+    return { detected, suppressed };
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Реестр и запуск
 
 export const DETECTORS: InsightDetector[] = [
@@ -2080,6 +2252,7 @@ export const DETECTORS: InsightDetector[] = [
   clientIdCoverageDetector,
   cogsDetector,
   paidWithoutDateDetector,
+  eventNotMeasuredDetector,
 ];
 
 /** Запуск детекторов: daily — все, hourly — только с refresh: 'hourly'. Детерминирован: порядок фиксирован. */

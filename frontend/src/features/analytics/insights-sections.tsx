@@ -70,6 +70,7 @@ export function InsightCard({ insight: i, onAcknowledge, onResolve, busy }: { in
       <header className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
         <SeverityBadge severity={i.severity} />
         <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-700" data-testid="insight-category">{CATEGORY_LABELS[i.category]}</span>
+        {i.scope === 'data' && <span className="rounded bg-sky-50 px-1.5 py-0.5 text-sky-800" data-testid="data-scope-chip">качество данных, не поведение</span>}
         <span data-testid="insight-period">{periodText(i)}</span>
         <span className={`ml-auto rounded px-1.5 py-0.5 ${i.status === 'OPEN' ? 'bg-indigo-50 text-indigo-700' : i.status === 'ACKNOWLEDGED' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`} data-testid="insight-status">
           {STATUS_LABELS[i.status]}
@@ -83,7 +84,9 @@ export function InsightCard({ insight: i, onAcknowledge, onResolve, busy }: { in
           <p className="mt-1 text-sm text-gray-900" data-testid="insight-fact">{i.fact.text}</p>
         </div>
         <div className={`rounded-lg border p-3 ${i.hypothesis.status === 'SUPPORTED_BY_CONCURRENT_FACTS' ? 'border-dashed border-indigo-200 bg-indigo-50/40' : 'border-dashed border-gray-200 bg-gray-50'}`} data-testid="insight-hypothesis" data-hypothesis-status={i.hypothesis.status}>
-          <div className="text-[11px] uppercase tracking-wide text-indigo-700">Гипотеза — не факт</div>
+          <div className={`text-[11px] uppercase tracking-wide ${i.scope === 'data' ? 'text-gray-500' : 'text-indigo-700'}`} data-testid="hypothesis-label">
+            {i.scope === 'data' ? 'Качество измерения — не поведение клиентов' : 'Гипотеза — не факт'}
+          </div>
           <p className="mt-1 text-sm italic text-gray-700">{i.hypothesis.text ?? 'Гипотезы нет.'}</p>
           {i.hypothesis.supportingFacts.length > 0 && (
             <ul className="mt-2 list-disc pl-4 text-xs text-gray-600">

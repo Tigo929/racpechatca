@@ -564,9 +564,16 @@ export class AnalyticsInsightsService {
 
     if (latest && ACTIVE.includes(latest.status as InsightStatus)) {
       if (latest.payloadHash === hash) {
+        // то же содержимое — без версии; окно карточки двигается вместе с данными
         await tx.analyticsInsight.update({
           where: { id: latest.id },
-          data: { lastDetectedAt: at },
+          data: {
+            lastDetectedAt: at,
+            periodStart: base.periodStart,
+            periodEnd: base.periodEnd,
+            baselineStart: base.baselineStart,
+            baselineEnd: base.baselineEnd,
+          },
         });
         return { kind: 'unchanged', fingerprint: latest.fingerprint };
       }

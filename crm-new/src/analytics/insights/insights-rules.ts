@@ -54,6 +54,30 @@ export const CLIENT_ID_COVERAGE_MIN_PCT = 50;
 /** Минимум принятых в окне, чтобы покрытие вообще обсуждать. */
 export const CLIENT_ID_COVERAGE_MIN_ACCEPTED = 5;
 
+// ── Пропуски измерения (FIX_01: EVENT_NOT_MEASURED) ──────────────────────────
+/**
+ * Не измеряемый шаг воронки этапа 10 ограничивает анализ отвала только там, где анализ сейчас
+ * возможен: на входе измеренной части воронки не меньше этого числа визитов (порог правила 11.1
+ * этапа 10 — MIN_STEP_ENTRANTS). Ниже — пропуск ничего не ограничивает, карточки нет.
+ */
+export const EVENT_GAP_MIN_FUNNEL_VISITS = 20;
+/**
+ * Вид пропуска по ключу шага этапа 10: INSTRUMENTATION_GAP — событие/шаг на сайте есть, а цели или
+ * события в счётчике нет (измерение можно добавить настройкой); NOT_ON_SITE — шага на сайте не
+ * существует (например, загрузка фото холста — фото присылают в переписке): анализу он не нужен,
+ * карточка не создаётся. Неизвестные шаги — по примечанию этапа 10 («не существует» → NOT_ON_SITE),
+ * иначе INSTRUMENTATION_GAP.
+ */
+export const EVENT_GAP_STEP_KINDS: Record<
+  string,
+  'INSTRUMENTATION_GAP' | 'NOT_ON_SITE'
+> = {
+  catalog: 'INSTRUMENTATION_GAP',
+  choose_type_color: 'INSTRUMENTATION_GAP',
+  submit_tshirt_order: 'INSTRUMENTATION_GAP',
+  canvas_upload: 'NOT_ON_SITE',
+};
+
 // ── Жизненный цикл ───────────────────────────────────────────────────────────
 /** Сигнал, вернувшийся после RESOLVED раньше этого срока, открывается заново тем же эпизодом; позже — новый эпизод. */
 export const REOPEN_WINDOW_DAYS = 7;
@@ -94,6 +118,7 @@ export const INSIGHT_THRESHOLDS: Record<string, number> = {
   materialErrorVisits: MATERIAL_ERROR_VISITS,
   mixShiftPoints: MIX_SHIFT_POINTS,
   mirrorsGlobalTrafficPoints: MIRRORS_GLOBAL_TRAFFIC_POINTS,
+  eventGapMinFunnelVisits: EVENT_GAP_MIN_FUNNEL_VISITS,
   criticalLeadsVanishedMinVisits: CRITICAL_LEADS_VANISHED_MIN_VISITS,
   criticalLeadsVanishedBaselineLeads: CRITICAL_LEADS_VANISHED_BASELINE_LEADS,
   criticalFunnelBreakMinVisits: CRITICAL_FUNNEL_BREAK_MIN_VISITS,

@@ -117,6 +117,19 @@ describe('InsightCard', () => {
     expect(screen.getByTestId('insight-link')).toHaveAttribute('href', '/crm/analytics?tab=behavior');
   });
 
+  it('FIX_01: карточка качества данных (scope data) подписана как качество измерения, а не поведение клиентов', () => {
+    render(
+      <MemoryRouter>
+        <InsightCard insight={insight({ category: 'DATA_QUALITY', scope: 'data', severity: 'INFO', title: 'Воронка «Футболки»: 2 шага не измеряются — анализ отвала ограничен', fact: { ...insight().fact, text: 'Не измеряется шаг «Отправили форму»; значение — not_measured, не 0.', current: null, baseline: null }, hypothesis: { status: 'NO_SUPPORTED_HYPOTHESIS', text: 'Гипотезы нет: отсутствие измерения — известный факт настройки счётчика, а не поведение клиентов.', supportingFacts: [] }, limitations: ['NOT_MEASURED_STEPS'] })} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId('hypothesis-label')).toHaveTextContent('Качество измерения — не поведение клиентов');
+    expect(screen.getByTestId('data-scope-chip')).toHaveTextContent('качество данных, не поведение');
+    expect(screen.getByTestId('insight-fact')).toHaveTextContent('not_measured, не 0');
+    expect(screen.getByTestId('insight-limitations')).toHaveTextContent('часть шагов не измеряется');
+    expect(screen.getByTestId('severity-INFO')).toBeInTheDocument();
+  });
+
   it('гипотезы нет — блок помечен NO_SUPPORTED_HYPOTHESIS с текстом «Гипотезы нет»', () => {
     render(
       <MemoryRouter>

@@ -51,7 +51,8 @@ export const HYPOTHESIS_PREFIX = 'Гипотеза: ';
 export const HYPOTHESIS_SUFFIX = ' Причинность не установлена.';
 
 export function hypothesisText(body: string): string {
-  return `${HYPOTHESIS_PREFIX}${body}${HYPOTHESIS_SUFFIX}`;
+  const clean = body.trim().replace(/[.\s]+$/, '');
+  return `${HYPOTHESIS_PREFIX}${clean}.${HYPOTHESIS_SUFFIX}`;
 }
 
 export const NO_HYPOTHESIS_TEXT =
