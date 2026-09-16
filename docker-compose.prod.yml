@@ -72,6 +72,9 @@ services:
       # выкатывается выключенным. Выключен — API роста 404 (кроме status),
       # вкладка «раздел выключен», хук расписания не подключён.
       ANALYTICS_GROWTH_ENABLED: ${ANALYTICS_GROWTH_ENABLED:-false}
+      # Инсайты (этап 12): свой флаг поверх флага дашборда — раздел выкатывается выключенным.
+      # Выключен — API 404 (кроме status) ещё до валидации, хук расписания не подключён.
+      ANALYTICS_INSIGHTS_ENABLED: ${ANALYTICS_INSIGHTS_ENABLED:-false}
       PARTNER_WEBHOOK_URL: ${PARTNER_WEBHOOK_URL:-}
       PARTNER_WEBHOOK_TOKEN: ${PARTNER_WEBHOOK_TOKEN:-}
       PARTNER_STATUS_POLL_ENABLED: ${PARTNER_STATUS_POLL_ENABLED:-false}

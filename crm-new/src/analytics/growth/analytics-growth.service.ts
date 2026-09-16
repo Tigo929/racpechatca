@@ -23,6 +23,7 @@ import {
   computeEvaluation,
   type CohortData,
   type EvaluationInputs,
+  type OverlappingChange,
   type WindowData,
 } from './growth-compute';
 import {
@@ -463,9 +464,15 @@ export class AnalyticsGrowthService {
         select: { id: true, finishedAt: true },
       }),
       this.metrics.lifecycles(windows.after),
-      this.loadWindow(windows.before, row),
-      this.loadWindow(windows.after, row),
-      this.overlapping(row, windows.before.from, windows.after.to),
+      this.loadWindow(
+        windows.before,
+        row.audienceDefinition as AudienceDefinition | null,
+      ),
+      this.loadWindow(
+        windows.after,
+        row.audienceDefinition as AudienceDefinition | null,
+      ),
+      this.overlappingChanges(row.id, windows.before.from, windows.after.to),
     ]);
     const cutoffEnd = periodBoundsUtc({
       from: windows.observationCutoff,
@@ -538,11 +545,14 @@ export class AnalyticsGrowthService {
     return evaluation;
   }
 
-  private async loadWindow(
+  /**
+   * Данные окна для оценки; публичен, потому что этап 12 строит на тех же
+   * загрузчиках сравнение скользящих окон — формулы и загрузки не дублируются.
+   */
+  async loadWindow(
     period: AnalyticsPeriod,
-    row: ChangeRow,
+    audience: AudienceDefinition | null,
   ): Promise<WindowData> {
-    const audience = row.audienceDefinition as AudienceDefinition | null;
     // Устройства и страницы входа берутся из поведенческих агрегатов (loadInput): в них те же визиты
     // и достижения lead_submitted, лишние загрузки заказов срезами этапа 09 не нужны. Полный срез
     // источников (с сопоставленными заказами) нужен только для сегментов по аудитории source; для
@@ -619,11 +629,16 @@ export class AnalyticsGrowthService {
     };
   }
 
-  private async overlapping(row: ChangeRow, from: IsoDate, to: IsoDate) {
+  /** Изменения реестра (ACTIVE/COMPLETED), пересекающие [from, to]; excludeId — само оцениваемое изменение. */
+  async overlappingChanges(
+    excludeId: string | null,
+    from: IsoDate,
+    to: IsoDate,
+  ): Promise<OverlappingChange[]> {
     const bounds = periodBoundsUtc({ from, to });
     const rows = await this.prisma.analyticsChange.findMany({
       where: {
-        id: { not: row.id },
+        ...(excludeId ? { id: { not: excludeId } } : {}),
         status: { in: ['ACTIVE', 'COMPLETED'] },
         startedAt: { lt: bounds.endExclusive },
         OR: [{ endedAt: null }, { endedAt: { gt: bounds.start } }],
@@ -645,7 +660,8 @@ export class AnalyticsGrowthService {
     }));
   }
 
-  private async lastDataDay(): Promise<IsoDate | null> {
+  /** Последний день с данными трафика Метрики (граница полных дней для окон). */
+  async lastDataDay(): Promise<IsoDate | null> {
     const agg = await this.prisma.metrikaDailyTraffic.aggregate({
       _max: { date: true },
     });

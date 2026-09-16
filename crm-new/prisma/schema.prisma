@@ -2048,3 +2048,95 @@ model AnalyticsChangeEvaluation {
   @@unique([changeId, version])
   @@index([changeId, evaluatedAt])
 }
+
+// ── Аналитика: автоматические сигналы (этап 12) ───────────────────────────────
+// Лента сигналов FACT → HYPOTHESIS → RECOMMENDATION поверх этапов 07–11. Сигнал
+// устойчив по отпечатку (категория + детектор + метрика + сущность): при новых
+// данных получает новую неизменяемую версию, а не новую карточку; условие
+// перестало выполняться — RESOLVED; вернулось позже окна переоткрытия — новый
+// эпизод. Без PII: только агрегаты и идентификаторы аналитических сущностей.
+
+model AnalyticsInsight {
+  id              String    @id @default(uuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  /** Уникальный отпечаток эпизода: базовый отпечаток, для повторных эпизодов — с суффиксом #N. */
+  fingerprint     String    @unique
+  baseFingerprint String
+  episode         Int       @default(1)
+  category        String
+  severity        String
+  status          String    @default("OPEN")
+  scope           String
+  source          String
+  detectorId      String
+  metricKey       String?
+  entityKey       String?
+  periodStart     DateTime  @db.Date
+  periodEnd       DateTime  @db.Date
+  baselineStart   DateTime? @db.Date
+  baselineEnd     DateTime? @db.Date
+  title           String
+  fact            Json
+  hypothesis      Json
+  recommendation  Json
+  evidence        Json
+  limitations     Json
+  quality         Json
+  causality       String    @default("NOT_ESTABLISHED")
+  link            Json?
+  firstDetectedAt DateTime
+  lastDetectedAt  DateTime
+  resolvedAt      DateTime?
+  resolvedReason  String?
+  acknowledgedAt  DateTime?
+  latestVersion   Int       @default(1)
+  /** Хэш канонической полезной нагрузки последней версии — новая версия только при изменении. */
+  payloadHash     String
+
+  versions AnalyticsInsightVersion[]
+
+  @@index([status, severity, lastDetectedAt])
+  @@index([baseFingerprint])
+}
+
+model AnalyticsInsightVersion {
+  id          String   @id @default(uuid())
+  insightId   String
+  insight     AnalyticsInsight @relation(fields: [insightId], references: [id], onDelete: Cascade)
+  version     Int
+  generatedAt DateTime
+  syncRunId   String?
+  runId       String?
+  /** Неизменяемая полезная нагрузка версии (InsightPayload). */
+  payload     Json
+  payloadHash String
+
+  @@unique([insightId, version])
+}
+
+model AnalyticsInsightRun {
+  id                String    @id @default(uuid())
+  kind              String
+  status            String
+  startedAt         DateTime
+  finishedAt        DateTime?
+  observationCutoff DateTime? @db.Date
+  syncRunId         String?
+  detectors         Int       @default(0)
+  detected          Int       @default(0)
+  created           Int       @default(0)
+  versioned         Int       @default(0)
+  unchanged         Int       @default(0)
+  resolved          Int       @default(0)
+  reopened          Int       @default(0)
+  /** Диагностика молчания детекторов (SuppressedResult[]) — для quality endpoint, не для ленты. */
+  suppressed        Json
+  errors            Json
+  durationMs        Int?
+  queryCount        Int?
+  /** Версии оценок этапа 11, уже поднятые в ленту: { changeId: version }. */
+  seenEvaluations   Json
+
+  @@index([startedAt])
+}
