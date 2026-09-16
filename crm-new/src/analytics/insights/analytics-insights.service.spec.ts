@@ -38,6 +38,8 @@ function memoryPrisma(now: () => Date) {
         const val = row[k] as never;
         if ('in' in cond) return (cond.in as unknown[]).includes(val);
         if ('not' in cond) return val !== cond.not;
+        if ('gt' in cond) return (val as Date) > (cond.gt as Date);
+        if ('lt' in cond) return (val as Date) < (cond.lt as Date);
         return true;
       }
       return row[k] === v;
@@ -421,7 +423,7 @@ describe('AnalyticsInsightsService — жизненный цикл', () => {
     ).toHaveLength(2);
   });
 
-  it('ошибка контекста и занятый lock не ломают процесс — запуск записан как FAILED / LOCKED', async () => {
+  it('ошибка контекста → FAILED в журнале; висящий RUNNING моложе 10 мин → LOCKED без записей; старше — не блокирует', async () => {
     const clock = { now: new Date(NOW) };
     const mem = memoryPrisma(() => clock.now);
     const s = service(
@@ -434,11 +436,17 @@ describe('AnalyticsInsightsService — жизненный цикл', () => {
     const r = await s.run('daily');
     expect(r.status).toBe('FAILED');
     expect(r.errors[0]).toMatch(/база недоступна/);
-    (
-      mem.prisma as unknown as { $queryRaw: jest.Mock }
-    ).$queryRaw.mockImplementationOnce(() =>
-      Promise.resolve([{ locked: false }]),
-    );
+    expect(mem.runs.filter((x) => x.status === 'RUNNING')).toHaveLength(0);
+
+    mem.runs.push({
+      id: 'run-hang',
+      kind: 'daily',
+      status: 'RUNNING',
+      startedAt: new Date(NOW.getTime() - 60_000),
+      suppressed: [],
+      errors: [],
+      seenEvaluations: {},
+    });
     const s2 = service(
       mem,
       () => makeContext(QUIET, QUIET, { now: NOW }),
@@ -447,6 +455,12 @@ describe('AnalyticsInsightsService — жизненный цикл', () => {
     const r2 = await s2.run('daily');
     expect(r2.status).toBe('LOCKED');
     expect(mem.insights).toHaveLength(0);
+
+    (
+      mem.runs.find((x) => x.id === 'run-hang')! as { startedAt: Date }
+    ).startedAt = new Date(NOW.getTime() - 3 * 3600e3);
+    const r3 = await s2.run('daily');
+    expect(r3.status).toBe('SUCCESS');
   });
 
   it('хук после тика: без успешного дневного запуска — daily; при том же cutoff — hourly', async () => {

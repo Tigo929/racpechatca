@@ -30,6 +30,9 @@ export const MATERIAL_MONEY_RUB = 5000;
 export const MATERIAL_MONEY_RELATIVE = 0.1;
 /** Ошибки форм: затронуто не меньше стольких визитов с ошибкой в текущем окне. */
 export const MATERIAL_ERROR_VISITS = 5;
+/** Источник / страница входа, чьи визиты меняются вместе с общим трафиком (разница относительных изменений
+ *  меньше этого, п.п.), отдельной карточки не получает — попадает в гипотезу карточки визитов. */
+export const MIRRORS_GLOBAL_TRAFFIC_POINTS = 20;
 /** Сдвиг смеси источников — как в этапе 11 (п.п.). */
 export const MIX_SHIFT_POINTS = 15;
 
@@ -90,6 +93,7 @@ export const INSIGHT_THRESHOLDS: Record<string, number> = {
   materialMoneyRelative: MATERIAL_MONEY_RELATIVE,
   materialErrorVisits: MATERIAL_ERROR_VISITS,
   mixShiftPoints: MIX_SHIFT_POINTS,
+  mirrorsGlobalTrafficPoints: MIRRORS_GLOBAL_TRAFFIC_POINTS,
   criticalLeadsVanishedMinVisits: CRITICAL_LEADS_VANISHED_MIN_VISITS,
   criticalLeadsVanishedBaselineLeads: CRITICAL_LEADS_VANISHED_BASELINE_LEADS,
   criticalFunnelBreakMinVisits: CRITICAL_FUNNEL_BREAK_MIN_VISITS,

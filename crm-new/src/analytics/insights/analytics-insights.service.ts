@@ -68,8 +68,8 @@ import {
   SEVERITY_ORDER,
 } from './insights-rules';
 
-/** Ключ advisory lock движка (расписание Метрики — 700701). */
-export const INSIGHTS_LOCK_KEY = 700712;
+/** Строка журнала RUNNING старше этого считается брошенной и не блокирует новый запуск. */
+export const RUN_LOCK_MINUTES = 10;
 
 export interface InsightsServiceDeps {
   prisma: PrismaService;
@@ -156,6 +156,34 @@ export class AnalyticsInsightsService {
     });
     if (!windows) return null;
 
+    // Часовой запуск — лёгкий контекст: только свежесть и оценки этапа 11 (детекторы с refresh: 'hourly'
+    // метрик и срезов не читают); окна и данные Метрики не загружаются.
+    if (runKind === 'hourly') {
+      const [lastSync, changes] = await Promise.all([
+        this.prisma.metrikaSyncRun.findFirst({
+          where: { status: 'SUCCESS', finishedAt: { not: null } },
+          orderBy: { finishedAt: 'desc' },
+          select: { id: true, finishedAt: true },
+        }),
+        this.changeContexts(seenEvaluations),
+      ]);
+      return {
+        now,
+        runKind,
+        observationCutoff: cutoff,
+        windows,
+        metrics: {} as Record<GrowthMetricKey, MetricEvaluation>,
+        confounders: [],
+        freshness: freshnessOf(lastSync?.finishedAt ?? null, now),
+        lastSyncRunId: lastSync?.id ?? null,
+        dataQuality: null,
+        behavior: null,
+        slices: { sources: null, landings: null, products: null },
+        changes,
+        paidWithoutDate: 0,
+      };
+    }
+
     const [lastSync, orders, before, after, overlapping, changes] =
       await Promise.all([
         this.prisma.metrikaSyncRun.findFirst({
@@ -206,8 +234,7 @@ export class AnalyticsInsightsService {
       metrics[key] = evaluateMetric(key, 'secondary', inputs);
     const confounders = computeConfounders(inputs, Object.values(metrics));
 
-    // Дневной запуск — полный контекст (правила этапа 10, срезы); часовой — только свежесть и оценки этапа 11.
-    const full = runKind !== 'hourly';
+    // Полный контекст дневного запуска: правила этапа 10 и срезы источников / страниц / товаров за оба окна.
     const [
       issues,
       funnels,
@@ -217,18 +244,16 @@ export class AnalyticsInsightsService {
       landingsA,
       productsB,
       productsA,
-    ] = full
-      ? await Promise.all([
-          this.behavior.getIssues(windows.after),
-          this.behavior.getFunnels(windows.after),
-          this.metrics.getTrafficSources(windows.before),
-          this.metrics.getTrafficSources(windows.after),
-          this.metrics.getLandings(windows.before),
-          this.metrics.getLandings(windows.after),
-          this.metrics.getProducts(windows.before),
-          this.metrics.getProducts(windows.after),
-        ])
-      : [null, null, null, null, null, null, null, null];
+    ] = await Promise.all([
+      this.behavior.getIssues(windows.after),
+      this.behavior.getFunnels(windows.after),
+      this.metrics.getTrafficSources(windows.before),
+      this.metrics.getTrafficSources(windows.after),
+      this.metrics.getLandings(windows.before),
+      this.metrics.getLandings(windows.after),
+      this.metrics.getProducts(windows.before),
+      this.metrics.getProducts(windows.after),
+    ]);
 
     return {
       now,
@@ -240,18 +265,11 @@ export class AnalyticsInsightsService {
       freshness,
       lastSyncRunId: lastSync?.id ?? null,
       dataQuality: after.overview.dataQuality,
-      behavior: issues && funnels ? { issues, funnels } : null,
+      behavior: { issues, funnels },
       slices: {
-        sources:
-          sourcesB && sourcesA ? { before: sourcesB, after: sourcesA } : null,
-        landings:
-          landingsB && landingsA
-            ? { before: landingsB, after: landingsA }
-            : null,
-        products:
-          productsB && productsA
-            ? { before: productsB, after: productsA }
-            : null,
+        sources: { before: sourcesB, after: sourcesA },
+        landings: { before: landingsB, after: landingsA },
+        products: { before: productsB, after: productsA },
       },
       changes,
       paidWithoutDate: after.overview.orders.paidWithoutDate,
@@ -296,6 +314,12 @@ export class AnalyticsInsightsService {
   // Запуск
 
   /** Полный (daily/manual) или лёгкий (hourly) запуск движка с записью журнала. */
+  /**
+   * Запуск с защитой от параллельности: флаг в процессе + строка журнала RUNNING
+   * не старше RUN_LOCK_MINUTES (advisory lock сессии с пулом соединений Prisma
+   * ненадёжен — unlock может уйти в другое соединение). Зависший RUNNING старше
+   * лимита считается брошенным и не блокирует.
+   */
   async run(kind: InsightRunKind): Promise<InsightRunRecord> {
     const startedAt = this.now();
     if (this.running) {
@@ -308,22 +332,23 @@ export class AnalyticsInsightsService {
     }
     this.running = true;
     try {
-      const locked = await this.prisma.$queryRaw<
-        { locked: boolean }[]
-      >`select pg_try_advisory_lock(${INSIGHTS_LOCK_KEY}) as locked`;
-      if (!locked[0]?.locked)
+      const other = await this.prisma.analyticsInsightRun.findFirst({
+        where: {
+          status: 'RUNNING',
+          startedAt: {
+            gt: new Date(startedAt.getTime() - RUN_LOCK_MINUTES * 60_000),
+          },
+        },
+        select: { id: true },
+      });
+      if (other)
         return this.recordRun({
           kind,
           status: 'LOCKED',
           startedAt,
-          errors: ['advisory lock занят другим процессом'],
+          errors: [`запуск ${other.id} ещё не завершён`],
         });
-      try {
-        return await this.runLocked(kind, startedAt);
-      } finally {
-        await this.prisma
-          .$queryRaw`select pg_advisory_unlock(${INSIGHTS_LOCK_KEY})`;
-      }
+      return await this.runLocked(kind, startedAt);
     } finally {
       this.running = false;
     }
@@ -338,24 +363,29 @@ export class AnalyticsInsightsService {
       orderBy: { startedAt: 'desc' },
     });
     const seen = (prev?.seenEvaluations as Record<string, number> | null) ?? {};
+    // Строка RUNNING сразу — её видят другие процессы как замок.
+    const runRow = await this.prisma.analyticsInsightRun.create({
+      data: {
+        kind,
+        status: 'RUNNING',
+        startedAt,
+        suppressed: [],
+        errors: [],
+        seenEvaluations: seen,
+      },
+    });
     let ctx: InsightContext | null;
     try {
       ctx = await this.buildContext(kind, seen);
     } catch (e) {
-      return this.recordRun({
-        kind,
-        status: 'FAILED',
-        startedAt,
-        errors: [`контекст: ${(e as Error).message}`],
-      });
+      return this.finishRun(runRow.id, 'FAILED', [
+        `контекст: ${(e as Error).message}`,
+      ]);
     }
     if (!ctx)
-      return this.recordRun({
-        kind,
-        status: 'SKIPPED',
-        startedAt,
-        errors: ['нет двух полных окон данных Метрики'],
-      });
+      return this.finishRun(runRow.id, 'SKIPPED', [
+        'нет двух полных окон данных Метрики',
+      ]);
 
     const result = runDetectors(ctx, DETECTORS);
     const counters = {
@@ -366,104 +396,103 @@ export class AnalyticsInsightsService {
       reopened: 0,
     };
     const suppressed = [...result.suppressed];
-    const runId = await this.prisma.$transaction(async (tx) => {
-      // 1) Обнаруженные: создать / версия / без изменений / переоткрыть — с лимитом активных на детектор.
-      const activePerDetector = new Map<string, number>();
-      for (const row of await tx.analyticsInsight.findMany({
-        where: { status: { in: ACTIVE } },
-        select: { detectorId: true, fingerprint: true },
-      }))
-        activePerDetector.set(
-          row.detectorId,
-          (activePerDetector.get(row.detectorId) ?? 0) + 1,
-        );
-      const seenFingerprints = new Set<string>();
-      const runRow = await tx.analyticsInsightRun.create({
-        data: {
-          kind,
-          status: 'SUCCESS',
-          startedAt,
-          observationCutoff: new Date(`${ctx.observationCutoff}T00:00:00.000Z`),
-          syncRunId: ctx.lastSyncRunId,
-          detectors:
-            kind === 'hourly'
-              ? DETECTORS.filter((d) => d.refresh === 'hourly').length
-              : DETECTORS.length,
-          detected: result.detected.length,
-          suppressed: [],
-          errors: result.errors,
-          seenEvaluations: seen,
-        },
-      });
-      for (const di of result.detected) {
-        const outcome = await this.upsertInsight(
-          tx,
-          di,
-          ctx,
-          startedAt,
-          runRow.id,
-          activePerDetector,
-        );
-        if (outcome.suppressed) suppressed.push(outcome.suppressed);
-        else {
-          counters[outcome.kind] += 1;
-          seenFingerprints.add(outcome.fingerprint);
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // 1) Обнаруженные: создать / версия / без изменений / переоткрыть — с лимитом активных на детектор.
+        const activePerDetector = new Map<string, number>();
+        for (const row of await tx.analyticsInsight.findMany({
+          where: { status: { in: ACTIVE } },
+          select: { detectorId: true, fingerprint: true },
+        }))
+          activePerDetector.set(
+            row.detectorId,
+            (activePerDetector.get(row.detectorId) ?? 0) + 1,
+          );
+        const seenFingerprints = new Set<string>();
+        for (const di of result.detected) {
+          const outcome = await this.upsertInsight(
+            tx,
+            di,
+            ctx,
+            startedAt,
+            runRow.id,
+            activePerDetector,
+          );
+          if (outcome.suppressed) suppressed.push(outcome.suppressed);
+          else {
+            counters[outcome.kind] += 1;
+            seenFingerprints.add(outcome.fingerprint);
+          }
         }
-      }
-      // 2) Активные карточки детекторов этого запуска, которых больше нет, — RESOLVED (условие не выполняется).
-      const ranDetectors = new Set(
-        DETECTORS.filter(
-          (d) => kind !== 'hourly' || d.refresh === 'hourly',
-        ).map((d) => d.id),
-      );
-      const active = await tx.analyticsInsight.findMany({
-        where: { status: { in: ACTIVE } },
-      });
-      for (const row of active) {
-        if (
-          !ranDetectors.has(row.detectorId) ||
-          seenFingerprints.has(row.fingerprint)
-        )
-          continue;
-        // оценки этапа 11: карточка живёт, пока изменение в реестре — её «условие» не окно, а сама оценка
-        if (
-          row.detectorId === 'change.evaluation' &&
-          ctx.changes.some((c) => c.id === row.entityKey)
-        )
-          continue;
-        await tx.analyticsInsight.update({
-          where: { id: row.id },
+        // 2) Активные карточки детекторов этого запуска, которых больше нет, — RESOLVED (условие не выполняется).
+        const ranDetectors = new Set(
+          DETECTORS.filter(
+            (d) => kind !== 'hourly' || d.refresh === 'hourly',
+          ).map((d) => d.id),
+        );
+        const active = await tx.analyticsInsight.findMany({
+          where: { status: { in: ACTIVE } },
+        });
+        for (const row of active) {
+          if (
+            !ranDetectors.has(row.detectorId) ||
+            seenFingerprints.has(row.fingerprint)
+          )
+            continue;
+          // оценки этапа 11: карточка живёт, пока изменение в реестре — её «условие» не окно, а сама оценка
+          if (
+            row.detectorId === 'change.evaluation' &&
+            ctx.changes.some((c) => c.id === row.entityKey)
+          )
+            continue;
+          await tx.analyticsInsight.update({
+            where: { id: row.id },
+            data: {
+              status: 'RESOLVED',
+              resolvedAt: startedAt,
+              resolvedReason: 'условие сигнала больше не выполняется',
+            },
+          });
+          counters.resolved += 1;
+        }
+        // 3) Версии оценок этапа 11, поднятые в ленту
+        const newSeen = { ...seen };
+        for (const c of ctx.changes)
+          if (c.latest)
+            newSeen[c.id] = Math.max(newSeen[c.id] ?? 0, c.latest.version);
+        await tx.analyticsInsightRun.update({
+          where: { id: runRow.id },
           data: {
-            status: 'RESOLVED',
-            resolvedAt: startedAt,
-            resolvedReason: 'условие сигнала больше не выполняется',
+            status: 'SUCCESS',
+            finishedAt: this.now(),
+            durationMs: this.now().getTime() - startedAt.getTime(),
+            observationCutoff: new Date(
+              `${ctx.observationCutoff}T00:00:00.000Z`,
+            ),
+            syncRunId: ctx.lastSyncRunId,
+            detectors:
+              kind === 'hourly'
+                ? DETECTORS.filter((d) => d.refresh === 'hourly').length
+                : DETECTORS.length,
+            detected: result.detected.length,
+            errors: result.errors,
+            created: counters.created,
+            versioned: counters.versioned,
+            unchanged: counters.unchanged,
+            resolved: counters.resolved,
+            reopened: counters.reopened,
+            suppressed: suppressed as unknown as Prisma.InputJsonValue,
+            seenEvaluations: newSeen,
           },
         });
-        counters.resolved += 1;
-      }
-      // 3) Версии оценок этапа 11, поднятые в ленту
-      const newSeen = { ...seen };
-      for (const c of ctx.changes)
-        if (c.latest)
-          newSeen[c.id] = Math.max(newSeen[c.id] ?? 0, c.latest.version);
-      await tx.analyticsInsightRun.update({
-        where: { id: runRow.id },
-        data: {
-          finishedAt: this.now(),
-          durationMs: this.now().getTime() - startedAt.getTime(),
-          created: counters.created,
-          versioned: counters.versioned,
-          unchanged: counters.unchanged,
-          resolved: counters.resolved,
-          reopened: counters.reopened,
-          suppressed: suppressed as unknown as Prisma.InputJsonValue,
-          seenEvaluations: newSeen,
-        },
       });
-      return runRow.id;
-    });
+    } catch (e) {
+      return this.finishRun(runRow.id, 'FAILED', [
+        `запись: ${(e as Error).message}`,
+      ]);
+    }
     const row = await this.prisma.analyticsInsightRun.findUniqueOrThrow({
-      where: { id: runId },
+      where: { id: runRow.id },
     });
     this.logger.log(
       `Сигналы: запуск ${kind} — обнаружено ${result.detected.length}, новых ${counters.created}, версий ${counters.versioned}, без изменений ${counters.unchanged}, закрыто ${counters.resolved}, переоткрыто ${counters.reopened}, промолчало ${suppressed.length}, ошибок ${result.errors.length}`,
@@ -617,6 +646,27 @@ export class AnalyticsInsightsService {
     await version(created.id, 1);
     activePerDetector.set(p.detectorId, activeCount + 1);
     return { kind: 'created', fingerprint: created.fingerprint };
+  }
+
+  /** Завершить строку журнала не-успехом (FAILED / SKIPPED). */
+  private async finishRun(
+    id: string,
+    status: 'FAILED' | 'SKIPPED',
+    errors: string[],
+  ): Promise<InsightRunRecord> {
+    const row = await this.prisma.analyticsInsightRun.update({
+      where: { id },
+      data: {
+        status,
+        finishedAt: this.now(),
+        errors,
+      },
+    });
+    if (status === 'FAILED')
+      this.logger.error(
+        `Сигналы: запуск ${row.kind} — FAILED: ${errors.join('; ')}`,
+      );
+    return this.toRunRecord(row);
   }
 
   private async recordRun(input: {

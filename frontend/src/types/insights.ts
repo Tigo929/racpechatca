@@ -162,7 +162,7 @@ export interface SuppressedResult {
 export interface InsightRunRecord {
   id: string;
   kind: 'daily' | 'hourly' | 'manual';
-  status: 'SUCCESS' | 'FAILED' | 'LOCKED' | 'SKIPPED';
+  status: 'RUNNING' | 'SUCCESS' | 'FAILED' | 'LOCKED' | 'SKIPPED';
   startedAt: string;
   finishedAt: string | null;
   observationCutoff: string | null;

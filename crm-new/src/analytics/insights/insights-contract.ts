@@ -289,7 +289,12 @@ export interface InsightVersionRecord {
 }
 
 export type InsightRunKind = 'daily' | 'hourly' | 'manual';
-export type InsightRunStatus = 'SUCCESS' | 'FAILED' | 'LOCKED' | 'SKIPPED';
+export type InsightRunStatus =
+  | 'RUNNING'
+  | 'SUCCESS'
+  | 'FAILED'
+  | 'LOCKED'
+  | 'SKIPPED';
 
 export interface InsightRunRecord {
   id: string;

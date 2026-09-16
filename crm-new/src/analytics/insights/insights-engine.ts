@@ -78,6 +78,7 @@ import {
   MIN_EVENTS,
   MIX_SHIFT_POINTS,
   INSIGHT_POLARITY_OVERRIDES,
+  MIRRORS_GLOBAL_TRAFFIC_POINTS,
 } from './insights-rules';
 
 // ---------------------------------------------------------------------------
@@ -108,7 +109,8 @@ export interface InsightContext {
   confounders: Confounder[];
   freshness: Freshness;
   lastSyncRunId: string | null;
-  dataQuality: DataQualityMetrics;
+  /** Качество данных окна «после»; null — лёгкий часовой контекст. */
+  dataQuality: DataQualityMetrics | null;
   /** Правила этапа 10 за текущее окно — зеркалятся, не пересчитываются. */
   behavior: { issues: BehaviorIssues; funnels: Funnel[] } | null;
   slices: {
@@ -1276,6 +1278,30 @@ function entityChangeDetector(opts: {
           );
           continue;
         }
+        // Визиты сущности движутся вместе с общим трафиком сайта — это уже сказала карточка визитов;
+        // отдельная карточка дублировала бы её (сущность попадёт в её гипотезу как сопутствующий факт).
+        const globalRel = ctx.metrics.visits.statistics?.relativeDifference;
+        if (
+          !leadSignal &&
+          visitsSignal &&
+          globalRel !== null &&
+          globalRel !== undefined &&
+          relV !== null &&
+          a.visits > 0 &&
+          Math.abs(relV * 100 - globalRel) < MIRRORS_GLOBAL_TRAFFIC_POINTS
+        ) {
+          suppressed.push(
+            suppress(
+              d,
+              'visits',
+              key,
+              'DUPLICATE',
+              `${opts.entityWord} «${label}»: визиты ${b.visits} → ${a.visits} движутся вместе с общим трафиком (${fmtRel(globalRel).trim()}) — см. карточку визитов`,
+              a.visits,
+            ),
+          );
+          continue;
+        }
         if (visitsSignal && !materialV && !leadSignal) {
           suppressed.push(
             suppress(
@@ -1779,17 +1805,20 @@ export const staleDetector: InsightDetector = {
             'Проверить журнал синхронизации (MetrikaSyncRun) и доступность API Метрики; пока данные устарели, сигналы по сайту не считать актуальными.',
             'IMPROVE_DATA_QUALITY',
           ),
-          evidence: evidence(
-            d.id,
-            {
-              criticalStaleSeconds: CRITICAL_STALE_SECONDS,
-              thresholdSeconds: f.thresholdSeconds,
-            },
-            null,
-            ctx,
-            'NONE',
-            'MATERIAL',
-          ),
+          evidence: {
+            ...evidence(
+              d.id,
+              {
+                criticalStaleSeconds: CRITICAL_STALE_SECONDS,
+                thresholdSeconds: f.thresholdSeconds,
+              },
+              null,
+              ctx,
+              'NONE',
+              'MATERIAL',
+            ),
+            confounders: [],
+          },
           limitations: ['ANALYTICS_STALE'],
           link: { tab: 'quality' },
         }),
@@ -1807,6 +1836,7 @@ export const clientIdCoverageDetector: InsightDetector = {
   evaluate(ctx) {
     const d = clientIdCoverageDetector;
     const q = ctx.dataQuality;
+    if (!q) return { detected: [], suppressed: [] };
     const accepted = ctx.metrics.acceptedOrders.after.value ?? 0;
     if (accepted < CLIENT_ID_COVERAGE_MIN_ACCEPTED)
       return {

@@ -793,6 +793,37 @@ describe('источники, страницы входа, товары, сдв�
     expect(org.payload.metricKey).toBe('siteLeadRate');
   });
 
+  it('источник, чьи визиты падают вместе с общим трафиком, отдельной карточки не получает (DUPLICATE) — он в гипотезе карточки визитов', () => {
+    const ctx = makeContext(
+      {
+        visits: 900,
+        siteLeads: 30,
+        sources: [
+          { source: 'ads', visits: 600, leads: 20 },
+          { source: 'organic', visits: 300, leads: 10 },
+        ],
+      },
+      {
+        visits: 450,
+        siteLeads: 15,
+        sources: [
+          { source: 'ads', visits: 300, leads: 10 },
+          { source: 'organic', visits: 150, leads: 5 },
+        ],
+      },
+    );
+    const r = sourcePerformanceDetector.evaluate(ctx);
+    expect(r.detected).toEqual([]);
+    expect(r.suppressed.map((s) => s.reason)).toEqual([
+      'DUPLICATE',
+      'DUPLICATE',
+    ]);
+    const traffic = trafficDetector.evaluate(ctx).detected[0].payload;
+    expect(
+      traffic.hypothesis.supportingFacts.some((f) => /«ads»/.test(f)),
+    ).toBe(true);
+  });
+
   it('страница входа: рост визитов без изменения доли заявок — INFO', () => {
     const r = landingDetector.evaluate(
       makeContext(
