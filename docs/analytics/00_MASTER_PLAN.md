@@ -1326,7 +1326,10 @@ author
 Статус:
 
 ```text
-REVIEW (16.09.2026; Reviewer NEEDS_FIX → 12_FIX_01 выполнен 16.09: агрегированный детектор quality.eventNotMeasured —
+READY_FOR_PRODUCTION_ROLLOUT (Reviewer, 16.09.2026; кандидат 1f8b7b4; rollout-план 12_PRODUCTION_ROLLOUT.md —
+READY_FOR_REVIEW, включение предложено в том же окне сразу после OFF-gate: технических причин ждать 27.09 нет,
+несопоставимые / незрелые сигналы подавляются штатно; production не менялся, старт — только по команде «СТАРТ»).
+Ранее REVIEW (16.09.2026; Reviewer NEEDS_FIX → 12_FIX_01 выполнен 16.09: агрегированный детектор quality.eventNotMeasured —
 одна INFO-карточка на воронку этапа 10 с не измеряемым шагом, только когда анализ отвала реально идёт (вход ≥ 20
 визитов); FACT: какой анализ ограничен, какой шаг, not_measured ≠ 0, какие выводы нельзя; NO_SUPPORTED_HYPOTHESIS;
 IMPROVE_DATA_QUALITY без правок event model; шаги, которых на сайте нет, карточки не дают; отчёт § 50).
@@ -1659,7 +1662,8 @@ POSITIVE_SIGNAL … INCOMPARABLE без причинности, confounders, ADM
 NO_VARIANT_ASSIGNMENT. В production с 15.09 23:17 MSK (rollout § 35 `11_PRODUCTION_ROLLOUT.md`, master 5922175);
 DONE (Reviewer, 16.09.2026). Отчёт — `11_GROWTH_AND_EXPERIMENTS.md` § 31; rollout — `11_PRODUCTION_ROLLOUT.md` § 35.
 
-12_AUTOMATED_INSIGHTS — REVIEW (16.09.2026; FIX_01 выполнен): детерминированный движок сигналов FACT → HYPOTHESIS → RECOMMENDATION
+12_AUTOMATED_INSIGHTS — READY_FOR_PRODUCTION_ROLLOUT (Reviewer 16.09.2026; FIX_01 принят; кандидат 1f8b7b4; план
+`12_PRODUCTION_ROLLOUT.md` READY_FOR_REVIEW, production не тронут): детерминированный движок сигналов FACT → HYPOTHESIS → RECOMMENDATION
 поверх этапов 08/10/11 — 19 детекторов на окнах 7/7 (оценки метрик, MDE, сопоставимость, созревание и confounders этапа
 11; зеркало правил этапа 10; оценки этапа 11 дословно), существенность отдельно от статистики, CRITICAL по закрытому
 списку, rule-based гипотезы с языковой политикой, реестр карточек с отпечатком / версиями / журналом (миграция

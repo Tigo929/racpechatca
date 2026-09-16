@@ -2,7 +2,9 @@
 
 ## 0. STATUS
 
-`READY_FOR_REVIEW` (после `NEEDS_FIX` → `12_FIX_01` выполнен 16.09.2026, отчёт § 50: агрегированный детектор
+`READY_FOR_PRODUCTION_ROLLOUT` (Reviewer, 16.09.2026: implementation + FIX_01 приняты, кандидат 1f8b7b4; rollout-план —
+`12_PRODUCTION_ROLLOUT.md`, READY_FOR_REVIEW; production не менялся, rollout начнётся только по команде «СТАРТ»).
+Ранее `READY_FOR_REVIEW` (после `NEEDS_FIX` → `12_FIX_01` выполнен 16.09.2026, отчёт § 50: агрегированный детектор
 `quality.eventNotMeasured` — одна карточка на воронку, FACT про `not_measured ≠ 0` и ограниченные выводы,
 NO_SUPPORTED_HYPOTHESIS, IMPROVE_DATA_QUALITY без правок event model; 19 детекторов; CRM 1078 / панель 42) —
 реализовано 16.09.2026 в `feature/analytics-foundation`: детерминированный движок сигналов
