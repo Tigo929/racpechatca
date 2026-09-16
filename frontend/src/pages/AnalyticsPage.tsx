@@ -42,6 +42,7 @@ import {
 } from '../features/analytics/behavior-sections';
 import { behaviorWarnings } from '../features/analytics/behavior-view';
 import { GrowthTab } from '../features/analytics/growth-sections';
+import { InsightsTab } from '../features/analytics/insights-sections';
 
 /**
  * Дашборд руководителя (этап 09). Все числа — из `AnalyticsMetricsService`
@@ -49,10 +50,11 @@ import { GrowthTab } from '../features/analytics/growth-sections';
  * показывает, подписывает и предупреждает о неполных данных.
  */
 
-type Tab = 'overview' | 'behavior' | 'growth' | 'sources' | 'products' | 'pages' | 'quality';
+type Tab = 'overview' | 'insights' | 'behavior' | 'growth' | 'sources' | 'products' | 'pages' | 'quality';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'overview', label: 'Обзор' },
+  { key: 'insights', label: 'Инсайты' },
   { key: 'behavior', label: 'Поведение' },
   { key: 'growth', label: 'Рост / Изменения' },
   { key: 'sources', label: 'Источники' },
@@ -224,6 +226,7 @@ export function AnalyticsPage() {
                     )}
                   </div>
                 )}
+                {tab === 'insights' && <InsightsTab />}
                 {tab === 'growth' && <GrowthTab />}
                 {tab === 'sources' && (
                   <div className="space-y-4">

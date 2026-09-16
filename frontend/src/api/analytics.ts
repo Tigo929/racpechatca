@@ -28,6 +28,15 @@ import type {
   GrowthEvaluationSummary,
   GrowthStatus,
 } from '../types/growth';
+import type {
+  FeedFilter,
+  InsightRecord,
+  InsightRunRecord,
+  InsightVersionRecord,
+  InsightsFeed,
+  InsightsQuality,
+  InsightsStatus,
+} from '../types/insights';
 import { api } from './client';
 
 /**
@@ -80,6 +89,18 @@ export const growthApi = {
   evaluations: async (id: string) => (await api.get<GrowthEvaluationSummary[]>(`${GROWTH}/changes/${id}/evaluations`)).data,
   latestEvaluation: async (id: string) => (await api.get<GrowthEvaluation>(`${GROWTH}/changes/${id}/evaluations/latest`)).data,
   evaluation: async (id: string, version: number) => (await api.get<GrowthEvaluation>(`${GROWTH}/changes/${id}/evaluations/${version}`)).data,
+};
+
+const INSIGHTS = '/analytics/dashboard/insights';
+export const insightsApi = {
+  status: async () => (await api.get<InsightsStatus>(`${INSIGHTS}/status`)).data,
+  feed: async (f: FeedFilter = {}) => (await api.get<InsightsFeed>(`${INSIGHTS}/feed`, { params: f })).data,
+  get: async (id: string) => (await api.get<InsightRecord>(`${INSIGHTS}/${id}`)).data,
+  versions: async (id: string) => (await api.get<InsightVersionRecord[]>(`${INSIGHTS}/${id}/versions`)).data,
+  quality: async () => (await api.get<InsightsQuality>(`${INSIGHTS}/quality`)).data,
+  acknowledge: async (id: string) => (await api.post<InsightRecord>(`${INSIGHTS}/${id}/acknowledge`)).data,
+  resolve: async (id: string, reason: string) => (await api.post<InsightRecord>(`${INSIGHTS}/${id}/resolve`, { reason })).data,
+  run: async () => (await api.post<InsightRunRecord>(`${INSIGHTS}/run`)).data,
 };
 
 /** Ключ кэша react-query — тот же, что ключ серверного кэша: вид + период. */
