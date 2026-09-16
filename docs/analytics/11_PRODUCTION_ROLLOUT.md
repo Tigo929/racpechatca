@@ -3,7 +3,8 @@
 ## STATUS
 
 ```text
-REVIEW — technical rollout выполнен 15.09.2026 23:10–23:23 MSK по команде Reviewer «СТАРТ» (кандидат 0c3b84a,
+DONE (Reviewer, 16.09.2026: «11_PRODUCTION_ROLLOUT = DONE», production master 5922175).
+Technical rollout выполнен 15.09.2026 23:10–23:23 MSK по команде Reviewer «СТАРТ» (кандидат 0c3b84a,
 fast-forward до docs-only потомка 5922175): раздел выложен выключенным (23:13, миграция на старте контейнера, 59 таблиц),
 OFF-gate пройден (§ 9; отклонение § 9.5 — 400 от ValidationPipe до проверки флага, записей 0), controlled enable 23:17:35,
 изменения A (деплой 12.09) и B (инцидент 14–15.09) зарегистрированы реальными датами, сверка A = B = C diff 0, версии

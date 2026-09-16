@@ -398,7 +398,7 @@ CANCELLED, PROBLEM — вне цепочки
 
 | Факт | Подробности |
 |---|---|
-| Статус | Stage 11 = REVIEW (READY_FOR_REVIEW): реализовано в `feature/analytics-foundation` (с влитым master 3ac9be8 владельца), проверено на копии `crm_stage11_test` (удалена); production не тронут; отчёт `11_GROWTH_AND_EXPERIMENTS.md` § 31 |
+| Статус | Stage 11 = DONE (Reviewer, 16.09.2026; production master 5922175): реализовано в `feature/analytics-foundation` (с влитым master 3ac9be8 владельца), проверено на копии `crm_stage11_test` (удалена); production не тронут; отчёт `11_GROWTH_AND_EXPERIMENTS.md` § 31 |
 | Данные | `AnalyticsChange` (реестр: тип, поверхность, момент выхода, аудитория device/source/utm/landing, первичная/вторичные метрики, направление, гипотеза, окно, созревание; первичная метрика фиксируется первой оценкой) + `AnalyticsChangeEvaluation` (версии, result JSONB, флаги, окна, cutoff, lastSyncRunId); миграция 20260915130000 — только CREATE |
 | Механика | окна из полных московских дней с исключённым днём cutover, целые недели, WEEKDAY_MIX_MISMATCH; сопоставимость по availableFrom / сменам определений (12.09 → INCOMPARABLE); когорты по дате заявки/принятия с исходами до даты наблюдения; созревание по эмпирике (заявка→принят p90 0,7 дн., n 24; принят→оплата p90 20 дн., n 212; заявка→оплата — по умолчанию 14 дн.); статистика Wilson/Newcombe/z/Фишер/Пуассон/бутстрэп с MDE и требуемой выборкой (α 0,05, мощность 0,8, цель 20 %); вердикты без причинности; окно < 7 дней → INSUFFICIENT_DATA |
 | API / UI | `/analytics/dashboard/growth/*` (ADMIN, флаг): status, changes CRUD, evaluate, evaluations/версии; вкладка «Рост / Изменения» — список, форма, оценка с FACT / ИНТЕРПРЕТАЦИЯ / ЧТО ДЕЛАТЬ, дисклеймер, оговорки, сегменты; скриншоты `screenshots/11_growth/` |
