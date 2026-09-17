@@ -1668,6 +1668,15 @@ POSITIVE_SIGNAL … INCOMPARABLE без причинности, confounders, ADM
 NO_VARIANT_ASSIGNMENT. В production с 15.09 23:17 MSK (rollout § 35 `11_PRODUCTION_ROLLOUT.md`, master 5922175);
 DONE (Reviewer, 16.09.2026). Отчёт — `11_GROWTH_AND_EXPERIMENTS.md` § 31; rollout — `11_PRODUCTION_ROLLOUT.md` § 35.
 
+13_RELIABILITY_SECURITY — READY_FOR_PRODUCTION_ROLLOUT (исполнитель, 17.09.2026; verdict — Reviewer): аудит текущего
+состояния (RELIABILITY_SECURITY_AUDIT.md), диагностика ADMIN GET /analytics/ops/status (словарь состояний, 13 условий,
+без секретов), закрытие зависших RUNNING сигналов, детерминизм пересекающихся изменений (найден restore drill),
+retention с dry-run, restore drill в изолированной БД (diff 0), скан секретов (SECRET_FOUND=no), HTTP-матрица
+маршрутов этапов 09–13, F1–F8, миграции (fresh/copy deploy, drift SalaryPayment исследован — отдельный FIX), CI:
+production-метки только с production-ветки по github.ref (web-photo feature/ci-safety, CRM workflow), сервер
+потребляет :production, auto-update --no-deps + сверка build, /health build. Production не менялся. Отчёт —
+`13_RELIABILITY_SECURITY.md` § 32. Rollout — `13_PRODUCTION_ROLLOUT.md` после verdict.
+
 12_AUTOMATED_INSIGHTS — REVIEW после rollout (technical rollout 17.09.2026 09:10–10:37 MSK по «СТАРТ», master 1f8b7b4,
 раздел включён 09:33; отчёт `12_PRODUCTION_ROLLOUT.md` § 35; owner smoke / DONE — владелец и Reviewer): детерминированный движок сигналов FACT → HYPOTHESIS → RECOMMENDATION
 поверх этапов 08/10/11 — 19 детекторов на окнах 7/7 (оценки метрик, MDE, сопоставимость, созревание и confounders этапа

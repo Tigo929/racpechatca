@@ -423,6 +423,22 @@ CANCELLED, PROBLEM — вне цепочки
 | Infrastructure / CI debt (Reviewer 17.09, вне Stage 12) | (a) drift схемы: `prisma migrate diff` (миграции → schema.prisma) показывает разницу default у `SalaryPayment.updatedAt` (миграция 20260613_salary_architecture; есть в production master) — исправлять отдельной миграцией по решению владельца; (b) `/opt/deploy/auto-update.sh` делает `docker compose up -d --force-recreate <svc>` без `--no-deps`: при обновлении frontend backend с изменённым env пересоздаётся старым образом до прихода своего (17.09 09:21 — boot-тик 09:23, новым образом только 09:29); безвредно, но правку compose перед деплоем нужно планировать до push или добавлять `--no-deps`; (c) блок «Правил без вывода в последнем запуске» отражает последний (часовой) запуск — днём показывает 3, полная разбивка daily (≈50) видна только в первый час после 00:33 — кандидат на уточнение UI (OPEN DECISION § 35/36) |
 
 ---
+# 5l. Надёжность и безопасность — этап 13 (17.09.2026; implementation, в production НЕ выложен)
+
+| Факт | Подробности |
+|---|---|
+| Статус | Stage 13 = READY_FOR_PRODUCTION_ROLLOUT (исполнитель; verdict — Reviewer): `feature/analytics-foundation` 806e328 + 51f27ae + docs; `web-photo` `feature/ci-safety` 441d795 (production-ветка сайта не менялась); отчёт `13_RELIABILITY_SECURITY.md` § 32; production master 1f8b7b4 не менялся |
+| P0 выкладка | production-метки образов `:production`/`:latest` только при `github.ref` = production-ветка (CRM master, сайт feature/cms-admin), всегда `:<sha>`, BUILD_SHA + LABEL revision; compose и `deploy/auto-update.sh` потребляют `:production`; auto-update `--no-deps`, порядок api→web/backend→frontend, сверка build из `/health` с меткой образа; `deploy-safety.spec` 11, `web-photo/scripts/ci-safety-check.mjs` (шаг до сборки; старый workflow — 9 нарушений) |
+| Диагностика | ADMIN `GET /analytics/ops/status`: подсистемы ×10 (HEALTHY/DEGRADED/STALE/FAILED/DISABLED/RECOVERING), условия METRIKA_SYNC_STALE/FAILED/STUCK, OUTBOX_BACKLOG/FAILED/STUCK, SNAPSHOT_STALE, GROWTH_RUN_FAILED, INSIGHTS_RUN_FAILED/STUCK, DATABASE_MIGRATION_MISMATCH/UNAVAILABLE, METRIKA_NOT_CONFIGURED; пороги в ответе; без секретов/PII; `/health` + `build` |
+| Замки / идемпотентность | зависшие RUNNING сигналов → FAILED при следующем запуске (F4); `overlappingChanges` orderBy startedAt,id (иначе после restore 6 карточек получили бы версии без данных); IDEMPOTENCY_MATRIX.md, SCHEDULER_RELIABILITY.md |
+| Retention | RETENTION_POLICY.md: замер production (БД 25 МБ; MetrikaSyncRun 288 строк/сутки, ~135 МБ/год аналитика без retention); правила SyncRun 90/365, InsightRun 90/365, Outbox delivered/skipped 180; NEVER данные/снимки/аудит; CLI `analytics:retention` dry-run, apply только `--apply` + `ANALYTICS_RETENTION_APPLY=1`; production DELETE не выполнялся |
+| Backup / restore | drill 17.09 в изолированной БД: restore 6 с, ERROR 0, миграции 83=83, таблицы 62=62, индексы 172, FK 45, счётчики равны, сверка этапов 09–12 diff 0; BACKUP_RESTORE_RUNBOOK.md (cron 03:00 + Yandex Object Storage) |
+| Секреты / PII | SECRET_FOUND=no (оба репозитория дерево+история, логи 7 д, API); PII в 21 таблице аналитики и логах приложений 0; nginx access log сайта содержит yclid+IP (P2, rollout); sshd PasswordAuthentication yes — рекомендация владельцу; SECRET_ROTATION_RUNBOOK.md |
+| Миграции | fresh DB deploy 83 OK; copy deploy No pending; drift `SalaryPayment.updatedAt` — ручная миграция 20260613, риск 0, отдельный FIX (MIGRATION_SAFETY.md); destructive SQL в аналитических миграциях 0 |
+| Тесты | CRM 1120 (104 suites; +42: ops 15, retention 5, deploy-safety 11, HTTP-матрица 9, F4/F8/orderBy), панель 42; build OK |
+| Rollout | `13_PRODUCTION_ROLLOUT.md` после verdict Reviewer: server auto-update.sh + compose `:production`, web-photo merge feature/ci-safety → feature/cms-admin (деплой сайта), docker log rotation, nginx log_format; OPEN: убрать `:latest`, GitHub branch protection/environment, drift FIX, ротация OAuth |
+
+---
 # 6. Что уже готово из целевой картины
 
 - Сайт собирает всё нужное для атрибуции и доставляет в CRM — данные
