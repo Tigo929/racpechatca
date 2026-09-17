@@ -107,14 +107,37 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Метки образа (этап 13, разделы 18 и 20). Всегда — неизменяемая метка
+      # по хешу коммита. Метки `production` и `latest` получает ТОЛЬКО сборка
+      # с master: условие проверяется по фактической ветке запуска, а не по
+      # содержимому этого файла, поэтому копия workflow в чужой ветке не сможет
+      # выпустить production-образ, даже если её кто-то запушит. Сервер
+      # (deploy/auto-update.sh, docker-compose.prod.yml) забирает `:production`;
+      # `latest` остаётся на переходный период и источником правды не является.
+      - name: Метки образа
+        id: tags
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/racpechatca-${{ matrix.name }}
+        run: |
+          tags="$IMAGE:${{ github.sha }}"
+          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            tags="$tags,$IMAGE:production,$IMAGE:latest"
+          fi
+          echo "value=$tags" >> "$GITHUB_OUTPUT"
+          echo "Метки: $tags"
+
       - uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           push: true
-          # Кроме latest — метка по хешу коммита: к ней можно откатиться.
-          tags: |
-            ${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/racpechatca-${{ matrix.name }}:latest
-            ${{ env.REGISTRY }}/${{ steps.owner.outputs.value }}/racpechatca-${{ matrix.name }}:${{ github.sha }}
+          tags: ${{ steps.tags.outputs.value }}
+          # Хеш коммита внутрь образа: /health отвечает им (build), а метка
+          # revision позволяет сверить запущенный контейнер с образом.
+          build-args: |
+            BUILD_SHA=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

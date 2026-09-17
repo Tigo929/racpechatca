@@ -332,12 +332,31 @@ export class AnalyticsInsightsService {
     }
     this.running = true;
     try {
+      const lockEdge = new Date(
+        startedAt.getTime() - RUN_LOCK_MINUTES * 60_000,
+      );
+      // Зависшие RUNNING (процесс завершился без записи итога) закрываем как
+      // FAILED, чтобы журнал и диагностика не показывали вечный «идёт запуск»
+      // (этап 13, раздел 8: RUNNING старше порога → STUCK → контролируемое
+      // восстановление; сам запуск идемпотентен, повторить его безопасно).
+      const stuck = await this.prisma.analyticsInsightRun.updateMany({
+        where: { status: 'RUNNING', startedAt: { lt: lockEdge } },
+        data: {
+          status: 'FAILED',
+          finishedAt: startedAt,
+          errors: [
+            `зависший запуск: RUNNING дольше ${RUN_LOCK_MINUTES} мин без записи итога — закрыт как FAILED при следующем запуске`,
+          ],
+        },
+      });
+      if (stuck.count > 0)
+        this.logger.warn(
+          `Сигналы: ${stuck.count} зависших запусков закрыты как FAILED`,
+        );
       const other = await this.prisma.analyticsInsightRun.findFirst({
         where: {
           status: 'RUNNING',
-          startedAt: {
-            gt: new Date(startedAt.getTime() - RUN_LOCK_MINUTES * 60_000),
-          },
+          startedAt: { gt: lockEdge },
         },
         select: { id: true },
       });

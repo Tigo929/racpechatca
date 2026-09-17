@@ -27,6 +27,7 @@ import { AnalyticsDashboardModule } from './analytics/dashboard/analytics-dashbo
 import { BehaviorModule } from './analytics/behavior/behavior.module';
 import { GrowthModule } from './analytics/growth/growth.module';
 import { InsightsModule } from './analytics/insights/insights.module';
+import { OpsModule } from './analytics/ops/ops.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -64,6 +65,7 @@ import { HealthController } from './health.controller';
     BehaviorModule,
     GrowthModule,
     InsightsModule,
+    OpsModule,
     PushModule,
   ],
   controllers: [HealthController],

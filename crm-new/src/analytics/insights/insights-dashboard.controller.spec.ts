@@ -10,6 +10,8 @@ import type { AnalyticsInsightsService } from './analytics-insights.service';
 import { FeedQueryDto, ResolveInsightDto } from './dto/insight-action.dto';
 import { InsightsDashboardController } from './insights-dashboard.controller';
 import { InsightsEnabledGuard } from './insights-enabled.guard';
+import { InsightsModule } from './insights.module';
+import type { MetrikaAnalyticsSchedulerService } from '../../metrika/analytics/metrika-analytics-scheduler.service';
 import {
   insightsEnabledFromEnv,
   insightsOptionsFromEnv,
@@ -166,5 +168,23 @@ describe('InsightsDashboardController', () => {
         ANALYTICS_INSIGHTS_ENABLED: 'true',
       }),
     ).toEqual({ enabled: true });
+  });
+
+  it('F8 (этап 13): при выключенном разделе хук расписания не регистрируется — фоновых записей нет; при включённом — insights:run', () => {
+    const registered: string[] = [];
+    const scheduler = {
+      registerAfterSync: (name: string) => {
+        registered.push(name);
+      },
+    } as unknown as MetrikaAnalyticsSchedulerService;
+    const afterSync = jest.fn(() =>
+      Promise.resolve({ kind: 'daily' as const, status: 'SUCCESS' as const }),
+    );
+    const insights = { afterSync } as unknown as AnalyticsInsightsService;
+    new InsightsModule(scheduler, insights, { enabled: false }).onModuleInit();
+    expect(registered).toEqual([]);
+    expect(afterSync).not.toHaveBeenCalled();
+    new InsightsModule(scheduler, insights, { enabled: true }).onModuleInit();
+    expect(registered).toEqual(['insights:run']);
   });
 });

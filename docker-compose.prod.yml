@@ -20,7 +20,12 @@ services:
     # Образ собирает GitHub Actions, сервер только скачивает: сборка здесь
     # занимала больше двадцати минут на одном ядре, и всё это время сервер
     # почти не отвечал. Обновление подхватывает deploy/auto-update.sh.
-    image: ghcr.io/tigo929/racpechatca-backend:latest
+    #
+    # Метка `production` (этап 13, раздел 18): её публикует только сборка с
+    # master (см. .github/workflows/build-images.yml). Плавающий `latest`
+    # сервер больше не потребляет — именно через него в сентябре устаревшая
+    # ветка сайта подменила боевой образ.
+    image: ghcr.io/tigo929/racpechatca-backend:production
     restart: always
     depends_on:
       postgres:
@@ -151,8 +156,8 @@ services:
   frontend:
     # Собирается из исходников в CI. Раньше образ делался из готового dist,
     # которого нет в git, — панель приходилось собирать локально и заливать
-    # на сервер отдельным скриптом.
-    image: ghcr.io/tigo929/racpechatca-frontend:latest
+    # на сервер отдельным скриптом. Метка `production` — как у backend.
+    image: ghcr.io/tigo929/racpechatca-frontend:production
     restart: always
     ports:
       - "80:80"

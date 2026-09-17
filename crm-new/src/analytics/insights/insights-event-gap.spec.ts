@@ -334,6 +334,7 @@ function memoryPrisma(now: () => Date) {
         if ('in' in cond) return (cond.in as unknown[]).includes(val);
         if ('not' in cond) return val !== cond.not;
         if ('gt' in cond) return (val as Date) > (cond.gt as Date);
+        if ('lt' in cond) return (val as Date) < (cond.lt as Date);
         return true;
       }
       return row[k] === v;
@@ -380,6 +381,19 @@ function memoryPrisma(now: () => Date) {
         const row = rows.find((r) => r.id === where.id)!;
         Object.assign(row, data, { updatedAt: now() });
         return Promise.resolve(row);
+      },
+    ),
+    updateMany: jest.fn(
+      ({
+        where,
+        data,
+      }: {
+        where: Record<string, unknown>;
+        data: Record<string, unknown>;
+      }) => {
+        const hit = rows.filter((r) => matches(r, where));
+        for (const r of hit) Object.assign(r, data, { updatedAt: now() });
+        return Promise.resolve({ count: hit.length });
       },
     ),
     groupBy: jest.fn(() => Promise.resolve([])),

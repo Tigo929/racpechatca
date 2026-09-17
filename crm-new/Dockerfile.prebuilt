@@ -15,6 +15,14 @@ RUN npm run build
 FROM node:22-alpine
 WORKDIR /app
 
+# Идентификатор сборки (этап 13, раздел 20): CI передаёт хеш коммита, /health
+# отвечает им же, а auto-update сверяет метку образа с ответом /health —
+# так видно, какая сборка реально работает. Значение по умолчанию — «unknown»,
+# чтобы локальная сборка без аргумента тоже собиралась.
+ARG BUILD_SHA=unknown
+ENV BUILD_SHA=$BUILD_SHA
+LABEL org.opencontainers.image.revision=$BUILD_SHA       org.opencontainers.image.source=https://github.com/Tigo929/racpechatca
+
 # Шрифты для листа согласования: sharp рисует текст через SVG, а в alpine
 # шрифтов нет вовсе — без них кириллица станет пустыми квадратами.
 # poppler-utils — растеризация PDF-макетов в генераторе карточек Ozon.

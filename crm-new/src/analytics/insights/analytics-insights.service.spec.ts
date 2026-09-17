@@ -123,6 +123,19 @@ function memoryPrisma(now: () => Date) {
         return Promise.resolve(row);
       },
     ),
+    updateMany: jest.fn(
+      ({
+        where,
+        data,
+      }: {
+        where: Record<string, unknown>;
+        data: Record<string, unknown>;
+      }) => {
+        const hit = rows.filter((r) => matches(r, where));
+        for (const r of hit) Object.assign(r, data, { updatedAt: now() });
+        return Promise.resolve({ count: hit.length });
+      },
+    ),
     groupBy: jest.fn(
       ({ by, where }: { by: string[]; where?: Record<string, unknown> }) => {
         const counts = new Map<string, number>();
@@ -423,7 +436,7 @@ describe('AnalyticsInsightsService — жизненный цикл', () => {
     ).toHaveLength(2);
   });
 
-  it('ошибка контекста → FAILED в журнале; висящий RUNNING моложе 10 мин → LOCKED без записей; старше — не блокирует', async () => {
+  it('ошибка контекста → FAILED в журнале; висящий RUNNING моложе 10 мин → LOCKED без записей; старше — закрывается как FAILED и не блокирует (F4)', async () => {
     const clock = { now: new Date(NOW) };
     const mem = memoryPrisma(() => clock.now);
     const s = service(
@@ -457,10 +470,26 @@ describe('AnalyticsInsightsService — жизненный цикл', () => {
     expect(mem.insights).toHaveLength(0);
 
     (
-      mem.runs.find((x) => x.id === 'run-hang')! as { startedAt: Date }
+      mem.runs.find((x) => x.id === 'run-hang')! as unknown as {
+        startedAt: Date;
+      }
     ).startedAt = new Date(NOW.getTime() - 3 * 3600e3);
     const r3 = await s2.run('daily');
     expect(r3.status).toBe('SUCCESS');
+    // F4 (этап 13): зависший RUNNING не остаётся в журнале навечно — закрыт как
+    // FAILED с объяснением и временем закрытия; повторный запуск идемпотентен
+    const hang = mem.runs.find((x) => x.id === 'run-hang')! as unknown as {
+      status: string;
+      errors: string[];
+      finishedAt: Date | null;
+    };
+    expect(hang.status).toBe('FAILED');
+    expect(hang.errors[0]).toMatch(/зависший запуск/);
+    expect(hang.finishedAt).toEqual(clock.now);
+    expect(mem.runs.filter((x) => x.status === 'RUNNING')).toHaveLength(0);
+    const r4 = await s2.run('daily');
+    expect(r4.status).toBe('SUCCESS');
+    expect(r4.created).toBe(0);
   });
 
   it('хук после тика: без успешного дневного запуска — daily; при том же cutoff — hourly', async () => {

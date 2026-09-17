@@ -13,6 +13,17 @@
 # запущенного контейнера с идентификатором свежескачанного образа.
 #
 # Ставится вместе с systemd-таймером, см. deploy/auto-update.timer.
+#
+# Этап 13 (надёжность выкладки):
+#   - образы берутся по метке `production`, которую публикует только сборка
+#     с production-ветки; плавающий `latest` больше не источник правды
+#     (14.09.2026 устаревшая ветка сайта пересобрала `latest` и подменила бой);
+#   - пересоздаётся ТОЛЬКО целевой сервис (`--no-deps`): без этого
+#     `up -d --force-recreate frontend` пересоздавал и backend, у которого
+#     изменился env, — старым образом, до того как докачался новый (17.09);
+#   - после обновления сверяется идентификатор сборки: метка образа
+#     `org.opencontainers.image.revision` должна совпасть с `build` из /health
+#     контейнера — иначе работает не та сборка, которую скачали.
 
 set -uo pipefail
 
@@ -21,22 +32,49 @@ exec >>"$LOG" 2>&1
 
 log() { echo "[$(date '+%F %T')] $*"; }
 
-# проект | compose-файл | сервис | контейнер | образ
+# Метка production-образов. Переопределяется только для аварийного отката
+# на конкретный хеш: IMAGE_TAG=<sha> /opt/deploy/auto-update.sh — и только
+# если тот же тег стоит в compose-файле, иначе compose поднимет не то.
+IMAGE_TAG="${IMAGE_TAG:-production}"
+
+# проект | compose-файл | сервис | контейнер | образ | адрес /health с полем build (пусто — сборка не сверяется)
+# Порядок фиксирован: сначала API/бэкенд, потом web/панель — чтобы новая
+# панель не работала со старым API дольше, чем нужно на один проход.
 TARGETS=(
-  "/opt/photo|docker-compose.prod.yml|api|photo-api-1|ghcr.io/tigo929/web-photo-api:latest"
-  "/opt/photo|docker-compose.prod.yml|web|photo-web-1|ghcr.io/tigo929/web-photo-web:latest"
-  "/opt/raspechatka|docker-compose.prod.yml|backend|raspechatka-backend-1|ghcr.io/tigo929/racpechatca-backend:latest"
-  "/opt/raspechatka|docker-compose.prod.yml|frontend|raspechatka-frontend-1|ghcr.io/tigo929/racpechatca-frontend:latest"
+  "/opt/photo|docker-compose.prod.yml|api|photo-api-1|ghcr.io/tigo929/web-photo-api:$IMAGE_TAG|"
+  "/opt/photo|docker-compose.prod.yml|web|photo-web-1|ghcr.io/tigo929/web-photo-web:$IMAGE_TAG|http://127.0.0.1:3000/api/health"
+  "/opt/raspechatka|docker-compose.prod.yml|backend|raspechatka-backend-1|ghcr.io/tigo929/racpechatca-backend:$IMAGE_TAG|http://127.0.0.1:3000/health"
+  "/opt/raspechatka|docker-compose.prod.yml|frontend|raspechatka-frontend-1|ghcr.io/tigo929/racpechatca-frontend:$IMAGE_TAG|"
 )
+
+# Сверка сборки: метка revision у образа против поля build в ответе /health
+# внутри контейнера. Метки нет (образ собран до этапа 13) — сверять нечего,
+# это не ошибка; есть метка, но build другой или пустой — ВНИМАНИЕ и failed.
+verify_build() {
+  local container="$1" image="$2" health_url="$3"
+  [ -n "$health_url" ] || return 0
+  local expected actual
+  expected=$(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image" 2>/dev/null || echo "")
+  [ -n "$expected" ] && [ "$expected" != "unknown" ] || return 0
+  actual=$(docker exec "$container" wget -qO- "$health_url" 2>/dev/null | sed -n 's/.*"build":"\([0-9a-fA-F]*\)".*/\1/p' | head -n 1)
+  if [ "$actual" = "$expected" ]; then
+    log "Сборка подтверждена: $container build=${actual:0:12}"
+    return 0
+  fi
+  log "ВНИМАНИЕ: $container отвечает build=${actual:-<пусто>}, а образ помечен ${expected:0:12} — работает не та сборка"
+  return 1
+}
 
 updated=0
 failed=0
 
 for target in "${TARGETS[@]}"; do
-  IFS='|' read -r dir compose svc container image <<<"$target"
+  IFS='|' read -r dir compose svc container image health_url <<<"$target"
 
   [ -d "$dir" ] || continue
-  # Сервис может быть ещё не переведён на образы — тогда пропускаем молча.
+  # Сервис может быть ещё не переведён на образы (или compose всё ещё
+  # смотрит на другой тег) — тогда пропускаем молча: compose поднял бы не
+  # тот образ, что мы скачали.
   grep -q "$image" "$dir/$compose" 2>/dev/null || continue
 
   if ! docker pull -q "$image" >/dev/null 2>&1; then
@@ -51,7 +89,11 @@ for target in "${TARGETS[@]}"; do
   [ "$fresh" = "$running" ] && continue
 
   log "Обновляю $svc: $running → $fresh"
-  if ! (cd "$dir" && docker compose -f "$compose" up -d --force-recreate "$svc" >/dev/null 2>&1); then
+  # --no-deps: пересоздаём только этот сервис. Без флага compose тянет за
+  # собой зависимости (frontend → backend) и пересоздаёт их текущим образом,
+  # если у них изменился env — так 17.09 backend перезапустился старой
+  # сборкой за семь минут до прихода новой.
+  if ! (cd "$dir" && docker compose -f "$compose" up -d --force-recreate --no-deps "$svc" >/dev/null 2>&1); then
     log "ОШИБКА: не удалось перезапустить $svc"
     failed=$((failed + 1))
     continue
@@ -72,6 +114,7 @@ for target in "${TARGETS[@]}"; do
   if [ "$ok" = 1 ]; then
     log "Готово: $svc обновлён и здоров"
     updated=$((updated + 1))
+    verify_build "$container" "$image" "$health_url" || failed=$((failed + 1))
   else
     log "ВНИМАНИЕ: $svc не поднялся здоровым после обновления (состояние $state)"
     failed=$((failed + 1))
