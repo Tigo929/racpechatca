@@ -3,9 +3,14 @@
 ## STATUS
 
 ```text
-READY_FOR_REVIEW (план, 16.09.2026). Production НЕ менялся; rollout НЕ начат.
-Implementation + FIX_01 приняты Reviewer: 12_AUTOMATED_INSIGHTS = READY_FOR_PRODUCTION_ROLLOUT, кандидат 1f8b7b4.
-Rollout начинается только после отдельной команды Reviewer «СТАРТ» (§ 34).
+DONE_PENDING_REVIEW (исполнитель, 17.09.2026). Technical rollout выполнен 17.09.2026 09:10–10:37 MSK по команде Reviewer
+«СТАРТ» (docs-tip 53d2d25, кодовый кандидат 1f8b7b4; решение § 10 — включить в том же окне): master = 1f8b7b4 (push 09:19),
+раздел выложен выключенным (миграция на старте контейнера 09:29:31, 62 таблицы), OFF-gate 9/9 с 404 до ValidationPipe,
+включён 09:33:16, первый запуск — хук boot-тика 09:35 (19 детекторов, 8 карточек / 49 причин молчания, ошибок 0),
+ручной run идемпотентен, сверка A = B = C diff 0, EVENT_NOT_MEASURED — одна карточка на воронку как качество измерения,
+not_measured нигде не 0, causal claims 0, PII 0, perf в цели, два автоматических цикла (daily 09:35, hourly 10:33),
+Stage 06/09/10/11 без регресса, STOP-условий не было. Отчёт — § 35. Остановка на owner-smoke (§ 27) / reviewer gate:
+Stage 12 не закрыт, production после enable не менялся. План (§ 1–34) — как был на момент «СТАРТ».
 ```
 
 ## STAGE
@@ -780,3 +785,426 @@ Rollout начинается только после отдельной кома
 
 с указанием подтверждённого кандидата (`1f8b7b4` или его docs-only потомок) и решения по моменту включения (§ 10:
 в том же окне — по умолчанию плана; либо отложенно). До команды production не менять; этот документ — план, не отчёт.
+
+---
+
+# 35. EXECUTOR_REPORT_STAGE12_PRODUCTION_ROLLOUT — 17.09.2026
+
+## RESULT
+
+```text
+DONE_PENDING_REVIEW — technical rollout выполнен 17.09.2026 09:10–10:37 MSK по команде Reviewer «СТАРТ» (docs-tip 53d2d25,
+кодовый кандидат 1f8b7b4; решение § 10 — включить в том же окне). Раздел «Инсайты» выложен выключенным (09:29), OFF-gate
+9/9 (в т. ч. 404 до ValidationPipe), включён 09:33:16, первый запуск — хук boot-тика 09:35:00 (daily, 8 карточек / 49 причин
+молчания, ошибок 0), ручной run идемпотентен, сверка A = B = C diff 0, 19 детекторов с исходом, EVENT_NOT_MEASURED —
+одна карточка на воронку как качество измерения, not_measured нигде не 0, causal claims 0, PII 0, perf в цели, два
+автоматических цикла (daily 09:35 + hourly 10:33), Stage 06/09/10/11 без регресса. STOP-условий не возникло.
+Исполнитель остановился на owner-smoke / reviewer gate: Stage 12 не закрыт, production после enable не менялся.
+```
+
+## 1. GIT / DEPLOY
+
+```text
+Pre-deploy gate (§ 2, 08:57–09:19 MSK): origin/master = 5922175 (owner-коммитов нет); кандидат 1f8b7b4, docs-tip 53d2d25
+  (git diff --stat 1f8b7b4..53d2d25 -- . ':!docs' = пусто); master ⊂ 1f8b7b4 (fast-forward); список коммитов 5922175..1f8b7b4 =
+  таблице § 2 (11 коммитов); изменённые файлы вне docs — 26, все в crm-new/prisma, crm-new/src/analytics/insights,
+  analytics/growth (публичные загрузчики), app.module.ts, docker-compose.prod.yml, frontend/src/{api,features/analytics,pages,types};
+  запрещённых областей (web-photo, .env, nginx, auto-update, behavior/, metrics/, metrika/, growth-rules, .github) — 0; worktree чист.
+Build/test gate (§ 3): prisma validate OK; CRM jest 1078 / 1078 (99 suites); nest build OK; eslint insights 0; prettier чист;
+  панель vitest 42 / 42, tsc -b OK, vite build OK, eslint аналитики 0. Schema = миграции: все 83 миграции применены на пустую
+  временную БД prisma_shadow_stage12 (на сервере Postgres, удалена сразу после), prisma migrate diff → единственная разница —
+  SalaryPayment.updatedAt default (миграция 20260613, есть в production master, к этапу 12 не относится — NEW FACT 4);
+  по таблицам AnalyticsInsight* разницы нет.
+Merge / push: git merge --ff-only 1f8b7b4 → push origin master 09:19:05 MSK (один push, без force); origin/master = 1f8b7b4.
+CI «Сборка образов»: образы созданы 09:21:19 MSK. auto-update: frontend 5022f7ad3030 → 1485aa9b3150 09:21:27–09:22:27
+  (nginx перечитан); backend 191f27494fbc → d8590e7c9e67 09:29:10–09:29:42 (между ними auto-update ждал окно перегенерации
+  холста 09:22–09:28 — штатно). Boot backend 09:29:31–09:29:37: «83 migrations found… Applying 20260916120000_analytics_insights…
+  All migrations have been successfully applied»; [GrowthModule] включён; [InsightsModule] «Раздел «Инсайты» выключен
+  (ANALYTICS_INSIGHTS_ENABLED): хук расписания не подключён»; Nest started; health ok; ошибок 0.
+nginx: GET https://raspechatkaa.ru/api/analytics/dashboard/insights/status и sslip-хост без токена → 401 JSON (оба).
+Тик расписания после deploy (boot, 09:31:16, daily 28.08–17.09): SUCCESS 12/12, снимки 8/8, хук роста отработал, хука сигналов нет.
+```
+
+## 2. BACKUPS (§ 4)
+
+```text
+16.09 22:52 (первая попытка, сессия прервалась до деплоя): docker-compose.prod.yml.bak-stage12-20260916-2252, .env.bak-stage12-20260916-2252,
+  backups/premigration_stage12_insights_20260916_225256.sql.gz — 789 826 B.
+17.09 09:10 (использованы в rollout): /opt/raspechatka/docker-compose.prod.yml.bak-stage12-20260917-0910 (176 строк),
+  /opt/raspechatka/.env.bak-stage12-20260917-0910 (51 строка; содержимое не выводилось),
+  /opt/raspechatka/backups/premigration_stage12_insights_20260917_091010.sql.gz — 804 076 B, CREATE TABLE в дампе 96, заголовок
+  «PostgreSQL database dump» читается, запись в backups/backup.log. Перед enable: .env.bak-stage12-enable-20260917-0932.
+```
+
+## 3. MIGRATION (§ 5)
+
+```text
+Файл 20260916120000_analytics_insights/migration.sql (97 строк, sha256 606f241ad17bc943…): CREATE TABLE 3, CREATE INDEX 5
+(2 unique), ALTER TABLE 1 (FK AnalyticsInsightVersion → AnalyticsInsight ON DELETE CASCADE), DROP/TRUNCATE/DELETE/UPDATE/RENAME/
+ALTER существующих таблиц 0; ссылок на Order*/Metrika*/User*/Task*/Expense*/AnalyticsChange*/Behavior*/Salary* — 0.
+До deploy: 82 миграции, 59 таблиц, AnalyticsInsight* 0. Применена на старте контейнера 09:29:31 MSK (prisma migrate deploy):
+_prisma_migrations: 20260916120000_analytics_insights finished_at 09:29:31, rolled_back_at null; applied = 83.
+После: таблиц public = 62; AnalyticsInsight, AnalyticsInsightVersion, AnalyticsInsightRun (0/0/0 строк на момент deploy);
+индексов по ним 8 (5 + 3 PK), FK 1. migrate dev / migrate resolve / правки _prisma_migrations — не применялись.
+```
+
+## 4. FLAG OFF CHECKS (§ 9) — 09:30:5x–09:31:03 MSK, ANALYTICS_INSIGHTS_ENABLED не задан → false
+
+```text
+1  без токена GET status / GET feed / POST run                        → 401 / 401 / 401 ✓
+2  EXECUTOR GET feed / POST run / POST :id/acknowledge                 → 403 / 403 / 403 ✓
+3  ADMIN GET status                                                    → 200: enabled false, engineVersion insights-v1,
+                                                                          causality NOT_ESTABLISHED, detectors 19 (в т. ч.
+                                                                          quality.eventNotMeasured; hourly = change.evaluation,
+                                                                          quality.stale), thresholds 26 (eventGapMinFunnelVisits 20,
+                                                                          criticalStaleSeconds 21600), counts все 0, lastRun null,
+                                                                          boundaries 13.08 / 12.09 10:19Z / инцидент 14.09 15:20Z–15.09 17:32Z ✓
+4  ADMIN GET feed / quality / :uuid / :uuid/versions                    → 404 «Раздел аналитики выключен» ×4 ✓
+5  ADMIN POST run (без тела); POST :uuid/resolve {} / {"reason":"x"} / {"reason":"probe reason","customerPhone":"+7…"};
+   POST :uuid/acknowledge {}                                           → 404 ×5 — guard раньше ValidationPipe, ни одного 400 ✓
+6  ADMIN GET feed?severity=WRONG                                       → 404 (не 400) ✓
+   БД после проб: AnalyticsInsightRun 0, AnalyticsInsight 0 ✓
+7  Stage 09 status / overview 30d / 7d; Stage 10 summary / issues / funnels 7d; Stage 11 growth status / changes / A latest → 200 ✓
+   (сравнение с BEFORE 09:10 — § 16)
+8  панель (production-JSON status в сборке кандидата): карточка «Раздел «Инсайты» выключен», запросов раздела кроме status — 0;
+   вкладки Обзор / Поведение / Рост рендерятся ✓ (screenshots/12_insights/prod-insights-disabled.png)
+9  boot-тик 09:31:16 (daily): SUCCESS 12/12, снимки 8/8; в логе insights:run = 0, «Сигналы: запуск» = 0; AnalyticsInsightRun 0 ✓
+Итого 9/9. Отклонение § 9.5 этапа 11 (400 вместо 404) не воспроизводится.
+```
+
+## 5. ENABLE DECISION (§ 10)
+
+```text
+Reviewer подтвердил решение плана: после успешного OFF-gate включить ANALYTICS_INSIGHTS_ENABLED=true в том же окне.
+Технических причин ждать 27.09 нет: несопоставимые заявки/формы (окна через 12.09) ушли в диагностику
+MEASUREMENT_DEFINITION_CHANGED, незрелые CRM/деньги — IMMATURE, инцидент — INCIDENT_BOUNDARY; работают детекторы, которым
+сопоставимость заявок не нужна (визиты, зеркало этапа 10, оценка этапа 11, качество данных, FIX_01). Контрольные точки
+наблюдения — 20.09 / 27.09 / 30.09 (§ 33).
+```
+
+## 6. ENABLE (§ 11) — 09:32:51–09:33:36 MSK
+
+```text
+.env: строка ANALYTICS_INSIGHTS_ENABLED=true добавлена (52 строки); compose config → "true"; RUNNING sync 0, insight runs 0.
+docker compose up -d --force-recreate --no-deps backend 09:32:51 → running:healthy 09:33:19; образ d8590e7c9e67 (тот же);
+frontend не пересоздавался. Boot: «No pending migrations to apply»; [InsightsModule] «Раздел «Инсайты» включён: хук расписания
+подключён» 09:33:16; env в контейнере dashboard=true growth=true insights=true; nginx reload ok.
+Проверки до первого запуска: GET status 200 enabled true, counts 0, lastRun null; GET feed 200 items [] (пустое состояние);
+POST :uuid/resolve {} → 400 (reason: string 3–300); с customerPhone → 400 «property customerPhone should not exist»;
+GET :uuid → 404 «Сигнал не найден»; GET feed?severity=WRONG → 400 (INFO/ATTENTION/CRITICAL); EXECUTOR → 403; без токена → 401.
+```
+
+## 7. FIRST RUN (§ 12)
+
+```text
+Boot-тик 09:34:56 (scheduler:daily 28.08–17.09, наборов 12, запросов 23, строк 3858) → снимки 8/8 09:35:00 →
+[AnalyticsGrowthService] Рост: автооценка — изменений 0 (09:35:00) → [AnalyticsInsightsService] 09:35:05:
+«Сигналы: запуск daily — обнаружено 8, новых 8, версий 0, без изменений 0, закрыто 0, переоткрыто 0, промолчало 49, ошибок 0».
+Порядок хуков: рост → сигналы (строки лога 09:35:00 → 09:35:05) ✓.
+AnalyticsInsightRun #1: kind daily, SUCCESS, 09:35:00–09:35:05, observationCutoff 2026-09-16, detectors 19, detected 8, created 8,
+versioned 0, unchanged 0, resolved 0, reopened 0, suppressed 49, errors [], durationMs 4282, syncRunId = id тика (совпадает с
+последним SUCCESS MetrikaSyncRun), seenEvaluations {222c1b8e… (A): 10}. Окна 03–09.09 → 10–16.09.
+Карточки (8; status OPEN; latestVersion 1 у всех; periodStart/End 10.09–16.09):
+  [ATTENTION] DEVICE_GAP           stage10.issues (device:mobile)   «На телефонах конверсия заметно ниже, чем на компьютерах»
+  [INFO] CHANGE_EVALUATION         change.evaluation (A)             «Оценка изменения «Деплой сайта 12.09…» обновилась: v10 — окна несопоставимы»
+  [INFO] PRODUCT_CHANGE            product.change (PHOTO)            «Категория PHOTO: принятых заказов меньше — 38 → 19 за 7 дней»
+  [INFO] DATA_QUALITY              quality.clientIdCoverage          «Покрытие ClientID у принятых заказов 15 % — сопоставление сайт → заказ ненадёжно»
+  [INFO] DATA_QUALITY              quality.eventNotMeasured (photo)  «Воронка «Фотопечать»: шаг не измеряется — анализ отвала ограничен»
+  [INFO] DATA_QUALITY              quality.paidWithoutDate           «6 оплаченных заказов без даты оплаты — когорты оплат смещены»
+  [INFO] SOURCE_MIX_SHIFT          source.mixShift (Переходы по рекламе) «Структура источников сдвинулась: «Переходы по рекламе» 75,1 % → 59,5 % визитов»
+  [INFO] TRAFFIC_CHANGE            traffic.visits                    «Визиты снизились: 229 → 116 за 7 дней»
+CRITICAL — 0 (DEVICE_GAP в окне 10–16.09 у этапа 10 уровня ATTENTION — зеркалится как есть).
+Эталонные JSON сохранены (/root/stage12/on/first: status, feed all/active, quality, 8 карточек, 8 versions; sha256 v1 payload:
+eventNotMeasured 9abdc738ff02dd62, change.evaluation a4770277638f24ab, stage10.issues 342d76b5984f0b6d, traffic.visits 46b7ead75fa36579,
+source.mixShift 2be206fca45d7cd9, paidWithoutDate 2adb140772e2d76c, clientIdCoverage b26c0a556dbf488a, product.change 2eb3b3dea693066c;
+generatedAt 09:35:00 у всех) — для проверки неизменяемости v1 после первой версии v2.
+Ручной POST run (§ 12.5, единственный, 09:36:13): HTTP 200 за 3901 мс; kind manual, SUCCESS, cutoff 16.09, detectors 19, detected 7,
+created 0, versioned 0, unchanged 7, resolved 0, reopened 0, suppressed 50 (= 49 + change.evaluation DUPLICATE: версия v10 уже
+учтена), errors [], durationMs 3694. Версий по-прежнему 8, карточек 8, запусков 2 ✓ (идемпотентность).
+```
+
+## 8. RECONCILIATION (§ 13) — s12-recon.js внутри backend-контейнера, read-only, 09:39 MSK
+
+```text
+A (HTTP ADMIN, JWT подписан в процессе): status 200 (counts OPEN 8), feed all 8 / active 8, quality (suppressed 50, recentRuns 2),
+  versions у каждой карточки = [v1]; feed.suppressedSummary = quality.suppressedSummary = журнал.
+B (сервис: buildContext('daily', {}) + runDetectors в памяти, без записи): 139 SQL, 3,7 с; окна 03–09.09 → 10–16.09, cutoff 16.09,
+  freshness FRESH, изменений реестра 2, confounders SOURCE_MIX_SHIFT, DEVICE_MIX_SHIFT, MEASUREMENT_DEFINITION_CHANGED,
+  OVERLAPPING_CHANGE, MATCHED_COVERAGE_LOW; detected 8, suppressed 49, errors 0.
+A = B: matched 8, diffs 0 (канонические нагрузки сохранённых v1 = нагрузки B по всем 8 карточкам, включая change.evaluation),
+  A-only 0; причины молчания (без change.evaluation, чей DUPLICATE зависит от seenEvaluations): A 46 = B 46, only-A 0, only-B 0.
+C (SQL / сервисы этапов 08–11 за те же даты):
+  visits.before 229 = 229; visits.after 116 = 116; siteLeads.before 0 = 0; siteLeads.after 8 = 8; siteLeadRate.after 6,897 = 6,897;
+  formStarts.after 23 = 23; formErrors.after 1 = 1; crmLeads.after (когорты этапа 08) 5 = 5; acceptedOrders.after 26 = 26;
+  realizedRevenue.after 54 996 = 54 996; netProfit.before 49 515 = 49 515; clientIdCoverageAccepted 15,385 = 15,385; paidWithoutDate 6 = 6.
+  Карточки: stage10.issues DEVICE_GAP — FACT и уровень = /behavior/issues окна «после» (ATTENTION); traffic.visits 229 → 116 = Σ SQL;
+  source.mixShift FACT = confounder этапа 11; paidWithoutDate 6 = overview; clientIdCoverage 15,385 = overview;
+  change.evaluation — вердикт INCOMPARABLE = этап 11 v10, FACT начинается с FACT оценки, RECOMMENDATION дословно,
+  kind USE_STAGE11_RECOMMENDATION.
+A/B = C: 13 чисел + карточки, diffs 0.
+```
+
+## 9. DETECTORS 19 (§ 14) — исход в последнем полном запуске (manual 09:36)
+
+```text
+traffic.visits            daily   карточка INFO (229 → 116, Пуассон p 1,2e-9, полярность neutral)
+site.leadRate             daily   MEASUREMENT_DEFINITION_CHANGED «0,0 % (0 из 229) → 6,9 % (8 из 116); вердикт этапа 11 — INCOMPARABLE»
+site.formStartRate        daily   MEASUREMENT_DEFINITION_CHANGED «0,0 % → 19,8 % (23 из 116); INCOMPARABLE»
+site.formErrorRate        daily   MEASUREMENT_DEFINITION_CHANGED
+stage10.issues            daily   карточка ATTENTION DEVICE_GAP; молчание 6: PARTIAL_BEHAVIOR_PERIOD ×3 (FUNNEL_DROPOFF фото / футболки /
+                                  холсты — шаги измерены с разных дат 10.09 и 12.09), LOW_SAMPLE ×2 (форма контактов < 20; ошибок формы < 5),
+                                  INCOMPARABLE_PERIODS ×1 (LEAD_RATE_ANOMALY — нет сопоставимого предыдущего периода)
+source.mixShift           daily   карточка INFO (доля «Переходы по рекламе» 75,11 → 59,48 %, −15,63 п.п.)
+source.performance        daily   LOW_SAMPLE ×4, DUPLICATE ×1 («Переходы по рекламе» движутся с общим трафиком — см. карточку визитов)
+landing.change            daily   LOW_SAMPLE ×23, DUPLICATE ×1 («/» движется с общим трафиком)
+product.change            daily   карточка INFO (PHOTO: принятых 38 → 19, p 0,016; CRM_INCLUDES_OFFLINE, IMMATURE_OUTCOME); INSUFFICIENT_DATA ×2
+crm.leadToAccepted        daily   IMMATURE («100,0 % (14 из 14) → 100,0 % (5 из 5); созревание до …»)
+crm.leadToPaid            daily   IMMATURE
+money.realizedRevenue     daily   IMMATURE («78 033 ₽ → 54 996 ₽; созревание до 30.09.2026»)
+money.netProfit           daily   IMMATURE («49 515 ₽ → 26 977 ₽; созревание до 30.09.2026»)
+change.evaluation         hourly  карточка INFO (A v10 INCOMPARABLE); в повторе DUPLICATE ×1 (версия учтена), INSUFFICIENT_DATA ×1 (B COMPLETED)
+quality.stale             hourly  NO_MATERIAL_CHANGE «данные Метрики свежие (возраст 77 с, порог 7200 с)»
+quality.clientIdCoverage  daily   карточка INFO (15 % при 26 принятых, порог 50 %)
+quality.cogs              daily   NO_MATERIAL_CHANGE (заказов с ненадёжной себестоимостью в окнах нет)
+quality.paidWithoutDate   daily   карточка INFO (6)
+quality.eventNotMeasured  daily   карточка INFO (photo); LOW_SAMPLE ×1 (tshirt), NO_MATERIAL_CHANGE ×1 (canvas)
+Все 19 имеют исход; детекторов без исхода 0; errors []. Пороги V1 не менялись.
+```
+
+## 10. DEVICE_GAP / EVENT_NOT_MEASURED / STAGE 11 INCOMPARABLE / QUALITY (§ 15)
+
+```text
+15.1 DEVICE_GAP: /behavior/issues окна 10–16.09 → DEVICE_GAP [ATTENTION] device:mobile; skipped: FUNNEL_DROPOFF PARTIAL_BEHAVIOR_PERIOD ×3,
+  FUNNEL_DROPOFF LOW_SAMPLE, FORM_ERROR_SPIKE LOW_SAMPLE, LEAD_RATE_ANOMALY COMPARISON_UNAVAILABLE. Карточка: ATTENTION (тот же уровень),
+  source STAGE10_RULE, FACT = fact правила («телефоны 4,3 % (47 визитов), компьютеры 9 % (67 визитов); отношение 0.48»), рекомендация =
+  recommendation правила (CHECK_MANUALLY: пройти путь на 360–430 px, сравнить ошибки формы и источники по устройствам), гипотеза
+  «Возможны трудности с формой или страницей на мобильных, либо разный состав трафика по устройствам — данные это не различают.
+  Причинность не установлена.», limitations STAGE10_RULE_MIRROR + INCIDENT_BOUNDARY, link → «Поведение». Причин в FACT нет.
+15.2 EVENT_NOT_MEASURED: /behavior/funnels окна «после» — global: вход 116, not_measured нет; photo: вход form_started_photo 31,
+  catalog visits = null; tshirt: вход view_custom_tshirt 13, choose_type_color / submit_tshirt_order visits = null; canvas: вход 7,
+  canvas_upload visits = null; contact: вход 0. Нулей среди not_measured шагов — 0.
+  Карточек quality.eventNotMeasured — 1 (photo), максимум на воронку 1, «на шаг» — 0. Карточка: INFO, scope data, DATA_QUALITY;
+  FACT: «Анализ отвала воронки «Фотопечать» (правило этапа 10) ограничен: не измеряется шаг — «Просмотр каталога / товара» (События
+  просмотра каталога фото нет; есть только e-commerce «detail»…). Значение таких шагов — not_measured, не 0. Нельзя сделать выводы: …»;
+  hypothesis NO_SUPPORTED_HYPOTHESIS «Гипотезы нет: отсутствие измерения — известный факт настройки счётчика, а не поведение
+  клиентов»; recommendation IMPROVE_DATA_QUALITY (цель на уже отправляемое событие / зафиксировать как намеренно неизмеряемый /
+  измерение отдельным решением; «Событийную модель сайта (web-photo) … не менять»); limitations NOT_MEASURED_STEPS, STAGE10_RULE_MIRROR;
+  fact.current / baseline / sample.current / sample.baseline = null (minimum 20); evidence.context [{step:catalog, before null, after null}].
+  Молчание: tshirt LOW_SAMPLE «не измеряются «Выбрали крой / цвет», «Отправили форму», но на входе измеренной части 13 визитов (< 20) —
+  анализ отвала сейчас не идёт, пропуск ничего не ограничивает»; canvas NO_MATERIAL_CHANGE «шаг(и) «Загрузили фото» на сайте не
+  существуют — ни одному анализу не нужны, карточка не создаётся».
+  not_measured ≠ 0: в payload всех версий «step:*» с before/after = 0 — 0; в API этапа 10 not_measured шаги — visits null; во вкладке
+  «Поведение» (replay) «не измеряется … 0» — 0 совпадений; в карточке подпись «Качество измерения — не поведение клиентов» + чип
+  «качество данных, не поведение» (у трёх data-карточек), ограничение «часть шагов не измеряется».
+15.3 Stage 11: A latest v10 INCOMPARABLE; карточка change.evaluation v1 INFO, statisticalStrength NONE, businessMateriality NONE,
+  заголовок «… обновилась: v10 — окна несопоставимы» (процента нет), recommendation USE_STAGE11_RECOMMENDATION = RECOMMENDATION оценки
+  дословно («Сравнивать окна, целиком лежащие после смены определения (13.09.2026); до этого — не делать выводов»), limitations
+  STAGE11_VERDICT_PRESERVED, EXCLUDED_CUTOVER_DAY, SHORT_WINDOW, WEEKDAY_MIX_MISMATCH, METRIC_UNAVAILABLE_BEFORE,
+  MEASUREMENT_DEFINITION_CHANGED, INCOMPARABLE_WINDOWS, OVERLAPPING_CHANGE; seenEvaluations {A: 10}. Дельта конверсии заявок
+  (0 → 6,9 % в окнах 7/7; +494 % в оценке этапа 11) заголовком или «положительным сигналом» не является: site.leadRate молчит
+  (MEASUREMENT_DEFINITION_CHANGED), заголовков про заявки с процентом — 0. B (COMPLETED) карточки не даёт (INSUFFICIENT_DATA).
+  INCIDENT_BOUNDARY — у stage10.issues, traffic.visits, source.mixShift; OVERLAPPING_CHANGE — в confounders контекста и в limitations
+  traffic.visits.
+15.4 Quality: clientIdCoverage 15,385 % (26 принятых) = overview.dataQuality.clientIdCoverageAccepted; paidWithoutDate 6 = overview.orders;
+  quality.cogs — NO_MATERIAL_CHANGE (COGS_UNRELIABLE_ORDERS нет); quality.stale — § 12. Все INFO, DATA_QUALITY, гипотез о поведении нет.
+```
+
+## 11. LANGUAGE / CAUSALITY (§ 16)
+
+```text
+94 текста (title / fact / hypothesis / recommendation / quality.notes 8 карточек + 50 detail причин молчания):
+violatesLanguagePolicy по title / fact / hypothesis / recommendation / detail — 0; causality NOT_ESTABLISHED — 8/8 и в status;
+гипотезы: 3 SUPPORTED_BY_CONCURRENT_FACTS (все с префиксом «Гипотеза: » и суффиксом «Причинность не установлена.»), 5 NO_SUPPORTED_HYPOTHESIS
+(в т. ч. все три data-scope); CRITICAL вне закрытого списка — 0 (CRITICAL нет); statisticalStrength SIGNAL при INCOMPARABLE /
+INSUFFICIENT_DATA / IMMATURE — 0; дисклеймер в quality.notes — у 8/8; рекомендации: CHECK_MANUALLY 2, IMPROVE_DATA_QUALITY 3, OBSERVE 1,
+COMPARE_SEGMENT 1, USE_STAGE11_RECOMMENDATION 1 — предложений отключить рекламу / менять бюджет, цены / удалять страницы / откатывать сайт нет.
+Единственные срабатывания (8 policy + 8 grep) — сам текст дисклеймера в quality.notes: «Сигнал — наблюдение по данным, а не
+установленная причина: совпадение по времени не доказывает связь» (слова «причина», «не доказывает» в отрицании причинности).
+В UI causal-regex даёт 9 = 8 дисклеймеров карточек + дисклеймер шапки. Причинных утверждений — 0 (NEW FACT 5: область проверки).
+```
+
+## 12. LIFECYCLE / DEDUPE / VERSIONS (§ 17)
+
+```text
+dedupe: ручной run сразу после первого → created 0, versioned 0, unchanged 7 (+ change.evaluation DUPLICATE); карточек 8, версий 8;
+  fingerprint unique цел (8 отпечатков без «#N»).
+versions: у всех карточек latestVersion 1, versions = [v1] (generatedAt 09:35:00); sha256 v1 payload записаны (§ 7) — неизменяемость
+  проверяется при первой v2 (первый daily с изменившимися числами — 18.09 00:35 или позже) → NEW FACT после rollout.
+RESOLVED / reopen / COOLDOWN / MAX_ACTIVE — на production не форсируются (искусственных данных нет); механизм — тесты (service.spec 11,
+  FIX_01 тест 5); первые естественные RESOLVED / переоткрытия — наблюдение (§ 33). MAX_ACTIVE_PER_DETECTOR: активных ≤ 1 на детектор.
+ручные действия: исполнитель acknowledge / resolve на production не выполнял; статусы 8 × OPEN; «Принять к сведению» — владелец в owner smoke.
+удалений строк нет.
+```
+
+## 13. SUPPRESSION / DIAGNOSTICS (§ 18)
+
+```text
+Журнал последнего полного запуска (manual) = GET quality.suppressed = feed.suppressedSummary: 50 = {LOW_SAMPLE 30,
+MEASUREMENT_DEFINITION_CHANGED 3, PARTIAL_BEHAVIOR_PERIOD 3, INCOMPARABLE_PERIODS 1, DUPLICATE 3, INSUFFICIENT_DATA 3, IMMATURE 4,
+NO_MATERIAL_CHANGE 3} (boot daily: 49 — без DUPLICATE change.evaluation). У каждой записи detectorId / metricKey / entityKey / reason /
+detail с числами и порогом. Объяснено: нет карточки заявок (MEASUREMENT_DEFINITION_CHANGED, вердикт INCOMPARABLE), нет карточек
+источников / страниц (LOW_SAMPLE с числами визитов; DUPLICATE «движутся вместе с общим трафиком — см. карточку визитов»), нет карточек
+EVENT_NOT_MEASURED по футболкам / холстам (§ 10), нет карточек оплат / прибыли (IMMATURE, созревание до 30.09). UI: блок «Правил без
+вывода в последнем запуске: 50» с разбивкой по причинам и текст «Молчание правила — не подтверждение отсутствия проблем».
+PII и причинных формулировок в detail — 0.
+```
+
+## 14. STALE / GATES (§ 19–20)
+
+```text
+stale: данные свежие — quality.stale в daily / hourly → NO_MATERIAL_CHANGE «данные Метрики свежие (возраст 77 с, порог 7200 с)»;
+  freshness FRESH во всех карточках; status.thresholds.criticalStaleSeconds 21600. Сценарии STALE / NO_DATA — тесты и сверка на копии
+  (§ 49); на production воспроизводятся только при реальном сбое синхронизации.
+maturity: crm.leadToAccepted / leadToPaid / money.* → IMMATURE с «созревание до 30.09.2026»; карточек по незрелым когортам нет
+  (product.change PHOTO — по принятым заказам с ограничением IMMATURE_OUTCOME и CRM_INCLUDES_OFFLINE).
+MDE / sample: traffic.visits evidence.metricEvaluation.statistics — метод poisson_conditional_binomial_exact, p 1,18e-9,
+  MDE 59,96 визитов (26,18 %), requiredSample.perWindow 432; в FACT «при текущем объёме заметен эффект от ±26 % базы».
+  LOW_SAMPLE 30 / INSUFFICIENT_DATA 3 в диагностике; NO_MATERIAL_CHANGE вместо INSUFFICIENT_DATA при большом MDE — не наблюдается.
+comparability: site.* → MEASUREMENT_DEFINITION_CHANGED; WEEKDAY_MIX_MISMATCH у окон 7/7 нет (есть только внутри карточки оценки этапа 11 —
+  её собственные окна). incident: INCIDENT_BOUNDARY у трёх карточек; status.boundaries.incident заполнен. ClientID: 15 % → карточка,
+  MATCHED_COVERAGE_LOW в confounders. COGS: полная (NO_MATERIAL_CHANGE), прибыль без оговорки не показывается (IMMATURE).
+polarity: traffic.visits INFO при −49 % (не ATTENTION).
+```
+
+## 15. SCHEDULER (§ 21)
+
+```text
+После enable интервал тиков сдвинулся на минуту старта контейнера (:33 вместо :17):
+цикл 1  boot-тик 09:34:56 → daily (первый полный запуск, § 7) — SUCCESS, 4282 мс, syncRunId = id тика
+        (ручной run 09:36 — kind manual, отдельная строка журнала, замок не сработал — запусков параллельно не было)
+цикл 2  часовой тик 10:33:24 (hourly 15–17.09, 12/12 SUCCESS, строк 513) → снимки → «Рост: автооценка — изменений 0» 10:33:29 →
+        «Сигналы: запуск hourly — обнаружено 0, новых 0, версий 0, без изменений 0, закрыто 0, переоткрыто 0, промолчало 3, ошибок 0»;
+        AnalyticsInsightRun #3: kind hourly, SUCCESS, detectors 2, suppressed 3 (change.evaluation DUPLICATE «версия v10 уже поднята в
+        ленту», change B INSUFFICIENT_DATA, quality.stale NO_MATERIAL_CHANGE), durationMs 35 — лёгкий контекст; карточек/версий не добавил
+overlap: RUNNING старше 10 мин — 0; LOCKED — 0; FAILED — 0; unique(insightId, version) — ошибок в логе 0.
+Порядок хуков в каждом тике: синхронизация → снимки → «Рост: автооценка» → «Сигналы: запуск» ✓.
+Следующий daily — первый тик нового московского дня (18.09 00:33): cutoff 17.09, версии по изменившимся числам (§ 12 неизменяемость v1).
+MetrikaSyncRun 17.09 с 09:00: тики 09:17, 09:23, 09:31, 09:34, 10:33 — все 12/12 SUCCESS (60 строк); RUNNING 0; FAILED 0; дублей снимков 0 (39).
+```
+
+## 16. METRIKA CALLS (§ 22) / REGRESSION 06/09/10/11 (§ 25)
+
+```text
+Строки клиента Метрики в логе текущего контейнера (с 09:33): только внутри тиков (09:34–09:35 — 42 строки; 10:33 — 42 строки);
+во время всех HTTP-проб (09:33:20–09:33:36 enable-проверки, 09:36 manual run, 09:39 recon, 09:5x capture) — 0. Stage 12 не импортирует
+клиент Метрики (grep по dist/analytics/insights = 0 файлов).
+Stage 06: outbox delivered 11 / skipped 43 до и после — без изменений; failed 0.
+Stage 07/08: тики SUCCESS 12/12, снимки 8/8 на тик, дублей 0.
+Stage 09/10: BEFORE 09:10 vs AFTER-deploy 09:31 — status diff 0; bissues7 diff 0 (44 листа); overview 7d/30d, behavior summary / funnels —
+  расхождения только в полях живого дня (visits 81 → 85, users 50 → 52 …): между снимками прошёл тик 09:17 с новыми данными
+  за 17.09 (пресеты last_7/30_days включают текущий день); код этапов 09/10 в кандидате не менялся (git diff), поэтому это данные,
+  не регресс. FIX_01 этапа 10 на месте: skipped PARTIAL_BEHAVIOR_PERIOD ×3; not_measured шаги — visits null.
+Stage 11: growth/status, growth/changes, A evaluations/latest — diff 0 (355 / 83 / 636 листьев); A остаётся v10 INCOMPARABLE
+  (scheduled-версия появится в daily нового дня); хук роста в каждом тике «изменений 0, ошибок 0»; публичные loadWindow /
+  overlappingChanges / lastDataDay поведения оценки не изменили (Stage 11 тесты 47 прежние).
+CRM: health ok, ошибок Nest после enable 0; секретов в логе (Bearer / JWT_SECRET / password) 0.
+```
+
+## 17. PERFORMANCE (§ 24, production-контейнер)
+
+```text
+daily (хук boot-тика, полный контекст, 19 детекторов): 4282 мс ✓ (цель ≤ 5 с); manual (HTTP POST run): 3901 мс HTTP / 3694 мс run ✓;
+контекст в B: 139 SQL, 3747 мс. hourly (тик 10:33): 35 мс (цель ≤ 2 с) ✓.
+GET (in-container, ADMIN): status 15–459 мс (первый вызов с полной сводкой 459), feed active 26–273, feed all 27–254, quality 17–227,
+one 11, versions 16 ✓ (цели 0,3–0,5 с); service feed 3 SQL, 22 мс.
+pg_stat_database за один manual run: xact_commit +132 (≈ 157 SQL копии минус часть в транзакции), tup_returned +37 901 (десятки тысяч, не миллионы).
+Stage 09 overview 30d: 2,04 с BEFORE → 2,46 с после deploy (в пределах шума первого вызова); growth/status 0,64 → 0,70 с.
+Превышений целей нет; STOP-порогов нет.
+```
+
+## 18. PRIVACY (§ 23)
+
+```text
+Хранимые строки (title / fact / hypothesis / recommendation / evidence / limitations / quality / entityKey 8 карточек, 8 версий payload,
+2 журнала suppressed / errors; 95 808 символов): телефоны 0, e-mail 0, @username 0, 19-значные ClientID 0, ссылки мессенджеров 0,
+токены 0, query-string в entityKey 0; 12 контактов клиентов из OrderPhoto (не печатались) — вхождений 0.
+entityKey: 222c1b8e-… (id изменения A), device:mobile, «Переходы по рекламе», PHOTO, photo. API JSON (feed / quality / status /
+versions через домен, 508 КБ) — тот же regex 0; скриншоты — тексты карточек без имён клиентов. Логи backend — токенов / паролей 0;
+JWT для проб подписывался внутри контейнера и не выводился.
+```
+
+## 19. UI (§ 26) — production-JSON (через домен, ADMIN) → сборка кандидата (frontend/dist), puppeteer; под учётной записью владельца исполнитель не входил
+
+```text
+OFF (09:31): карточка «Раздел «Инсайты» выключен»; запросов раздела кроме status 0; вкладки Обзор / Поведение / Рост рендерятся
+  → prod-insights-disabled.png.
+ON (09:5x, 1440 × 900): дисклеймер шапки и границы данных (13.08 / 12.09 / инцидент 14.09) — есть; карточек 8; блоки ФАКТ 8 /
+  ЧТО ПРОВЕРИТЬ 8; подписи блока гипотезы: «Гипотеза — не факт» ×5, «Качество измерения — не поведение клиентов» ×3
+  (eventNotMeasured, paidWithoutDate, clientIdCoverage) + чипы «качество данных, не поведение» ×3; текст «not_measured, не 0» виден;
+  заголовок оценки этапа 11 — «окна несопоставимы», заголовков про заявки с процентом 0; блок «Правил без вывода» и «Молчание
+  правила…» — есть; кнопок «Принять к сведению» 8; слов об ошибках 0; causal-regex 9 = дисклеймеры; scrollWidth 1440 = clientWidth
+  → prod-insights-desktop.png, фильтр DATA_QUALITY → prod-insights-desktop-data-quality.png.
+390 × 844: одна колонка, scrollWidth 390 = clientWidth (горизонтальной прокрутки нет) → prod-insights-mobile-390.png.
+Регресс вкладок из production-JSON: Обзор (маркер «Визит»), Поведение («Требует внимания»), Рост («Деплой сайта 12.09») — рендер без
+ошибок; «не измеряется … 0» — 0. Скриншоты — docs/analytics/screenshots/12_insights/prod-*.png.
+```
+
+## 20. OWNER SMOKE (§ 27)
+
+```text
+Не выполнялся исполнителем — gate владельца. Ожидаемая картина: 8 карточек (ATTENTION «На телефонах конверсия заметно ниже…» +
+7 INFO), три карточки качества данных подписаны «Качество измерения — не поведение клиентов», карточка оценки 12.09 — «окна
+несопоставимы», блок «Правил без вывода: 50». Владелец записывает результат сам («OWNER SMOKE STAGE 12 ПРОЙДЕН» / замечания).
+```
+
+## 21. NEW FACTS
+
+```text
+1. Окна 03–09.09 → 10–16.09 на production: визиты 229 → 116 (−49 %, Пуассон p 1,2e-9), доля «Переходов по рекламе» 75,1 % → 59,5 %
+   (сдвиг структуры — SOURCE_MIX_SHIFT), принятых заказов категории PHOTO 38 → 19 (p 0,016; CRM включает офлайн-каналы), покрытие
+   ClientID у принятых 15 % (26 принятых), 6 оплаченных без даты оплаты; DEVICE_GAP этапа 10 — ATTENTION (телефоны 4,3 % / компьютеры 9 %).
+2. Заявки сайта в новом определении: 8 за 10–16.09 (6,9 % визитов), формы начаты 23, ошибок 1 — все под MEASUREMENT_DEFINITION_CHANGED
+   до окон целиком после 12.09 (§ 10 календарь).
+3. Не измеряемые шаги воронок на production: фото «Просмотр каталога / товара» (вход 31 → карточка), футболки «Выбрали крой / цвет»,
+   «Отправили форму» (вход 13 → LOW_SAMPLE), холсты «Загрузили фото» (нет на сайте → NO_MATERIAL_CHANGE) — совпадает с копией.
+4. Drift схемы вне этапа 12: prisma migrate diff (миграции → schema.prisma) показывает разницу default у SalaryPayment.updatedAt
+   (миграция 20260613_salary_architecture); есть в production master, к Stage 12 не относится; исправлять — отдельным решением.
+5. Проверка языковой политики по quality.notes срабатывает на самом дисклеймере («…а не установленная причина… не доказывает связь»);
+   область проверки в § 16 плана стоит ограничить текстами карточек (title / fact / hypothesis / recommendation / detail) —
+   уточнение документа, не кода.
+6. auto-update запускает `docker compose up -d --force-recreate <svc>` без --no-deps: при обновлении frontend (09:21) backend,
+   у которого изменился env (строка флага из § 6), был пересоздан со СТАРЫМ образом (boot-тик 09:23), а новым — только в 09:29,
+   когда докачался его образ. Безвредно (дополнительный рестарт ~30 с, миграции не было), но окно «compose-правка → deploy»
+   стоит делать после появления обоих образов или добавлять строку флага в compose заранее (до push).
+7. Интервал часового тика после recreate backend сдвигается на минуту старта: после enable — :33 (было :17); daily нового дня — 00:33.
+```
+
+## 22. DEVIATIONS
+
+```text
+1. Rollout начат 16.09 22:44 (git/test gate, backup 22:52), сессия исполнителя прервалась в 23:1x до правки compose и push;
+   production в этот промежуток не менялся (проверено 17.09 08:58: compose/.env без строки, master 5922175, 59 таблиц / 82 миграции).
+   Продолжен 17.09 09:10 с повторным backup и BEFORE-снимком; первые backup-файлы 16.09 не использовались.
+2. Backup БД — pg_dump | gzip в /opt/raspechatka/backups (процесс владельца, как на этапе 11), а не -Fc в каталог данных (текст § 4).
+3. Проверка «schema = миграции» (§ 3) выполнена через пустую временную БД prisma_shadow_stage12 на серверном Postgres (создана,
+   миграции применены, diff, удалена; production-БД crm не затронута) — локального Docker нет. Обнаружен drift вне этапа 12 (NEW FACT 4).
+4. BEFORE/AFTER Stage 09/10 JSON (§ 9.7, § 25): снимки разделены тиком 09:17 → поля живого дня разошлись (данные, не код); фиксированные
+   даты для сравнения в BEFORE не снимались. Компенсация: код этапов 09/10 не менялся (git diff), issues 7d и все JSON этапа 11 — diff 0.
+5. Boot-тик старого backend 09:23 из-за пересоздания зависимостью при обновлении frontend (NEW FACT 6).
+6. Часовой цикл после enable — 10:33, а не 10:17 (сдвиг интервала на минуту старта контейнера, NEW FACT 7); проверка § 21 сделана по нему.
+7. Скрипт захвата API для UI перебирал все UUID из ленты (в т. ч. id запусков и изменения A) → пять ожидаемых 404 «Сигнал не найден»
+   на несуществующие карточки; на replay не влияет.
+8. ручных run на production — 1 (план допускал 2–3); acknowledge / resolve исполнителем не делались.
+```
+
+## 23. OPEN DECISIONS
+
+```text
+1. Owner smoke (§ 27) — владелец; DONE — Reviewer.
+2. Наблюдение после rollout (§ 33): daily 18.09 00:33 — первые версии v2 и проверка неизменяемости v1 по sha256 из § 7;
+   20.09 / 27.09 / 30.09 — смена кодов молчания по заявкам / инциденту / зрелости.
+3. NEW FACT 4 (drift SalaryPayment) и NEW FACT 6 (auto-update без --no-deps) — отдельные решения вне Stage 12.
+4. POST /insights/run остаётся ADMIN-only инструментом controlled rollout; назначение не расширялось.
+```
+
+## 24. PRODUCTION STATE
+
+```text
+master = 1f8b7b4; образы backend d8590e7c9e67 (пересоздан 09:32:51 с флагом), frontend 1485aa9b3150; compose: строка
+ANALYTICS_INSIGHTS_ENABLED: ${ANALYTICS_INSIGHTS_ENABLED:-false}; .env: ANALYTICS_INSIGHTS_ENABLED=true (с 09:33:16);
+YANDEX_METRIKA_* / ANALYTICS_DASHBOARD_ENABLED / ANALYTICS_GROWTH_ENABLED — не менялись. БД: 62 таблицы, 83 миграции;
+AnalyticsInsight 8 (OPEN), AnalyticsInsightVersion 8, AnalyticsInsightRun 3 (daily 1, manual 1, hourly 1).
+Пороги V1 не менялись. web-photo, event model, Logs API, CI сайта, feature/print-card-lead-form — не трогались.
+После enable production не менялся и до решения Reviewer / владельца не меняется; отчёт остаётся в feature-ветке
+(master после rollout не пушится, как на этапе 11).
+```

@@ -1326,9 +1326,13 @@ author
 Статус:
 
 ```text
-READY_FOR_PRODUCTION_ROLLOUT (Reviewer, 16.09.2026; кандидат 1f8b7b4; rollout-план 12_PRODUCTION_ROLLOUT.md —
-READY_FOR_REVIEW, включение предложено в том же окне сразу после OFF-gate: технических причин ждать 27.09 нет,
-несопоставимые / незрелые сигналы подавляются штатно; production не менялся, старт — только по команде «СТАРТ»).
+REVIEW после production rollout (17.09.2026): technical rollout выполнен 09:10–10:37 MSK по команде «СТАРТ» строго по
+12_PRODUCTION_ROLLOUT.md (master 1f8b7b4, миграция 20260916120000 на старте контейнера, 62 таблицы; OFF-gate 9/9 с 404 до
+валидации; ANALYTICS_INSIGHTS_ENABLED=true с 09:33:16; первый запуск 09:35 — 19 детекторов, 8 карточек (ATTENTION DEVICE_GAP
+этапа 10 + 7 INFO: оценка 12.09 INCOMPARABLE, визиты 229 → 116, сдвиг источников, PHOTO 38 → 19, ClientID 15 %, 6 оплат без даты,
+«шаг не измеряется» по воронке фото), 49 причин молчания; A = B = C diff 0; два автоцикла) — отчёт § 35; owner smoke § 27 и
+DONE — за владельцем и Reviewer. Ранее READY_FOR_PRODUCTION_ROLLOUT (Reviewer, 16.09.2026; кандидат 1f8b7b4; rollout-план
+READY_FOR_REVIEW, включение предложено в том же окне сразу после OFF-gate — принято Reviewer).
 Ранее REVIEW (16.09.2026; Reviewer NEEDS_FIX → 12_FIX_01 выполнен 16.09: агрегированный детектор quality.eventNotMeasured —
 одна INFO-карточка на воронку этапа 10 с не измеряемым шагом, только когда анализ отвала реально идёт (вход ≥ 20
 визитов); FACT: какой анализ ограничен, какой шаг, not_measured ≠ 0, какие выводы нельзя; NO_SUPPORTED_HYPOTHESIS;
@@ -1662,8 +1666,8 @@ POSITIVE_SIGNAL … INCOMPARABLE без причинности, confounders, ADM
 NO_VARIANT_ASSIGNMENT. В production с 15.09 23:17 MSK (rollout § 35 `11_PRODUCTION_ROLLOUT.md`, master 5922175);
 DONE (Reviewer, 16.09.2026). Отчёт — `11_GROWTH_AND_EXPERIMENTS.md` § 31; rollout — `11_PRODUCTION_ROLLOUT.md` § 35.
 
-12_AUTOMATED_INSIGHTS — READY_FOR_PRODUCTION_ROLLOUT (Reviewer 16.09.2026; FIX_01 принят; кандидат 1f8b7b4; план
-`12_PRODUCTION_ROLLOUT.md` READY_FOR_REVIEW, production не тронут): детерминированный движок сигналов FACT → HYPOTHESIS → RECOMMENDATION
+12_AUTOMATED_INSIGHTS — REVIEW после rollout (technical rollout 17.09.2026 09:10–10:37 MSK по «СТАРТ», master 1f8b7b4,
+раздел включён 09:33; отчёт `12_PRODUCTION_ROLLOUT.md` § 35; owner smoke / DONE — владелец и Reviewer): детерминированный движок сигналов FACT → HYPOTHESIS → RECOMMENDATION
 поверх этапов 08/10/11 — 19 детекторов на окнах 7/7 (оценки метрик, MDE, сопоставимость, созревание и confounders этапа
 11; зеркало правил этапа 10; оценки этапа 11 дословно), существенность отдельно от статистики, CRITICAL по закрытому
 списку, rule-based гипотезы с языковой политикой, реестр карточек с отпечатком / версиями / журналом (миграция
