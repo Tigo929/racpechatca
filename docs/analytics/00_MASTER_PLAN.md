@@ -1326,7 +1326,9 @@ author
 Статус:
 
 ```text
-REVIEW после production rollout (17.09.2026): technical rollout выполнен 09:10–10:37 MSK по команде «СТАРТ» строго по
+REVIEW (Reviewer, 17.09.2026: 12_FIX_01 = DONE, 12_PRODUCTION_ROLLOUT = DONE_PENDING_OWNER_SMOKE, 12_AUTOMATED_INSIGHTS = REVIEW;
+drift SalaryPayment.updatedAt и auto-update без --no-deps — отдельный infrastructure/CI debt, не FIX этапа 12; DONE — после owner
+smoke). Technical rollout выполнен 17.09 09:10–10:37 MSK по команде «СТАРТ» строго по
 12_PRODUCTION_ROLLOUT.md (master 1f8b7b4, миграция 20260916120000 на старте контейнера, 62 таблицы; OFF-gate 9/9 с 404 до
 валидации; ANALYTICS_INSIGHTS_ENABLED=true с 09:33:16; первый запуск 09:35 — 19 детекторов, 8 карточек (ATTENTION DEVICE_GAP
 этапа 10 + 7 INFO: оценка 12.09 INCOMPARABLE, визиты 229 → 116, сдвиг источников, PHOTO 38 → 19, ClientID 15 %, 6 оплат без даты,

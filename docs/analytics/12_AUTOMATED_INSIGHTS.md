@@ -2,8 +2,9 @@
 
 ## 0. STATUS
 
-`READY_FOR_PRODUCTION_ROLLOUT` (Reviewer, 16.09.2026: implementation + FIX_01 приняты, кандидат 1f8b7b4). **Technical rollout
-выполнен 17.09.2026 09:10–10:37 MSK по команде «СТАРТ»** (master 1f8b7b4, раздел включён 09:33 MSK, 8 карточек / 49 причин
+`REVIEW` (Reviewer, 17.09.2026: `12_FIX_01 = DONE`, `12_PRODUCTION_ROLLOUT = DONE_PENDING_OWNER_SMOKE`, `12_AUTOMATED_INSIGHTS = REVIEW`;
+production master 1f8b7b4, Insights ENABLED; DONE — после owner smoke). До этого `READY_FOR_PRODUCTION_ROLLOUT` (Reviewer, 16.09.2026:
+implementation + FIX_01 приняты, кандидат 1f8b7b4). **Technical rollout выполнен 17.09.2026 09:10–10:37 MSK по команде «СТАРТ»** (master 1f8b7b4, раздел включён 09:33 MSK, 8 карточек / 49 причин
 молчания в первом запуске, A = B = C diff 0) — отчёт `12_PRODUCTION_ROLLOUT.md` § 35; owner smoke § 27 и DONE — за владельцем
 и Reviewer.
 Ранее `READY_FOR_REVIEW` (после `NEEDS_FIX` → `12_FIX_01` выполнен 16.09.2026, отчёт § 50: агрегированный детектор
