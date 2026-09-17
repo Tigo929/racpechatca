@@ -1668,7 +1668,8 @@ POSITIVE_SIGNAL … INCOMPARABLE без причинности, confounders, ADM
 NO_VARIANT_ASSIGNMENT. В production с 15.09 23:17 MSK (rollout § 35 `11_PRODUCTION_ROLLOUT.md`, master 5922175);
 DONE (Reviewer, 16.09.2026). Отчёт — `11_GROWTH_AND_EXPERIMENTS.md` § 31; rollout — `11_PRODUCTION_ROLLOUT.md` § 35.
 
-13_RELIABILITY_SECURITY — READY_FOR_PRODUCTION_ROLLOUT (исполнитель, 17.09.2026; verdict — Reviewer): аудит текущего
+13_RELIABILITY_SECURITY — READY_FOR_PRODUCTION_ROLLOUT (Reviewer APPROVED 17.09.2026; rollout-план `13_PRODUCTION_ROLLOUT.md`
+READY_FOR_REVIEW — gate-ы A–H, production не менялся): аудит текущего
 состояния (RELIABILITY_SECURITY_AUDIT.md), диагностика ADMIN GET /analytics/ops/status (словарь состояний, 13 условий,
 без секретов), закрытие зависших RUNNING сигналов, детерминизм пересекающихся изменений (найден restore drill),
 retention с dry-run, restore drill в изолированной БД (diff 0), скан секретов (SECRET_FOUND=no), HTTP-матрица
