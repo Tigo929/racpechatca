@@ -650,6 +650,11 @@ export class AnalyticsGrowthService {
         startedAt: true,
         endedAt: true,
       },
+      // Детерминированный порядок (этап 13): без ORDER BY Postgres отдаёт
+      // строки в физическом порядке, который меняется после restore / vacuum —
+      // текст confounder OVERLAPPING_CHANGE и relatedChangeIds менялись местами,
+      // и карточка этапа 12 получала бы новую версию без новых данных.
+      orderBy: [{ startedAt: 'asc' }, { id: 'asc' }],
     });
     return rows.map((r) => ({
       id: r.id,

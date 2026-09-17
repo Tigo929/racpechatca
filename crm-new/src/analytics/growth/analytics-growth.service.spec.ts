@@ -488,4 +488,25 @@ describe('AnalyticsGrowthService', () => {
     expect(st.metrics.map((m) => m.key)).toContain('siteLeadRate');
     expect(st.maturityPolicy.leadToAccepted.sufficient).toBe(false);
   });
+
+  it('overlappingChanges (этап 13): порядок пересекающихся изменений детерминирован — startedAt, затем id; иначе текст confounder и версии карточек зависели бы от физического порядка строк', async () => {
+    const { prisma } = memoryPrisma(() => NOW);
+    const s = new AnalyticsGrowthService({
+      prisma,
+      metrics: fakeMetrics(),
+      behavior: fakeBehavior(),
+      now: () => NOW,
+    });
+    await s.overlappingChanges(null, '2026-09-01', '2026-09-30');
+    const calls = (
+      prisma.analyticsChange.findMany as jest.Mock<
+        unknown,
+        [{ orderBy?: unknown }]
+      >
+    ).mock.calls;
+    expect(calls.at(-1)![0].orderBy).toEqual([
+      { startedAt: 'asc' },
+      { id: 'asc' },
+    ]);
+  });
 });
