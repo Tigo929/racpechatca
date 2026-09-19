@@ -1,5 +1,6 @@
 import type {
   CreateApprovalDto,
+  ApprovalTelegramDelivery,
   EnumApprovalSide,
   MockupTemplate,
   PrintApproval,
@@ -8,6 +9,10 @@ import type {
 import { api } from './client';
 
 export const approvalsApi = {
+  sendTelegram: async (id: string): Promise<ApprovalTelegramDelivery> => {
+    const { data } = await api.post<ApprovalTelegramDelivery>(`/order-photo-approvals/${id}/send-telegram`);
+    return data;
+  },
   list: async (orderId: string): Promise<PrintApproval[]> => {
     const { data } = await api.get<PrintApproval[]>('/order-photo-approvals', {
       params: { orderId },

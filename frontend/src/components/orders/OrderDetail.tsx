@@ -1030,6 +1030,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           orderId={order.id}
           orderNumber={String(order.numberOrder ?? order.id)}
           tshirtItems={order.tshirtItems ?? []}
+          communicationPlatform={order.communicationPlatform}
+          communicationUrl={order.urlCommunication}
         />
       )}
 

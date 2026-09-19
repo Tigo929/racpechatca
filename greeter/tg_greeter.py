@@ -41,6 +41,7 @@ from telethon.errors import (
 from greeting_text import render
 from proxy_config import describe, parse_proxy
 from signing import sign
+from approval_delivery import ApprovalQueue
 
 BASE_DIR = Path(__file__).resolve().parent
 MESSAGE_DIR = Path(os.getenv("GREETER_MESSAGE_DIR", BASE_DIR))
@@ -210,6 +211,7 @@ async def main() -> int:
         raise Fatal("TG_API_ID / TG_API_HASH не заданы")
 
     crm = Crm()
+    approvals = ApprovalQueue(crm._client, CRM_SIGNING_SECRET)
     client = TelegramClient(
         str(SESSION_PATH), API_ID, API_HASH, proxy=parse_proxy(PROXY_URL)
     )
@@ -231,8 +233,11 @@ async def main() -> int:
 
     try:
         while True:
+            approval_pause = await approvals.process_one(client, PEER_FLOOD_PAUSE)
+            if approval_pause:
+                await asyncio.sleep(approval_pause)
             try:
-                queue = await crm.pending()
+                queue = await crm.pending(limit=1)
             except (httpx.HTTPError, OSError) as exc:
                 # CRM перезапускается или сеть моргнула — не повод падать.
                 log.warning("CRM недоступна (%s), жду", type(exc).__name__)
@@ -297,8 +302,7 @@ async def main() -> int:
 
                 log.info("  %s  @%s  %s", item["numberOrder"], username, status)
 
-                if index < len(queue) - 1:
-                    await asyncio.sleep(SEND_DELAY + random.uniform(0, SEND_JITTER))
+                await asyncio.sleep(SEND_DELAY + random.uniform(0, SEND_JITTER))
     finally:
         await crm.close()
         await client.disconnect()
