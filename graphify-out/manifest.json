@@ -1725,18 +1725,18 @@
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval.controller.ts": {
-    "mtime": 1789836046.2098427,
-    "ast_hash": "18fdde040eb083677b2b9efa9c8ff934",
+    "mtime": 1789836736.3258543,
+    "ast_hash": "ebcc7447bb8ee53261a8a0e844f58acd",
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval.module.ts": {
-    "mtime": 1789836046.2086756,
-    "ast_hash": "7caf536583261798dc312541969feae0",
+    "mtime": 1789836736.3338377,
+    "ast_hash": "6b183a8fc1caa2a939d554ff19b9c23e",
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval.service.ts": {
-    "mtime": 1789836046.2114916,
-    "ast_hash": "baf7e48105b9c620c55a5f7eb5cdab67",
+    "mtime": 1789836956.75906,
+    "ast_hash": "29713e81517bab4c3b6c7924e74e5cd5",
     "semantic_hash": ""
   },
   "crm-new/src/approval/dto/create-approval.dto.ts": {
@@ -2260,8 +2260,8 @@
     "semantic_hash": ""
   },
   "greeter/requirements.txt": {
-    "mtime": 1789817777.5890427,
-    "ast_hash": "703af3bc33a6ada71e731dc58e9f7163",
+    "mtime": 1789836836.6840093,
+    "ast_hash": "ee270dc379466e6712f9e106576428e6",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/greeting-message.spec.ts": {
@@ -3565,28 +3565,28 @@
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval-delivery-state.ts": {
-    "mtime": 1789836014.0105734,
-    "ast_hash": "12c33672d7d13121dec5ec8a74c4bbe0",
+    "mtime": 1789836736.122174,
+    "ast_hash": "07d8e0e53cb9e9f5c9dd86eca5271414",
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval-delivery.controller.ts": {
-    "mtime": 1789836527.2962728,
-    "ast_hash": "3e8495bd76eded78c21962e7f5ce1e94",
+    "mtime": 1789836736.1404538,
+    "ast_hash": "86b19beef7d3663fd6925ee668751704",
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval-delivery.service.ts": {
-    "mtime": 1789836014.0125887,
-    "ast_hash": "c7b77c89edb4de3066b5ae26cb64e30f",
+    "mtime": 1789836736.1922557,
+    "ast_hash": "de46b03e9a4bbfdadb797cc1be38b06e",
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval-delivery.spec.ts": {
-    "mtime": 1789836443.0200148,
-    "ast_hash": "4389acf132a6a0b7e98ee63c08fa7eec",
+    "mtime": 1789836954.5982876,
+    "ast_hash": "20791931418ea0d5d810371c8778c4c0",
     "semantic_hash": ""
   },
   "crm-new/src/approval/dto/approval-delivery.dto.ts": {
-    "mtime": 1789836014.011585,
-    "ast_hash": "08528d40114dd5e2fd687a44596e9fd7",
+    "mtime": 1789836736.2463107,
+    "ast_hash": "c5f92710323732640059452b51d53727",
     "semantic_hash": ""
   },
   "crm-new/src/tasks/dto/local-agent-task.dto.ts": {
@@ -3857,6 +3857,11 @@
   "docs/analytics/screenshots/12_insights/insights-mobile-390.png": {
     "mtime": 1789817777.2995722,
     "ast_hash": "876d0ad4511cf34501168f99fb188702",
+    "semantic_hash": ""
+  },
+  "docs/telegram-approval-delivery.md": {
+    "mtime": 1789836836.6849933,
+    "ast_hash": "6fc0619b4a03aa5b95de63dc83d40309",
     "semantic_hash": ""
   }
 }
