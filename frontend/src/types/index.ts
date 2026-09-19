@@ -818,6 +818,17 @@ export interface PrintApproval {
   createdBy?: { id: string; username: string } | null;
   /** Согласование правили после того, как файл был сформирован. */
   fileOutdated: boolean;
+  telegramDelivery?: ApprovalTelegramDelivery | null;
+}
+
+export interface ApprovalTelegramDelivery {
+  id: string;
+  status: 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'UNKNOWN';
+  recipient: string;
+  createdAt: string;
+  finalizedAt: string;
+  sentAt: string | null;
+  errorCode: string | null;
 }
 
 export interface CreateApprovalDto {

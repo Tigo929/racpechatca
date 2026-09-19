@@ -23,6 +23,7 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from 'src/auth/authenticated-request';
 import { ApprovalService } from './approval.service';
+import { ApprovalDeliveryService } from './approval-delivery.service';
 import { APPROVAL_MAX_BYTES } from './approval-storage.service';
 import { DtoCreateApproval } from './dto/create-approval.dto';
 import { DtoUpdateApproval } from './dto/update-approval.dto';
@@ -52,7 +53,18 @@ const SIDES: Record<string, EnumApprovalSide> = {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
 export class ApprovalController {
-  constructor(private readonly approvals: ApprovalService) {}
+  constructor(
+    private readonly approvals: ApprovalService,
+    private readonly delivery: ApprovalDeliveryService,
+  ) {}
+
+  @Post(':id/send-telegram')
+  sendTelegram(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.delivery.enqueue(id, user.id);
+  }
 
   /** История согласований заказа. */
   @Get()

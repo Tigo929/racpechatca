@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Download, FileImage, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Download, FileImage, Pencil, Plus, Trash2, Send } from 'lucide-react';
 import { approvalsApi } from '../../api/approvals';
 import { getErrorMessage } from '../../utils/get-error-message';
 import { formatSizeCm } from '../../utils/approval-geometry';
@@ -17,6 +17,8 @@ interface Props {
   orderId: string;
   orderNumber: string;
   tshirtItems: ItemTshirt[];
+  communicationPlatform: string;
+  communicationUrl: string | null;
 }
 
 const STATUS_LABELS: Record<EnumApprovalStatus, string> = {
@@ -43,13 +45,24 @@ const btn =
  * редактор. Старые версии не удаляются сами — по ним видно, что именно
  * подтверждал клиент, если на производстве возникнет спор.
  */
-export function ApprovalsBlock({ orderId, orderNumber, tshirtItems }: Props) {
+export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicationPlatform, communicationUrl }: Props) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data: approvals = [], isLoading } = useQuery({
     queryKey: ['approvals', orderId],
     queryFn: () => approvalsApi.list(orderId),
+    refetchInterval: (query) => query.state.data?.some((a) => ['PENDING', 'SENDING'].includes(a.telegramDelivery?.status ?? '')) ? 3000 : false,
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: (id: string) => approvalsApi.sendTelegram(id),
+    onSuccess: (delivery) => {
+      qc.invalidateQueries({ queryKey: ['approvals', orderId] });
+      if (delivery.status === 'PENDING' || delivery.status === 'SENDING') toast.success('Макет поставлен в очередь отправки');
+      else if (delivery.status === 'SENT') toast.success('Этот макет уже отправлен');
+    },
+    onError: (error) => toast.error(getErrorMessage(error, 'Не удалось отправить макет')),
   });
 
   const createMutation = useMutation({
@@ -180,7 +193,26 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems }: Props) {
                   </span>
                 )}
 
-                <span className="ml-auto flex items-center gap-1.5">
+                {approval.telegramDelivery && (
+                  <span className="w-full text-xs text-gray-600" role="status">
+                    {deliveryText(approval)}
+                  </span>
+                )}
+
+                <span className="ml-auto flex flex-wrap items-center gap-1.5">
+                  {communicationPlatform === 'TELEGRAM' && (
+                    <button
+                      onClick={() => sendMutation.mutate(approval.id)}
+                      disabled={sendMutation.isPending || !communicationUrl || !approval.previewFile || approval.fileOutdated ||
+                        !['READY', 'CHANGES_REQUESTED'].includes(approval.status) ||
+                        (!!approval.telegramDelivery && approval.telegramDelivery.status !== 'FAILED')}
+                      className={`${btn} text-indigo-700`}
+                      title={!communicationUrl ? 'Укажите Telegram клиента в заказе' : `Отправить макет клиенту: ${communicationUrl}`}
+                    >
+                      <Send size={13} aria-hidden="true" />
+                      {approval.telegramDelivery?.status === 'FAILED' ? 'Повторить отправку' : 'Отправить клиенту на согласование'}
+                    </button>
+                  )}
                   <button
                     onClick={() => setEditingId(approval.id)}
                     className={btn}
@@ -228,4 +260,23 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems }: Props) {
       )}
     </div>
   );
+}
+
+function deliveryText(approval: PrintApproval): string {
+  const delivery = approval.telegramDelivery!;
+  const recipient = `@${delivery.recipient}`;
+  if (delivery.status === 'PENDING') return `Ожидает отправки в Telegram · ${recipient}`;
+  if (delivery.status === 'SENDING') return `Отправляется в Telegram · ${recipient}`;
+  if (delivery.status === 'SENT') return `Отправлено в Telegram · ${recipient} · ${new Date(delivery.sentAt!).toLocaleString('ru-RU')}. Для изменений создайте новую версию.`;
+  if (delivery.status === 'UNKNOWN') return `Результат отправки не подтверждён. Проверьте переписку с ${recipient} в Telegram перед созданием новой версии.`;
+  const errors: Record<string, string> = {
+    not_found: 'Telegram клиента не найден. Проверьте контакт в заказе.',
+    not_user: 'Контакт должен вести на личный аккаунт клиента, а не на группу, канал или бота.',
+    privacy: 'Клиент запретил сообщения. Попросите его первым написать в Telegram.',
+    blocked: 'Отправка заблокирована клиентом.',
+    flood: 'Telegram временно ограничил отправку. Повторите позже.',
+    file: 'Не удалось подготовить изображение.',
+    unavailable: 'Сервис временно недоступен. Можно повторить отправку.',
+  };
+  return `Не отправлено · ${recipient}. ${errors[delivery.errorCode ?? ''] ?? 'Проверьте контакт и повторите отправку.'}`;
 }

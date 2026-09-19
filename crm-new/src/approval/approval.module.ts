@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ApprovalDeliveryController } from './approval-delivery.controller';
+import { ApprovalDeliveryService } from './approval-delivery.service';
 import { ApprovalController } from './approval.controller';
 import { ApprovalService } from './approval.service';
 import { ApprovalRenderService } from './approval-render.service';
@@ -14,8 +16,13 @@ import { MockupService } from './mockup.service';
  * если его выключить.
  */
 @Module({
-  controllers: [ApprovalController, MockupController],
+  controllers: [
+    ApprovalController,
+    MockupController,
+    ApprovalDeliveryController,
+  ],
   providers: [
+    ApprovalDeliveryService,
     ApprovalService,
     ApprovalRenderService,
     ApprovalStorageService,
