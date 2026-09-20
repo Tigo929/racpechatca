@@ -9,7 +9,6 @@ import {
   navGroupsFor, primaryNavFor, type BadgeKey, type NavItem,
 } from './navigation';
 import { LeadNotifyBell } from './LeadNotifyBell';
-import { useNewLeadNotifications } from '../../hooks/useNewLeadNotifications';
 
 interface Props {
   /** Заголовок страницы — показывается в верхней полосе. */
@@ -44,6 +43,7 @@ export function AppShell({
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const isAdmin = user?.role === 'ADMIN';
+  const canReceiveLeads = isAdmin || user?.role === 'ORDER_MANAGER';
   const groups = navGroupsFor(user?.role);
   const primary = primaryNavFor(user?.role);
 
@@ -59,8 +59,6 @@ export function AppShell({
     refetchInterval: 30_000,
     refetchIntervalInBackground: true,
   });
-  // Уведомление о новой заявке (пока открыта вкладка CRM).
-  useNewLeadNotifications(leadStats?.leadCount, isAdmin);
   const { data: taskCount } = useQuery({
     queryKey: ['tasks', 'count'],
     queryFn: tasksApi.count,
@@ -136,7 +134,7 @@ export function AppShell({
             </div>
 
             <div className="flex items-center gap-1.5 flex-shrink-0">
-              {isAdmin && <LeadNotifyBell />}
+              {canReceiveLeads && <LeadNotifyBell />}
               {onRefresh && (
                 <button
                   onClick={onRefresh}

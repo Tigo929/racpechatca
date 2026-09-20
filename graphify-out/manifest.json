@@ -320,8 +320,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-photo.service.ts": {
-    "mtime": 1789817776.8810384,
-    "ast_hash": "a0ea4101f519e1bb4a8400ddefb92c21",
+    "mtime": 1789923969.4847524,
+    "ast_hash": "3a7458c50c1b4fce52717125fc904269",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-pricing.ts": {
@@ -665,8 +665,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/layout/AppShell.tsx": {
-    "mtime": 1789817777.3647025,
-    "ast_hash": "ffbebb109741d562b74f0bf2a9afd876",
+    "mtime": 1789924103.5113358,
+    "ast_hash": "1523fa3f5b0839bf5ffee0fbb17d0d16",
     "semantic_hash": ""
   },
   "frontend/src/components/layout/navigation.ts": {
@@ -740,8 +740,8 @@
     "semantic_hash": ""
   },
   "frontend/src/context/AuthContext.tsx": {
-    "mtime": 1789817777.4251473,
-    "ast_hash": "81aff61f0aa6f5f6f71fcdea06beec71",
+    "mtime": 1789924103.513619,
+    "ast_hash": "76e46f5c7cfe52d9fdcb95608895acbc",
     "semantic_hash": ""
   },
   "frontend/src/context/auth-context.ts": {
@@ -920,8 +920,8 @@
     "semantic_hash": ""
   },
   "frontend/index.html": {
-    "mtime": 1789817777.3124251,
-    "ast_hash": "81138277b80a47426ef88bb2e45b080b",
+    "mtime": 1789923969.4867504,
+    "ast_hash": "df95056b55e97ff913689a7a5242131d",
     "semantic_hash": ""
   },
   "frontend/public/robots.txt": {
@@ -2310,38 +2310,33 @@
     "semantic_hash": ""
   },
   "frontend/src/components/layout/LeadNotifyBell.tsx": {
-    "mtime": 1789817777.3657067,
-    "ast_hash": "4a30d1016fec802b52a26a84319234c0",
-    "semantic_hash": ""
-  },
-  "frontend/src/hooks/useNewLeadNotifications.ts": {
-    "mtime": 1789817777.459152,
-    "ast_hash": "1813d344c10e7d9bce44255ab6a09c63",
+    "mtime": 1789924619.909868,
+    "ast_hash": "9a14c531f970365dc9bad69920916f0f",
     "semantic_hash": ""
   },
   "crm-new/src/push/push.controller.ts": {
-    "mtime": 1789817776.9243467,
-    "ast_hash": "6dfeb08cd405ad60af64eb11b05a5ff3",
+    "mtime": 1789924619.61984,
+    "ast_hash": "67d7819a330f48985659dbcc5bfd896e",
     "semantic_hash": ""
   },
   "crm-new/src/push/push.module.ts": {
-    "mtime": 1789817776.9243467,
-    "ast_hash": "110faa27172363cdd72bc3dbfd695643",
+    "mtime": 1789924619.644663,
+    "ast_hash": "cabe13a21e5007c6a9db0c7bc324cbb4",
     "semantic_hash": ""
   },
   "crm-new/src/push/push.service.ts": {
-    "mtime": 1789817776.925515,
-    "ast_hash": "be0d803ebe5645317932c83fe444418d",
+    "mtime": 1789924619.7075527,
+    "ast_hash": "d860917755327366684abe5eab51c47a",
     "semantic_hash": ""
   },
   "frontend/src/api/push.ts": {
-    "mtime": 1789817777.3478591,
-    "ast_hash": "e86ef89a468edf71575a689547edcf1e",
+    "mtime": 1789924619.81139,
+    "ast_hash": "114a8e718a5ce66fdb948d33dae1a8e6",
     "semantic_hash": ""
   },
   "frontend/src/utils/webpush.ts": {
-    "mtime": 1789817777.4981542,
-    "ast_hash": "4ca2a57d3612fc3d7ef13770ab0b5257",
+    "mtime": 1789924619.8621812,
+    "ast_hash": "ba752224fc8b305325832916ab639712",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/backfill/designnote-utm.spec.ts": {
@@ -3862,6 +3857,56 @@
   "docs/telegram-approval-delivery.md": {
     "mtime": 1789836836.6849933,
     "ast_hash": "6fc0619b4a03aa5b95de63dc83d40309",
+    "semantic_hash": ""
+  },
+  "crm-new/prisma/migrations/20260920010000_site_lead_push_delivery/migration.sql": {
+    "mtime": 1789923842.0251448,
+    "ast_hash": "20055d290670e7ec2c08246b0283fda9",
+    "semantic_hash": ""
+  },
+  "crm-new/src/push/push-worker.ts": {
+    "mtime": 1789924619.580848,
+    "ast_hash": "b3b543830e56b098c847906cd35efad3",
+    "semantic_hash": ""
+  },
+  "crm-new/src/push/push.dto.ts": {
+    "mtime": 1789924619.634236,
+    "ast_hash": "295cde6178183cfe30f7c654f3867301",
+    "semantic_hash": ""
+  },
+  "crm-new/src/push/push.spec.ts": {
+    "mtime": 1789924737.0892723,
+    "ast_hash": "f476acefc0fafe3e945ae29badbce5dc",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/layout/LeadNotifyBell.test.tsx": {
+    "mtime": 1789924619.8848615,
+    "ast_hash": "219271d66d6db153e613caae048f4f29",
+    "semantic_hash": ""
+  },
+  "frontend/src/utils/webpush.test.ts": {
+    "mtime": 1789924619.8334303,
+    "ast_hash": "61d2100fc0e8eccf3ba6cce790c23448",
+    "semantic_hash": ""
+  },
+  "docs/SITE_LEAD_PUSH.md": {
+    "mtime": 1789924844.485669,
+    "ast_hash": "6de350bb45625f0cdc856b49a0225b01",
+    "semantic_hash": ""
+  },
+  "frontend/public/assets/crm-apple-touch-icon-v1.png": {
+    "mtime": 1789817777.3228276,
+    "ast_hash": "5b86497f941ff20b4262283a60411e4b",
+    "semantic_hash": ""
+  },
+  "frontend/public/assets/crm-icon-192-v1.png": {
+    "mtime": 1789817777.3233418,
+    "ast_hash": "59b7bc20c3bf57ad244fb7318ef25892",
+    "semantic_hash": ""
+  },
+  "frontend/public/assets/crm-icon-512-v1.png": {
+    "mtime": 1789817777.3265805,
+    "ast_hash": "068c970b591f4af96858937bba78c406",
     "semantic_hash": ""
   }
 }

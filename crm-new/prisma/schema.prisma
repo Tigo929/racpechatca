@@ -1988,8 +1988,29 @@ model PushSubscription {
   // Кто подписался — на случай, если захотим слать не всем.
   userId    String?
   createdAt DateTime @default(now())
+  deliveries LeadPushDelivery[]
 
   @@index([userId])
+}
+
+/// Durable per-device outbox; created in the same transaction as a site lead.
+model LeadPushDelivery {
+  id String @id @default(uuid())
+  orderId String
+  subscriptionId String
+  subscription PushSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  body String
+  createdAt DateTime @default(now())
+  status String @default("PENDING")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  claimedUntil DateTime?
+  claimToken String?
+  sentAt DateTime?
+  errorCode String?
+
+  @@unique([orderId, subscriptionId])
+  @@index([status, nextAttemptAt])
 }
 
 model PushConfig {
