@@ -381,5 +381,11 @@
   "379": "@eslint/js",
   "380": "partner-outbound-items.spec.ts",
   "381": "install-windows-task.ps1",
-  "382": "run-windows.ps1"
+  "382": "run-windows.ps1",
+  "383": "scenario-draft.spec.ts",
+  "384": "AppModule",
+  "385": "Push-уведомления о заявках с сайта",
+  "386": "eslint-plugin-prettier",
+  "387": "globals",
+  "388": "@eslint/js"
 }

@@ -525,16 +525,8 @@ export class OrderPhotoService {
         `Не удалось уведомить о заявке ${created.numberOrder}: ${String(error)}`,
       );
     }
-    // Web Push — отдельно от Telegram: сбой одного канала не должен отменять
-    // другой. Приходит и при закрытой вкладке CRM.
-    await this.push.sendToAll({
-      title: '🖨 Новая заявка с сайта',
-      body:
-        [dto.name, dto.productName, dto.quantity ? `${dto.quantity} шт` : '']
-          .filter(Boolean)
-          .join(' · ') || 'Пришла заявка — её нужно обработать',
-      url: '/crm/leads',
-    });
+    // Web Push has its own durable queue, populated in createLeadTx. Telegram
+    // retries cannot delay it and a process restart cannot lose a committed job.
   }
 
   private async createLeadTx(dto: DtoCreateLead) {
@@ -682,7 +674,7 @@ export class OrderPhotoService {
         dto.submittedAt ? `Отправлено на сайте: ${dto.submittedAt}` : null,
       ].filter(Boolean);
 
-      return tx.orderPhoto.create({
+      const created = await tx.orderPhoto.create({
         data: {
           numberOrder: fullDate(lengthOrder),
           externalRequestId: dto.leadId,
@@ -711,6 +703,8 @@ export class OrderPhotoService {
         },
         include: { items: true, tshirtItems: true, canvasItems: true },
       });
+      await this.push.enqueueLead(tx, created, dto.productName);
+      return created;
     });
   }
 
