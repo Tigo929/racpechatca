@@ -327,11 +327,12 @@ function generateReadyText(order: OrderPhoto): string {
   const canvasItems = order.canvasItems ?? [];
   const delivery = order.deliveryCost ?? 0;
   const total = order.totalOrder ?? 0;
-  const { prepaid: prepay, balanceDue: rest, recorded } = computePrepayment(
+  const { prepaid: prepay, recorded } = computePrepayment(
     total,
     order.prepaidAmount,
   );
 
+    const rest = actualBalanceDue(total, order.prepaidAmount, order.status);
   const lines: string[] = [];
   items.forEach((i) => {
     lines.push(formatPhotoItemLine(order, i));
@@ -394,8 +395,10 @@ function generateReadyText(order: OrderPhoto): string {
     "💳 Оплата:",
     recorded
       ? `👉 Предоплата — ${prepay.toLocaleString("ru-RU")} ₽, уже внесена`
-      : `👉 Предоплата 50% — ${prepay.toLocaleString("ru-RU")} ₽, уже внесена`,
-    rest < 0
+      : "👉 Предоплата не отмечена в CRM — проверьте поступление перед выдачей.",
+    !recorded
+      ? `👉 К оплате — ${total.toLocaleString("ru-RU")} ₽ (до подтверждения предоплаты)`
+      : rest < 0
       ? `↩️ Переплата к возврату — ${Math.abs(rest).toLocaleString("ru-RU")} ₽`
       : rest === 0
         ? "✅ Заказ оплачен полностью"
@@ -429,7 +432,7 @@ import { getStalledDays } from "../../utils/stalled";
 import { ordersApi } from "../../api/orders";
 import { partnerSettingsApi } from "../../api/partnerSettings";
 import { computeSettlement } from "../../utils/settlement";
-import { computePrepayment } from "../../utils/prepayment";
+import { computePrepayment, actualBalanceDue } from "../../utils/prepayment";
 import { computePaperUsage } from "../../utils/photo-material";
 import { StatusStepper } from "./StatusStepper";
 import { ItemsTable } from "./ItemsTable";
@@ -753,7 +756,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             </span>
             <StatusBadge
               status={order.status}
-              productCategory={order.productCategory}
+              productCategory={order.productCategory} deliveryMethod={order.deliveryMethod}
             />
             {/* Дедлайн — для фото, срочность — для любого незакрытого заказа */}
             {(() => {
@@ -898,7 +901,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   <Pencil size={13} aria-hidden="true" /> Изменить
                 </button>
               )}
-              <button
+              {isOwner && <button
                 onClick={() => {
                   if (confirm("Удалить заявку?")) deleteMutation.mutate();
                 }}
@@ -906,7 +909,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
               >
                 <Trash2 size={13} aria-hidden="true" /> Удалить
-              </button>
+              </button>}
             </>
           )}
         </div>

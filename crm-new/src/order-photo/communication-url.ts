@@ -19,7 +19,8 @@ export const DEFAULT_MAX_LINK_TEMPLATE = 'https://max.ru/{phone}';
  */
 export function normalizePhone(raw: string): string | null {
   const digits = (raw ?? '').replace(/\D/g, '');
-  if (digits.length === 11 && digits.startsWith('8')) return `7${digits.slice(1)}`;
+  if (digits.length === 11 && digits.startsWith('8'))
+    return `7${digits.slice(1)}`;
   if (digits.length === 11 && digits.startsWith('7')) return digits;
   // Без кода страны — считаем российским номером.
   if (digits.length === 10) return `7${digits}`;
@@ -56,9 +57,12 @@ export function validateCommunicationValue(
   if (!value) return 'Укажите контакт клиента';
 
   if (platform === EnumCommunication.TELEGRAM) {
-    return value.startsWith('@') || /^https?:\/\//i.test(value)
+    return /^@[A-Za-z0-9_]{1,32}$/.test(value) ||
+      /^https?:\/\/(?:t\.me|telegram\.me)\/(?:[A-Za-z0-9_]{1,32}|\+\d{7,15})\/?$/i.test(
+        value,
+      )
       ? null
-      : 'Для Telegram укажите @username (должно начинаться с @)';
+      : 'Для Telegram укажите @username или ссылку https://t.me/username';
   }
 
   if (platform === EnumCommunication.MAX) {
@@ -68,7 +72,18 @@ export function validateCommunicationValue(
       : 'Для MAX укажите номер телефона, например +7 999 123-45-67';
   }
 
-  return null;
+  try {
+    const url = new URL(value);
+    if (
+      ['http:', 'https:'].includes(url.protocol) &&
+      !url.username &&
+      !url.password
+    )
+      return null;
+  } catch {
+    /* handled below */
+  }
+  return 'Укажите полную ссылку на переписку, начинающуюся с https://';
 }
 
 /**

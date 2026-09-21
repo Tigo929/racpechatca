@@ -129,12 +129,12 @@ export class OrderPhotoController {
 
   @Patch(':idOrder')
   @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
-  updateOrder(@Param('idOrder') idOrder: string, @Body() dto: DtoUpdateOrder) {
-    return this.orderPhotoService.updateOrder(idOrder, dto);
+  updateOrder(@Param('idOrder') idOrder: string, @Body() dto: DtoUpdateOrder, @CurrentUser() me: RequestUser) {
+    return this.orderPhotoService.updateOrder(idOrder, dto, me.id);
   }
 
   @Delete(':idOrder')
-  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  @Roles(EnumRole.ADMIN)
   deleteOrder(@Param('idOrder') idOrder: string) {
     return this.orderPhotoService.deleteOrder(idOrder);
   }

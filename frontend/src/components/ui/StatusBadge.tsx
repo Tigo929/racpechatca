@@ -9,6 +9,7 @@ interface Props {
   status: EnumStatus;
   productCategory?: EnumProductCategory;
   size?: 'sm' | 'md';
+  deliveryMethod?: string;
 }
 
 const STATUS_STYLES: Record<EnumStatus, { bg: string; text: string; dot: string }> = {
@@ -30,7 +31,7 @@ const STATUS_STYLES: Record<EnumStatus, { bg: string; text: string; dot: string 
   PROBLEM:                  { bg: 'bg-rose-50',    text: 'text-rose-700',    dot: 'bg-rose-500' },
 };
 
-export function StatusBadge({ status, productCategory, size = 'md' }: Props) {
+export function StatusBadge({ status, productCategory, deliveryMethod, size = 'md' }: Props) {
   const labels =
     productCategory === 'TSHIRT'
       ? TSHIRT_STATUS_LABELS
@@ -42,7 +43,7 @@ export function StatusBadge({ status, productCategory, size = 'md' }: Props) {
   return (
     <span className={`inline-flex items-center rounded-lg font-semibold ${base} ${s.bg} ${s.text}`}>
       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} aria-hidden="true" />
-      {labels[status] ?? status}
+      {deliveryMethod === 'PICKUP' && status === 'READY' ? 'Готов к выдаче' : deliveryMethod === 'PICKUP' && status === 'SENT' && productCategory === 'PHOTO' ? 'Выдан клиенту' : labels[status] ?? status}
     </span>
   );
 }

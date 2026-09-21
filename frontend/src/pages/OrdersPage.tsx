@@ -316,7 +316,7 @@ export function OrdersPage({ section }: Props) {
                         {showUrgent && <Flame size={13} className="text-red-500 flex-shrink-0" aria-hidden="true" />}
                         {order.numberOrder}
                       </span>
-                      <StatusBadge status={order.status} productCategory={order.productCategory} size="sm" />
+                      <StatusBadge status={order.status} productCategory={order.productCategory} deliveryMethod={order.deliveryMethod} size="sm" />
                     </div>
                     <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500">
                       <ProductBadge productCategory={order.productCategory} />
@@ -452,7 +452,7 @@ export function OrdersPage({ section }: Props) {
                           )}
                         </div>
                       </td>
-                      <td className="px-5 py-3.5"><StatusBadge status={order.status} productCategory={order.productCategory} size="sm" /></td>
+                      <td className="px-5 py-3.5"><StatusBadge status={order.status} productCategory={order.productCategory} deliveryMethod={order.deliveryMethod} size="sm" /></td>
                       <td className="px-5 py-3.5"><DeliveryBadge method={order.deliveryMethod} /></td>
                       <td className="px-5 py-3.5">
                         <span className="text-sm font-medium text-gray-700 tabular-nums">

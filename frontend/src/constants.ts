@@ -40,6 +40,7 @@ export const STATUS_FLOW: EnumStatus[] = [
 // Поток статусов для футболок: производство ведёт партнёр. SENT здесь означает
 // «передали партнёру», а SHIPMENT_CREATED — уже клиентская отгрузка после READY.
 export const TSHIRT_STATUS_FLOW: EnumStatus[] = [
+  'LEAD',
   'NEW',
   // Макет ушёл клиенту на согласование. Стоит перед «Отправлен» намеренно:
   // партнёр не должен получить заказ, пока клиент не подтвердил макет —
@@ -56,7 +57,7 @@ export const TSHIRT_STATUS_LABELS: Record<EnumStatus, string> = {
   LEAD: 'Обратился',
   NEW: 'Новый',
   APPROVAL_SENT: 'На согласовании',
-  SENT: 'Отправлен',
+  SENT: 'Передан в производство',
   IN_PROGRESS: 'В работе',
   READY: 'Готов',
   SHIPMENT_CREATED: 'Отгрузка создана',
@@ -75,6 +76,7 @@ export const TSHIRT_STATUS_LABELS: Record<EnumStatus, string> = {
 // Поток для холстов: SENT означает «передан подрядчику», клиентская отгрузка
 // создаётся уже после READY.
 export const CANVAS_STATUS_FLOW: EnumStatus[] = [
+  'LEAD',
   'NEW',
   'SENT',
   'IN_PROGRESS',

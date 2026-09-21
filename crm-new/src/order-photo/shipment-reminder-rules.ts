@@ -40,6 +40,7 @@ export interface ShipmentOrder {
   statusChangedAt: Date | null;
   /** Сколько напоминаний уже отправлено. */
   shipmentRemindersSent: number;
+  productCategory?: string;
 }
 
 export function hasDeadline(method: EnumDeliveryMethod): boolean {
@@ -57,6 +58,7 @@ export function dueReminderStage(
   now: Date = new Date(),
 ): number | null {
   if (order.status !== EnumStatus.SHIPMENT_CREATED) return null;
+  if (order.deliveryMethod === EnumDeliveryMethod.PICKUP) return null;
   if (!order.statusChangedAt) return null;
   if (order.shipmentRemindersSent >= SHIPMENT_REMINDER_STAGES_MS.length) {
     return null;
@@ -87,7 +89,8 @@ export function buildShipmentReminder(
   mention: string | null,
   now: Date = new Date(),
 ): string {
-  const who = mention ?? '⚠️ исполнитель не назначен';
+  const external = order.productCategory === 'CANVAS' || order.productCategory === 'TSHIRT';
+  const who = mention ?? (external ? 'Менеджер заказа' : '⚠️ исполнитель не назначен');
   const lines: string[] = [];
 
   if (hasDeadline(order.deliveryMethod)) {
@@ -105,10 +108,16 @@ export function buildShipmentReminder(
   } else {
     lines.push('📦 *Отгрузка ждёт отправки*');
     lines.push(`Заказ: ${order.numberOrder}`);
-    lines.push('Отвезите заказ в пункт приёма Озон.');
+    lines.push(order.deliveryMethod === EnumDeliveryMethod.PRODUCTION_MSK
+      ? 'Проверьте передачу заказа курьеру производства и доставку клиенту.'
+      : order.deliveryMethod === EnumDeliveryMethod.WB_SELLER
+        ? 'Отвезите заказ в пункт приёма Wildberries.'
+        : 'Отвезите заказ в пункт приёма Озон.');
   }
 
   lines.push('');
-  lines.push(`${who} — как отвезёте, поставьте статус «Отправлен», и напоминания прекратятся.`);
+  lines.push(external
+    ? `${who} — после передачи клиенту и завершения расчётов администратор отмечает «Оплачен». Не возвращайте заказ в «У подрядчика».`
+    : `${who} — как отвезёте, поставьте статус «Отправлен», и напоминания прекратятся.`);
   return lines.join('\n');
 }

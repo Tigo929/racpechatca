@@ -1,3 +1,4 @@
+import { fulfillmentError } from '../../utils/fulfillment';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { ordersApi } from '../../api/orders';
@@ -35,11 +36,15 @@ export function StatusStepper({ order }: Props) {
   const flow = baseFlow.filter(
     (status) => status !== 'SHIPMENT_CREATED' || needsShipment,
   );
-  const labels = isTshirt
+  const baseLabels = isTshirt
     ? TSHIRT_STATUS_LABELS
     : isCanvas
       ? CANVAS_STATUS_LABELS
       : STATUS_LABELS;
+  const labels = { ...baseLabels,
+    READY: needsShipment ? baseLabels.READY : 'Готов к выдаче',
+    SENT: !isExternalProduction && !needsShipment ? 'Выдан клиенту' : baseLabels.SENT,
+  };
   const currentIdx = flow.indexOf(order.status);
 
   const isTerminal = TERMINAL_STATUSES.includes(order.status);
@@ -89,25 +94,8 @@ export function StatusStepper({ order }: Props) {
           isAdmin || (!adminOnly && (!shipmentOnly || canManageShipment));
         const blockedNoExecutor = status === 'SENT' && needsExecutor;
         const blockedShipmentRole = shipmentOnly && !canManageShipment;
-        const blockedExternalPayment =
-          isExternalProduction &&
-          status === 'PAID' &&
-          order.status !== 'SHIPMENT_CREATED' &&
-          order.status !== 'PAID';
-        const blockedPhotoSent =
-          !isExternalProduction &&
-          status === 'SENT' &&
-          order.status !== 'SHIPMENT_CREATED' &&
-          order.status !== 'SENT' &&
-          order.status !== 'PAID';
-        const blockedPhotoPayment =
-          !isExternalProduction &&
-          status === 'PAID' &&
-          order.status !== 'SENT' &&
-          order.status !== 'PAID';
-        const blockedShipmentMissing =
-          needsShipment &&
-          (blockedExternalPayment || blockedPhotoSent || blockedPhotoPayment);
+        const transitionError = fulfillmentError(order, status);
+        const blockedShipmentMissing = Boolean(transitionError);
         const clickable =
           !isCurrent &&
           canSetTarget &&
@@ -129,10 +117,8 @@ export function StatusStepper({ order }: Props) {
                   ? 'Сначала назначьте исполнителя'
                   : blockedShipmentRole
                     ? 'Отгрузку создаёт администратор или менеджер'
-                  : blockedShipmentMissing && blockedPhotoPayment
-                    ? 'Сначала переведите заказ в «Отправлен»'
                   : blockedShipmentMissing
-                    ? 'Сначала создайте отгрузку'
+                    ? transitionError ?? undefined
                   : clickable
                     ? `Установить статус: ${labels[status] ?? status}`
                     : undefined

@@ -1,3 +1,4 @@
+import { getErrorMessage } from '../../utils/get-error-message';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -144,10 +145,10 @@ const baseSchema = z.object({
   tshirtItems: z.array(tshirtItemSchema).optional(),
   canvasItems: z.array(canvasItemSchema).optional(),
 }).superRefine((data, ctx) => {
-  if (data.communicationPlatform === 'TELEGRAM' && !data.urlCommunication.startsWith('@')) {
+  if (data.communicationPlatform === 'TELEGRAM' && !/^@[A-Za-z0-9_]{1,32}$/.test(data.urlCommunication.trim()) && !/^https?:\/\/(?:t\.me|telegram\.me)\/(?:[A-Za-z0-9_]{1,32}|\+\d{7,15})\/?$/i.test(data.urlCommunication.trim())) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Для Telegram укажите @username (должно начинаться с @)',
+      message: 'Для Telegram укажите @username или ссылку https://t.me/username',
       path: ['urlCommunication'],
     });
   }
@@ -405,6 +406,14 @@ export function CreateOrderForm({ onClose }: Props) {
   const extraFields = useFieldArray({ control, name: 'extraItems' });
   const deliveryMethodWatch = useWatch({ control, name: 'deliveryMethod' });
   const deliveryCostWatch = useWatch({ control, name: 'deliveryCost' });
+  useEffect(() => {
+    if (deliveryMethodWatch === 'PICKUP') setValue('deliveryCost', 0);
+    if (productCategory !== 'CANVAS' && deliveryMethodWatch === 'PRODUCTION_MSK') {
+      setValue('deliveryMethod', 'PICKUP');
+      setValue('deliveryCost', 0);
+    }
+  }, [productCategory, deliveryMethodWatch, setValue]);
+
 
   /*
    * Прайс производства: из него подставляется цена, которую мы должны.
@@ -496,7 +505,7 @@ export function CreateOrderForm({ onClose }: Props) {
       toast.success(vars.status === 'LEAD' ? 'Обращение записано' : 'Заявка создана');
       onClose();
     },
-    onError: () => toast.error('Ошибка при создании заявки'),
+    onError: (error: unknown) => toast.error(getErrorMessage(error, 'Ошибка при создании заявки')),
   });
 
   const onSubmit = (data: FormValues) => {
@@ -845,7 +854,10 @@ export function CreateOrderForm({ onClose }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelCls}>Способ доставки</label>
-          <select className={selectCls} {...register('deliveryMethod')}>
+          <select className={selectCls} {...register('deliveryMethod', { onChange: (event) => {
+            const method = event.target.value;
+            setValue('deliveryCost', method === 'YANDEX_PVZ' ? (settings?.deliveryPriceYandexPvz ?? 0) : method === 'PRODUCTION_MSK' ? (canvasPricing?.delivery.price ?? 0) : 0, { shouldDirty: true });
+          } })}>
             <option value="PICKUP">Самовывоз</option>
             <option value="YANDEX_PVZ">Яндекс ПВЗ</option>
             <option value="OZON_PVZ">Ozon ПВЗ</option>
@@ -860,7 +872,7 @@ export function CreateOrderForm({ onClose }: Props) {
         </div>
         <div>
           <label className={labelCls}>Стоимость доставки, ₽</label>
-          <input type="number" min={0} className={inputCls} {...register('deliveryCost')} />
+          <input type="number" min={0} readOnly={deliveryMethodWatch === 'PICKUP'} className={inputCls} {...register('deliveryCost')} />
           {errors.deliveryCost && <p className={errorCls}>{errors.deliveryCost.message}</p>}
         </div>
       </div>
