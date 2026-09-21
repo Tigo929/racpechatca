@@ -5,10 +5,8 @@ import {
   IsInt,
   IsOptional,
   IsString,
-  Matches,
   MaxLength,
   Min,
-  ValidateIf,
 } from 'class-validator';
 import {
   EnumCommunication,
@@ -27,14 +25,6 @@ export class DtoUpdateOrder {
 
   @IsString()
   @IsOptional()
-  @ValidateIf(
-    (o: DtoUpdateOrder) =>
-      o.communicationPlatform === EnumCommunication.TELEGRAM &&
-      o.urlCommunication !== undefined,
-  )
-  @Matches(/^@/, {
-    message: 'Для Telegram укажите @username (должно начинаться с @)',
-  })
   urlCommunication?: string;
 
   @IsEnum(EnumDeliveryMethod)

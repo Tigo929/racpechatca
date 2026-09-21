@@ -4,6 +4,7 @@ import {
   buildMaxUrl,
   formatPhoneForDisplay,
   normalizePhone,
+  validateCommunicationValue,
 } from './communication-url';
 
 describe('normalizePhone', () => {
@@ -38,15 +39,17 @@ describe('buildMaxUrl', () => {
   });
 
   it('пустой шаблон — падаем на значение по умолчанию', () => {
-    expect(buildMaxUrl('79991234567', '   ')).toBe('https://max.ru/79991234567');
+    expect(buildMaxUrl('79991234567', '   ')).toBe(
+      'https://max.ru/79991234567',
+    );
   });
 });
 
 describe('buildCommunicationUrl', () => {
   it('Telegram: @username → ссылка', () => {
-    expect(
-      buildCommunicationUrl(EnumCommunication.TELEGRAM, '@ivan'),
-    ).toBe('https://t.me/ivan');
+    expect(buildCommunicationUrl(EnumCommunication.TELEGRAM, '@ivan')).toBe(
+      'https://t.me/ivan',
+    );
   });
 
   it('MAX: телефон → ссылка по шаблону', () => {
@@ -67,5 +70,36 @@ describe('buildCommunicationUrl', () => {
   it('Авито: ссылка сохраняется как есть', () => {
     const url = 'https://www.avito.ru/messenger/123';
     expect(buildCommunicationUrl(EnumCommunication.AVITO, url)).toBe(url);
+  });
+});
+
+describe('contact validation shared by create and edit', () => {
+  it('accepts Telegram handles and stored Telegram links', () => {
+    expect(
+      validateCommunicationValue(EnumCommunication.TELEGRAM, '@client'),
+    ).toBeNull();
+    expect(
+      validateCommunicationValue(
+        EnumCommunication.TELEGRAM,
+        'https://t.me/client',
+      ),
+    ).toBeNull();
+    expect(
+      validateCommunicationValue(EnumCommunication.TELEGRAM, '@'),
+    ).not.toBeNull();
+    expect(
+      validateCommunicationValue(
+        EnumCommunication.TELEGRAM,
+        'https://example.com/client',
+      ),
+    ).not.toBeNull();
+  });
+  it('rejects empty contacts and executable links', () => {
+    expect(
+      validateCommunicationValue(EnumCommunication.AVITO, ''),
+    ).not.toBeNull();
+    expect(
+      validateCommunicationValue(EnumCommunication.OZON, 'javascript:alert(1)'),
+    ).not.toBeNull();
   });
 });

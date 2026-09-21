@@ -41,3 +41,9 @@ export function computePrepayment(
   const prepaid = Math.max(0, Math.round(prepaidAmount));
   return { prepaid, balanceDue: safeTotal - prepaid, recorded: true };
 }
+
+/** Amount actually due; a suggested 50% deposit is not a received payment. */
+export function actualBalanceDue(total: number, prepaidAmount: number | null | undefined, status?: string): number {
+  if (status === 'PAID' || status === 'COMPLETED') return 0;
+  return Math.max(0, Math.round(total)) - Math.max(0, Math.round(prepaidAmount ?? 0));
+}

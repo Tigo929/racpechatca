@@ -19,6 +19,17 @@ export class OrderFinancialIntegrityService {
     orderId: string,
     client: FinancialClient = this.prisma,
   ): Promise<void> {
+    // Item edits and status changes serialize on the same order row.
+    await client.$queryRaw`SELECT "id" FROM "OrderPhoto" WHERE "id" = ${orderId} FOR UPDATE`;
+    const order = await client.orderPhoto.findUnique({
+      where: { id: orderId },
+      select: { status: true },
+    });
+    if (order?.status === 'PAID' || order?.status === 'COMPLETED') {
+      throw new ConflictException(
+        'Нельзя менять финансовые условия закрытого заказа.',
+      );
+    }
     const paidAccrual = await client.salaryAccrual.findFirst({
       where: {
         orderId,

@@ -211,7 +211,7 @@ export function addOrder(b: PnlRaw, order: OrderRow, s: CostSettings): void {
   const deliveryCharged = order.deliveryCost ?? 0;
   // Платим перевозчику только если доставка была: у самовывоза списывать не с чего.
   const deliveryPaid =
-    deliveryCharged > 0 ? deliveryPaidFor(order.deliveryMethod, s) : 0;
+    deliveryPaidFor(order.deliveryMethod, s);
   const salary = order.accruals.reduce((sum, a) => sum + a.salaryAmount, 0);
   // Выручка за товар — без доставки: на ней зарабатывают отдельной строкой.
   const goodsRevenue = total - deliveryCharged;

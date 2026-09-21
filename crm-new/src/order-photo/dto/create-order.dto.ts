@@ -8,10 +8,8 @@ import {
   IsOptional,
   IsString,
   IsUUID,
-  Matches,
   MaxLength,
   Min,
-  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import {
@@ -33,13 +31,6 @@ export default class DtoCreateOrder {
   communicationPlatform!: EnumCommunication;
 
   @IsString()
-  @ValidateIf(
-    (o: DtoCreateOrder) =>
-      o.communicationPlatform === EnumCommunication.TELEGRAM,
-  )
-  @Matches(/^@/, {
-    message: 'Для Telegram укажите @username (должно начинаться с @)',
-  })
   urlCommunication!: string;
 
   @IsEnum(EnumDeliveryMethod)

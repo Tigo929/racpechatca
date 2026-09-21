@@ -71,6 +71,7 @@ export class ShipmentReminderService implements OnModuleInit, OnModuleDestroy {
         numberOrder: true,
         status: true,
         deliveryMethod: true,
+        productCategory: true,
         statusChangedAt: true,
         shipmentRemindersSent: true,
         executor: { select: { username: true, telegramUsername: true } },

@@ -1,3 +1,4 @@
+import { canvasProductionApi } from '../../api/canvasProduction';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react';
@@ -11,7 +12,7 @@ interface Props {
   onSave: () => void;
   onCancel: () => void;
   isPending: boolean;
-  /** Дизайн — свободная сумма только для футболок. У фото секцию не показываем. */
+  /** Дизайн — отдельная сумма у футболок и холстов. */
   productCategory: 'PHOTO' | 'TSHIRT' | 'CANVAS';
   /** Текущая сумма заказа — чтобы сразу показать остаток от внесённой предоплаты. */
   orderTotal: number;
@@ -31,19 +32,10 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, pro
     staleTime: 60_000,
   });
 
-  // Смена способа доставки: для «Яндекс ПВЗ» подставляем цену из настроек,
-  // если стоимость ещё не задана (0) — как в форме создания. Уже введённую
-  // вручную сумму не затираем.
+  // При смене способа получения применяем его тариф; старую сумму не переносим.
+  const { data: canvasPricing } = useQuery({ queryKey: ['canvas-production-pricing'], queryFn: canvasProductionApi.pricing, enabled: productCategory === 'CANVAS' });
   const changeDelivery = (method: UpdateOrderDto['deliveryMethod']) => {
-    const patch: Partial<UpdateOrderDto> = { deliveryMethod: method };
-    if (
-      method === 'YANDEX_PVZ' &&
-      settings &&
-      !Number(form.deliveryCost ?? 0)
-    ) {
-      patch.deliveryCost = settings.deliveryPriceYandexPvz;
-    }
-    set(patch);
+    set({ deliveryMethod: method, deliveryCost: method === 'YANDEX_PVZ' ? (settings?.deliveryPriceYandexPvz ?? 0) : method === 'PRODUCTION_MSK' ? (canvasPricing?.delivery.price ?? 0) : 0 });
   };
   // «Нужен дизайн» — включён, если у заказа уже есть сумма дизайна. Выключение
   // обнуляет сумму, чтобы дизайн ушёл из чека.
@@ -86,6 +78,7 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, pro
           <select className={inputCls} value={form.deliveryMethod}
             onChange={e => changeDelivery(e.target.value as UpdateOrderDto['deliveryMethod'])}>
             <option value="PICKUP">Самовывоз</option>
+            {productCategory === 'CANVAS' && <option value="PRODUCTION_MSK">Доставка производства (Москва)</option>}
             <option value="YANDEX_PVZ">Яндекс ПВЗ</option>
             <option value="OZON_PVZ">Ozon ПВЗ</option>
             <option value="OZON_SELLER">Ozon Продавец</option>
@@ -94,14 +87,14 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, pro
         </div>
         <div>
           <p className={labelCls}>Стоимость доставки, ₽</p>
-          <input type="number" min={0} className={inputCls} value={form.deliveryCost}
+          <input type="number" min={0} readOnly={form.deliveryMethod === 'PICKUP'} className={inputCls} value={form.deliveryCost}
             onChange={e => set({ deliveryCost: Number(e.target.value) })} />
         </div>
       </div>
 
       {/* Дизайн — только футболки. Кнопка «Нужен дизайн» раскрывает сумму;
           её можно менять и добавлять к уже созданному заказу. */}
-      {productCategory === 'TSHIRT' && (
+      {(productCategory === 'TSHIRT' || productCategory === 'CANVAS') && (
         <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 space-y-2">
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input
