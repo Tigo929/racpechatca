@@ -3,6 +3,14 @@
 ## STATUS
 
 ```text
+ACCEPTED / PASS (Reviewer, 22.09.2026). Принятая контрольная точка production: CRM master
+fe88cfe2f8fd36d33211ac29135daa8d5b27c6f2 (backend и frontend — та же revision и /health.build),
+сайт feature/cms-admin 441d795. Этап 13 повторно НЕ выполняется. Отчёты: § 14 (gates 0–C),
+§ 15 (FIX_01/FIX_02), § 16 (мини-rollout FIX и gates D–H). Отложенные работы и запреты —
+HARDENING_BACKLOG.md; этот документ отдельно в master не сливается, идёт в следующий
+контролируемый merge. Разрешён переход к этапу 14 от baseline fe88cfe.
+
+История статусов:
 STOPPED_AT_GATE_C (исполнение 22.09.2026 по команде Reviewer «СТАРТ»; отчёт — § 14). Gates 0, A, B пройдены;
 Gate C: деплой сайта корректен (441d795 = revision = /api/health.build), но сработало глобальное STOP-условие § 1.2 —
 auto-update записал «работает не та сборка» (ложное срабатывание сверки на контейнере без healthcheck). Gates D–G
