@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { fulfillmentError } from '../../utils/fulfillment';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -54,14 +55,30 @@ export function StatusStepper({ order }: Props) {
   // продуктов исполнителя нет — их не трогаем.
   const needsExecutor = !isExternalProduction && !order.executorId;
 
+  // Подтверждение оплаты (работа D1): деньги часто приходят раньше, чем до
+  // заказа доходят руки. Поэтому перед переводом в «Оплачен» админ может
+  // указать фактическую дату; оставил пустым — как раньше, момент нажатия.
+  const [paidDraft, setPaidDraft] = useState<string | null>(null);
+
   const mutation = useMutation({
-    mutationFn: (status: EnumStatus) => ordersApi.updateStatus(order.id, { status }),
+    mutationFn: ({
+      status,
+      clientPaidAt,
+    }: {
+      status: EnumStatus;
+      clientPaidAt?: string;
+    }) =>
+      ordersApi.updateStatus(order.id, {
+        status,
+        ...(clientPaidAt ? { clientPaidAt } : {}),
+      }),
     onSuccess: (updated) => {
       qc.setQueryData(['order', order.id], updated);
       qc.invalidateQueries({ queryKey: ['orders'] });
       // Переход в «Отправлен» создаёт начисление — счётчик в шапке должен
       // обновиться сразу, а не через 30 секунд.
       qc.invalidateQueries({ queryKey: ['salary', 'me'] });
+      setPaidDraft(null);
       toast.success(`Статус: ${labels[updated.status] ?? updated.status}`);
     },
     onError: (error: unknown) =>
@@ -82,7 +99,41 @@ export function StatusStepper({ order }: Props) {
   }
 
   return (
-    <div className="flex items-center gap-1 flex-wrap">
+    <div className="space-y-2">
+      {paidDraft !== null && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
+          <span className="text-sm text-amber-800">
+            Когда получены деньги?
+          </span>
+          <input
+            type="date"
+            value={paidDraft}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setPaidDraft(e.target.value)}
+            aria-label="Фактическая дата оплаты"
+            className="px-2 py-1 text-sm border border-gray-300 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+          />
+          <button
+            disabled={mutation.isPending}
+            onClick={() =>
+              mutation.mutate({
+                status: 'PAID',
+                ...(paidDraft ? { clientPaidAt: paidDraft } : {}),
+              })
+            }
+            className="px-3 py-1 text-sm font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-60 transition-colors"
+          >
+            {paidDraft ? 'Оплачен этой датой' : 'Оплачен сегодня'}
+          </button>
+          <button
+            onClick={() => setPaidDraft(null)}
+            className="px-3 py-1 text-sm text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            Отмена
+          </button>
+        </div>
+      )}
+      <div className="flex items-center gap-1 flex-wrap">
       {flow.map((status, idx) => {
         const isDone = idx < currentIdx;
         const isCurrent = idx === currentIdx;
@@ -109,7 +160,13 @@ export function StatusStepper({ order }: Props) {
           <div key={status} className="flex items-center gap-1">
             <button
               disabled={!clickable || mutation.isPending}
-              onClick={() => mutation.mutate(status)}
+              onClick={() => {
+                if (status === 'PAID' && isAdmin && !order.clientPaidAt) {
+                  setPaidDraft('');
+                  return;
+                }
+                mutation.mutate({ status });
+              }}
               tabIndex={clickable ? 0 : -1}
               aria-current={isCurrent ? 'step' : undefined}
               title={
@@ -141,6 +198,7 @@ export function StatusStepper({ order }: Props) {
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { leadDeliveryCost as deliveryCostForLead } from './free-delivery';
 import { attributionFromLead } from './lead-attribution';
-import { clientPaidAtPatch } from './paid-at';
+import { clientPaidAtPatch, parseClientPaidAt } from './paid-at';
 import { MetrikaOrderOutboxService } from 'src/metrika/orders/metrika-order-outbox.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import DtoCreateOrder from './dto/create-order.dto';
@@ -111,6 +111,10 @@ const CONTROL_CLOSED_STATUSES: EnumStatus[] = [
   EnumStatus.COMPLETED,
   EnumStatus.CANCELLED,
 ];
+
+// Оплаченная бизнес-семантика: заказ, по которому деньги от клиента получены.
+// Только таким заказам можно указать фактическую дату оплаты (работа D1).
+const PAID_STATUSES: EnumStatus[] = [EnumStatus.PAID, EnumStatus.COMPLETED];
 
 // «Закрытые» для сортировки списка: оплачен и снятые с потока. Такие заказы
 // получают closedAt и опускаются в самый низ, активные (в т.ч. «Отправлен»,
@@ -214,6 +218,22 @@ export class OrderPhotoService {
 
       const freePrice = dto.freePrice ?? false;
       const productCategory = dto.productCategory ?? EnumProductCategory.PHOTO;
+
+      // Фактическая дата оплаты при заведении уже оплаченного заказа
+      // (работа D1). Без оплаченного статуса дату не принимаем: пустое
+      // поле честнее выдуманного.
+      let createdPaidAt: Date | null = null;
+      if (dto.clientPaidAt !== undefined && dto.clientPaidAt !== '') {
+        if (!dto.status || !PAID_STATUSES.includes(dto.status)) {
+          throw new BadRequestException(
+            'Дата оплаты бывает только у оплаченного заказа.',
+          );
+        }
+        createdPaidAt = parseClientPaidAt(dto.clientPaidAt, {
+          createdAt: now,
+          now,
+        });
+      }
       if (dto.deliveryMethod === EnumDeliveryMethod.PRODUCTION_MSK && productCategory !== EnumProductCategory.CANVAS) {
         throw new BadRequestException('Доставка производства доступна только для холстов.');
       }
@@ -370,6 +390,10 @@ export class OrderPhotoService {
               : new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
 
           ...(dto.status ? { status: dto.status } : {}),
+          // Заказ, заводимый уже оплаченным, может принести фактическую дату
+          // оплаты (работа D1). Проверка выше не даёт принести её заказу,
+          // который оплаченным не является.
+          ...(createdPaidAt ? { clientPaidAt: createdPaidAt } : {}),
           sourceOrder: dto.sourceOrder,
           communicationPlatform: dto.communicationPlatform,
           urlCommunication: buildCommunicationUrl(
@@ -1317,6 +1341,57 @@ export class OrderPhotoService {
     ].join('\n');
   }
 
+  /**
+   * Указать фактическую дату оплаты заказу, который уже оплачен, но даты
+   * не имеет (работа D1).
+   *
+   * Так закрывается единственный честный путь для заказов, переведённых в
+   * PAID выплатой зарплаты: система дату не выдумывает, её сообщает человек,
+   * когда знает. Поэтому действие одноразовое: заполнить пустое поле можно,
+   * переписать заполненное — нет, иначе это превратится в редактирование
+   * финансовой истории.
+   */
+  async setClientPaidAt(id: string, value: string) {
+    const order = await this.prisma.orderPhoto.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        clientPaidAt: true,
+        numberOrder: true,
+      },
+    });
+    if (!order) throw new NotFoundException('Заказ не найден');
+    if (!PAID_STATUSES.includes(order.status)) {
+      throw new BadRequestException(
+        'Дата оплаты указывается только оплаченному заказу.',
+      );
+    }
+    if (order.clientPaidAt) {
+      throw new BadRequestException(
+        'Дата оплаты уже зафиксирована и не меняется.',
+      );
+    }
+
+    const clientPaidAt = parseClientPaidAt(value, {
+      createdAt: order.createdAt,
+    });
+    this.logger.log(
+      `Заказ ${order.numberOrder}: указана фактическая дата оплаты ${clientPaidAt.toISOString()}`,
+    );
+    return this.prisma.orderPhoto.update({
+      where: { id },
+      data: { clientPaidAt },
+      include: {
+        items: true,
+        tshirtItems: true,
+        canvasItems: true,
+        executor: { select: { id: true, username: true } },
+      },
+    });
+  }
+
   async updateStatusOrder(
     id: string,
     dto: UpdateStatus,
@@ -1333,6 +1408,26 @@ export class OrderPhotoService {
     const newStatus = dto.status;
     const transitionError = fulfillmentError(order, newStatus);
     if (transitionError) throw new BadRequestException(transitionError);
+
+    // Фактическая дата оплаты (работа D1). Приходит только вместе с PAID и
+    // только пока дата не зафиксирована: молча переписывать чужую отметку
+    // об оплате нельзя, для исправления есть отдельный разговор с владельцем.
+    let explicitPaidAt: Date | null = null;
+    if (dto.clientPaidAt !== undefined && dto.clientPaidAt !== '') {
+      if (newStatus !== EnumStatus.PAID) {
+        throw new BadRequestException(
+          'Дату оплаты можно указать только при переводе заказа в «Оплачен».',
+        );
+      }
+      if (order.clientPaidAt) {
+        throw new BadRequestException(
+          'Дата оплаты уже зафиксирована и не меняется.',
+        );
+      }
+      explicitPaidAt = parseClientPaidAt(dto.clientPaidAt, {
+        createdAt: order.createdAt,
+      });
+    }
 
     // Исполнитель может двигать рабочий поток в любом направлении до оплаты.
     // PAID закрывает деньги и остаётся админским действием; CANCELLED тоже
@@ -1639,6 +1734,7 @@ export class OrderPhotoService {
           ...clientPaidAtPatch({
             current: lockedOrder.clientPaidAt,
             next: newStatus,
+            explicit: explicitPaidAt,
           }),
           // closedAt: ставим при уходе в закрытые статусы (для сортировки списка),
           // сбрасываем при возврате заказа в работу.

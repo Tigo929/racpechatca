@@ -281,6 +281,12 @@ export interface UpdateOrderDto {
 
 export interface UpdateStatusDto {
   status: EnumStatus;
+  /**
+   * Фактическая дата оплаты (работа D1) — только вместе со статусом PAID и
+   * только пока она не зафиксирована. Не передали — сервер поставит момент
+   * подтверждения, как и раньше.
+   */
+  clientPaidAt?: string;
 }
 
 export interface UpdateItemDto {

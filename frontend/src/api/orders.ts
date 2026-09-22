@@ -169,6 +169,19 @@ export const ordersApi = {
     return data;
   },
 
+  /**
+   * Указать фактическую дату оплаты заказу, который уже оплачен, но даты не
+   * имеет (работа D1). Только администратор и только один раз — сервер
+   * откажет, если дата уже записана.
+   */
+  setPaidAt: async (id: string, clientPaidAt: string): Promise<OrderPhoto> => {
+    const { data } = await api.patch<OrderPhoto>(
+      `/order-photo/${id}/paid-at`,
+      { clientPaidAt },
+    );
+    return data;
+  },
+
   delete: async (id: string): Promise<void> => {
     await api.delete(`/order-photo/${id}`);
   },

@@ -435,6 +435,7 @@ import { computeSettlement } from "../../utils/settlement";
 import { computePrepayment, actualBalanceDue } from "../../utils/prepayment";
 import { computePaperUsage } from "../../utils/photo-material";
 import { StatusStepper } from "./StatusStepper";
+import { PaidAtBlock } from "./PaidAtBlock";
 import { ItemsTable } from "./ItemsTable";
 import { StatusBadge } from "../ui/StatusBadge";
 import { InfoRow } from "../ui/InfoRow";
@@ -919,6 +920,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       <div className="bg-gray-50 rounded-xl p-4 space-y-3">
         <p className="text-xs font-medium text-gray-500">Прогресс статуса</p>
         <StatusStepper order={order} />
+        {/* Дата оплаты: показываем честно, что её нет, и даём указать (D1). */}
+        <PaidAtBlock order={order} />
         {/* Внешние продукты печатает подрядчик — своего исполнителя на них не назначаем. */}
         {isAdmin && order.productCategory === "PHOTO" && (
           <AssignPanel

@@ -365,6 +365,10 @@ export class SalaryService {
         },
       });
 
+      // Заказы, которые эта выплата перевела в «Оплачен», но дата оплаты
+      // клиентом у них неизвестна (работа D1).
+      const ordersWithoutPaidDate: { id: string; numberOrder: string }[] = [];
+
       for (const accrual of accruals) {
         const amount = accrual.salaryAmount - accrual.paidAmount;
         await tx.salaryAccrual.update({
@@ -377,6 +381,15 @@ export class SalaryService {
         // Премия к заказу не привязана — двигать нечего.
         // Заказ переводим в PAID только если он ещё не PAID (идемпотентно).
         if (accrual.orderId && accrual.order && accrual.order.status !== 'PAID') {
+          // Работа D1: расчёт с исполнителем — НЕ дата оплаты клиентом.
+          // Одна выплата закрывает недельную пачку заказов (16.09.2026 — 40
+          // заказов за две секунды), поэтому дату здесь не ставим ни в каком
+          // виде. Вместо этого называем заказы, по которым она неизвестна:
+          // панель попросит администратора указать её, когда он её знает.
+          ordersWithoutPaidDate.push({
+            id: accrual.orderId,
+            numberOrder: accrual.order.numberOrder,
+          });
           await tx.orderPhoto.update({
             where: { id: accrual.orderId },
             data: { status: 'PAID' },
@@ -403,6 +416,9 @@ export class SalaryService {
         paymentId: payment.id,
         paidAt: payment.createdAt,
         totalAmount,
+        // Добавленное поле, существующие не трогаем: выплата не блокируется
+        // отсутствием даты оплаты, панель просто знает, кого спросить.
+        ordersWithoutPaidDate,
         accruals: accruals.map((a) => ({
           id: a.id,
           orderNumber: a.order?.numberOrder ?? null,

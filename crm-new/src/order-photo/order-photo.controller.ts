@@ -33,6 +33,7 @@ import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service'
 import DtoCreateOrder from './dto/create-order.dto';
 import DtoAllOrdersforQuery from './dto/all-oreders-for-query.dto';
 import UpdateStatus from './dto/update-status.dto';
+import SetClientPaidAt from './dto/set-client-paid-at.dto';
 import { DtoUpdateOrder } from './dto/update-order.dto';
 import DtoUpdateItemOrder from './dto/update-item.dto';
 import DtoCreateItemOrder from './dto/create-item-order.dto';
@@ -351,6 +352,20 @@ export class OrderPhotoController {
       me.id,
       me.role,
     );
+  }
+
+  /**
+   * Указать фактическую дату оплаты заказу, который уже оплачен, но даты
+   * не имеет (работа D1). Только администратор и только один раз: это
+   * сообщение известного факта, а не правка финансовой истории.
+   */
+  @Patch(':idOrder/paid-at')
+  @Roles(EnumRole.ADMIN)
+  setClientPaidAt(
+    @Param('idOrder') idOrder: string,
+    @Body() dto: SetClientPaidAt,
+  ) {
+    return this.orderPhotoService.setClientPaidAt(idOrder, dto.clientPaidAt);
   }
 
   @Post(':idOrder/send-tshirt-telegram')

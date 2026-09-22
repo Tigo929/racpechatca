@@ -76,6 +76,16 @@ export default class DtoCreateOrder {
   })
   status?: EnumStatus;
 
+  /**
+   * Фактическая дата оплаты (работа D1). Имеет смысл только у заказа,
+   * заводимого уже оплаченным; сейчас начальный статус ограничен LEAD/NEW,
+   * поэтому поле остаётся заделом на будущее и без оплаченного статуса
+   * отклоняется — придумывать дату система не должна.
+   */
+  @IsOptional()
+  @IsString()
+  clientPaidAt?: string;
+
   @IsString()
   @IsOptional()
   note?: string;
