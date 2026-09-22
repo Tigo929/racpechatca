@@ -838,3 +838,168 @@ ROLLBACK  cp /opt/deploy/auto-update.sh.bak-fix13-<ts> /opt/deploy/auto-update.s
 
 После успешного мини-rollout rollout возобновляется с **Gate D** (≥ 2 автоматических цикла
 планировщика) → E → F (только dry-run) → G (без ротаций) → H (только фиксация). Stage 14 не начинается.
+
+---
+
+## § 16. EXECUTOR_REPORT — MINI-ROLLOUT FIX + GATES D–H (22.09.2026, 20:34–21:48 MSK)
+
+```text
+STATUS: MINI_ROLLOUT_FIX = PASS; GATE D = PASS; GATE E = PASS; GATE F = PASS (dry-run);
+        GATE G = PASS (ротаций нет); GATE H = зафиксировано. Stage 14 не начинался.
+КАНДИДАТ: master fe88cfe2f8fd36d33211ac29135daa8d5b27c6f2 (fast-forward 40efd48 -> fe88cfe)
+```
+
+### Мини-rollout FIX — 10 пунктов команды
+
+```text
+1. merge    master не уходил вперёд (0 коммитов), кандидат основан на актуальном master ->
+            fast-forward 40efd48 -> fe88cfe; ветка и master запушены; тесты/сборка прогонялись
+            на том же дереве (111 suites / 1217 тестов, nest build, eslint, ci-safety-check сайта)
+2. CI       образы :production опубликованы в 20:45; revision backend и frontend = fe88cfe2f8fd...
+            (тесты в workflow идут до сборки — публикация :production и есть зелёный CI)
+3. PRECHECK backup /opt/deploy/auto-update.sh.bak-fix13-20260922-2034 (11 382 Б, sha 698459f5...);
+            backend build 40efd48..., migrations 86, tables 64, флаги все true, тик 20:30 SUCCESS;
+            таймер остановлен на время выкладки; снят Stage 06–12 BEFORE (16 срезов) и ops-базлайн
+            (growthEvaluations DEGRADED + ложное GROWTH_RUN_FAILED)
+4. FIX_01   sha256 кандидата e07f4dca073068db... совпал с deploy/auto-update.sh на master; bash -n ok;
+            установлено 17 650 Б, права 755; маркеры: --no-deps, IMAGE_TAG:-production, verify_build, acquire_lock
+5. backend  проход 20:46:00–20:54:19: «Обновляю backend» -> «Готово: backend обновлён и здоров» ->
+            «Сборка подтверждена: raspechatka-backend-1 build=fe88cfe2f8fd (попытка 1)» -> frontend ->
+            «nginx перечитан» -> «Холст прогрет, цены на месте» -> «Итог: обновлено 2, ошибок 0».
+            Миграции: «86 migrations found ... No pending migrations to apply» — НИ ОДНОЙ Applying migration;
+            migrations 86, tables 64, применённых за час 0, rolled back 0
+6. цепочка  master fe88cfe2f8fd... = revision образа backend = /health.build = revision образа frontend;
+            digest backend sha256:1b65a8d21e94..., frontend sha256:392b32cbb337...; сайт остался на 441d795...
+7. ops      growthEvaluations: DEGRADED -> HEALTHY, conditions: [GROWTH_RUN_FAILED] -> [];
+            growth.lastScheduledEvaluationAt: null -> 2026-09-21T21:27:25.602Z (реальная автооценка 22.09 00:27,
+            возраст 20,5 ч при пороге 26 ч). Оценок в базе было 15, осталось 15 — искусственных не создавали,
+            manual-оценки (8) свежесть не подменяют. Доступ: без токена 401, EXECUTOR 403, ADMIN 200
+8. verify   на УСТАНОВЛЕННОМ файле, живой backend:
+            A настоящий путь, сборка совпала           -> PASS, попытка 1, 1 с
+            B образ помечен чужой сборкой              -> FAIL сразу, 0 с, «работает не та сборка»
+            C ответ с закрытого порта                  -> FAIL после 3 попыток за 4 с, «не отдал build»
+            D сценарий Gate C (2 пустых, потом верный) -> PASS на 3-й попытке за 4 с
+9. lock     при занятом замке (flock, /var/lock/auto-update.lock) второй полноценный запуск:
+            «Пропуск: обновление уже идёт», код 0, 0 с; новых «Обновляю»/«Итог» — 0; StartedAt backend и
+            frontend не изменились; набор образов на хосте тот же (md5 списка совпал)
+10. baseline Stage 06–12: 15 срезов — 0 значимых расхождений (leaves 14...1007, различия только волатильные).
+            Единственный срез с изменениями — ops: 14 расхождений, все ожидаемые (build SHA, исчезновение
+            GROWTH_RUN_FAILED, growthEvaluations HEALTHY, часы снимков). Карточки этапа 12 идентичны (9),
+            outbox delivered 16 / skipped 61 без изменений. Пересозданы только backend и frontend CRM
+            (их образы пересобраны CI); postgres, greeter, photo-api, photo-web — прежние StartedAt
+```
+
+### GATE D — operational validation (PASS)
+
+```text
+build identity   master fe88cfe2f8fd... = LABEL revision backend = /health.build; frontend revision тот же;
+                 RepoDigests записаны; сайт 441d7955251d... = LABEL web:production = /api/health.build;
+                 compose обоих проектов — только :production
+ops states       10/10 подсистем HEALTHY, conditions []; database pending [] / unknown [] / rolledBack 0 / applied 86;
+                 sync dataAgeSeconds 28 после часового тика при пороге 7200; insights lastRunStatus SUCCESS;
+                 outbox pending 0 / failed 0; thresholds отданы полностью (growthLagSeconds 93600 и др.)
+>= 2 автоцикла   цикл 1 — scheduler:daily 20:48:01–20:48:13, 12 запусков, SUCCESS 12, FAILED 0 (окно 21 день);
+                 цикл 2 — scheduler:hourly 21:46:31–21:46:40, 12 запусков, SUCCESS 12, FAILED 0 (окно 3 дня);
+                 снимки периодов обновлены (64, последний 21:46); сигналы: hourly SUCCESS 154 мс и 68 мс;
+                 порядок хуков в журнале: синхронизация -> снимки -> сигналы. Хук «Рост: автооценка» в окне не
+                 логировался штатно — он идёт раз в новый день, сегодняшний прошёл в 00:27 (ops: возраст 21,3 ч)
+stuck detection  RUNNING синхронизаций 0, RUNNING запусков сигналов 0, processing в очереди 0;
+                 oldestRunningAgeSeconds = null во всех трёх подсистемах; строк «зависших запусков закрыто» нет —
+                 закрывать нечего; пороги: syncStuck 3600, insightsStuck 600, outboxStuckProcessing 600
+outbox           ops-сводка = SQL: delivered 16, skipped 61, pending 0, processing 0, failed 0;
+                 oldestPendingAgeSeconds null; lastDeliveredAt 22.09 16:44 — прежний
+no leakage       шаблоны y0_ / Bearer / eyJ... / JWT_SECRET / postgresql://...:...@ / client_secret / PASSWORD=
+                 в логах backend, frontend, photo-api, photo-web, greeter за всё окно rollout — 0 совпадений;
+                 в ops JSON и /health — 0; телефонов в ops JSON — 0
+performance      прогретый контейнер: /health 0 мс (10 замеров), ops/status 327–691 мс (медиана ~390),
+                 insights feed 246–498 мс, overview 7 дней 242–258 мс, overview 30 дней 218–254 мс.
+                 Холодный первый запрос после пересоздания — 2,0–4,5 с (JIT и кэш), далее в норме.
+                 До мини-rollout те же срезы: ops 660 мс, feed 281 мс, overview 7 дней 3104 мс — регресса нет
+```
+
+### GATE E — backup / restore (PASS, только чтение)
+
+```text
+ночной бэкап    /opt/raspechatka/backups/crm_20260922_030001.sql.gz — 2 306 849 Б, заголовок «PostgreSQL database dump»,
+                CREATE TABLE 101; backup.log: «OK дамп ...», «OK облако db/...», «OK облако techspec/ (583 файлов)»
+premigration    gate0_stage13_20260922_141045 (2 320 726 Б) и stage13A_20260922_142311 (2 591 066 Б) на месте
+хранение        локальных копий crm_*.sql.gz — 14 (норма <= 14); свободно 28 ГБ из 50 ГБ
+drill           повторный destructive drill не выполнялся: пройден 17.09.2026 (BACKUP_RESTORE_RUNBOOK.md § 2)
+```
+
+### GATE F — retention: ТОЛЬКО dry-run (PASS, DELETE = 0)
+
+```text
+PRECHECK  ANALYTICS_RETENTION_* в окружении контейнера — 0 переменных; dist/src/analytics/retention-cli.js в образе
+ACTION    docker exec raspechatka-backend-1 node dist/src/analytics/retention-cli.js   (без --apply)
+ПЛАН      dryRun true, totalRows 0; 5 правил, во всех rows 0:
+          MetrikaSyncRun SUCCESS 90 д (cutoff 24.06); MetrikaSyncRun FAILED/PARTIAL 365 д (22.09.2025);
+          AnalyticsInsightRun SUCCESS/SKIPPED/LOCKED 90 д; AnalyticsInsightRun FAILED 365 д;
+          MetrikaOrderOutbox delivered/skipped 180 д (26.03); never — 5 позиций (агрегаты, снимки,
+          реестр изменений и версии оценок, карточки и версии сигналов, незакрытые переходы очереди)
+stderr    «dry-run: под правила подпадает строк — 0; удаление только с --apply и ANALYTICS_RETENTION_APPLY=1»
+VERIFY    счётчики до/после равны: MetrikaSyncRun 2899, AnalyticsInsightRun 136, MetrikaOrderOutbox 77;
+          суммарный n_tup_del по пяти таблицам 1 -> 1 (не изменился). --apply не запускался
+```
+
+### GATE G — secrets (PASS, ротаций нет)
+
+```text
+ротации   не выполнялись: ни OAuth, ни client secret, ни JWT, ни доступ к БД; значения переменных не читались
+          и нигде не выводились
+.env      CRM .env sha256 совпал с копией Gate A (файл не редактировался, mtime 17.09 09:32);
+          .env сайта — только хэш, mtime 24.08; содержимое не выводится
+логи      0 совпадений по шаблонам секретов за всё окно rollout во всех пяти контейнерах
+SECRET_FOUND = no; rotation_required = no
+```
+
+### GATE H — infrastructure debts (только фиксация, ничего не исправлялось)
+
+```text
+H1–H8 из § 10 без изменений — решения за Reviewer и владельцем.
+Уточнение к H2 по факту этого gate: yclid и IP пишет не только access-лог сайта, но и access-лог nginx панели
+(raspechatka-frontend-1): за час — 4 строки вида «GET /?yclid=<19–20 цифр>» от робота Яндекс.Метрики.
+Это не секрет и не PII в строгом смысле (рекламный идентификатор), автоматически НЕ исправлялось;
+при работе по H2 log_format нужно править в обеих nginx-конфигурациях, а не только в конфигурации сайта.
+```
+
+### NEW FACTS (этот заход)
+
+```text
+1. Часовой тик планировщика привязан к старту контейнера, а не к :30 — после пересоздания backend в 20:46
+   следующий автоматический цикл пришёл в 21:46, а не в 21:30. Для планирования окон это важно:
+   «минимум два автоцикла» = boot-тик плюс час.
+2. В 20:01 (до мини-rollout, старым скриптом по таймеру) в журнале есть «ОШИБКА: не скачался
+   ghcr.io/tigo929/racpechatca-frontend:production» — разовый сбой скачивания до публикации новых образов;
+   повторов после мини-rollout нет, следующий проход скачал оба образа штатно.
+3. Первый запрос к дашборду после пересоздания контейнера стоит 2–4,5 с (прогрев), дальше 0,2–0,5 с.
+   Для owner-smoke сразу после выкладки это ожидаемо и не является деградацией.
+```
+
+### PRODUCTION STATE (22.09.2026 21:48 MSK)
+
+```text
+CRM:    master fe88cfe; backend 1b65a8d21e94 (revision и /health.build fe88cfe2f8fd...),
+        frontend 392b32cbb337 (revision fe88cfe2f8fd...); compose :production; миграций 86, таблиц 64;
+        флаги dashboard/growth/insights/sync/orders = true; тики 20:48 daily и 21:46 hourly — SUCCESS 12/12;
+        RUNNING 0, FAILED за 24 ч 0; outbox delivered 16 / skipped 61 / pending 0 / failed 0; карточек открыто 6
+Сайт:   feature/cms-admin 441d795; photo-api-1 5d060578b045, photo-web-1 9d2ac8d814df (revision и
+        /api/health.build 441d7955251d...); compose :production; страницы 200, цены на холсте на месте
+Сервер: /opt/deploy/auto-update.sh = FIX_01 (sha256 e07f4dca073068db), auto-update.timer active,
+        замок /var/lock/auto-update.lock (flock); backup прежнего скрипта auto-update.sh.bak-fix13-20260922-2034
+Данные: миграций не применялось, заказы и аналитика не правились, retention только dry-run (DELETE 0),
+        оценки роста не создавались, секреты не ротировались и не выводились; Stage 14 не начинался
+```
+
+### ROLLBACK STATUS
+
+```text
+Откат не выполнялся и не требуется: ни одно STOP-условие не сработало.
+Команды на случай решения Reviewer:
+  FIX_01:  cp /opt/deploy/auto-update.sh.bak-fix13-20260922-2034 /opt/deploy/auto-update.sh
+  FIX_02:  git revert fe88cfe в master -> CI -> auto-update (миграций нет, данные не затрагиваются)
+           либо срочно: IMAGE_TAG=40efd48c48005ea0f32d1f670611aa18924adc92 /opt/deploy/auto-update.sh
+           (только вместе с тем же тегом в /opt/raspechatka/docker-compose.prod.yml)
+  Бэкапы:  premigration_gate0_stage13_20260922_141045.sql.gz, premigration_stage13A_20260922_142311.sql.gz,
+           ночной crm_20260922_030001.sql.gz
+```
