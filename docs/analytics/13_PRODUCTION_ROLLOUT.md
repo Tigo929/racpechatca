@@ -3,8 +3,11 @@
 ## STATUS
 
 ```text
-READY_FOR_REVIEW (план 17.09.2026, обновлён 22.09.2026 после слияния master). Production Stage 13 НЕ менял; rollout
-НЕ начат; Stage 14 не начат. Implementation Stage 13 = READY_FOR_PRODUCTION_ROLLOUT (Reviewer APPROVED 17.09.2026).
+STOPPED_AT_GATE_C (исполнение 22.09.2026 по команде Reviewer «СТАРТ»; отчёт — § 14). Gates 0, A, B пройдены;
+Gate C: деплой сайта корректен (441d795 = revision = /api/health.build), но сработало глобальное STOP-условие § 1.2 —
+auto-update записал «работает не та сборка» (ложное срабатывание сверки на контейнере без healthcheck). Gates D–G
+не запускались, H — только фиксация. Production не откатывался (состояние корректно), Stage 14 не начинался.
+Ранее: READY_FOR_REVIEW (план 17.09.2026, обновлён 22.09.2026 после слияния master). Implementation Stage 13 = READY_FOR_PRODUCTION_ROLLOUT (Reviewer APPROVED 17.09.2026).
 Кандидаты: CRM — 44ca8c9 (= e0984f8 + слияние origin/master 9810d0b: коммиты владельца acf4d73, 0d7d7b2, fc5657b и план дня
 9810d0b; код этапа 13 = 51f27ae без изменений; тесты на слитой ветке CRM 1196 / 1196, панель 78 / 78); сайт — web-photo 441d795.
 НОВОЕ ПРЕДУСЛОВИЕ (Gate 0, § 2a): production сейчас отстаёт от master — образ 0d7d7b2 (20.09), auto-update.timer остановлен
@@ -474,3 +477,272 @@ Rollout начинается только после отдельной кома
 Gate 0 (production = master, деплой владельца) выполнен, и порядка gate-ов (по умолчанию A → B → C → D → E → F → G; H —
 только решения). До команды production не менять; Stage 14
 не начинать; этот документ — план, не отчёт.
+
+---
+
+# 14. EXECUTOR_REPORT_STAGE13_PRODUCTION_ROLLOUT — 22.09.2026
+
+## RESULT
+
+```text
+STOPPED_AT_GATE_C (глобальное STOP-условие § 1.2 сработало по букве правила: auto-update записал
+«ВНИМАНИЕ: photo-web-1 отвечает build=<пусто>, а образ помечен 441d7955251d — работает не та сборка»).
+Выполнены и приняты: Gate 0, Gate A, Gate B. Gate C: деплой сайта фактически корректен и доказан тремя
+независимыми способами (метка образа = /api/health = digest = approved SHA 441d795), но встроенная сверка
+сборки в новом auto-update дала ЛОЖНОЕ срабатывание — она опрашивает контейнер без healthcheck через ~2 с
+после старта, когда Next.js ещё не слушает порт. Gates D, E, F, G не запускались (правило «не продолжать,
+чтобы закончить rollout»). Gate H — только фиксация долгов, изменений нет.
+Production НЕ откатывался: и CRM, и сайт работают на одобренных сборках, все проверки данных зелёные;
+откат вернул бы известный P0 (auto-update без --no-deps) и старую сборку сайта. Команды отката — § ROLLBACK STATUS.
+Дальнейшие шаги — решение Reviewer (FIX_01 / FIX_02, затем Gates D–G).
+```
+
+## GATE 0 — production = master (деплой владельца) — ПРОЙДЕН
+
+```text
+PRECHECK 14:10:43 MSK: backend 2969889e3192 (= образ 0d7d7b2 от 20.09) healthy, frontend a98ee3269eb2;
+  миграций 85 (последняя 20260920010000_site_lead_push_delivery); таблиц 64; auto-update.timer inactive
+  (остановлен 21.09 16:01); compose :latest; sync RUNNING 0; заказов 377
+  (PAID 283, SENT 64, NEW 8, READY 7, LEAD 6, FOLDER_STRUCTURE_CREATED 5, IN_PROGRESS 2, SHIPMENT_CREATED 2);
+  PICKUP + SHIPMENT_CREATED = 0 (кандидатов на data-repair нет); StatusHistory system:pickup-fulfillment-fix = 0
+BACKUP: /opt/raspechatka/backups/premigration_gate0_stage13_20260922_141045.sql.gz — 2 320 726 B,
+  CREATE TABLE 101, заголовок «PostgreSQL database dump» читается, запись в backup.log;
+  docker-compose.prod.yml.bak-gate0-20260922-1410, .env.bak-gate0-20260922-1410
+ACTION: systemctl start auto-update.timer (+ ручной запуск сервиса) — деплой владельца до master 9810d0b
+MIGRATION: boot-лог «86 migrations found … Applying migration 20260921010000_fix_pickup_fulfillment …
+  The following migration(s) have been applied»; _prisma_migrations: finished 14:14:14, rolled_back null,
+  applied_steps_count 1; итог 86 миграций, 64 таблицы
+DATA-REPAIR (сверка планом, ручных правок НЕ делалось): PICKUP+SHIPMENT_CREATED после = 0;
+  StatusHistory changedBy='system:pickup-fulfillment-fix' = 0 → миграция подошла к 0 строк, потому что
+  кандидатов не было уже до неё (см. PRECHECK). Оставшиеся 2 заказа в SHIPMENT_CREATED — 20260917-140 и
+  20260921-168, оба YANDEX_PVZ (не самовывоз) → корректно не тронуты. PICKUP-заказы по статусам:
+  PAID 164, SENT 14, NEW 5, READY 5, LEAD 3, FOLDER_STRUCTURE_CREATED 2 — SHIPMENT_CREATED нет
+VERIFY: backend 08ab8d2d4d1b == образ сборки 9810d0b (pull :9810d0b0b1d2… → тот же id; frontend 46271700a695
+  тоже MATCH); миграций 86 ✓; таблиц 64 ✓; auto-update.timer active ✓; /health ok ✓; Nest started, ERROR 0;
+  тик расписания после деплоя: daily SUCCESS 14:16 (снимки 8/8, хук сигналов hourly SUCCESS 14:16:09)
+DRY-RUN ПЛАНА ДНЯ (ничего не отправлено): POST /order-photo/daily-plan/run?dry=true → 201,
+  empty=false, sent=false, orderCount 12, 1086 символов; «ОТГРУЗКИ» false, «старший дня» false, 🚚 false;
+  исполнителей 2, блоков «В работе» 2, «Готовы к выдаче» 1, «Без исполнителя» есть
+```
+
+## GATE A — CRM reliability (кандидат 44ca8c9 → docs-tip 40efd48) — ПРОЙДЕН
+
+```text
+PRECHECK git: origin/master = 9810d0b; 40efd48 ⊃ master (ff); изменённые файлы вне docs — ровно 26 файлов
+  этапа 13 (.github/workflows/build-images.yml, crm-new/Dockerfile.prebuilt, package.json, src/analytics/{ops,
+  retention,insights,growth}, health.controller.ts, app.module.ts, deploy-safety.spec.ts,
+  analytics-route-matrix.spec.ts, deploy/auto-update.sh, docker-compose.prod.yml);
+  git diff -- crm-new/prisma = ПУСТО (новых миграций нет), git diff -- frontend = ПУСТО;
+  запрещённых областей (web-photo, .env, nginx, greeter) — 0
+PRECHECK tests: prisma validate OK; CRM jest 1196 / 1196 (109 suites); nest build OK; eslint 0;
+  панель vitest 78 / 78
+BACKUP: premigration_stage13A_20260922_142311.sql.gz — 2 591 066 B, CREATE TABLE 101, заголовок ок;
+  compose/.env .bak-stage13A-20260922-1423
+BEFORE (ADMIN, закрытые окна 10–16.09 и 03–09.09): 15 JSON + карточки этапа 12 из БД (9 строк) + outbox
+  (delivered 15, skipped 59); /analytics/ops/status → 404 (маршрута ещё нет)
+ACTION: git merge --ff-only 40efd48 → push origin master 14:25:49 (один push, без force);
+  CI «Сборка образов» 14:26–14:30 SUCCESS (метки :<sha>, :production, :latest — первый :production);
+  старый auto-update: backend 08ab8d2d4d1b → f19ce82f4842 (14:29:37–14:30:10), frontend 46271700a695 →
+  c5f385f3e3cd (14:30:17–14:30:51), nginx перечитан
+MIGRATION GATE: boot-лог «86 migrations found in prisma/migrations» → «No pending migrations to apply» ✓
+  (STOP-условие «Stage 13 применяет миграцию» НЕ сработало); _prisma_migrations 86, таблиц 64
+BUILD IDENTITY: /health → build 40efd48c48005ea0f32d1f670611aa18924adc92 = LABEL
+  org.opencontainers.image.revision образа = sha master ✓
+RECREATE: backend 1 раз (11:29:49), frontend 1 раз (11:30:20); postgres, greeter, photo-api, photo-web —
+  StartedAt без изменений ✓
+OPS STATUS: без токена 401 ✓, EXECUTOR 403 ✓, ADMIN 200 (609 мс, далее 376–513 мс), ответ 2 756 байт:
+  build 40efd48…, timezone Europe/Moscow, flags все true + metrikaConfigured true,
+  database {reachable, applied 86, pending [], unknown [], rolledBack 0, last 20260921010000_fix_pickup_fulfillment},
+  sync {SUCCESS, dataAge 9 с, lastDataDay 2026-09-22, running 0, failed24h 0},
+  outbox {pending 0, processing 0, failed 0, delivered 15, skipped 59},
+  snapshots 64, insights {hourly SUCCESS, openCards 6}, thresholds 10 ключей;
+  подсистемы: database/crmBusiness/metrikaApi/metrikaAnalyticsSync/metrikaOrdersOutbox/periodSnapshots/
+  analyticsDashboard/behaviorAnalytics/automatedInsights — HEALTHY; growthEvaluations — DEGRADED;
+  conditions: [GROWTH_RUN_FAILED WARNING] — ЛОЖНОЕ (см. NEW FACT 1);
+  утечек по шаблонам (y0_/Bearer/postgres URL/JWT/телефон/19 цифр) — 0
+AUTH/PRIVACY (production JWT в контейнере): feed без токена 401, EXECUTOR 403, POST run EXECUTOR 403;
+  resolve {} → 400 (reason 3–300), resolve с customerPhone → 400 «property customerPhone should not exist»,
+  feed?severity=WRONG → 400, несуществующий id → 404 «Сигнал не найден»
+STAGE 06–12 RECONCILIATION (BEFORE vs AFTER, те же закрытые окна, 15 JSON, 3 506 листьев):
+  значимых расхождений 0; волатильных (generatedAt / freshness / lastRun журнала) 92;
+  единственное текстовое отличие — «возраст 5 с» → «возраст 7 с» в тексте причины молчания quality.stale
+  (возраст данных внутри строки, не метрика);
+  карточки этапа 12 в БД идентичны (9 строк: detectorId|entityKey|версия|статус|payloadHash);
+  outbox delivered 15 / skipped 59 без изменений; nginx без токена → 401 JSON
+```
+
+## GATE B — deployment / compose hardening — ПРОЙДЕН
+
+```text
+PRECHECK: старый /opt/deploy/auto-update.sh sha256 1219cba15ca1d9f2 = довыкладочному; новый (git-версия, LF)
+  698459f509499af4 = плану; bash -n ок; маркеры --no-deps 3, IMAGE_TAG 6, verify_build 2;
+  :production в GHCR = запущенным образам: backend f19ce82f4842 MATCH, frontend c5f385f3e3cd MATCH,
+  revision обоих = 40efd48c… → переключение тега не вызовет пересоздания
+BACKUP: /opt/deploy/auto-update.sh.bak-stage13-20260922-1435 (7 670 B),
+  /opt/raspechatka/docker-compose.prod.yml.bak-stage13B-20260922-1435 (9 632 B),
+  /opt/photo/docker-compose.prod.yml.bak-stage13B-20260922-1435 (5 663 B)
+ACTION: timer stop → install -m 755 нового скрипта (sha после установки 698459f509499af4) →
+  compose CRM :latest → :production (ровно 2 строки, diff с backup = 2) → compose config валиден → timer start
+ДОКАЗАТЕЛЬСТВО targeted update (docker compose --dry-run, ничего не выполнялось):
+  с --no-deps:      Container raspechatka-frontend-1 Recreate / Recreated / Starting / Started — и всё
+  без --no-deps:    Container raspechatka-backend-1 Recreate / Recreated … + frontend — то есть ровно тот
+                    сценарий 17.09, из-за которого backend поднимался старым образом
+Ручной прогон нового скрипта: ни одной строки «Обновляю» (id совпадают) → обновлений нет
+VERIFY: StartedAt всех контейнеров без изменений (backend 11:29:49, frontend 11:30:20, postgres 13.09,
+  greeter 19.09, photo-api/web 15.09); health ok, build 40efd48…; timer active
+```
+
+## GATE C — web-photo CI safety (кандидат 441d795) — ДЕПЛОЙ КОРРЕКТЕН, НО СРАБОТАЛО STOP-УСЛОВИЕ § 1.2
+
+```text
+PRECHECK diff feature/cms-admin (812f9cb) → feature/ci-safety (441d795): 2 файла, +122/−8:
+  - branches: [main, feature/yandex-yml-feed, feature/canvas-section, feature/cms-admin]
+  + branches: [feature/cms-admin]
+  + шаг «Проверка инвариантов CI»: node scripts/ci-safety-check.mjs (до сборки)
+  + шаг «Метки образа» (id: tags): tags="$IMAGE:${{ github.sha }}";
+    if [ "${{ github.ref }}" = "refs/heads/feature/cms-admin" ] → tags="$tags,$IMAGE:production,$IMAGE:latest"
+  - tags: | …:latest / …:${{ github.sha }}   →   + tags: ${{ steps.tags.outputs.value }}
+  + labels: org.opencontainers.image.revision / image.source
+  + scripts/ci-safety-check.mjs (85 строк)
+КАКИЕ REF ЧТО ПУБЛИКУЮТ (по кандидату):
+  refs/heads/feature/cms-admin      → :<sha>, :production, :latest
+  любой другой ref с ЭТИМ файлом    → push-сборка не запускается (branches); workflow_dispatch с другой ветки → только :<sha>
+  устаревшая ветка со СТАРЫМ файлом → :latest и :<sha>, но НИКОГДА :production (метки production в старом файле нет),
+                                      а сервер после Gate B/C потребляет только :production
+  Проверка инвариантов: на кандидате «CI safety OK»; на действующем production-workflow 812f9cb — 9 нарушений
+  (branches, отсутствие шага меток, безусловный tags:, нет revision, проверка после сборки и т. д.).
+  Устаревшая ветка для проверки НЕ пушилась (запрет спецификации).
+ACTION: git merge --ff-only origin/feature/ci-safety → push origin feature/cms-admin 14:37:09 (tip 441d795);
+  Actions run 35722459652 (feature/cms-admin, 441d795) — success 14:43:23; в GHCR появились
+  web-photo-api:production (id 5d060578b045) и web-photo-web:production (id 9d2ac8d814df),
+  revision обоих = 441d7955251dd6b95721b497976b73301f3e1486 = approved SHA ✓
+  /opt/photo compose :latest → :production (backup из Gate B), config валиден;
+  прогон нового auto-update: api 61d1b165141a → 5d060578b045 (14:44:42–14:45:00), web 5db2ad485db3 →
+  9d2ac8d814df (14:45:01–14:45:04), nginx перечитан, холст прогрет («цены на месте»)
+VERIFY (деплой корректен):
+  цепочка approved SHA → image revision → /api/health.build: 441d7955251d = 441d7955251d = 441d7955251d ✓
+  (через nginx и внутри контейнера; digest api sha256:5d060578b045…, web sha256:9d2ac8d814df…)
+  пересозданы ТОЛЬКО photo-api-1 (11:44:55) и photo-web-1 (11:45:03); raspechatka-backend-1 (11:29:49),
+  frontend (11:30:20), postgres, greeter — без изменений ✓
+  страницы: / 200, /interer/holst 200, /ceny 200; «Цены временно недоступны» — 0 ✓
+STOP § 1.2 (по букве правила): в /var/log/auto-update.log 14:45:05 —
+  «ВНИМАНИЕ: photo-web-1 отвечает build=<пусто>, а образ помечен 441d7955251d — работает не та сборка»,
+  итог одного из прогонов «обновлено 1, ошибок 1».
+ДИАГНОСТИКА (14:52): ложное срабатывание сверки, а не подмена сборки —
+  1) тёплый опрос того же контейнера тем же выражением sed даёт build 441d7955251dd6b95721b497976b73301f3e1486;
+  2) у photo-web-1 НЕТ healthcheck → скрипт считает контейнер «поднявшимся» сразу (running:none) и опрашивает
+     /api/health через ~2 с после старта, когда Next.js ещё не слушает порт (api и backend CRM имеют healthcheck —
+     у них сверка проходит: контроль на backend — build 40efd48… = revision 40efd48…);
+  3) в то же окно работали ДВА прогона: ручной /opt/deploy/auto-update.sh из gate-скрипта и запуск по таймеру
+     (systemd 14:44:54) — отсюда два «nginx перечитан», два «Холст прогрет» и два «Итог» (…ошибок 0 / …ошибок 1).
+     Взаимного исключения между ручным вызовом скрипта и таймером нет (systemd защищает только запуск сервиса).
+```
+
+## GATES D, E, F, G — НЕ ЗАПУСКАЛИСЬ
+
+```text
+По правилу Reviewer «при любом глобальном STOP-условии остановить дальнейшие gates и не продолжать, чтобы
+закончить rollout». Ничего из D (валидация), E (бэкапы), F (retention dry-run), G (секреты) не выполнялось;
+retention --apply и ротация секретов не выполнялись и не планировались. Значения секретов нигде не выводились.
+Частичные данные, уже полученные в Gate A/B/C и пригодные для D: /health.build = LABEL = sha; ops-состояния и
+conditions (см. Gate A); порядок хуков sync → snapshots → growth → insights в тиках 14:16 и 14:31;
+два автоматических цикла после деплоя Gate A (14:31 hourly, следующий — 15:31) — формальный пункт «≥ 2 цикла»
+Gate D остаётся незакрытым, потому что gate не запускался.
+```
+
+## GATE H — infrastructure debts (только фиксация, изменений нет)
+
+```text
+H1 drift SalaryPayment.updatedAt — отдельная миграция ALTER COLUMN … DROP DEFAULT; не применялась
+H2 nginx access log сайта хранит yclid и IP — предложен log_format без query-string; не менялось
+H3 docker json-file без ротации — предложен daemon.json max-size 50m/max-file 5 (перезапуск docker) или
+   per-service logging в compose; не менялось
+H4 sshd PasswordAuthentication yes — предложено no после проверки ключевого входа; не менялось
+H5 GitHub branch protection / environment production — настройки владельца; не менялось
+H6 окончательное удаление :latest — после ≥ 7 дней на :production (сейчас оба сервера уже на :production);
+   не менялось
+H7 secret scan в CI (gitleaks / grep-шаг) — не добавлялся
+H8 lastDailyDate планировщика в памяти (лишний суточный тик при рестарте) — не менялось
+```
+
+## NEW FACTS
+
+```text
+1. ЛОЖНЫЙ GROWTH_RUN_FAILED в диагностике этапа 13: OpsStatusService ищет оценки роста с trigger 'scheduled',
+   а этап 11 пишет 'scheduler' → lastScheduledEvaluationAt всегда null → при наличии ACTIVE-изменения условие
+   срабатывает всегда. Факт на бою: триггеры в AnalyticsChangeEvaluation — manual 8, scheduler 7; последняя
+   scheduler-оценка 22.09 00:27 (в пределах порога 26 ч) → корректное состояние — HEALTHY без условий.
+   Это ложное ПРЕДУПРЕЖДЕНИЕ (не false HEALTHY), но диагностика обязана быть точной → FIX_02.
+2. ЛОЖНОЕ «работает не та сборка» в verify_build: сверка опрашивает /health сразу после старта контейнера,
+   у которого нет healthcheck (photo-web-1) → пустой build. Нужен повтор с ожиданием (например, 5 попыток
+   по 3 с) перед выводом предупреждения → FIX_01.
+3. Нет взаимного исключения между ручным запуском /opt/deploy/auto-update.sh и запуском по таймеру: два
+   прогона обновляли сайт одновременно. Рекомендация: запускать только через systemctl start
+   auto-update.service либо добавить flock в скрипт.
+4. Gate 0: data-repair миграция 20260921010000_fix_pickup_fulfillment на production не изменила ни одной
+   строки (кандидатов PICKUP+SHIPMENT_CREATED не было уже до неё) — расхождение статусов, ради которого она
+   писалась, к 22.09 отсутствовало.
+5. Метка build в /health CRM и LABEL revision работают как задумано: 40efd48c… совпало у образа, контейнера
+   и ответа; та же цепочка на сайте (441d7955…).
+6. Первый :production для CRM и сайта выпущен именно с production-ветки; старый production-workflow сайта не
+   проходит проверку инвариантов (9 нарушений) — защита работает на уровне и CI, и потребления образов.
+```
+
+## DEVIATIONS
+
+```text
+1. Gate 0 выполнен исполнителем по команде Reviewer (в плане он значился как деплой владельца); порядок шагов
+   и backup соблюдены.
+2. Кандидат CRM — docs-tip 40efd48 (= 44ca8c9 + план rollout), runtime-код идентичен 51f27ae/44ca8c9.
+3. В Gate C новый auto-update запускался вручную из gate-скрипта, из-за чего совпал с прогоном по таймеру
+   (NEW FACT 3). Правильный способ — systemctl start auto-update.service.
+4. Файл auto-update.sh брался из git-блоба (LF), а не из рабочего дерева Windows (CRLF) — иначе на сервере
+   получился бы скрипт с \r.
+```
+
+## OPEN DECISIONS (для Reviewer)
+
+```text
+1. FIX_01 (verify_build): ожидание готовности контейнера перед сверкой сборки — 5 попыток по 3 с, и только
+   потом «ВНИМАНИЕ». Плюс рекомендация запускать обновление через systemd, а не напрямую (или flock).
+2. FIX_02 (диагностика): trigger 'scheduled' → 'scheduler' в OpsStatusService + тест на фактическое значение
+   этапа 11, чтобы ложное GROWTH_RUN_FAILED не повторилось.
+3. После FIX_01/FIX_02 — повторный мини-деплой CRM (без миграций) и возобновление rollout с Gate D
+   (ops states, ≥ 2 цикла, stuck detection, outbox, утечки, perf), затем E, F (только dry-run), G, H.
+4. Оставить ли параллельную публикацию :latest (H6) — сейчас оба сервера уже потребляют :production.
+```
+
+## PRODUCTION STATE (22.09.2026 14:52 MSK)
+
+```text
+CRM:    master 40efd48; backend f19ce82f4842 (revision 40efd48c48005ea0f32d1f670611aa18924adc92,
+        /health.build тот же), frontend c5f385f3e3cd; compose :production; миграций 86, таблиц 64;
+        флаги dashboard/growth/insights/sync/orders = true; тики SUCCESS (14:16 daily, 14:31 hourly),
+        RUNNING 0, outbox delivered 15 / skipped 59 / failed 0
+Сайт:   feature/cms-admin 441d795; photo-api-1 5d060578b045, photo-web-1 9d2ac8d814df
+        (revision 441d7955251d…, /api/health.build тот же); compose :production; страницы 200, цены на месте
+Сервер: /opt/deploy/auto-update.sh = новый (sha 698459f509499af4, --no-deps, порядок api→web→backend→frontend,
+        verify_build); auto-update.timer active; backup-файлы:
+        auto-update.sh.bak-stage13-20260922-1435, docker-compose.prod.yml.bak-stage13B-20260922-1435 (CRM и photo),
+        premigration_gate0_stage13_20260922_141045.sql.gz, premigration_stage13A_20260922_142311.sql.gz
+Данные: заказы не правились (кроме data-repair миграции владельца, изменившей 0 строк); retention не запускался;
+        секреты не ротировались и не выводились; Stage 14 не начинался
+```
+
+## ROLLBACK STATUS
+
+```text
+Откат НЕ выполнялся — ни одно STOP-условие не указывает на неверное состояние production:
+сборки совпадают с одобренными SHA, данные этапов 06–12 не изменились, утечек нет, все сервисы здоровы.
+Откат ухудшил бы состояние (вернул бы auto-update без --no-deps и прежнюю сборку сайта).
+Готовые команды, если Reviewer решит откатывать:
+  Gate B:  systemctl stop auto-update.timer
+           cp /opt/deploy/auto-update.sh.bak-stage13-20260922-1435 /opt/deploy/auto-update.sh
+           cp /opt/raspechatka/docker-compose.prod.yml.bak-stage13B-20260922-1435 /opt/raspechatka/docker-compose.prod.yml
+           systemctl start auto-update.timer                 (сервер снова потребляет :latest)
+  Gate C:  cp /opt/photo/docker-compose.prod.yml.bak-stage13B-20260922-1435 /opt/photo/docker-compose.prod.yml
+           IMAGE_TAG=812f9cb2ab8df6f2a5190712a3b6e15ee52b2a34 /opt/deploy/auto-update.sh   (сайт на прежний код)
+           git revert 441d795 в feature/cms-admin — только вместе с откатом compose
+  Gate A:  git revert 806e328 51f27ae в master → push → CI → auto-update (миграций нет, БД не трогается)
+  Gate 0:  откат образа CRM на :0d7d7b2…; данные миграции — из premigration_gate0_stage13_20260922_141045.sql.gz
+```
