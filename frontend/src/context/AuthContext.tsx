@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { authApi } from '../api/auth';
 import type { AuthUser } from '../types/index';
 import { AuthContext } from './auth-context';
+import { disableWebPush } from '../utils/webpush';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -24,9 +25,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(me);
   };
 
-  const logout = () => {
-    localStorage.removeItem('access_token');
-    setUser(null);
+  const logout = async () => {
+    try { await disableWebPush(); } catch { /* local unsubscribe attempted even if CRM is offline */ }
+    finally {
+      localStorage.removeItem('access_token');
+      setUser(null);
+    }
   };
 
   return (

@@ -8,7 +8,7 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY tg_greeter.py greeting_text.py proxy_config.py signing.py login.py ./
+COPY tg_greeter.py approval_delivery.py greeting_text.py proxy_config.py signing.py login.py ./
 COPY message*.txt ./
 
 # Сессия монтируется томом снаружи и в образ не попадает.

@@ -1,3 +1,4 @@
+import { actualBalanceDue } from './prepayment';
 import { computePrepayment, DEFAULT_PREPAY_RATE } from './prepayment';
 
 describe('computePrepayment — предоплата и остаток', () => {
@@ -65,5 +66,14 @@ describe('computePrepayment — предоплата и остаток', () => {
 
   it('доля предоплаты по умолчанию — половина', () => {
     expect(DEFAULT_PREPAY_RATE).toBe(0.5);
+  });
+});
+
+describe('actual amount due on a client sticker', () => {
+  it('never treats an estimated deposit as received money', () => {
+    expect(actualBalanceDue(1000, null, 'READY')).toBe(1000);
+    expect(actualBalanceDue(1000, 300, 'READY')).toBe(700);
+    expect(actualBalanceDue(1000, 1200, 'READY')).toBe(-200);
+    expect(actualBalanceDue(1000, null, 'PAID')).toBe(0);
   });
 });

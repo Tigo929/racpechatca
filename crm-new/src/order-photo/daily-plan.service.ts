@@ -132,14 +132,7 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
     now: Date,
     manual = false,
   ): Promise<Omit<PlanResult, 'sent'>> {
-    const [
-      inWorkOrders,
-      readyOrders,
-      externalShipmentOrders,
-      unassignedCount,
-      appState,
-    ] =
-      await Promise.all([
+    const [inWorkOrders, readyOrders, unassignedCount] = await Promise.all([
       this.prisma.orderPhoto.findMany({
         where: {
           executorId: { not: null },
@@ -156,11 +149,14 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
           items: { select: { formatPaper: true, quantity: true } },
         },
       }),
+      // Готовые к выдаче — только самовывоз: заказы на отгрузку в план
+      // исполнителей не входят (блок «Отгрузки» убран по решению владельца).
       this.prisma.orderPhoto.findMany({
         where: {
           executorId: { not: null },
           productCategory: EnumProductCategory.PHOTO,
           status: { in: PLAN_READY_STATUSES },
+          deliveryMethod: EnumDeliveryMethod.PICKUP,
         },
         select: {
           numberOrder: true,
@@ -170,40 +166,11 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
           items: { select: { formatPaper: true, quantity: true } },
         },
       }),
-      this.prisma.orderPhoto.findMany({
-        where: {
-          productCategory: {
-            in: [EnumProductCategory.TSHIRT, EnumProductCategory.CANVAS],
-          },
-          deliveryMethod: { not: EnumDeliveryMethod.PICKUP },
-          status: { in: PLAN_READY_STATUSES },
-        },
-        select: {
-          numberOrder: true,
-          deliveryMethod: true,
-          items: { select: { formatPaper: true, quantity: true } },
-          tshirtItems: {
-            select: { color: true, size: true, quantity: true },
-          },
-          canvasItems: {
-            select: { formatCanvas: true, quantity: true },
-          },
-        },
-      }),
       this.prisma.orderPhoto.count({
         where: {
           executorId: null,
           productCategory: EnumProductCategory.PHOTO,
           status: { in: PLAN_IN_WORK_STATUSES },
-        },
-      }),
-      // «Старший дня» по отгрузкам — кого тегать в блоке отгрузок.
-      this.prisma.appState.findUnique({
-        where: { id: STATE_ID },
-        select: {
-          shipmentLead: {
-            select: { username: true, telegramUsername: true },
-          },
         },
       }),
     ]);
@@ -240,28 +207,6 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
       });
     }
 
-    if (externalShipmentOrders.length > 0) {
-      byExecutor.set('__external_shipments__', {
-        executor: { username: 'Отгрузки', telegramUsername: null },
-        inWork: [],
-        ready: externalShipmentOrders.map((order) => ({
-          numberOrder: order.numberOrder,
-          deliveryMethod: order.deliveryMethod,
-          items: [
-            ...order.items,
-            ...order.tshirtItems.map((i) => ({
-              formatPaper: `Футболка ${i.color}, ${i.size}`,
-              quantity: i.quantity,
-            })),
-            ...order.canvasItems.map((i) => ({
-              formatPaper: `Холст ${i.formatCanvas}`,
-              quantity: i.quantity,
-            })),
-          ],
-        })),
-      });
-    }
-
     const groups = [...byExecutor.values()];
     // Задач в плане больше нет, поэтому и «пусто» считается только
     // по заказам: иначе план уходил бы в группу с одним заголовком.
@@ -269,19 +214,12 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
       return { empty: true, orderCount: 0, message: null };
     }
 
-    const message = buildDailyPlanMessage(
-      groups,
-      now,
-      unassignedCount,
-      appState?.shipmentLead ?? null,
-      { manual },
-    );
+    const message = buildDailyPlanMessage(groups, now, unassignedCount, {
+      manual,
+    });
     return {
       empty: false,
-      orderCount:
-        inWorkOrders.length +
-        readyOrders.length +
-        externalShipmentOrders.length,
+      orderCount: inWorkOrders.length + readyOrders.length,
       message,
     };
   }

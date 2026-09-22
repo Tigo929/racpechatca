@@ -34,15 +34,6 @@ export const PLAN_READY_STATUSES: EnumStatus[] = [
   EnumStatus.DONE,
 ];
 
-/** Способы доставки, требующие отгрузки (всё, кроме самовывоза). */
-const DELIVERY_LABEL: Record<string, string> = {
-  YANDEX_PVZ: 'Яндекс ПВЗ',
-  OZON_PVZ: 'Ozon ПВЗ',
-  OZON_SELLER: 'Ozon Продавец',
-  WB_SELLER: 'WB Продавец',
-  PICKUP: 'Самовывоз',
-};
-
 /** Рабочее окно рассылки плана: 10:00–21:59 по Москве. */
 export function isWithinPlanWindow(date: Date): boolean {
   const hour = moscowHour(date);
@@ -64,22 +55,19 @@ export interface ReadyOrder {
 }
 
 /**
- * План дня — только про заказы.
+ * План дня — только про заказы исполнителей.
  *
  * Задачи отсюда убраны по решению владельца: у них есть своя ежедневная
  * рассылка, и в плане они дублировали её, растягивая сообщение вдвое.
- * План должен отвечать на один вопрос — что сегодня делать с заказами.
+ * Блок «Отгрузки» для старшего дня убран по той же причине (22.09.2026):
+ * он перечислял все заказы на отправку и делал утреннее сообщение длиннее
+ * самого плана. План должен отвечать на один вопрос — что сегодня делать
+ * исполнителям с их заказами.
  */
 export interface PlanGroup {
   executor: { username: string; telegramUsername: string | null };
   inWork: PlanOrder[];
   ready: ReadyOrder[];
-}
-
-/** «Старший дня» по отгрузкам — кого тегаем в блоке отгрузок. */
-export interface ShipmentLead {
-  username: string;
-  telegramUsername: string | null;
 }
 
 /**
@@ -155,36 +143,6 @@ function readyLine(order: ReadyOrder): string {
   return `📦 <code>${escapeHtml(order.numberOrder)}</code> · ${summarizeItems(order.items)}`;
 }
 
-/** Строка заказа в блоке отгрузок: 🚚 номер · состав — куда везти. */
-function shipmentLine(order: ReadyOrder): string {
-  const label = DELIVERY_LABEL[order.deliveryMethod] ?? order.deliveryMethod;
-  return `🚚 <code>${escapeHtml(order.numberOrder)}</code> · ${summarizeItems(order.items)} — ${escapeHtml(label)}`;
-}
-
-/**
- * Блок «Отгрузки» для старшего дня: собирает готовые заказы, требующие поставки
- * (всё, кроме самовывоза), тегает ответственного и напоминает оформить поставки
- * и проконтролировать отгрузку. Пусто (нет таких заказов) — блока нет.
- */
-export function buildShipmentBlock(
-  groups: PlanGroup[],
-  lead: ShipmentLead | null,
-): string | null {
-  const orders = groups
-    .flatMap((g) => g.ready)
-    .filter((o) => needsShipping(o.deliveryMethod))
-    .sort((a, b) => a.numberOrder.localeCompare(b.numberOrder));
-  if (orders.length === 0) return null;
-
-  const head = lead
-    ? `🚚 <b>ОТГРУЗКИ (${orders.length})</b> · старший дня: ${mentionFor(lead)}`
-    : `🚚 <b>ОТГРУЗКИ (${orders.length})</b>\n⚠️ Старший дня не назначен — назначьте в Настройках.`;
-
-  // Хвостовые инструкции убраны по просьбе владельца: список заказов и так
-  // понятен, а лишний текст только удлинял сообщение.
-  return [head, '', ...orders.map(shipmentLine)].join('\n');
-}
-
 function dayMonth(now: Date): string {
   // moscowDateKey → «2026-07-24»; берём день и месяц.
   const [, mm, dd] = moscowDateKey(now).split('-');
@@ -217,9 +175,9 @@ function orderWord(n: number): string {
  * у кого самая горящая задача в работе — тот выше. У каждого две подсекции:
  * «в работе» (что делать) и «готовы к выдаче» (самовывоз — клиент заберёт сам).
  *
- * Заказы, требующие отгрузки, в блок исполнителя НЕ попадают: они целиком
- * уходят в общий блок «Отгрузки» к старшему дня — иначе один и тот же заказ
- * дублировался в сообщении дважды.
+ * Заказы, требующие отгрузки, в план не входят: отгрузками занимается старший
+ * дня, а не исполнитель, и в утреннем сообщении их список только удлинял
+ * текст (владелец, 22.09.2026). Они по-прежнему видны в CRM.
  *
  * `manual` — сообщение вызвано кнопкой, а не расписанием: тогда вместо
  * «доброе утро» ставим нейтральный заголовок проверки со временем снимка.
@@ -228,14 +186,13 @@ export function buildDailyPlanMessage(
   groups: PlanGroup[],
   now: Date,
   unassignedCount = 0,
-  shipmentLead: ShipmentLead | null = null,
   options: { manual?: boolean } = {},
 ): string {
   const blocks = groups
     .slice()
     .sort((a, b) => executorKey(a, now) - executorKey(b, now))
     .map((group) => {
-      // Готовые к выдаче = только самовывоз; отгрузки ведёт старший дня.
+      // Готовые к выдаче = только самовывоз; отгрузки в план не входят.
       const readyForPickup = group.ready.filter(
         (o) => !needsShipping(o.deliveryMethod),
       );
@@ -271,7 +228,6 @@ export function buildDailyPlanMessage(
   const header = options.manual
     ? `🔎 <b>ПРОВЕРКА ПО ЗАКАЗАМ</b>\n${dayMonth(now)}, ${moscowHm(now)}`
     : `🌅 <b>ПЛАН НА ${dayMonth(now)}</b>\nДоброе утро!`;
-  const shipmentBlock = buildShipmentBlock(groups, shipmentLead);
   const unassigned =
     unassignedCount > 0
       ? `⚠️ <b>Без исполнителя: ${unassignedCount} ${orderWord(unassignedCount)}</b>\nНазначьте исполнителя, иначе заказ не попадёт ни к кому в план.`
@@ -279,11 +235,7 @@ export function buildDailyPlanMessage(
 
   // Каждый смысловой блок отделён линией и пустыми строками — так сообщение
   // читается по частям, а не одним потоком.
-  const sections = [
-    ...blocks,
-    ...(shipmentBlock ? [shipmentBlock] : []),
-    ...(unassigned ? [unassigned] : []),
-  ];
+  const sections = [...blocks, ...(unassigned ? [unassigned] : [])];
 
   return [header, ...sections.flatMap((s) => [DIVIDER, s])].join('\n\n');
 }

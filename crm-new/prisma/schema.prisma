@@ -1765,12 +1765,43 @@ model PrintApproval {
   /// Готовый лист согласования (PNG) в UPLOAD_DIR/approvals. Пусто у черновика.
   previewFile String?
   finalizedAt DateTime?
+  telegramDelivery ApprovalTelegramDelivery?
 
   createdById String?
   createdBy   User?   @relation("ApprovalAuthor", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@unique([orderId, version])
   @@index([orderId])
+}
+
+enum ApprovalDeliveryStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  UNKNOWN
+}
+
+/// One successful Telegram delivery per approval version. Image and recipient
+/// are captured at enqueue time; worker failures never cause an automatic resend.
+model ApprovalTelegramDelivery {
+  id String @id @default(uuid())
+  approvalId String @unique
+  approval PrintApproval @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  requestedById String
+  recipient String
+  caption String
+  image Bytes
+  finalizedAt DateTime
+  status ApprovalDeliveryStatus @default(PENDING)
+  claimToken String? @unique
+  claimedAt DateTime?
+  sentAt DateTime?
+  messageId Int?
+  errorCode String?
+
+  @@index([status, createdAt])
 }
 
 // ── Генератор главных фото карточек Ozon ──────────────────────────────────
@@ -1957,8 +1988,29 @@ model PushSubscription {
   // Кто подписался — на случай, если захотим слать не всем.
   userId    String?
   createdAt DateTime @default(now())
+  deliveries LeadPushDelivery[]
 
   @@index([userId])
+}
+
+/// Durable per-device outbox; created in the same transaction as a site lead.
+model LeadPushDelivery {
+  id String @id @default(uuid())
+  orderId String
+  subscriptionId String
+  subscription PushSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  body String
+  createdAt DateTime @default(now())
+  status String @default("PENDING")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  claimedUntil DateTime?
+  claimToken String?
+  sentAt DateTime?
+  errorCode String?
+
+  @@unique([orderId, subscriptionId])
+  @@index([status, nextAttemptAt])
 }
 
 model PushConfig {

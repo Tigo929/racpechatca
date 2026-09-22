@@ -73,6 +73,16 @@ jobs:
         working-directory: frontend
         run: npm test
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Тесты Telegram-клиента (без сети Telegram)
+        working-directory: greeter
+        run: |
+          pip install -r requirements.txt
+          python -m unittest test_approval_delivery test_signing test_proxy_config test_greeting_text
+
   build:
     needs: test
     runs-on: ubuntu-latest

@@ -1,3 +1,4 @@
+import { fulfillmentError } from './fulfillment';
 import {
   BadRequestException,
   ConflictException,
@@ -142,27 +143,6 @@ const REVIEW_WAITING_STATUSES: EnumStatus[] = [
   EnumStatus.PAID,
 ];
 
-const SHIPMENT_REQUIRED_DELIVERY_METHODS: EnumDeliveryMethod[] = [
-  EnumDeliveryMethod.YANDEX_PVZ,
-  EnumDeliveryMethod.OZON_PVZ,
-  EnumDeliveryMethod.OZON_SELLER,
-  EnumDeliveryMethod.WB_SELLER,
-];
-
-const SHIPMENT_CREATABLE_FROM: EnumStatus[] = [
-  EnumStatus.READY,
-  EnumStatus.SHIPMENT_CREATED,
-  EnumStatus.DONE,
-  EnumStatus.READY_FOR_REVIEW,
-  EnumStatus.SENT,
-];
-
-function needsShipmentStatus(order: {
-  deliveryMethod: EnumDeliveryMethod;
-}): boolean {
-  return SHIPMENT_REQUIRED_DELIVERY_METHODS.includes(order.deliveryMethod);
-}
-
 function isExternalProductionCategory(
   productCategory: EnumProductCategory,
 ): boolean {
@@ -234,6 +214,15 @@ export class OrderPhotoService {
 
       const freePrice = dto.freePrice ?? false;
       const productCategory = dto.productCategory ?? EnumProductCategory.PHOTO;
+      if (dto.deliveryMethod === EnumDeliveryMethod.PRODUCTION_MSK && productCategory !== EnumProductCategory.CANVAS) {
+        throw new BadRequestException('Доставка производства доступна только для холстов.');
+      }
+      const deliveryCost = dto.deliveryMethod === EnumDeliveryMethod.PICKUP ? 0 : dto.deliveryCost;
+      if ((dto.tshirtItems?.length && productCategory !== EnumProductCategory.TSHIRT) ||
+          (dto.canvasItems?.length && productCategory !== EnumProductCategory.CANVAS)) {
+        throw new BadRequestException('Позиции не соответствуют категории заказа.');
+      }
+
 
       // Внешние продукты делает подрядчик, а не наш исполнитель — назначать некого.
       if (dto.executorId && isExternalProductionCategory(productCategory)) {
@@ -364,7 +353,7 @@ export class OrderPhotoService {
       const totalOrder =
         (dto.customTotal != null
           ? dto.customTotal
-          : positionsTotal + dto.deliveryCost) +
+          : positionsTotal + deliveryCost) +
         designDevelopmentCost +
         urgencyFee;
 
@@ -389,7 +378,7 @@ export class OrderPhotoService {
             (await this.partnerSettings.get(tx)).maxLinkTemplate,
           ),
           deliveryMethod: dto.deliveryMethod,
-          deliveryCost: dto.deliveryCost,
+          deliveryCost,
           designDevelopmentCost,
           urgencyFee,
           note: dto.note,
@@ -525,16 +514,8 @@ export class OrderPhotoService {
         `Не удалось уведомить о заявке ${created.numberOrder}: ${String(error)}`,
       );
     }
-    // Web Push — отдельно от Telegram: сбой одного канала не должен отменять
-    // другой. Приходит и при закрытой вкладке CRM.
-    await this.push.sendToAll({
-      title: '🖨 Новая заявка с сайта',
-      body:
-        [dto.name, dto.productName, dto.quantity ? `${dto.quantity} шт` : '']
-          .filter(Boolean)
-          .join(' · ') || 'Пришла заявка — её нужно обработать',
-      url: '/crm/leads',
-    });
+    // Web Push has its own durable queue, populated in createLeadTx. Telegram
+    // retries cannot delay it and a process restart cannot lose a committed job.
   }
 
   private async createLeadTx(dto: DtoCreateLead) {
@@ -582,7 +563,7 @@ export class OrderPhotoService {
       const remoteContact = dto.contactValue?.trim() ?? '';
       const communicationValue =
         contactMethod === 'telegram'
-          ? `@${tgRaw}`
+          ? (/^https?:\/\//i.test(tgRaw) ? tgRaw : `@${tgRaw}`)
           : contactMethod === 'max'
             ? remoteContact || phone
             : phone || remoteContact;
@@ -634,7 +615,7 @@ export class OrderPhotoService {
         dto.leadId ? `ID заявки: ${dto.leadId}` : null,
         `Имя: ${dto.name}`,
         phone ? `Телефон: ${phone}` : null,
-        contactMethod === 'telegram' && tgRaw ? `Telegram: @${tgRaw}` : null,
+        contactMethod === 'telegram' && tgRaw ? `Telegram: ${communicationValue}` : null,
         contactMethod === 'max' && dto.contactValue ? `MAX: ${dto.contactValue}` : null,
         contactMethod === 'email' && dto.contactValue ? `Email: ${dto.contactValue}` : null,
         dto.productName ? `Товар: ${dto.productName}` : null,
@@ -682,7 +663,7 @@ export class OrderPhotoService {
         dto.submittedAt ? `Отправлено на сайте: ${dto.submittedAt}` : null,
       ].filter(Boolean);
 
-      return tx.orderPhoto.create({
+      const created = await tx.orderPhoto.create({
         data: {
           numberOrder: fullDate(lengthOrder),
           externalRequestId: dto.leadId,
@@ -711,6 +692,8 @@ export class OrderPhotoService {
         },
         include: { items: true, tshirtItems: true, canvasItems: true },
       });
+      await this.push.enqueueLead(tx, created, dto.productName);
+      return created;
     });
   }
 
@@ -1348,53 +1331,8 @@ export class OrderPhotoService {
     const isManager = userRole === EnumRole.ORDER_MANAGER;
 
     const newStatus = dto.status;
-    const shipmentRequired = needsShipmentStatus(order);
-    const externalProduction = isExternalProductionCategory(
-      order.productCategory,
-    );
-
-    if (newStatus === EnumStatus.SHIPMENT_CREATED) {
-      if (!shipmentRequired) {
-        throw new BadRequestException(
-          'Статус «Отгрузка создана» нужен только для заказов с доставкой.',
-        );
-      }
-      const canCreateShipment =
-        SHIPMENT_CREATABLE_FROM.includes(order.status) &&
-        !(externalProduction && order.status === EnumStatus.SENT);
-      if (!canCreateShipment) {
-        throw new BadRequestException(
-          'Сначала переведите заказ в «Готов», затем создавайте отгрузку.',
-        );
-      }
-    }
-
-    if (
-      shipmentRequired &&
-      !externalProduction &&
-      newStatus === EnumStatus.SENT &&
-      order.status !== EnumStatus.SHIPMENT_CREATED &&
-      order.status !== EnumStatus.SENT
-    ) {
-      throw new BadRequestException(
-        'Сначала поставьте статус «Отгрузка создана», затем переводите заказ в «Отправлен».',
-      );
-    }
-
-    if (shipmentRequired && newStatus === EnumStatus.PAID) {
-      const readyForPayment =
-        order.status === EnumStatus.PAID ||
-        (externalProduction
-          ? order.status === EnumStatus.SHIPMENT_CREATED
-          : order.status === EnumStatus.SENT);
-      if (!readyForPayment) {
-        throw new BadRequestException(
-          externalProduction
-            ? 'Сначала поставьте статус «Отгрузка создана», затем переводите заказ в «Оплачен».'
-            : 'Сначала переведите доставочный заказ в «Отправлен», затем в «Оплачен».',
-        );
-      }
-    }
+    const transitionError = fulfillmentError(order, newStatus);
+    if (transitionError) throw new BadRequestException(transitionError);
 
     // Исполнитель может двигать рабочий поток в любом направлении до оплаты.
     // PAID закрывает деньги и остаётся админским действием; CANCELLED тоже
@@ -1467,6 +1405,21 @@ export class OrderPhotoService {
         },
       });
       if (!lockedOrder) throw new NotFoundException('Заказ не найден');
+      // Recheck after locking: delivery/status/assignee may have changed while waiting.
+      const lockedError = fulfillmentError(lockedOrder, newStatus);
+      if (lockedError) throw new BadRequestException(lockedError);
+      if (!isAdmin && !isManager && lockedOrder.executorId !== userId) {
+        throw new ForbiddenException('Вы не назначены исполнителем этого заказа.');
+      }
+      if (newStatus === EnumStatus.SENT && earnsStaffSalary(lockedOrder.productCategory) && !lockedOrder.executorId) {
+        throw new BadRequestException('Сначала назначьте исполнителя.');
+      }
+      if (newStatus === EnumStatus.SENT && lockedOrder.productCategory === EnumProductCategory.TSHIRT &&
+        (!hasTechSpecFiles(lockedOrder) || !hasProductionItems(lockedOrder))) {
+        throw new BadRequestException('Для передачи в производство нужны позиции и ТЗ-фото.');
+      }
+      if (lockedOrder.status === newStatus) return lockedOrder;
+
 
       // Записываем историю изменения статуса
       const history = await tx.statusHistory.create({
@@ -1484,7 +1437,8 @@ export class OrderPhotoService {
       // остаток мы не ведём и при смене статуса ничего не списываем.)
       if (
         lockedOrder.status === EnumStatus.SENT &&
-        newStatus !== EnumStatus.SENT
+        newStatus !== EnumStatus.SENT &&
+        newStatus !== EnumStatus.PAID
       ) {
         // Возврат из «Отправлен» снимает начисления и исполнителя, и менеджера.
         const activeAccruals = await tx.salaryAccrual.findMany({
@@ -1850,91 +1804,168 @@ export class OrderPhotoService {
     return this.getOrderById(id, userId, userRole);
   }
 
-  async updateOrder(idOrder: string, dto: DtoUpdateOrder) {
-    const order = await this.getOrderById(idOrder, '', EnumRole.ADMIN);
-    const deliveryChanged = dto.deliveryCost !== undefined;
-    const designChanged = dto.designDevelopmentCost !== undefined;
-    const urgencyChanged =
-      dto.urgencyFee !== undefined || dto.isUrgent !== undefined;
-    // Доставка, дизайн и срочность влияют на сумму заказа и на начисления.
-    const financialChanged = deliveryChanged || designChanged || urgencyChanged;
-    if (financialChanged) {
-      await this.financialIntegrity.assertOrderFinanciallyEditable(idOrder);
-    }
-    const deliveryCost = dto.deliveryCost ?? order.deliveryCost;
-    const designDevelopmentCost = designChanged
-      ? Math.max(0, dto.designDevelopmentCost!)
-      : order.designDevelopmentCost;
-    // Сняли срочность — снимается и плата за неё, иначе она осталась бы в чеке
-    // строкой, которой в заказе больше нет.
-    const isUrgent = dto.isUrgent !== undefined ? dto.isUrgent : order.isUrgent;
-    const urgencyFee = !isUrgent
-      ? 0
-      : dto.urgencyFee !== undefined
-        ? Math.max(0, dto.urgencyFee)
-        : order.urgencyFee;
-    if (dto.urlCommunication) {
-      const contactError = validateCommunicationValue(
-        dto.communicationPlatform ?? order.communicationPlatform,
-        dto.urlCommunication,
-      );
-      if (contactError) throw new BadRequestException(contactError);
-    }
-    const maxLinkTemplate = (await this.partnerSettings.get()).maxLinkTemplate;
-    const updated = await this.prisma.orderPhoto.update({
-      where: { id: idOrder },
-      include: {
-        items: true,
-        tshirtItems: true,
-        canvasItems: true,
-        executor: { select: { id: true, username: true } },
-      },
-      data: {
-        sourceOrder: dto.sourceOrder ?? order.sourceOrder,
-        communicationPlatform:
+  async updateOrder(
+    idOrder: string,
+    dto: DtoUpdateOrder,
+    changedBy = 'system',
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "OrderPhoto" WHERE "id" = ${idOrder} FOR UPDATE`;
+      const order = await tx.orderPhoto.findUnique({
+        where: { id: idOrder },
+        include: { items: true, tshirtItems: true, canvasItems: true },
+      });
+      if (!order) throw new NotFoundException('Заказ не найден');
+      const deliveryMethod = dto.deliveryMethod ?? order.deliveryMethod;
+      const methodChanged = deliveryMethod !== order.deliveryMethod;
+      if (
+        deliveryMethod === EnumDeliveryMethod.PRODUCTION_MSK &&
+        order.productCategory !== EnumProductCategory.CANVAS
+      ) {
+        throw new BadRequestException(
+          'Доставка производства доступна только для холстов.',
+        );
+      }
+      const deliveryCost =
+        deliveryMethod === EnumDeliveryMethod.PICKUP &&
+        (dto.deliveryMethod !== undefined || dto.deliveryCost !== undefined)
+          ? 0
+          : (dto.deliveryCost ?? order.deliveryCost);
+      if (
+        methodChanged &&
+        (order.status === EnumStatus.PAID ||
+          order.status === EnumStatus.COMPLETED ||
+          (order.productCategory === EnumProductCategory.PHOTO &&
+            order.status === EnumStatus.SENT))
+      ) {
+        throw new ConflictException(
+          'Нельзя менять способ получения уже выданного или закрытого заказа.',
+        );
+      }
+      // A shipping label belongs to the old delivery method, never to a new one.
+      const resetShipment =
+        (methodChanged || deliveryMethod === EnumDeliveryMethod.PICKUP) &&
+        order.status === EnumStatus.SHIPMENT_CREATED;
+      const deliveryChanged = deliveryCost !== order.deliveryCost;
+      const designChanged =
+        dto.designDevelopmentCost !== undefined &&
+        dto.designDevelopmentCost !== order.designDevelopmentCost;
+      const urgencyChanged =
+        (dto.urgencyFee !== undefined && dto.urgencyFee !== order.urgencyFee) ||
+        (dto.isUrgent !== undefined && dto.isUrgent !== order.isUrgent);
+      // Доставка, дизайн и срочность влияют на сумму заказа и на начисления.
+      const financialChanged =
+        deliveryChanged || designChanged || urgencyChanged;
+      if (financialChanged) {
+        if (
+          order.status === EnumStatus.PAID ||
+          order.status === EnumStatus.COMPLETED
+        )
+          throw new ConflictException(
+            'Финансовые условия закрытого заказа нельзя менять.',
+          );
+        await this.financialIntegrity.assertOrderFinanciallyEditable(
+          idOrder,
+          tx,
+        );
+      }
+      const designDevelopmentCost = designChanged
+        ? Math.max(0, dto.designDevelopmentCost!)
+        : order.designDevelopmentCost;
+      // Сняли срочность — снимается и плата за неё, иначе она осталась бы в чеке
+      // строкой, которой в заказе больше нет.
+      const isUrgent =
+        dto.isUrgent !== undefined ? dto.isUrgent : order.isUrgent;
+      const urgencyFee = !isUrgent
+        ? 0
+        : dto.urgencyFee !== undefined
+          ? Math.max(0, dto.urgencyFee)
+          : order.urgencyFee;
+      if (
+        dto.urlCommunication !== undefined ||
+        dto.communicationPlatform !== undefined
+      ) {
+        const contactError = validateCommunicationValue(
           dto.communicationPlatform ?? order.communicationPlatform,
-        urlCommunication: dto.urlCommunication
-          ? buildCommunicationUrl(
-              dto.communicationPlatform ?? order.communicationPlatform,
-              dto.urlCommunication,
-              maxLinkTemplate,
-            )
-          : order.urlCommunication,
-        deliveryMethod: dto.deliveryMethod ?? order.deliveryMethod,
-        deliveryCost,
-        designDevelopmentCost,
-        urgencyFee,
-        // Сумма = pricePosition (фото + футболки + холсты) + доставка + дизайн + срочность.
-        totalOrder:
-          order.items.reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
-          order.tshirtItems.reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
-          order.canvasItems.reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
-          deliveryCost +
-          designDevelopmentCost +
+          dto.urlCommunication ?? order.urlCommunication,
+        );
+        if (contactError) throw new BadRequestException(contactError);
+      }
+      const maxLinkTemplate = (await this.partnerSettings.get(tx))
+        .maxLinkTemplate;
+      const updated = await tx.orderPhoto.update({
+        where: { id: idOrder },
+        include: {
+          items: true,
+          tshirtItems: true,
+          canvasItems: true,
+          executor: { select: { id: true, username: true } },
+        },
+        data: {
+          sourceOrder: dto.sourceOrder ?? order.sourceOrder,
+          communicationPlatform:
+            dto.communicationPlatform ?? order.communicationPlatform,
+          urlCommunication: dto.urlCommunication
+            ? buildCommunicationUrl(
+                dto.communicationPlatform ?? order.communicationPlatform,
+                dto.urlCommunication,
+                maxLinkTemplate,
+              )
+            : order.urlCommunication,
+          deliveryMethod,
+          ...(resetShipment
+            ? {
+                status: EnumStatus.READY,
+                statusChangedAt: new Date(),
+                shipmentRemindersSent: 0,
+              }
+            : {}),
+          deliveryCost,
+          designDevelopmentCost,
           urgencyFee,
-        note: dto.note ?? order.note,
-        isUrgent,
-        tshirtModel: dto.tshirtModel ?? order.tshirtModel,
-        // Предоплата записывается реальной суммой и дальше не пересчитывается:
-        // меняется только остаток при правках заказа (см. computePrepayment).
-        // null — снять запись (вернуться к ориентиру 50%); undefined — не трогать.
-        prepaidAmount:
-          dto.prepaidAmount === undefined
-            ? order.prepaidAmount
-            : dto.prepaidAmount === null
-              ? null
-              : Math.max(0, dto.prepaidAmount),
-      },
+          // Сумма = pricePosition (фото + футболки + холсты) + доставка + дизайн + срочность.
+          totalOrder:
+            order.totalOrder +
+            deliveryCost -
+            order.deliveryCost +
+            designDevelopmentCost -
+            order.designDevelopmentCost +
+            urgencyFee -
+            order.urgencyFee,
+          note: dto.note ?? order.note,
+          isUrgent,
+          tshirtModel: dto.tshirtModel ?? order.tshirtModel,
+          // Предоплата записывается реальной суммой и дальше не пересчитывается:
+          // меняется только остаток при правках заказа (см. computePrepayment).
+          // null — снять запись (вернуться к ориентиру 50%); undefined — не трогать.
+          prepaidAmount:
+            dto.prepaidAmount === undefined
+              ? order.prepaidAmount
+              : dto.prepaidAmount === null
+                ? null
+                : Math.max(0, dto.prepaidAmount),
+        },
+      });
+      // Доставка/дизайн влияют на сумму → подгоняем невыплаченные начисления.
+      if (financialChanged) {
+        await this.financialIntegrity.recalcPendingAccrual(
+          idOrder,
+          updated.totalOrder,
+          updated.deliveryCost,
+          tx,
+        );
+      }
+      if (resetShipment)
+        await tx.statusHistory.create({
+          data: {
+            orderId: idOrder,
+            fromStatus: order.status,
+            toStatus: EnumStatus.READY,
+            changedBy,
+          },
+        });
+      return updated;
     });
-    // Доставка/дизайн влияют на сумму → подгоняем невыплаченные начисления.
-    if (financialChanged) {
-      await this.financialIntegrity.recalcPendingAccrual(
-        idOrder,
-        updated.totalOrder,
-        updated.deliveryCost,
-      );
-    }
-    return updated;
   }
 
   /** Отметить, оставил ли клиент отзыв (вручную из списка заказов). */

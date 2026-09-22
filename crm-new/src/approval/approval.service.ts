@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -27,6 +28,8 @@ import {
 import { MockupService } from './mockup.service';
 import { DtoCreateApproval } from './dto/create-approval.dto';
 import { DtoUpdateApproval } from './dto/update-approval.dto';
+import { deliverySelect } from './approval-delivery-state';
+import { randomUUID } from 'node:crypto';
 
 const SIZE_LABELS: Record<EnumTshirtSize, string> = {
   XS: 'XS',
@@ -46,6 +49,7 @@ const DEFAULT_WIDTH_MM = 280;
 
 const approvalInclude = {
   createdBy: { select: { id: true, username: true } },
+  telegramDelivery: { select: deliverySelect },
 } satisfies Prisma.PrintApprovalInclude;
 
 @Injectable()
@@ -226,24 +230,42 @@ export class ApprovalService {
     const png = await this.render.renderSheet(
       await this.buildRenderInput(approval),
     );
-    // Имя файла детерминированное: повторное «Готово» переписывает лист той
-    // же версии, а не плодит копии. Прошлые версии заказа при этом целы —
-    // у них своя цифра в имени.
+    // Immutable filename: a concurrent send must never read a half-written or
+    // replaced sheet. Old sheets are removed once the new reference is saved.
     const filename = await this.storage.saveSheet(
-      approval.id,
+      randomUUID(),
       approval.version,
       png,
     );
 
-    const updated = await this.prisma.printApproval.update({
-      where: { id },
-      data: {
-        previewFile: filename,
-        finalizedAt: new Date(),
-        status: approval.status === 'DRAFT' ? 'READY' : approval.status,
-      },
-      include: approvalInclude,
-    });
+    const finalizedAt = new Date();
+    const updated = await this.prisma.printApproval
+      .update({
+        where: { id, updatedAt: approval.updatedAt },
+        data: {
+          previewFile: filename,
+          finalizedAt,
+          updatedAt: finalizedAt,
+          status: approval.status === 'DRAFT' ? 'READY' : approval.status,
+        },
+        include: approvalInclude,
+      })
+      .catch(async (error: unknown) => {
+        await this.storage.removeSheet(filename);
+        if (
+          typeof error === 'object' &&
+          error &&
+          'code' in error &&
+          error.code === 'P2025'
+        ) {
+          throw new ConflictException(
+            'Макет изменился во время формирования. Нажмите «Готово» ещё раз',
+          );
+        }
+        throw error;
+      });
+    if (approval.previewFile !== filename)
+      await this.storage.removeSheet(approval.previewFile);
     return this.toView(updated);
   }
 
@@ -264,6 +286,16 @@ export class ApprovalService {
 
   async remove(id: string) {
     const approval = await this.load(id);
+    if (
+      approval.telegramDelivery &&
+      ['PENDING', 'SENDING', 'UNKNOWN'].includes(
+        approval.telegramDelivery.status,
+      )
+    ) {
+      throw new BadRequestException(
+        'Макет отправляется или результат отправки не подтверждён. Сначала проверьте переписку в Telegram',
+      );
+    }
     for (const { state } of filledSides(parseSides(approval.sides))) {
       await this.storage.removePrint(state.printFile);
     }
