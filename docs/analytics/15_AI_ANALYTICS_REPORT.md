@@ -3,6 +3,7 @@
 ## Статус
 
 ```text
+ACCEPTED / PRODUCTION PASS (Reviewer, 23.09.2026). Этап завершён.
 ROLLED_OUT / PASS — выложено в production 23.09.2026, 00:20–00:28 MSK.
 Production SHA: 9ccd29351a728c7e43f58c1ad7b7bba894e6e6af (backend и frontend, /health.build тот же).
 Цель отката: 6323bc6e715bb9dce3a18dca4464f76ea320269b.
