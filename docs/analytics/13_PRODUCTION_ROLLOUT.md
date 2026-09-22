@@ -746,3 +746,95 @@ CRM:    master 40efd48; backend f19ce82f4842 (revision 40efd48c48005ea0f32d1f670
   Gate A:  git revert 806e328 51f27ae в master → push → CI → auto-update (миграций нет, БД не трогается)
   Gate 0:  откат образа CRM на :0d7d7b2…; данные миграции — из premigration_gate0_stage13_20260922_141045.sql.gz
 ```
+
+---
+
+## § 15. FIX STAGE 13 (22.09.2026) — два подтверждённых дефекта Gate C
+
+Исправляются только дефекты самого инструмента выкладки и диагностики. Логика этапов 06–12,
+семантика оценки роста (этап 11), пороги и контракт состояний не менялись.
+
+### FIX_01 — сверка сборки и гонка двух запусков (`deploy/auto-update.sh`)
+
+Симптом Gate C: «ВНИМАНИЕ: photo-web-1 отвечает build=<пусто>, а образ помечен 441d795…» при
+полностью верной сборке; плюс задвоенные строки «nginx перечитан» / «Холст прогрет» / «Итог».
+
+Причина: у `photo-web-1` нет healthcheck, скрипт считал контейнер готовым по факту запуска
+(`running:none`) и спрашивал `/api/health` через ~2 с — приложение ещё не слушало порт;
+одновременно ручной запуск наложился на тик таймера в 14:44:54.
+
+Сделано:
+
+```text
+verify_build  — ограниченное ожидание готовности: VERIFY_BUILD_ATTEMPTS (12) × VERIFY_BUILD_INTERVAL (5 с) = 60 с
+                build совпал                → PASS (в журнале номер попытки)
+                build непустой и другой     → немедленный FAIL, без повторов
+                пусто / мусор / 502 / HTML  → повтор до исчерпания попыток, затем FAIL
+                метки revision нет          → сверять нечего, PASS (как и раньше)
+acquire_lock  — единый неблокирующий замок на весь проход: flock -n (сервер), mkdir — резерв,
+                замок от несуществующего процесса снимается. Второй запуск пишет
+                «Пропуск: обновление уже идёт» и выходит с кодом 0, НЕ вставая в очередь.
+main()        — весь проход обёрнут в функцию; при AUTO_UPDATE_SOURCE_ONLY=1 файл только
+                отдаёт функции (для тестов), сам ничего не выполняет.
+```
+
+Тесты — `crm-new/src/deploy-auto-update.spec.ts` (12 случаев, скрипт подключается и исполняется
+настоящим bash, docker подменён): мгновенное совпадение → PASS без ожидания; медленный старт
+(пустые ответы → верный) → PASS; настоящее расхождение build → FAIL сразу; расхождение после
+медленного старта → FAIL; контейнер не ответил ни разу → FAIL после N попыток; мусор вместо JSON
+→ ограниченные повторы → FAIL; мусор, а следом верный ответ → PASS; образ без метки → PASS;
+замок занят → второй процесс выходит за <5 с с кодом 3, после release берёт замок; протухший
+замок снимается; полный проход при занятом замке пишет «Пропуск» и не трогает docker.
+Статические инварианты добавлены в `crm-new/src/deploy-safety.spec.ts` (границы ожидания,
+`flock` только с `-n`/`-u`, `trap release_lock EXIT`).
+
+### FIX_02 — ложное `GROWTH_RUN_FAILED` (`crm-new/src/analytics/ops/ops-status.service.ts`)
+
+Диагностика спрашивала `trigger: 'scheduled'`, а этап 11 пишет `'manual' | 'scheduler'`
+(в production: manual 8, scheduler 7, последняя автооценка 22.09 00:27) — ответ всегда пустой,
+подсистема `growthEvaluations` постоянно висела в DEGRADED с WARNING `GROWTH_RUN_FAILED`.
+
+Сделано: значение берётся из типа контракта этапа 11 (`GrowthEvaluation['trigger']`), опечатка
+больше не соберётся. Семантика оценки не менялась: провалившийся автопрогон строки не пишет,
+поэтому «свежего провала» в журнале нет — он виден как отставание свежести, это прежний контракт.
+
+Тесты — `crm-new/src/analytics/ops/ops-status.service.spec.ts` (7 случаев через фальшивую базу,
+которая фильтрует строки ровно по переданному `where`): запрос идёт с `trigger: 'scheduler'`;
+свежая автооценка → HEALTHY и без условия; автооценка старше 26 ч → `GROWTH_RUN_FAILED`;
+свежая ручная оценка не подменяет свежесть автооценки; автооценок нет вовсе → `GROWTH_RUN_FAILED`;
+активных изменений нет → HEALTHY; раздел выключен → DISABLED.
+
+### Прогон тестов (локально, production не затронут)
+
+```text
+crm-new: jest — 111 suites / 1217 tests PASS (в т.ч. 12 новых shell-кейсов и 7 ops-кейсов)
+crm-new: nest build — OK; eslint по изменённым файлам — чисто
+web-photo: node scripts/ci-safety-check.mjs — OK (production-метки только с feature/cms-admin)
+```
+
+### § 15.1 Мини-rollout FIX (выполнять только после APPROVE Reviewer)
+
+Без миграций, без изменения данных, без ротации секретов. Gate 0/A/B/C не повторяются.
+
+```text
+PRECHECK  git log master --oneline -1 (кандидат FIX смержен, CI зелёный, образ :production собран)
+          docker image inspect ... :production → revision == одобренный SHA
+          systemctl is-active auto-update.timer; снимок /analytics/ops/status (ожидаем прежнее
+          ложное GROWTH_RUN_FAILED — он и должен исчезнуть)
+ACTION    cp /opt/deploy/auto-update.sh /opt/deploy/auto-update.sh.bak-fix13-<ts>
+          install -m 755 <новый скрипт> /opt/deploy/auto-update.sh   (bash -n перед установкой)
+          обновление backend делает сам таймер (образ :production уже новый)
+VERIFY    1) build identity: revision образа == /health.build == одобренный SHA;
+          2) журнал: «Сборка подтверждена: … (попытка N)», ни одного «работает не та сборка»;
+          3) замок: ручной запуск во время работы таймера пишет «Пропуск …» и выходит 0;
+          4) /analytics/ops/status: growthEvaluations = HEALTHY, GROWTH_RUN_FAILED отсутствует,
+             lastScheduledEvaluationAt — реальная дата автооценки;
+          5) миграций по-прежнему 86, таблиц 64, пересоздан только backend
+STOP      настоящее расхождение build; применение миграции; пересоздание лишних контейнеров;
+          регресс этапов 06–12; утечка секретов/PII; ложный HEALTHY
+ROLLBACK  cp /opt/deploy/auto-update.sh.bak-fix13-<ts> /opt/deploy/auto-update.sh
+          IMAGE_TAG=<предыдущий sha> /opt/deploy/auto-update.sh (только вместе с compose-тегом)
+```
+
+После успешного мини-rollout rollout возобновляется с **Gate D** (≥ 2 автоматических цикла
+планировщика) → E → F (только dry-run) → G (без ротаций) → H (только фиксация). Stage 14 не начинается.

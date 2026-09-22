@@ -10,10 +10,18 @@ import {
   metrikaOrdersSyncEnabledFromEnv,
 } from '../../metrika/metrika.config';
 import { dashboardEnabledFromEnv } from '../dashboard/analytics-dashboard.controller';
+import type { GrowthEvaluation } from '../growth/growth-contract';
 import { growthEnabledFromEnv } from '../growth/growth-flags';
 import { insightsEnabledFromEnv } from '../insights/insights-flags';
 import type { OpsInput, OpsStatus } from './ops-contract';
 import { computeOpsStatus } from './ops-status.compute';
+
+/**
+ * Значение trigger, которым этап 11 помечает автоматические оценки роста.
+ * Тип взят из контракта этапа 11 — опечатка вроде 'scheduled' больше не
+ * соберётся, а молчаливое расхождение диагностики с фактом не повторится.
+ */
+const GROWTH_SCHEDULER_TRIGGER: GrowthEvaluation['trigger'] = 'scheduler';
 
 /**
  * Сбор фактов для операционной диагностики (этап 13, раздел 6). Только чтение
@@ -278,7 +286,13 @@ export class OpsStatusService {
     const [active, last] = await Promise.all([
       this.prisma.analyticsChange.count({ where: { status: 'ACTIVE' } }),
       this.prisma.analyticsChangeEvaluation.findFirst({
-        where: { trigger: 'scheduled' },
+        // Этап 11 пишет ровно два значения: 'manual' и 'scheduler'
+        // (GROWTH_EVALUATION_TRIGGER). Диагностика спрашивала несуществующее
+        // 'scheduled' — ответ всегда был пустой, и на боевом стенде
+        // 22.09.2026 висел ложный GROWTH_RUN_FAILED при работающей автооценке.
+        // Ручные оценки здесь не считаются намеренно: свежесть автооценки
+        // они не подтверждают.
+        where: { trigger: GROWTH_SCHEDULER_TRIGGER },
         orderBy: { evaluatedAt: 'desc' },
         select: { evaluatedAt: true },
       }),

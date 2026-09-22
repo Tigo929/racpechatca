@@ -143,6 +143,42 @@ describe('auto-update и compose: детерминированная выкла�
     );
   });
 
+  it('сверка сборки ограничена по времени: попытки и интервал заданы явно (FIX_01)', () => {
+    expect(script).toMatch(
+      /VERIFY_BUILD_ATTEMPTS="\$\{VERIFY_BUILD_ATTEMPTS:-\d+\}"/,
+    );
+    expect(script).toMatch(
+      /VERIFY_BUILD_INTERVAL="\$\{VERIFY_BUILD_INTERVAL:-\d+\}"/,
+    );
+    const attempts = Number(
+      /VERIFY_BUILD_ATTEMPTS:-(\d+)/.exec(script)?.[1] ?? 0,
+    );
+    const interval = Number(
+      /VERIFY_BUILD_INTERVAL:-(\d+)/.exec(script)?.[1] ?? 0,
+    );
+    // ждать дольше следующего тика таймера (5 минут) бессмысленно
+    expect(attempts * interval).toBeGreaterThanOrEqual(30);
+    expect(attempts * interval).toBeLessThanOrEqual(300);
+  });
+
+  it('ручной запуск и таймер не идут парой: замок берётся без ожидания, второй проход выходит (FIX_01)', () => {
+    expect(script).toMatch(/acquire_lock\(\)/);
+    expect(script).toMatch(/flock -n 9/);
+    expect(script).toMatch(
+      /if ! acquire_lock; then\s+log "Пропуск: обновление уже идёт[^"]*"\s+exit 0/,
+    );
+    // именно неблокирующий захват: ждать чужого прохода нельзя, следующий тик
+    // через 5 минут — поэтому у каждого вызова flock только -n (взять) или -u (снять)
+    const flockFlags = script
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .map((l) => /(?:^|[;&|()]\s*)flock\s+(-\S+)/.exec(l.trim())?.[1])
+      .filter((f): f is string => Boolean(f));
+    expect(flockFlags.length).toBeGreaterThan(0);
+    for (const flag of flockFlags) expect(['-n', '-u']).toContain(flag);
+    expect(script).toMatch(/trap release_lock EXIT/);
+  });
+
   it('compose: миграции применяются на старте контейнера штатным migrate deploy, без migrate dev', () => {
     expect(compose).toMatch(
       /npx prisma migrate deploy && node dist\/src\/main/,
