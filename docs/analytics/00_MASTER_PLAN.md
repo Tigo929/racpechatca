@@ -1409,7 +1409,9 @@ failure recovery
 Статус:
 
 ```text
-TODO
+PLAN_READY_FOR_REVIEW (22.09.2026) — docs/analytics/14_FINAL_ACCEPTANCE.md.
+Baseline приёмки: CRM master fe88cfe (точка, принятая после этапа 13), сайт 441d795.
+Этап — только чтение production; исполнение после команды Reviewer «СТАРТ».
 ```
 
 Цель:
