@@ -436,6 +436,7 @@ CANCELLED, PROBLEM — вне цепочки
 | Секреты / PII | SECRET_FOUND=no (оба репозитория дерево+история, логи 7 д, API); PII в 21 таблице аналитики и логах приложений 0; nginx access log сайта содержит yclid+IP (P2, rollout); sshd PasswordAuthentication yes — рекомендация владельцу; SECRET_ROTATION_RUNBOOK.md |
 | Миграции | fresh DB deploy 83 OK; copy deploy No pending; drift `SalaryPayment.updatedAt` — ручная миграция 20260613, риск 0, отдельный FIX (MIGRATION_SAFETY.md); destructive SQL в аналитических миграциях 0 |
 | Тесты | CRM 1120 (104 suites; +42: ops 15, retention 5, deploy-safety 11, HTTP-матрица 9, F4/F8/orderBy), панель 42; build OK |
+| Production 22.09 | master 9810d0b (владелец: acf4d73 approval-mockups, 0d7d7b2 push-уведомления, fc5657b reconcile pickup с data-repair миграцией 20260921010000; 9810d0b план дня без блока «Отгрузки»); на бою образ 0d7d7b2, миграций 85, `auto-update.timer` остановлен 21.09 16:01 — fc5657b и 9810d0b не выложены; feature/analytics-foundation слита с master (44ca8c9, CRM 1196 / панель 78) — Gate 0 в `13_PRODUCTION_ROLLOUT.md` |
 | Rollout | `13_PRODUCTION_ROLLOUT.md` после verdict Reviewer: server auto-update.sh + compose `:production`, web-photo merge feature/ci-safety → feature/cms-admin (деплой сайта), docker log rotation, nginx log_format; OPEN: убрать `:latest`, GitHub branch protection/environment, drift FIX, ротация OAuth |
 
 ---

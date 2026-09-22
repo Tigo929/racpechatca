@@ -3,10 +3,14 @@
 ## STATUS
 
 ```text
-READY_FOR_REVIEW (план, 17.09.2026). Production НЕ менялся; rollout НЕ начат; Stage 14 не начат.
-Implementation Stage 13 = READY_FOR_PRODUCTION_ROLLOUT (Reviewer APPROVED 17.09.2026).
-Кандидаты: CRM — e0984f8 (код = 51f27ae; e0984f8 и этот план — docs-only потомки); сайт — web-photo 441d795.
-Rollout начинается только после отдельной команды Reviewer «СТАРТ» (§ 13), по gate-ам A → B → C → D → E → F → G; H —
+READY_FOR_REVIEW (план 17.09.2026, обновлён 22.09.2026 после слияния master). Production Stage 13 НЕ менял; rollout
+НЕ начат; Stage 14 не начат. Implementation Stage 13 = READY_FOR_PRODUCTION_ROLLOUT (Reviewer APPROVED 17.09.2026).
+Кандидаты: CRM — 44ca8c9 (= e0984f8 + слияние origin/master 9810d0b: коммиты владельца acf4d73, 0d7d7b2, fc5657b и план дня
+9810d0b; код этапа 13 = 51f27ae без изменений; тесты на слитой ветке CRM 1196 / 1196, панель 78 / 78); сайт — web-photo 441d795.
+НОВОЕ ПРЕДУСЛОВИЕ (Gate 0, § 2a): production сейчас отстаёт от master — образ 0d7d7b2 (20.09), auto-update.timer остановлен
+21.09 16:01 MSK, не выложены fc5657b (с data-repair миграцией 20260921010000_fix_pickup_fulfillment) и 9810d0b. Выравнивание
+production с master — деплой владельца вне Stage 13; Gate A начинается только после него.
+Rollout начинается только после отдельной команды Reviewer «СТАРТ» (§ 13), по gate-ам 0 → A → B → C → D → E → F → G; H —
 решения Reviewer, автоматически не выполняется.
 ```
 
@@ -49,7 +53,8 @@ Rollout начинается только после отдельной кома
 5. **Утечка секрета или PII**: значение токена/пароля/URL БД/ClientID/телефона в логе, ответе API, отчёте, файле плана.
 6. **False HEALTHY**: `/analytics/ops/status` показывает HEALTHY при известной проблеме (например, sync FAILED в журнале,
    RUNNING > 60 мин, миграции не совпадают) — дефект диагностики, а не повод менять пороги.
-7. Также: миграция применяется, хотя её не ожидалось; backend не healthy 5 мин; `_prisma_migrations` ≠ 83; auto-update
+7. Также: миграция применяется, хотя её не ожидалось (в т. ч. чужая `20260921010000_fix_pickup_fulfillment`, если Gate 0
+   не выполнен); backend не healthy 5 мин; `_prisma_migrations` ≠ 86; `auto-update.timer` не active перед деплоем; auto-update
    пишет ОШИБКА/ВНИМАНИЕ по любому сервису; удалена хоть одна строка при retention dry-run.
 
 Пороги и семантика ради «зелёного» результата не меняются (спецификация § 29).
@@ -59,7 +64,8 @@ Rollout начинается только после отдельной кома
 ## 2. ПОРЯДОК И ОКНА
 
 ```text
-A  CRM code           деплой сразу после SUCCESS часового тика (сейчас :33), ~20 мин, backend recreate 1 раз (auto-update)
+0  production=master  деплой владельца (fc5657b с data-repair миграцией + 9810d0b), запуск auto-update.timer — до Stage 13
+A  CRM code           деплой сразу после SUCCESS часового тика, ~20 мин, backend recreate 1 раз (auto-update)
 D1 после A            /health.build, ops status, auth, Stage 06–12 AFTER, первый тик (boot, daily) — ~15 мин
 B  server hardening   вне тика; recreate НЕ ожидается (тот же image id под :production); dry-run compose — ~15 мин
 C  web-photo CI       merge ff → CI ~4 мин → compose сайта на :production → auto-update recreate api, web (по очереди);
@@ -74,22 +80,56 @@ Gate-ы независимы по откату: откат B не требует
 
 ---
 
-## 3. GATE A — CRM reliability (кандидат e0984f8)
+## 2a. GATE 0 — предусловие: production = master (деплой владельца, НЕ часть Stage 13)
+
+Факты на 22.09.2026 13:15 MSK (read-only): backend `2969889e3192` = образ `0d7d7b2` (создан 20.09 17:25, контейнер 20.09 17:26),
+frontend `a98ee3269eb2`; `_prisma_migrations` 85 (последняя `20260920010000_site_lead_push_delivery`); `auto-update.timer`
+**inactive** (остановлен 21.09 16:01:20 — ровно перед приходом образа fc5657b; последний прогон сервиса 21.09 16:00:47–59);
+в GHCR уже лежат `:latest` = 9810d0b (CI 22.09 13:03–13:07) и `:fc5657b…`, `:9810d0b…`. Не выложены:
+`fc5657b` «reconcile order pickup, delivery and financial closure» — содержит миграцию `20260921010000_fix_pickup_fulfillment`
+(**правит данные**: `UPDATE "OrderPhoto"` PICKUP + SHIPMENT_CREATED → READY, сброс `shipmentRemindersSent`, строки в
+`StatusHistory` от `system:pickup-fulfillment-fix`; таблиц не создаёт) и `9810d0b` «план дня без блока отгрузок» (код бота).
+Оба — не аналитика и не Stage 13; решение об их выкладке и о data-repair миграции — владельца.
+
+```text
+PRECHECK  владелец подтвердил выкладку fc5657b (с data-repair миграцией) и 9810d0b; backup БД перед ней
+          (premigration_<ts>.sql.gz) — обязателен, т.к. миграция меняет статусы заказов
+ACTION    (владелец / по его команде) systemctl start auto-update.timer — либо ручной docker compose pull + up backend, frontend;
+          Stage 13 здесь ничего не меняет
+VERIFY    backend образ = :9810d0b… (docker image inspect RepoDigests), /health ok; boot-лог «Applying migration
+          20260921010000_fix_pickup_fulfillment» → _prisma_migrations 86; число исправленных заказов = число строк StatusHistory
+          с changedBy 'system:pickup-fulfillment-fix' (записать в отчёт); auto-update.timer active; тик расписания SUCCESS;
+          план дня dry-run (POST /order-photo/daily-plan/run?dry=true, ADMIN) без блока «ОТГРУЗКИ»
+STOP      миграция упала / backend не healthy / timer не стартует → это инцидент владельца, Stage 13 не начинается
+ROLLBACK  по процедуре владельца (образ :0d7d7b2…; данные миграции — из backup)
+```
+
+После Gate 0 базовые числа для Gate A: `_prisma_migrations` **86**, таблиц **64** (ApprovalTelegramDelivery,
+LeadPushDelivery добавлены 19–20.09), образ backend = 9810d0b, timer active.
+
+---
+
+## 3. GATE A — CRM reliability (кандидат 44ca8c9)
 
 ### PRECHECK
 
 ```text
-git:   origin/master = 1f8b7b4 (owner-коммитов нет); e0984f8 ⊃ master (fast-forward); git log 1f8b7b4..e0984f8 =
-       53d2d25, dabf3eb, 8f1707d (docs этапа 12), 3d45f4c (спецификация 13), 806e328 (код), 51f27ae (orderBy), e0984f8 (docs)
-       + этот план (docs-only); git diff --stat 51f27ae..<tip> -- . ':!docs' = пусто;
-       git diff --stat 1f8b7b4..<tip> -- crm-new/prisma = пусто (НОВЫХ МИГРАЦИЙ НЕТ — ожидание «No pending»);
-       git diff --stat 1f8b7b4..<tip> -- frontend = пусто (образ панели пересоберётся из того же кода);
-       изменённые области вне docs: .github/workflows, crm-new/Dockerfile.prebuilt, package.json, src/analytics/{ops,
-       retention,insights,growth}, src/health.controller.ts, src/app.module.ts, spec-файлы, deploy/auto-update.sh (репо),
-       docker-compose.prod.yml (шаблон в репо — на сервер попадает только в Gate B)
-tests: CRM jest 1120 / 1120 (104 suites); панель vitest 42 / 42; nest build; prisma validate; eslint по новым файлам 0
-server (read-only): backend d8590e7c9e67 / frontend 1485aa9b3150 healthy; MetrikaSyncRun RUNNING = 0; последний тик SUCCESS;
-       _prisma_migrations 83, таблиц 62; compose/.env на сервере НЕ РЕДАКТИРУЮТСЯ до Gate B (иначе старый auto-update без
+gate0: Gate 0 выполнен: production = master 9810d0b, _prisma_migrations 86, timer active (иначе STOP: деплой Stage 13
+       применил бы чужую data-repair миграцию — § 1.7)
+git:   origin/master = 9810d0b (иначе — повторить слияние и тесты, новый кандидат); 44ca8c9 ⊃ master (fast-forward);
+       git log 9810d0b..44ca8c9 = 53d2d25, dabf3eb, 8f1707d (docs этапа 12), 3d45f4c (спецификация 13), 806e328 (код),
+       51f27ae (orderBy), e0984f8 (docs), 85f9c0f (план), 44ca8c9 (merge) + этот план (docs-only);
+       git diff --stat 51f27ae..<tip> -- . ':!docs' ':!graphify-out' = только файлы, пришедшие из master (владелец) —
+       Stage 13 после 51f27ae код не менял: проверять `git diff 9810d0b..<tip> -- . ':!docs'` = ровно набор файлов этапа 13
+       (.github/workflows/build-images.yml, crm-new/Dockerfile.prebuilt, crm-new/package.json, src/analytics/{ops,retention,
+       insights,growth}, src/health.controller.ts, src/app.module.ts, src/deploy-safety.spec.ts, analytics-route-matrix.spec.ts,
+       deploy/auto-update.sh, docker-compose.prod.yml);
+       git diff --stat 9810d0b..<tip> -- crm-new/prisma = пусто (НОВЫХ МИГРАЦИЙ У ЭТАПА 13 НЕТ — ожидание «No pending»);
+       git diff --stat 9810d0b..<tip> -- frontend = пусто (образ панели пересоберётся из того же кода)
+tests: на слитой ветке 22.09: CRM jest 1196 / 1196 (109 suites); панель vitest 78 / 78; nest build; prisma validate;
+       eslint по файлам этапа 13 — 0
+server (read-only): backend = образ 9810d0b healthy; MetrikaSyncRun RUNNING = 0; последний тик SUCCESS; _prisma_migrations 86,
+       таблиц 64; auto-update.timer active; compose/.env на сервере НЕ РЕДАКТИРУЮТСЯ до Gate B (иначе старый auto-update без
        --no-deps пересоздаст backend старым образом — повтор 17.09); ANALYTICS_* флаги как есть
 BEFORE (JSON, ADMIN в контейнере, ЗАКРЫТЫЕ окна from/to = 10.09–16.09 и 03.09–09.09, не пресеты):
        Stage 09 overview/sources/landings; Stage 10 summary/funnels/issues; Stage 11 growth/changes + A latest (v, verdict);
@@ -126,7 +166,7 @@ backup: cp docker-compose.prod.yml → .bak-stage13A-<ts>; cp .env → .bak-stag
   GET insights/feed?severity=WRONG → 400; несуществующий id → 404 «Сигнал не найден»
 - Stage 06–12 AFTER = BEFORE (те же закрытые окна): diff 0 по всем листьям; insights: 8 карточек, те же fingerprint и
   payloadHash, latestVersion не изменились; outbox статусы те же; MetrikaSyncRun: тики после деплоя SUCCESS 12/12
-- migration gate: _prisma_migrations = 83, таблиц 62 (ничего не добавилось)
+- migration gate: _prisma_migrations = 86, таблиц 64 (ничего не добавилось относительно Gate 0)
 - контейнеры: StartedAt backend/frontend обновились ровно по одному разу; postgres/greeter/photo-* не тронуты
 ```
 
@@ -419,7 +459,7 @@ GATE F   dry-run JSON, счётчики до/после
 GATE G   ротаций нет, утечек нет
 GATE H   таблица решений для Reviewer
 NEW_FACTS / DEVIATIONS / OPEN_DECISIONS
-PRODUCTION_STATE  флаги, образы (id, revision, digest), compose-теги, auto-update sha, миграции 83 / таблиц 62
+PRODUCTION_STATE  флаги, образы (id, revision, digest), compose-теги, auto-update sha, миграции 86 / таблиц 64
 ```
 
 ---
@@ -430,6 +470,7 @@ Rollout начинается только после отдельной кома
 
 `СТАРТ`
 
-с указанием кандидатов (`e0984f8` или его docs-only потомок с этим планом; web-photo `441d795`) и подтверждением
-порядка gate-ов (по умолчанию A → B → C → D → E → F → G; H — только решения). До команды production не менять; Stage 14
+с указанием кандидатов (`44ca8c9` или его docs-only потомок с этим планом; web-photo `441d795`), подтверждением, что
+Gate 0 (production = master, деплой владельца) выполнен, и порядка gate-ов (по умолчанию A → B → C → D → E → F → G; H —
+только решения). До команды production не менять; Stage 14
 не начинать; этот документ — план, не отчёт.
