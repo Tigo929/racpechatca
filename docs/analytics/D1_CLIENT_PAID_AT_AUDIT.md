@@ -303,5 +303,6 @@ docs/analytics/D1_CLIENT_PAID_AT_IMPLEMENTATION.md. Коротко:
   HISTORICAL NULL clientPaidAt VALUES ARE NOT BACKFILLED OR INFERRED
 
 MIGRATION_REQUIRED = NO. BACKFILL_REQUIRED = NO, BACKFILL_PERFORMED = NO.
-Production не менялся; выкладка — отдельной командой Reviewer.
+ВЫЛОЖЕНО В PRODUCTION 22.09.2026 23:42–23:49 MSK, SHA 6323bc6e715bb9dce3a18dca4464f76ea320269b;
+данные при выкладке не менялись (контрольная сумма дат совпала).
 ```
