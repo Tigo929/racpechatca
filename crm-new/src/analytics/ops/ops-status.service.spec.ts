@@ -57,6 +57,7 @@ function fakePrisma(state: DbState): PrismaService {
     },
     analyticsInsightRun: none,
     analyticsInsight: { count: zero },
+    analyticsReport: { ...none, count: zero },
   };
   return prisma as unknown as PrismaService;
 }

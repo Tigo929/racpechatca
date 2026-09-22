@@ -136,6 +136,13 @@ export interface OpsInput {
     oldestRunningStartedAt: Date | null;
     openCards: number;
   };
+  /** Очередь отчётов для внешнего ИИ (этап 16) — метаданные, не содержимое. */
+  reports: {
+    queued: number;
+    generating: number;
+    failedLast24h: number;
+    lastSuccessAt: Date | null;
+  };
 }
 
 export interface OpsStatus {
@@ -193,5 +200,12 @@ export interface OpsStatus {
     lastErrors: string[];
     oldestRunningAgeSeconds: number | null;
     openCards: number;
+  };
+  /** Отчёты этапа 16: сколько ждут, сколько готовится, когда был последний готовый. */
+  reports: {
+    queuedReports: number;
+    generatingReports: number;
+    failedReports24h: number;
+    lastSuccessfulReportAt: string | null;
   };
 }

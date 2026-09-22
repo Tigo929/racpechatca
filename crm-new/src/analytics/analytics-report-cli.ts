@@ -5,10 +5,7 @@ import { PrismaClient } from '../generated/prisma/client.js';
 import type { PrismaService } from '../prisma/prisma.service';
 import { ReportsService } from '../reports/reports.service';
 import { AnalyticsMetricsService } from './metrics/analytics-metrics.service';
-import { buildReportModel } from './report/report-build';
-import { collectReport, lastCompleteDay } from './report/report-collect';
-import { renderMarkdown } from './report/report-markdown';
-import { renderPrintableHtml } from './report/report-html';
+import { generateReport, lastCompleteDay } from './report/report-generate';
 
 /**
  * Аналитический отчёт для внешнего ИИ (этап 15). Только чтение: ни одной
@@ -71,12 +68,13 @@ async function main(): Promise<void> {
   );
 
   try {
-    const input = await collectReport(
+    // Тот же путь, которым отчёт собирает кнопка в панели (этап 16):
+    // командная строка и API обязаны давать одинаковый файл за один период.
+    const report = await generateReport(
       { prisma: prisma as unknown as PrismaService, metrics, reports },
       { days, until, historyDays },
     );
-    const model = buildReportModel(input);
-    const markdown = renderMarkdown(model);
+    const markdown = report.markdown;
 
     if (toStdout) {
       process.stdout.write(markdown);
@@ -90,17 +88,15 @@ async function main(): Promise<void> {
     const mdPath = join(dir, `analytics-report-${until}.md`);
     const htmlPath = join(dir, `analytics-report-${until}.html`);
     writeFileSync(mdPath, markdown, 'utf8');
-    writeFileSync(htmlPath, renderPrintableHtml(model, markdown), 'utf8');
+    writeFileSync(htmlPath, report.html, 'utf8');
 
-    console.log(
-      `Отчёт за ${input.current.period.from}..${input.current.period.to}`,
-    );
+    console.log(`Отчёт за ${report.from}..${report.to}`);
     console.log(`  markdown: ${mdPath}`);
     console.log(
       `  печатная версия: ${htmlPath} (открыть в браузере → «Печать» → «Сохранить как PDF»)`,
     );
     console.log(
-      `  сверка: сумма дневной выручки ${input.reconciliation.trendSumRealizedRevenue} против итога периода ${input.reconciliation.overviewRealizedRevenue}`,
+      `  сверка: сумма дневной выручки ${report.model.input.reconciliation.trendSumRealizedRevenue} против итога периода ${report.model.input.reconciliation.overviewRealizedRevenue}`,
     );
     process.exit(0);
   } finally {

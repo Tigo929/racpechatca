@@ -1,4 +1,9 @@
 import type {
+  AnalyticsReport,
+  AnalyticsReportList,
+  CreateReportRequest,
+} from '../types/analytics-reports';
+import type {
   CrmSlice,
   DashboardStatus,
   DeviceRow,
@@ -101,6 +106,26 @@ export const insightsApi = {
   acknowledge: async (id: string) => (await api.post<InsightRecord>(`${INSIGHTS}/${id}/acknowledge`)).data,
   resolve: async (id: string, reason: string) => (await api.post<InsightRecord>(`${INSIGHTS}/${id}/resolve`, { reason })).data,
   run: async () => (await api.post<InsightRunRecord>(`${INSIGHTS}/run`)).data,
+};
+
+/**
+ * Отчёты для внешнего ИИ (этап 16). Только ADMIN. Файл забираем запросом с
+ * токеном, а не прямой ссылкой: каталог отчётов наружу не отдаётся.
+ */
+const REPORTS = '/analytics/report';
+export const reportsApi = {
+  create: async (input: CreateReportRequest) =>
+    (await api.post<AnalyticsReport>(REPORTS, input)).data,
+  list: async (limit = 20) =>
+    (await api.get<AnalyticsReportList>(REPORTS, { params: { limit } })).data,
+  get: async (id: string) => (await api.get<AnalyticsReport>(`${REPORTS}/${id}`)).data,
+  download: async (id: string, format: 'md' | 'html') =>
+    (
+      await api.get<Blob>(`${REPORTS}/${id}/download`, {
+        params: { format },
+        responseType: 'blob',
+      })
+    ).data,
 };
 
 /** Ключ кэша react-query — тот же, что ключ серверного кэша: вид + период. */

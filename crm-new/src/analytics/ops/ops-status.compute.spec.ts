@@ -71,6 +71,12 @@ function healthyInput(): OpsInput {
       oldestRunningStartedAt: null,
       openCards: 8,
     },
+    reports: {
+      queued: 0,
+      generating: 0,
+      failedLast24h: 0,
+      lastSuccessAt: minutesAgo(90),
+    },
   };
 }
 
@@ -277,5 +283,27 @@ describe('computeOpsStatus', () => {
       'postgresql://<скрыто> timeout',
     );
     expect(sanitizeError(null)).toBeNull();
+  });
+});
+
+describe('очередь отчётов (этап 16)', () => {
+  it('счётчики отдаются как есть и не заводят новых подсистем и условий', () => {
+    const input = healthyInput();
+    input.reports = {
+      queued: 2,
+      generating: 1,
+      failedLast24h: 3,
+      lastSuccessAt: minutesAgo(15),
+    };
+    const s = computeOpsStatus(input, NOW);
+    expect(s.reports).toEqual({
+      queuedReports: 2,
+      generatingReports: 1,
+      failedReports24h: 3,
+      lastSuccessfulReportAt: minutesAgo(15).toISOString(),
+    });
+    // отчёты не влияют на здоровье CRM: подсистем по-прежнему 10, условий нет
+    expect(Object.keys(s.subsystems)).toHaveLength(10);
+    expect(s.conditions).toEqual([]);
   });
 });

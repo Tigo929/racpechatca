@@ -96,8 +96,15 @@ services:
       AVITO_MESSENGER_POLLING_ENABLED: ${AVITO_MESSENGER_POLLING_ENABLED:-true}
       AVITO_MESSENGER_POLLING_INTERVAL_MS: ${AVITO_MESSENGER_POLLING_INTERVAL_MS:-60000}
       UPLOAD_DIR: /app/uploads
+      # Отчёты для внешнего ИИ (этап 16) лежат файлами на диске сервера:
+      # это производные артефакты, их незачем держать в базе, но и терять
+      # при каждом обновлении образа не нужно.
+      ANALYTICS_REPORTS_DIR: /app/data/analytics-reports
     volumes:
       - uploads:/app/uploads
+      # Каталог виден на хосте: владельцу может понадобиться забрать файл
+      # руками, а облачный бэкап его намеренно не копирует (этап 16).
+      - ./data/analytics-reports:/app/data/analytics-reports
     extra_hosts:
       - "api.telegram.org:149.154.167.220"
     networks:

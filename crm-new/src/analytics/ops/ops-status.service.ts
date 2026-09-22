@@ -70,7 +70,7 @@ export class OpsStatusService {
     }
     if (!reachable) return this.unreachable(build, flags);
 
-    const [migrations, sync, outbox, snapshots, growth, insights] =
+    const [migrations, sync, outbox, snapshots, growth, insights, reports] =
       await Promise.all([
         this.migrations(),
         this.sync(now),
@@ -78,6 +78,7 @@ export class OpsStatusService {
         this.snapshots(),
         this.growth(),
         this.insights(),
+        this.reports(now),
       ]);
     return {
       build,
@@ -88,6 +89,7 @@ export class OpsStatusService {
       snapshots,
       growth,
       insights,
+      reports,
     };
   }
 
@@ -132,6 +134,12 @@ export class OpsStatusService {
         lastSuccessAt: null,
         oldestRunningStartedAt: null,
         openCards: 0,
+      },
+      reports: {
+        queued: 0,
+        generating: 0,
+        failedLast24h: 0,
+        lastSuccessAt: null,
       },
     };
   }
@@ -300,6 +308,32 @@ export class OpsStatusService {
     return {
       activeChanges: active,
       lastScheduledEvaluationAt: last?.evaluatedAt ?? null,
+    };
+  }
+
+  /**
+   * Очередь отчётов этапа 16. Только счётчики: содержимое отчётов лежит
+   * файлами и в диагностику не попадает.
+   */
+  private async reports(now: Date): Promise<OpsInput['reports']> {
+    const dayAgo = new Date(now.getTime() - 24 * 3600_000);
+    const [queued, generating, failedLast24h, lastSuccess] = await Promise.all([
+      this.prisma.analyticsReport.count({ where: { status: 'QUEUED' } }),
+      this.prisma.analyticsReport.count({ where: { status: 'GENERATING' } }),
+      this.prisma.analyticsReport.count({
+        where: { status: 'FAILED', requestedAt: { gte: dayAgo } },
+      }),
+      this.prisma.analyticsReport.findFirst({
+        where: { status: 'READY' },
+        orderBy: { generatedAt: 'desc' },
+        select: { generatedAt: true },
+      }),
+    ]);
+    return {
+      queued,
+      generating,
+      failedLast24h,
+      lastSuccessAt: lastSuccess?.generatedAt ?? null,
     };
   }
 

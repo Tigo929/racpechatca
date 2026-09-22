@@ -96,6 +96,10 @@ function fakePrisma(overrides: Partial<Record<string, unknown>> = {}) {
       ),
     },
     analyticsInsight: { count: jest.fn(() => Promise.resolve(8)) },
+    analyticsReport: {
+      count: jest.fn(() => Promise.resolve(0)),
+      findFirst: jest.fn(() => Promise.resolve(null)),
+    },
     ...overrides,
   };
   return prisma as unknown as PrismaService;

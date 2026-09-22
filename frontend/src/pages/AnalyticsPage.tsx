@@ -43,6 +43,7 @@ import {
 import { behaviorWarnings } from '../features/analytics/behavior-view';
 import { GrowthTab } from '../features/analytics/growth-sections';
 import { InsightsTab } from '../features/analytics/insights-sections';
+import { ReportsTab } from '../features/analytics/reports-sections';
 
 /**
  * Дашборд руководителя (этап 09). Все числа — из `AnalyticsMetricsService`
@@ -50,7 +51,7 @@ import { InsightsTab } from '../features/analytics/insights-sections';
  * показывает, подписывает и предупреждает о неполных данных.
  */
 
-type Tab = 'overview' | 'insights' | 'behavior' | 'growth' | 'sources' | 'products' | 'pages' | 'quality';
+type Tab = 'overview' | 'insights' | 'behavior' | 'growth' | 'sources' | 'products' | 'pages' | 'quality' | 'reports';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'overview', label: 'Обзор' },
@@ -61,6 +62,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'products', label: 'Товары' },
   { key: 'pages', label: 'Страницы' },
   { key: 'quality', label: 'Качество данных' },
+  { key: 'reports', label: 'Отчёты для ИИ' },
 ];
 
 function KpiRows({ o }: { o: Overview }) {
@@ -228,6 +230,7 @@ export function AnalyticsPage() {
                 )}
                 {tab === 'insights' && <InsightsTab />}
                 {tab === 'growth' && <GrowthTab />}
+                {tab === 'reports' && <ReportsTab />}
                 {tab === 'sources' && (
                   <div className="space-y-4">
                     {sources.isError ? <StateBlock kind="error" message={getErrorMessage(sources.error)} onRetry={() => void sources.refetch()} /> : <SourcesTable slice={sources.data} />}

@@ -2192,3 +2192,40 @@ model AnalyticsInsightRun {
 
   @@index([startedAt])
 }
+
+/// Заказ аналитического отчёта (этап 16). В базе только метаданные: сами
+/// markdown и html лежат файлами на диске сервера, потому что это производные
+/// артефакты по десятки килобайт каждый — держать их в базе незачем, а
+/// восстановить можно повторной генерацией.
+model AnalyticsReport {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// QUEUED | GENERATING | READY | FAILED
+  status String @default("QUEUED")
+
+  /// preset7d | preset30d | custom — чем период задали в интерфейсе.
+  periodType String
+  /// Границы периода включительно, московский календарь.
+  dateFrom   DateTime @db.Date
+  dateTo     DateTime @db.Date
+
+  requestedAt DateTime  @default(now())
+  requestedBy String
+  generatedAt DateTime?
+
+  /// Сборка, которой отчёт сформирован: старый отчёт должен быть объясним.
+  productionBuild String?
+
+  mdFilename   String?
+  htmlFilename String?
+  mdSizeBytes  Int?
+  htmlSizeBytes Int?
+
+  /// Безопасный текст ошибки для интерфейса; подробности — в логах сервера.
+  errorMessage String?
+
+  @@index([status])
+  @@index([requestedAt])
+}

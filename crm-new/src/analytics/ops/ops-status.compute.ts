@@ -507,5 +507,13 @@ export function computeOpsStatus(input: OpsInput, now: Date): OpsStatus {
       oldestRunningAgeSeconds: insRunningAge,
       openCards: ins.openCards,
     },
+    // Очередь отчётов (этап 16): показываем факты, отдельной подсистемы и
+    // условия не заводим — сломанный отчёт не мешает работе CRM.
+    reports: {
+      queuedReports: input.reports?.queued ?? 0,
+      generatingReports: input.reports?.generating ?? 0,
+      failedReports24h: input.reports?.failedLast24h ?? 0,
+      lastSuccessfulReportAt: iso(input.reports?.lastSuccessAt ?? null),
+    },
   };
 }
