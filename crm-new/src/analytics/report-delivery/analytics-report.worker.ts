@@ -35,10 +35,18 @@ import {
 
 const POLL_MS = 10_000;
 
+/**
+ * Присмотр за очередью: вернуть брошенные заказы и убрать старое.
+ * Раз в сутки достаточно — отчётов единицы в неделю, а восстановление после
+ * перезапуска делается сразу на старте, не дожидаясь этого цикла.
+ */
+const HOUSEKEEPING_MS = 24 * 3600_000;
+
 @Injectable()
 export class AnalyticsReportWorker implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AnalyticsReportWorker.name);
   private timer: NodeJS.Timeout | null = null;
+  private housekeeping: NodeJS.Timeout | null = null;
   private busy = false;
 
   constructor(
@@ -51,14 +59,37 @@ export class AnalyticsReportWorker implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit(): void {
     if (this.env.NODE_ENV === 'test') return;
+    // Перезапуск backend должен чинить очередь сам: заказ, брошенный на
+    // середине прошлой жизнью процесса, возвращается в очередь здесь же.
+    void this.maintenance();
     this.timer = setInterval(() => {
       void this.tick();
     }, POLL_MS);
     this.timer.unref?.();
+    this.housekeeping = setInterval(() => {
+      void this.maintenance();
+    }, HOUSEKEEPING_MS);
+    this.housekeeping.unref?.();
   }
 
   onModuleDestroy(): void {
     if (this.timer) clearInterval(this.timer);
+    if (this.housekeeping) clearInterval(this.housekeeping);
+  }
+
+  /**
+   * Присмотр за очередью: возврат брошенных заказов и уборка старых отчётов.
+   * Не зависит от того, заказывал ли кто-то новый отчёт.
+   */
+  async maintenance(): Promise<{ recovered: number; removed: number }> {
+    try {
+      return await this.reports.maintenance();
+    } catch (error) {
+      this.logger.warn(
+        `Присмотр за очередью отчётов не отработал — ${(error as Error).message.slice(0, 120)}`,
+      );
+      return { recovered: 0, removed: 0 };
+    }
   }
 
   /**

@@ -16,6 +16,7 @@ import {
   AnalyticsReportService,
   REPORT_RETENTION_DAYS,
   REPORT_RETENTION_KEEP,
+  STALE_GENERATING_MS,
 } from './analytics-report.service';
 import { AnalyticsReportWorker } from './analytics-report.worker';
 import {
@@ -175,6 +176,7 @@ describe('проверка отчёта перед выдачей', () => {
 interface Row {
   id: string;
   status: string;
+  updatedAt: Date;
   periodType: string;
   dateFrom: Date;
   dateTo: Date;
@@ -215,6 +217,7 @@ function makeDb(rows: Row[] = []) {
       const row: Row = {
         id: `00000000-0000-4000-8000-${String(seq).padStart(12, '0')}`,
         status: 'QUEUED',
+        updatedAt: new Date(),
         periodType: 'preset7d',
         dateFrom: new Date('2026-09-16'),
         dateTo: new Date('2026-09-22'),
@@ -288,6 +291,12 @@ function makeDb(rows: Row[] = []) {
         return Promise.resolve({ count: found.length });
       },
     ),
+    delete: jest.fn(({ where }: { where: { id: string } }) => {
+      const i = rows.findIndex((r) => r.id === where.id);
+      if (i < 0) return Promise.reject(new Error('строки нет'));
+      const [row] = rows.splice(i, 1);
+      return Promise.resolve(row);
+    }),
     deleteMany: jest.fn(({ where }: { where: { id: { in: string[] } } }) => {
       const ids: string[] = where.id.in;
       const before = rows.length;
@@ -491,6 +500,7 @@ describe('уборка отчётов', () => {
   const row = (over: Partial<Row>): Row => ({
     id: over.id ?? '00000000-0000-4000-8000-000000000001',
     status: 'READY',
+    updatedAt: NOW,
     periodType: 'preset7d',
     dateFrom: new Date('2026-09-16'),
     dateTo: new Date('2026-09-22'),
@@ -621,5 +631,155 @@ describe('кнопка и командная строка собирают от�
       const source = read(file);
       expect(source).not.toMatch(/realizedRevenue|netProfit|marginPct|cogs/);
     }
+  });
+});
+
+// ── восстановление брошенных заказов (FIX_01) ───────────────────────────────
+
+describe('брошенные заказы возвращаются в очередь', () => {
+  const root = mkdtempSync(join(tmpdir(), 'reports-stale-'));
+  const env = {
+    ANALYTICS_REPORTS_DIR: root,
+    NODE_ENV: 'test',
+    BUILD_SHA: 'abc1234',
+  } as NodeJS.ProcessEnv;
+  const uuid = (n: number) =>
+    `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+
+  const generating = (n: number, ageMs: number): Row => ({
+    id: uuid(n),
+    status: 'GENERATING',
+    updatedAt: new Date(NOW.getTime() - ageMs),
+    periodType: 'preset7d',
+    dateFrom: new Date('2026-09-16'),
+    dateTo: new Date('2026-09-22'),
+    requestedAt: new Date(NOW.getTime() - ageMs),
+    requestedBy: 'admin-1',
+    generatedAt: null,
+    productionBuild: null,
+    mdFilename: null,
+    htmlFilename: null,
+    mdSizeBytes: null,
+    htmlSizeBytes: null,
+    errorMessage: null,
+  });
+
+  it('свежий GENERATING не трогается: отчёт может просто считаться', async () => {
+    const db = makeDb([generating(1, 60_000)]);
+    const { recovered } = await makeService(db, env).recoverStale();
+    expect(recovered).toBe(0);
+    expect(db.rows[0].status).toBe('GENERATING');
+  });
+
+  it('GENERATING дольше таймаута возвращается в QUEUED без второго отчёта', async () => {
+    const db = makeDb([generating(2, STALE_GENERATING_MS + 60_000)]);
+    const before = { ...db.rows[0] };
+    const { recovered } = await makeService(db, env).recoverStale();
+
+    expect(recovered).toBe(1);
+    expect(db.rows).toHaveLength(1); // второй заказ не создаётся
+    const row = db.rows[0];
+    expect(row.status).toBe('QUEUED');
+    expect(row.errorMessage).toBeNull();
+    expect(row.mdFilename).toBeNull();
+    // период и заказчик не меняются
+    expect(row.requestedBy).toBe(before.requestedBy);
+    expect(row.dateFrom).toEqual(before.dateFrom);
+    expect(row.dateTo).toEqual(before.dateTo);
+  });
+
+  it('удаляются только недописанные файлы этого заказа', async () => {
+    const stale = uuid(3);
+    const alive = uuid(4);
+    for (const id of [stale, alive]) {
+      mkdirSync(join(root, id), { recursive: true });
+      writeFileSync(join(root, id, 'analytics-report.md'), 'частичный файл');
+    }
+    const db = makeDb([
+      generating(3, STALE_GENERATING_MS + 60_000),
+      {
+        ...generating(4, 0),
+        id: alive,
+        status: 'READY',
+        mdFilename: 'analytics-report.md',
+      },
+    ]);
+    await makeService(db, env).recoverStale();
+
+    expect(existsSync(join(root, stale))).toBe(false);
+    // готовый отчёт другого заказа не тронут
+    expect(existsSync(join(root, alive, 'analytics-report.md'))).toBe(true);
+    expect(db.rows.find((r) => r.id === alive)!.status).toBe('READY');
+  });
+
+  it('после восстановления воркер доводит отчёт до READY', async () => {
+    const db = makeDb([generating(5, STALE_GENERATING_MS + 60_000)]);
+    const { worker, service } = makeWorker(db, env, () =>
+      Promise.resolve({
+        markdown: '# Отчёт\n| Визиты | 115 |',
+        html: '<html><td>115</td></html>',
+      }),
+    );
+    await service.recoverStale();
+    expect(db.rows[0].status).toBe('QUEUED');
+
+    await expect(worker.tick()).resolves.toBe('done');
+    expect(db.rows[0].status).toBe('READY');
+    expect(db.rows[0].mdSizeBytes).toBeGreaterThan(0);
+  });
+
+  it('присмотр за очередью работает сам по себе, без новых заказов', async () => {
+    const db = makeDb([
+      generating(6, STALE_GENERATING_MS + 60_000),
+      {
+        ...generating(7, 0),
+        id: uuid(7),
+        status: 'READY',
+        requestedAt: new Date(
+          NOW.getTime() - (REPORT_RETENTION_DAYS + 1) * 86_400_000,
+        ),
+      },
+    ]);
+    const { worker } = makeWorker(db, env, () =>
+      Promise.resolve({ markdown: '#', html: '<html></html>' }),
+    );
+
+    const result = await worker.maintenance();
+    expect(result.recovered).toBe(1);
+    expect(result.removed).toBe(1);
+    // ни одного нового отчёта уборка не создала
+    expect(db.rows).toHaveLength(1);
+    expect(db.rows[0].status).toBe('QUEUED');
+  });
+
+  it('обычная уборка не трогает ни QUEUED, ни свежий GENERATING', async () => {
+    const old = new Date(
+      NOW.getTime() - (REPORT_RETENTION_DAYS + 5) * 86_400_000,
+    );
+    const db = makeDb([
+      { ...generating(8, 0), status: 'QUEUED', requestedAt: old },
+      { ...generating(9, 60_000), id: uuid(9), requestedAt: old },
+    ]);
+    const { removed } = await makeService(db, env).applyRetention();
+    expect(removed).toBe(0);
+    expect(db.rows.map((r) => r.status)).toEqual(['QUEUED', 'GENERATING']);
+  });
+
+  it('пропавший файл не ломает уборку остальных отчётов', async () => {
+    const withFile = uuid(10);
+    mkdirSync(join(root, withFile), { recursive: true });
+    writeFileSync(join(root, withFile, 'analytics-report.md'), 'x');
+    const old = new Date(
+      NOW.getTime() - (REPORT_RETENTION_DAYS + 2) * 86_400_000,
+    );
+    const db = makeDb([
+      // у первого каталога нет вовсе — удаление файлов должно пережить это
+      { ...generating(11, 0), id: uuid(11), status: 'READY', requestedAt: old },
+      { ...generating(12, 0), id: withFile, status: 'READY', requestedAt: old },
+    ]);
+    const { removed } = await makeService(db, env).applyRetention();
+    expect(removed).toBe(2);
+    expect(db.rows).toHaveLength(0);
+    expect(existsSync(join(root, withFile))).toBe(false);
   });
 });

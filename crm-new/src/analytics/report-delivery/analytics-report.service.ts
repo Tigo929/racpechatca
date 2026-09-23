@@ -25,6 +25,16 @@ import {
 export const REPORT_RETENTION_DAYS = 180;
 export const REPORT_RETENTION_KEEP = 50;
 
+/**
+ * Сколько ждать отчёт, прежде чем считать его брошенным. Backend может
+ * перезапуститься посреди генерации (обновление образа, перезагрузка сервера):
+ * строка останется в GENERATING, файлов не будет, и без уборки такой отчёт
+ * висел бы «формируется» вечно, а владельцу пришлось бы звать администратора.
+ * Пятнадцать минут — заведомо больше реальной генерации (секунды) и меньше
+ * человеческого терпения.
+ */
+export const STALE_GENERATING_MS = 15 * 60_000;
+
 export type ReportStatus = 'QUEUED' | 'GENERATING' | 'READY' | 'FAILED';
 
 export interface ReportSummary {
@@ -46,6 +56,7 @@ export interface ReportSummary {
 interface ReportRow {
   id: string;
   status: string;
+  updatedAt?: Date;
   periodType: string;
   dateFrom: Date;
   dateTo: Date;
@@ -174,6 +185,55 @@ export class AnalyticsReportService {
    * Уборка: отчёты старше 180 дней и всё, что вышло за 50 последних готовых.
    * Заказы в работе не трогаем — иначе воркер запишет файлы в удалённый каталог.
    */
+  /**
+   * Вернуть в очередь отчёты, брошенные на середине (FIX_01).
+   *
+   * Признак — статус GENERATING дольше таймаута: `updatedAt` обновляется в
+   * момент захвата строки воркером, поэтому отдельной колонки не нужно.
+   * Недописанные файлы такого заказа удаляются, период и заказчик остаются
+   * прежними, второй отчёт не создаётся — воркер просто соберёт его заново.
+   */
+  async recoverStale(
+    timeoutMs: number = STALE_GENERATING_MS,
+  ): Promise<{ recovered: number }> {
+    const cutoff = new Date(this.now().getTime() - timeoutMs);
+    const stale = (await this.prisma.analyticsReport.findMany({
+      where: { status: 'GENERATING', updatedAt: { lt: cutoff } },
+      select: { id: true },
+    })) as { id: string }[];
+
+    let recovered = 0;
+    for (const { id } of stale) {
+      try {
+        // только каталог этого заказа: чужие готовые файлы не трогаем
+        removeReportDir(id, this.env);
+        await this.prisma.analyticsReport.update({
+          where: { id },
+          data: {
+            status: 'QUEUED',
+            generatedAt: null,
+            productionBuild: null,
+            mdFilename: null,
+            htmlFilename: null,
+            mdSizeBytes: null,
+            htmlSizeBytes: null,
+            errorMessage: null,
+          },
+        });
+        recovered += 1;
+        this.logger.warn(
+          `Отчёт ${id}: остался в работе дольше ${Math.round(timeoutMs / 60_000)} мин — возвращён в очередь`,
+        );
+      } catch (error) {
+        // один проблемный заказ не должен останавливать восстановление остальных
+        this.logger.warn(
+          `Отчёт ${id}: не удалось вернуть в очередь — ${(error as Error).message.slice(0, 120)}`,
+        );
+      }
+    }
+    return { recovered };
+  }
+
   async applyRetention(): Promise<{ removed: number }> {
     const cutoff = new Date(
       this.now().getTime() - REPORT_RETENTION_DAYS * 86_400_000,
@@ -196,6 +256,10 @@ export class AnalyticsReportService {
     const ids = [
       ...new Set([...old.map((r) => r.id), ...excess.map((r) => r.id)]),
     ];
+
+    // По одному: пропавший файл или сбой на одном отчёте не должен остановить
+    // уборку остальных — иначе одна битая строка заморозит хранилище навсегда.
+    let removed = 0;
     for (const id of ids) {
       try {
         removeReportDir(id, this.env);
@@ -204,14 +268,28 @@ export class AnalyticsReportService {
           `Отчёт ${id}: файлы не удалились — ${(error as Error).message.slice(0, 120)}`,
         );
       }
+      try {
+        await this.prisma.analyticsReport.delete({ where: { id } });
+        removed += 1;
+      } catch (error) {
+        this.logger.warn(
+          `Отчёт ${id}: запись не удалилась — ${(error as Error).message.slice(0, 120)}`,
+        );
+      }
     }
-    if (ids.length) {
-      await this.prisma.analyticsReport.deleteMany({
-        where: { id: { in: ids } },
-      });
-      this.logger.log(`Уборка отчётов: удалено ${ids.length}`);
-    }
-    return { removed: ids.length };
+    if (removed) this.logger.log(`Уборка отчётов: удалено ${removed}`);
+    return { removed };
+  }
+
+  /**
+   * Полный цикл присмотра за очередью (FIX_01): сначала вернуть брошенные
+   * заказы, потом убрать лишнее. Не зависит от того, заказывал ли кто-то
+   * отчёт: вызывается при старте и по расписанию.
+   */
+  async maintenance(): Promise<{ recovered: number; removed: number }> {
+    const { recovered } = await this.recoverStale();
+    const { removed } = await this.applyRetention();
+    return { recovered, removed };
   }
 
   /** Факты для операционной диагностики (этап 13, раздел 6). */
