@@ -1498,11 +1498,13 @@ Production SHA 9ccd29351a728c7e43f58c1ad7b7bba894e6e6af; генерация то
 Статус:
 
 ```text
-IMPLEMENTED / READY_FOR_REVIEW (23.09.2026) — docs/analytics/16_REPORT_DELIVERY.md.
+ACCEPTED / PRODUCTION (23.09.2026) — docs/analytics/16_REPORT_DELIVERY.md.
+Production SHA 8eabc05b5636ed8fa648d1f84c73079dbb5ab47f; применена одна миграция
+(таблица метаданных отчётов), файлы лежат в /opt/raspechatka/data/analytics-reports.
 Кнопка в панели вместо команды в терминале: заказ отчёта, фоновая генерация, статус,
 скачивание MD и печатного HTML. Своей аналитики нет — та же функция generateReport,
-что у CLI этапа 15. Требуется одна миграция (новая таблица метаданных отчётов).
-Production не менялся: выкладка отдельной командой Reviewer.
+что у CLI этапа 15. Сценарий проверен на production: заказ → READY → скачивание MD и HTML;
+числа совпали с дашбордом и CLI этапа 15.
 ```
 
 Цель:
