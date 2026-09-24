@@ -357,6 +357,24 @@ function input(over: Partial<ReportInput> = {}): ReportInput {
       period: PERIOD,
       rows: [
         {
+          salesChannel: 'WEBSITE',
+          crmLeads: 9,
+          acceptedOrders: 8,
+          paidOrders: 1,
+          cancelledOrders: 0,
+          contractValue: 9000,
+          paidOrderValue: 1500,
+          acceptedAov: 1125,
+          paidAov: 1500,
+          realizedOrders: 2,
+          realizedRevenue: 3000,
+          realizedGoodsRevenue: 2800,
+          cogs: 800,
+          grossProfit: 2000,
+          marginPct: 66.7,
+          averageCheck: 1500,
+        },
+        {
           salesChannel: 'AVITO',
           crmLeads: 0,
           acceptedOrders: 28,
@@ -366,9 +384,37 @@ function input(over: Partial<ReportInput> = {}): ReportInput {
           paidOrderValue: 25000,
           acceptedAov: 1428,
           paidAov: 2500,
+          realizedOrders: 9,
+          realizedRevenue: 24000,
+          realizedGoodsRevenue: 23000,
+          cogs: 6000,
+          grossProfit: 17000,
+          marginPct: 70.8,
+          averageCheck: 2666,
+        },
+        {
+          salesChannel: 'UNKNOWN',
+          crmLeads: 1,
+          acceptedOrders: 1,
+          paidOrders: 0,
+          cancelledOrders: 0,
+          contractValue: 1000,
+          paidOrderValue: 0,
+          acceptedAov: 1000,
+          paidAov: null,
+          realizedOrders: 1,
+          realizedRevenue: 1000,
+          realizedGoodsRevenue: 1000,
+          cogs: 200,
+          grossProfit: 800,
+          marginPct: 80,
+          averageCheck: 1000,
         },
       ],
-      quality: quality(),
+      quality: {
+        completeness: 'complete' as const,
+        notes: ['UNKNOWN_ORDER_ORIGIN' as const],
+      },
     },
     attribution: {
       totalOrders: 38,
@@ -379,7 +425,8 @@ function input(over: Partial<ReportInput> = {}): ReportInput {
       withFirstTouch: 9,
       bySource: [
         { source: 'AVITO', orders: 28, withAnyAttribution: 0 },
-        { source: 'LOCAL', orders: 10, withAnyAttribution: 10 },
+        { source: 'WEBSITE', orders: 9, withAnyAttribution: 9 },
+        { source: 'UNKNOWN', orders: 1, withAnyAttribution: 0 },
       ],
     },
     sync: {
@@ -848,5 +895,144 @@ describe('печатная версия', () => {
   it('в печатной версии тоже нет персональных данных', () => {
     expect(html).not.toMatch(/\b\d{15,}\b/);
     expect(html).not.toMatch(/[\w.+-]+@[\w-]+\.[a-z]{2,}/i);
+  });
+});
+
+/**
+ * Происхождение заказов в отчёте (этап 17).
+ *
+ * Отчёт уходит внешнему ИИ, и именно он должен не дать перепутать канал заказа
+ * с источником рекламы: раздел ORDER ORIGIN обязан разделять сайт и Avito,
+ * честно показывать «не определён» и нести правила, запрещающие делить все
+ * заказы CRM на визиты сайта.
+ */
+describe('ORDER ORIGIN в отчёте', () => {
+  const model = buildReportModel(input());
+  const md = renderMarkdown(model);
+
+  it('28. раздел присутствует со всеми обязательными колонками', () => {
+    expect(md).toContain('# ORDER ORIGIN');
+    for (const column of [
+      'Канал',
+      'Заявки',
+      'Принято',
+      'Оплачено',
+      'Выручка',
+      'COGS',
+      'Прибыль',
+      'Средний чек',
+    ]) {
+      expect(md).toContain(column);
+    }
+  });
+
+  it('29. сайт и Avito показаны раздельно и не перепутаны', () => {
+    const website = model.orderOrigin.rows.find((r) => r.origin === 'WEBSITE')!;
+    const avito = model.orderOrigin.rows.find((r) => r.origin === 'AVITO')!;
+    expect(website.acceptedOrders).toBe(8);
+    expect(avito.acceptedOrders).toBe(28);
+    expect(website.revenue).not.toBe(avito.revenue);
+    expect(md).toContain('| Сайт |');
+    expect(md).toContain('| Avito |');
+  });
+
+  it('30. поля полноты классификации есть и считаются от заказов периода', () => {
+    const c = model.orderOrigin.coverage;
+    expect(c).toMatchObject({
+      totalOrders: 38,
+      websiteOrders: 9,
+      avitoOrders: 28,
+      unknownOriginOrders: 1,
+    });
+    expect(c.orderOriginCoveragePct).toBeCloseTo((37 / 38) * 100, 6);
+    for (const field of [
+      'orderOriginCoveragePct',
+      'websiteOrders',
+      'avitoOrders',
+      'unknownOriginOrders',
+    ]) {
+      expect(md).toContain(field);
+    }
+  });
+
+  it('31. UNKNOWN не спрятан, и ограничение данных названо', () => {
+    expect(md).toContain('| Не определён |');
+    expect(md).toMatch(/ОГРАНИЧЕНИЕ ДАННЫХ: у 1 заказов/);
+    expect(model.constraints.join(' ')).toMatch(/происхождение .* не доказано/);
+  });
+
+  it('строка «Все заказы» — сумма каналов, без отдельной формулы', () => {
+    const all = model.orderOrigin.all!;
+    const rows = model.orderOrigin.rows;
+    expect(all.acceptedOrders).toBe(
+      rows.reduce((a, r) => a + r.acceptedOrders, 0),
+    );
+    expect(all.revenue).toBe(rows.reduce((a, r) => a + (r.revenue ?? 0), 0));
+    expect(all.profit).toBe(rows.reduce((a, r) => a + (r.profit ?? 0), 0));
+    expect(all.cogs).toBe(rows.reduce((a, r) => a + (r.cogs ?? 0), 0));
+  });
+
+  it('методика запрещает смешивать происхождение и рекламу', () => {
+    expect(md).toContain(
+      'Конверсия сайта считается ТОЛЬКО по населённости WEBSITE.',
+    );
+    expect(md).toContain(
+      'Делить все заказы CRM на визиты сайта нельзя: ручные заказы сайт не создавал.',
+    );
+    expect(md).toContain(
+      'Рост AVITO не является конверсией сайта и не доказывает работу сайта.',
+    );
+    expect(md).toMatch(/разные измерения/);
+    expect(md).toMatch(/UNKNOWN\s+= исторически|UNKNOWN\s+= историческ/);
+  });
+
+  it('24. маркетинговые источники остались отдельным измерением', () => {
+    expect(md).toContain('## Источники визитов');
+    const originAt = md.indexOf('# ORDER ORIGIN');
+    const trafficAt = md.indexOf('## Источники визитов');
+    expect(originAt).toBeGreaterThan(-1);
+    expect(trafficAt).toBeGreaterThan(-1);
+    expect(originAt).not.toBe(trafficAt);
+  });
+
+  it('34. в разделе нет персональных данных и секретов', () => {
+    const section = md.slice(
+      md.indexOf('# ORDER ORIGIN'),
+      md.indexOf('# FINANCIALS'),
+    );
+    expect(section).not.toMatch(/web-photo-[0-9a-f]+/);
+    expect(section).not.toMatch(/\b\d{10,}\b/);
+    expect(section).not.toMatch(/[\w.+-]+@[\w-]+\.[a-z]{2,}/i);
+    expect(section).not.toMatch(/\+7\s?\d/);
+  });
+
+  it('33. раздел строится для любого периода: 7, 30 и 90 дней', () => {
+    for (const days of [7, 30, 90]) {
+      const from = new Date('2026-09-21T00:00:00Z');
+      from.setUTCDate(from.getUTCDate() - (days - 1));
+      const period = customPeriod(
+        from.toISOString().slice(0, 10),
+        '2026-09-21',
+      );
+      const other = buildReportModel(
+        input({
+          current: { ...input().current, period },
+        }),
+      );
+      expect(renderMarkdown(other)).toContain('# ORDER ORIGIN');
+      expect(other.orderOrigin.rows.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('пустой срез каналов не ломает отчёт', () => {
+    const empty = buildReportModel(
+      input({
+        salesChannels: { ...input().salesChannels, rows: [] },
+        attribution: { ...input().attribution, totalOrders: 0, bySource: [] },
+      }),
+    );
+    expect(empty.orderOrigin.all).toBeNull();
+    expect(empty.orderOrigin.coverage.orderOriginCoveragePct).toBeNull();
+    expect(renderMarkdown(empty)).toContain('_Нет заказов за период._');
   });
 });

@@ -4,6 +4,8 @@ import type {
   ForecastBlock,
   FunnelStep,
   MetricRow,
+  OriginBlock,
+  OriginRow,
   PeriodSnapshot,
   QualityItem,
   ReportInput,
@@ -569,6 +571,81 @@ export function buildQuality(input: ReportInput): QualityItem[] {
   ];
 }
 
+/** Человеческие подписи каналов — те же, что в панели. */
+export const ORIGIN_LABELS: Record<string, string> = {
+  WEBSITE: 'Сайт',
+  AVITO: 'Avito',
+  OZON: 'Ozon',
+  WB: 'Wildberries',
+  LOCAL: 'Местные (вручную)',
+  UNKNOWN: 'Не определён',
+};
+
+/**
+ * Происхождение заказов периода (этап 17).
+ *
+ * Строки берутся из канонического среза каналов, деньги — оттуда же, то есть
+ * из P&L. Своих формул здесь нет: раздел только раскладывает уже посчитанное.
+ * Строка «Все заказы» — сумма каналов; на ней же держится сверка отчёта.
+ */
+export function buildOrderOrigin(input: ReportInput): OriginBlock {
+  const rows: OriginRow[] = input.salesChannels.rows.map((r) => ({
+    origin: r.salesChannel,
+    label: ORIGIN_LABELS[r.salesChannel] ?? r.salesChannel,
+    crmLeads: r.crmLeads,
+    acceptedOrders: r.acceptedOrders,
+    paidOrders: r.paidOrders,
+    cancelledOrders: r.cancelledOrders,
+    // ?? null: срез мог прийти из более старого контракта — печатаем «—»,
+    // а не падаем на undefined.
+    revenue: r.realizedRevenue ?? null,
+    cogs: r.cogs ?? null,
+    profit: r.grossProfit ?? null,
+    marginPct: r.marginPct ?? null,
+    averageCheck: r.averageCheck ?? null,
+  }));
+  const sum = (pick: (r: OriginRow) => number | null): number | null =>
+    rows.some((r) => pick(r) !== null)
+      ? rows.reduce((acc, r) => acc + (pick(r) ?? 0), 0)
+      : null;
+  const revenue = sum((r) => r.revenue);
+  const profit = sum((r) => r.profit);
+  const all: OriginRow | null = rows.length
+    ? {
+        origin: 'ALL',
+        label: 'Все заказы',
+        crmLeads: rows.reduce((a, r) => a + r.crmLeads, 0),
+        acceptedOrders: rows.reduce((a, r) => a + r.acceptedOrders, 0),
+        paidOrders: rows.reduce((a, r) => a + r.paidOrders, 0),
+        cancelledOrders: rows.reduce((a, r) => a + r.cancelledOrders, 0),
+        revenue,
+        cogs: sum((r) => r.cogs),
+        profit,
+        marginPct: revenue && profit !== null ? (profit / revenue) * 100 : null,
+        averageCheck: null,
+      }
+    : null;
+
+  const ordersOf = (origin: string) =>
+    input.attribution.bySource
+      .filter((s) => s.source === origin)
+      .reduce((a, s) => a + s.orders, 0);
+  const total = input.attribution.totalOrders;
+  const unknown = ordersOf('UNKNOWN');
+  return {
+    rows,
+    all,
+    coverage: {
+      totalOrders: total,
+      websiteOrders: ordersOf('WEBSITE'),
+      avitoOrders: ordersOf('AVITO'),
+      unknownOriginOrders: unknown,
+      orderOriginCoveragePct:
+        total > 0 ? ((total - unknown) / total) * 100 : null,
+    },
+  };
+}
+
 export function buildReportModel(input: ReportInput): ReportModel {
   const summary = buildSummary(input.current, input.previous);
   const signals = buildSignals(summary);
@@ -610,12 +687,19 @@ export function buildReportModel(input: ReportInput): ReportModel {
         .join(', ')}`,
     );
   }
+  const originUnknown = buildOrderOrigin(input).coverage.unknownOriginOrders;
+  if (originUnknown > 0) {
+    constraints.push(
+      `у ${originUnknown} заказов периода происхождение по истории не доказано (UNKNOWN) — доли каналов считаются без них`,
+    );
+  }
   constraints.push(
     'рекламные расходы в систему не заводятся: CPL, CPA, ROAS и ROMI посчитать нельзя',
   );
 
   return {
     input,
+    orderOrigin: buildOrderOrigin(input),
     summary,
     signals,
     siteFunnel,

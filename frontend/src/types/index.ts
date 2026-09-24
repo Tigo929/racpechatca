@@ -5,7 +5,10 @@ export type EnumPrintLocation = 'FRONT' | 'BACK' | 'FRONT_BACK' | 'SLEEVE_LEFT' 
 
 export type EnumStatus = 'LEAD' | 'NEW' | 'APPROVAL_SENT' | 'FOLDER_STRUCTURE_CREATED' | 'IN_PROGRESS' | 'PRINTED' | 'READY' | 'SHIPMENT_CREATED' | 'DONE' | 'SENT' | 'PAID' | 'READY_FOR_REVIEW' | 'COMPLETED' | 'CANCELLED' | 'PROBLEM';
 
-export type EnumSourceOrder = 'AVITO' | 'OZON' | 'WB' | 'LOCAL';
+// Происхождение заказа (этап 17): WEBSITE ставит сервер заявке с сайта,
+// UNKNOWN — старый заказ, чьё происхождение не доказано. Вручную выбираются
+// только первые четыре.
+export type EnumSourceOrder = 'AVITO' | 'OZON' | 'WB' | 'LOCAL' | 'WEBSITE' | 'UNKNOWN';
 
 export type EnumCommunication = 'AVITO' | 'TELEGRAM' | 'MAX' | 'OZON';
 

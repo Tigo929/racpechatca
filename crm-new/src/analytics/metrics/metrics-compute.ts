@@ -5,6 +5,11 @@ import {
 } from '../../reports/order-cogs';
 import type { PnlReport } from '../../reports/reports.service';
 import {
+  ORDER_ORIGINS,
+  originOf,
+  type OrderOrigin,
+} from '../../order-photo/order-origin';
+import {
   COUNTER_DATA_SINCE,
   CRM_TO_METRIKA_LIVE_AT,
   CRM_TO_METRIKA_LIVE_SINCE,
@@ -983,31 +988,103 @@ export function computeProducts(
   };
 }
 
+/**
+ * P&L по происхождению заказа — ровно то, что отдаёт `ReportsService`.
+ * Корзина `all` посчитана теми же правилами, поэтому сумма каналов обязана
+ * сойтись с ней: на этом держится сверка этапа 17.
+ */
+export interface OriginPnl {
+  all: PnlReport;
+  byOrigin: Map<OrderOrigin, PnlReport>;
+}
+
+/** Деньги канала: пустая корзина, если P&L за период не считался. */
+const EMPTY_ORIGIN_MONEY = {
+  realizedOrders: null,
+  realizedRevenue: null,
+  realizedGoodsRevenue: null,
+  cogs: null,
+  grossProfit: null,
+  marginPct: null,
+  averageCheck: null,
+};
+
+/**
+ * Происхождение заказов за период (этап 17): сколько заявок, принятых и
+ * оплаченных пришло из сайта, из Avito и из прочих каналов, и сколько денег
+ * каждый принёс.
+ *
+ * Счётчики — из тех же наборов периода, что и вся воронка CRM. Деньги —
+ * из P&L по каналам (`ReportsService.pnlByOrigin`): своей формулы прибыли
+ * здесь нет и быть не должно.
+ *
+ * UNKNOWN не прячется никогда: заказ, чьё происхождение по истории не
+ * доказано, должен быть виден в таблице, иначе доли каналов врут.
+ */
 export function computeSalesChannels(
   all: OrderWithLifecycle[],
   period: AnalyticsPeriod,
+  pnl?: OriginPnl | null,
 ): CrmSlice<SalesChannelRow> {
   const sets = crmPeriodSets(all, period);
-  const channels = ['AVITO', 'OZON', 'WB', 'LOCAL'];
-  for (const o of [...sets.leads, ...sets.accepted, ...sets.paid]) {
-    if (!channels.includes(o.order.sourceOrder))
-      channels.push(o.order.sourceOrder);
+  // Всегда видимые строки: два основных канала и честное «не доказано».
+  const channels: string[] = ['WEBSITE', 'AVITO', 'UNKNOWN'];
+  const seen = [
+    ...sets.leads,
+    ...sets.accepted,
+    ...sets.paid,
+    ...sets.cancelled,
+  ].map((o) => originOf(o.order.sourceOrder));
+  for (const ch of [...seen, ...(pnl ? [...pnl.byOrigin.keys()] : [])]) {
+    if (!channels.includes(ch)) channels.push(ch);
   }
+  channels.sort(
+    (a, b) =>
+      ORDER_ORIGINS.indexOf(a as OrderOrigin) -
+      ORDER_ORIGINS.indexOf(b as OrderOrigin),
+  );
   const rows: SalesChannelRow[] = channels.map((ch) => {
-    const accepted = sets.accepted.filter((o) => o.order.sourceOrder === ch);
-    const paid = sets.paid.filter((o) => o.order.sourceOrder === ch);
+    const of = (list: OrderWithLifecycle[]) =>
+      list.filter((o) => originOf(o.order.sourceOrder) === ch);
+    const accepted = of(sets.accepted);
+    const paid = of(sets.paid);
+    const money = pnl?.byOrigin.get(ch as OrderOrigin);
     return {
       salesChannel: ch,
-      crmLeads: sets.leads.filter((o) => o.order.sourceOrder === ch).length,
+      crmLeads: of(sets.leads).length,
       acceptedOrders: accepted.length,
       paidOrders: paid.length,
-      cancelledOrders: sets.cancelled.filter((o) => o.order.sourceOrder === ch)
-        .length,
+      cancelledOrders: of(sets.cancelled).length,
       contractValue: contractValue(accepted),
       paidOrderValue: contractValue(paid),
       acceptedAov: ratio(contractValue(accepted), accepted.length),
       paidAov: ratio(contractValue(paid), paid.length),
+      ...(pnl
+        ? {
+            realizedOrders: money?.orderCount ?? 0,
+            realizedRevenue: money?.totalRevenue ?? 0,
+            realizedGoodsRevenue: money?.netRevenue ?? 0,
+            cogs: money?.cogs ?? 0,
+            grossProfit: money?.grossProfit ?? 0,
+            marginPct: money
+              ? percent(money.grossProfit, money.totalRevenue)
+              : null,
+            averageCheck: money?.orderCount ? money.avgCheck : null,
+          }
+        : EMPTY_ORIGIN_MONEY),
     };
   });
-  return { period, rows, quality: quality([]) };
+  const unknown = rows.find((r) => r.salesChannel === 'UNKNOWN');
+  const hasUnknown = Boolean(
+    unknown &&
+    (unknown.crmLeads > 0 ||
+      unknown.acceptedOrders > 0 ||
+      unknown.paidOrders > 0 ||
+      (unknown.realizedOrders ?? 0) > 0),
+  );
+  return {
+    period,
+    rows,
+    quality: quality(hasUnknown ? ['UNKNOWN_ORDER_ORIGIN'] : []),
+  };
 }

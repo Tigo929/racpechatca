@@ -23,6 +23,7 @@ import {
   trafficDetector,
 } from './insights-engine';
 import { FORBIDDEN_PHRASES, violatesLanguagePolicy } from './insights-language';
+import { GROWTH_METRICS } from '../growth/growth-metrics';
 import {
   FRESH,
   NOW,
@@ -427,6 +428,59 @@ describe('E. разделение доменов', () => {
     expect(crm.payload.metricKey).toBe('leadToAcceptedRate');
     expect(crm.payload.limitations).toContain('CRM_INCLUDES_OFFLINE');
     expect(crm.payload.fact.text).not.toMatch(/визит/i);
+  });
+
+  it('E3 (этап 17): рост заказов CRM не выдаётся за рост сайта — метрика помечена как «не только сайт»', () => {
+    // Заявки сайта стоят на месте, а в CRM когорта поехала: так выглядит
+    // всплеск на Avito. Карточка обязана остаться карточкой бизнеса, а не
+    // сайта, иначе владелец прочитает её как работу сайта.
+    const ctx = makeContext(
+      {
+        visits: 300,
+        siteLeads: 12,
+        cohorts: { leads: 200, leadsAccepted: 60, accepted: 60 },
+      },
+      {
+        visits: 300,
+        siteLeads: 12,
+        cohorts: { leads: 200, leadsAccepted: 150, accepted: 150 },
+      },
+      {
+        lagDays: {
+          leadToAccepted: ZEROS,
+          acceptedToPaid: ZEROS,
+          leadToPaid: ZEROS,
+        },
+      },
+    );
+    expect(siteLeadRateDetector.evaluate(ctx).detected).toEqual([]);
+
+    const crm = runDetectors(ctx, [
+      DETECTORS.find((d) => d.id === 'crm.leadToAccepted')!,
+    ]).detected[0];
+    expect(crm.payload.scope).toBe('crm');
+    expect(crm.payload.limitations).toContain('CRM_INCLUDES_OFFLINE');
+    expect(GROWTH_METRICS.acceptedOrders.scope).toBe('crm');
+    expect(GROWTH_METRICS.crmLeads.description).toMatch(/не эффект сайта/);
+    expect(crm.payload.fact.text).not.toMatch(/визит|конверсия сайта/i);
+  });
+
+  it('E4 (этап 17): детекторы сайта получают только метрики сайта', () => {
+    const siteScoped = DETECTORS.filter((d) => d.id.startsWith('site.'));
+    expect(siteScoped.length).toBeGreaterThan(0);
+    for (const detector of siteScoped) {
+      const ctx = makeContext(
+        { visits: 300, siteLeads: 12, cohorts: { leads: 20, accepted: 20 } },
+        { visits: 300, siteLeads: 40, cohorts: { leads: 60, accepted: 60 } },
+      );
+      for (const card of detector.evaluate(ctx).detected) {
+        expect(card.payload.scope).toBe('site');
+        const definition = Object.entries(GROWTH_METRICS).find(
+          ([key]) => key === card.payload.metricKey,
+        )?.[1];
+        expect(definition?.scope).not.toBe('crm');
+      }
+    }
   });
 
   it('E2: низкое покрытие ClientID — DATA_QUALITY INFO, matched-метрики подавлены', () => {

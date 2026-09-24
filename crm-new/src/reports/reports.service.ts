@@ -6,6 +6,7 @@ import {
   orderCostOfGoods,
   type CostSettings,
 } from './order-cogs';
+import { originOf, type OrderOrigin } from '../order-photo/order-origin';
 
 export type { CostSettings } from './order-cogs';
 
@@ -85,6 +86,8 @@ export interface PnlRaw {
 }
 
 export type OrderRow = {
+  /** Происхождение заказа (этап 17). Нужен только раскладке по каналам. */
+  sourceOrder?: string | null;
   sentAt: Date | null;
   createdAt: Date;
   clientPaidAt: Date | null;
@@ -210,8 +213,7 @@ export function addOrder(b: PnlRaw, order: OrderRow, s: CostSettings): void {
   const total = order.totalOrder ?? 0;
   const deliveryCharged = order.deliveryCost ?? 0;
   // Платим перевозчику только если доставка была: у самовывоза списывать не с чего.
-  const deliveryPaid =
-    deliveryPaidFor(order.deliveryMethod, s);
+  const deliveryPaid = deliveryPaidFor(order.deliveryMethod, s);
   const salary = order.accruals.reduce((sum, a) => sum + a.salaryAmount, 0);
   // Выручка за товар — без доставки: на ней зарабатывают отдельной строкой.
   const goodsRevenue = total - deliveryCharged;
@@ -424,6 +426,7 @@ export class ReportsService {
           ],
         },
         select: {
+          sourceOrder: true,
           sentAt: true,
           completedAt: true,
           statusChangedAt: true,
@@ -529,6 +532,43 @@ export class ReportsService {
       out.set(key, buildPnl(b.orders, b.expenses, b.salary, settings));
     }
     return out;
+  }
+
+  /**
+   * P&L периода в разрезе происхождения заказа (этап 17).
+   *
+   * Считает тот же `buildPnl`, что и весь остальной финансовый контур: второй
+   * формулы прибыли не появляется, заказ попадает в корзину по той же дате
+   * признания выручки.
+   *
+   * Расходы и зарплаты в корзины каналов НЕ раскладываются: реклама,
+   * оборудование, упаковка и смена печатника не принадлежат ни Avito, ни
+   * сайту — делить их пришлось бы выдуманным коэффициентом. Поэтому по каналам
+   * считается валовая прибыль (выручка за товар минус себестоимость заказов),
+   * а чистая прибыль владельца остаётся одна на весь бизнес. Корзина `all`
+   * посчитана так же — без расходов и зарплат, — чтобы сумма каналов сходилась
+   * с ней до рубля.
+   */
+  async pnlByOrigin(
+    start: Date,
+    endExclusive: Date,
+  ): Promise<{ all: PnlReport; byOrigin: Map<OrderOrigin, PnlReport> }> {
+    const [{ orders }, settings] = await Promise.all([
+      this.fetchPeriod(start, endExclusive),
+      this.costSettings(),
+    ]);
+    const rowsOf = new Map<OrderOrigin, OrderRow[]>();
+    for (const o of orders) {
+      const key = originOf(o.sourceOrder);
+      const list = rowsOf.get(key);
+      if (list) list.push(o);
+      else rowsOf.set(key, [o]);
+    }
+    const byOrigin = new Map<OrderOrigin, PnlReport>();
+    for (const [origin, rows] of rowsOf) {
+      byOrigin.set(origin, buildPnl(rows, [], [], settings));
+    }
+    return { all: buildPnl(orders, [], [], settings), byOrigin };
   }
 
   async getMonthlyReport(year: number) {

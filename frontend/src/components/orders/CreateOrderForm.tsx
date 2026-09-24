@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { ordersApi } from '../../api/orders';
 import { canvasProductionApi } from '../../api/canvasProduction';
 import { PHOTO_FORMATS, sheetHint } from '../../config/photo-formats';
+import { SOURCE_ORDER_LABELS, SOURCE_ORDER_OPTIONS } from '../../constants';
 import { printsPerSheet } from '../../utils/photo-material';
 import { usersApi } from '../../api/users';
 import { partnerSettingsApi } from '../../api/partnerSettings';
@@ -743,6 +744,17 @@ export function CreateOrderForm({ onClose }: Props) {
             <option value="TELEGRAM">Telegram</option>
             <option value="MAX">MAX</option>
             <option value="OZON">Ozon</option>
+          </select>
+        </div>
+        {/* Откуда заказ: по умолчанию Авито — основной ручной канал, поэтому
+            выбирать каждый раз не нужно. Заявки сайта сюда не попадают: их
+            источник ставит сервер. */}
+        <div>
+          <label className={labelCls} htmlFor="sourceOrder">Источник заказа</label>
+          <select id="sourceOrder" className={selectCls} {...register('sourceOrder')}>
+            {SOURCE_ORDER_OPTIONS.map((value) => (
+              <option key={value} value={value}>{SOURCE_ORDER_LABELS[value]}</option>
+            ))}
           </select>
         </div>
       </div>

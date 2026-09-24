@@ -27,7 +27,8 @@
     "metrika:sync:status": "node dist/src/analytics/metrika-sync.js status",
     "metrics:report": "node dist/src/analytics/metrics-report.js",
     "db:push:dev": "prisma db push",
-    "analytics:report": "node dist/src/analytics/analytics-report-cli.js"
+    "analytics:report": "node dist/src/analytics/analytics-report-cli.js",
+    "origin:backfill": "node dist/src/analytics/order-origin-cli.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

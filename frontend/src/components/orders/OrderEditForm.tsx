@@ -5,6 +5,7 @@ import { Check, X } from 'lucide-react';
 import type { UpdateOrderDto } from '../../types/index';
 import { computePrepayment } from '../../utils/prepayment';
 import { partnerSettingsApi } from '../../api/partnerSettings';
+import { SOURCE_ORDER_LABELS, SOURCE_ORDER_OPTIONS } from '../../constants';
 
 interface Props {
   form: UpdateOrderDto;
@@ -58,6 +59,18 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, pro
             <option value="OZON">Ozon</option>
           </select>
         </div>
+        {/* Источник заказа. Значение, которое поставил сервер (заявка сайта) или
+            история (происхождение не доказано), остаётся в списке: иначе правка
+            соседнего поля молча переписала бы происхождение на «Авито». */}
+        <div>
+          <p className={labelCls}>Источник заказа</p>
+          <select className={inputCls} value={form.sourceOrder ?? 'AVITO'} aria-label="Источник заказа"
+            onChange={e => set({ sourceOrder: e.target.value as UpdateOrderDto['sourceOrder'] })}>
+            {[...SOURCE_ORDER_OPTIONS, ...(form.sourceOrder && !SOURCE_ORDER_OPTIONS.includes(form.sourceOrder as (typeof SOURCE_ORDER_OPTIONS)[number]) ? [form.sourceOrder] : [])].map(value => (
+              <option key={value} value={value}>{SOURCE_ORDER_LABELS[value] ?? value}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div>
@@ -75,7 +88,7 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, pro
       <div className="grid grid-cols-2 gap-3">
         <div>
           <p className={labelCls}>Способ доставки</p>
-          <select className={inputCls} value={form.deliveryMethod}
+          <select className={inputCls} value={form.deliveryMethod} aria-label="Способ доставки"
             onChange={e => changeDelivery(e.target.value as UpdateOrderDto['deliveryMethod'])}>
             <option value="PICKUP">Самовывоз</option>
             {productCategory === 'CANVAS' && <option value="PRODUCTION_MSK">Доставка производства (Москва)</option>}

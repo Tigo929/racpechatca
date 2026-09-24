@@ -7,6 +7,7 @@ import {
   utcDateToIso,
 } from '../../metrika/analytics/metrika-dates';
 import { ReportsService, type PnlReport } from '../../reports/reports.service';
+import type { OriginPnl } from './metrics-compute';
 import type { CostSettings } from '../../reports/order-cogs';
 import { METRIKA_SCOPE_COUNTER } from './analytics-constants';
 import {
@@ -332,8 +333,18 @@ export class AnalyticsMetricsService {
   async getSalesChannels(
     period: AnalyticsPeriod,
   ): Promise<CrmSlice<SalesChannelRow>> {
-    const orders = await this.loadOrders(periodBoundsUtc(period).endExclusive);
-    return computeSalesChannels(withLifecycles(orders), period);
+    const bounds = periodBoundsUtc(period);
+    const [orders, pnl] = await Promise.all([
+      this.loadOrders(bounds.endExclusive),
+      this.reports.pnlByOrigin(bounds.start, bounds.endExclusive),
+    ]);
+    return computeSalesChannels(withLifecycles(orders), period, pnl);
+  }
+
+  /** P&L по происхождению заказа — для сверок и отчёта (этап 17). */
+  async pnlByOriginFor(period: AnalyticsPeriod): Promise<OriginPnl> {
+    const bounds = periodBoundsUtc(period);
+    return this.reports.pnlByOrigin(bounds.start, bounds.endExclusive);
   }
 
   // ---------------------------------------------------------------------------

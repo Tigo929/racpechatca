@@ -378,6 +378,6 @@ export const TREND_METRICS: { key: TrendMetric; label: string; format: MetricFor
 ];
 
 export const PRODUCT_LABELS: Record<string, string> = { PHOTO: 'Фото', TSHIRT: 'Футболки', CANVAS: 'Холсты' };
-export const CHANNEL_LABELS: Record<string, string> = { AVITO: 'Avito', OZON: 'Ozon', WB: 'Wildberries', LOCAL: 'Сайт и прямые' };
+export const CHANNEL_LABELS: Record<string, string> = { WEBSITE: 'Сайт', AVITO: 'Avito', OZON: 'Ozon', WB: 'Wildberries', LOCAL: 'Местные (вручную)', UNKNOWN: 'Не определён' };
 export const DEVICE_LABELS: Record<string, string> = { desktop: 'Компьютер', mobile: 'Телефон', tablet: 'Планшет', other: 'Другое' };
 export const NO_UTM_LABEL = 'Без UTM';

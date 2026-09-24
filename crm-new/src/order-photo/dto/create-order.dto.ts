@@ -24,8 +24,14 @@ import { DtoCreateCanvasItem } from './create-canvas-item.dto';
 import { DtoCreateTshirtItem } from './create-tshirt-item.dto';
 
 export default class DtoCreateOrder {
+  /**
+   * Происхождение заказа. Не указан — сервер ставит текущий основной канал
+   * (`MANUAL_DEFAULT_ORIGIN`), чтобы сотруднику не приходилось каждый раз
+   * выбирать одно и то же. Значение вне перечисления — 400, а не «прочее».
+   */
   @IsEnum(EnumSourceOrder)
-  sourceOrder!: EnumSourceOrder;
+  @IsOptional()
+  sourceOrder?: EnumSourceOrder;
 
   @IsEnum(EnumCommunication)
   communicationPlatform!: EnumCommunication;

@@ -101,6 +101,23 @@ export const COMMUNICATION_LABELS: Record<EnumCommunication, string> = {
   OZON: 'Ozon',
 };
 
+/**
+ * Происхождение заказа (этап 17): откуда заказ взялся, а не откуда реклама.
+ * WEBSITE ставит сервер заявке с сайта, UNKNOWN — старый заказ без доказательств;
+ * вручную выбираются только каналы из SOURCE_ORDER_OPTIONS.
+ */
+export const SOURCE_ORDER_LABELS: Record<string, string> = {
+  AVITO: 'Авито',
+  OZON: 'Ozon',
+  WB: 'Wildberries',
+  LOCAL: 'Местный (вручную)',
+  WEBSITE: 'Сайт',
+  UNKNOWN: 'Не определён',
+};
+
+/** Что предлагается выбрать сотруднику при ручном создании заказа. */
+export const SOURCE_ORDER_OPTIONS = ['AVITO', 'OZON', 'WB', 'LOCAL'] as const;
+
 export const DELIVERY_LABELS: Record<EnumDeliveryMethod, string> = {
   YANDEX_PVZ: 'Яндекс ПВЗ',
   OZON_PVZ: 'Ozon ПВЗ',

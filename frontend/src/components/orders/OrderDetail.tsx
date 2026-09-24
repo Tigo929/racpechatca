@@ -21,7 +21,7 @@ import {
   formatPaymentPhoneForClient,
   resolvePickupAddress,
 } from "../../config/business";
-import { DELIVERY_LABELS } from "../../constants";
+import { DELIVERY_LABELS, SOURCE_ORDER_LABELS } from "../../constants";
 import { GulianSyncBlock } from './GulianSyncBlock';
 import { DispatchToExecutorModal } from './DispatchToExecutorModal';
 import { GreetingCopyButton } from './GreetingCopyButton';
@@ -1296,6 +1296,13 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
               позиций: доскроллив сюда, приходилось искать дорогу обратно
               наверх. Способ получения и сумма доставки меняются чаще всего,
               и они же дальше всего от кнопки. */}
+          {/* Откуда заказ взялся. Для заявок сайта это ставит сервер, для
+              ручных — сотрудник при создании; видно всем, правит администратор. */}
+          <InfoRow
+            label="Источник заказа"
+            value={SOURCE_ORDER_LABELS[order.sourceOrder] ?? order.sourceOrder}
+            onEdit={isAdmin ? startEdit : undefined}
+          />
           <InfoRow
             label="Способ доставки"
             value={DELIVERY_LABELS[order.deliveryMethod]}

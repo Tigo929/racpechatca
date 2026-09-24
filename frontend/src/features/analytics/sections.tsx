@@ -278,10 +278,15 @@ export function ProductsBlock({ slice }: { slice?: CrmSlice<ProductRow> }) {
   );
 }
 
-export function SalesChannelsBlock({ slice, o }: { slice?: CrmSlice<SalesChannelRow>; o?: Overview }) {
-  if (!slice) return <Card title="Каналы продаж"><StateBlock kind="loading" /></Card>;
+export function SalesChannelsBlock({ slice }: { slice?: CrmSlice<SalesChannelRow> }) {
+  if (!slice) return <Card title="Каналы заказов"><StateBlock kind="loading" /></Card>;
+  const unknown = slice.rows.find((r) => r.salesChannel === 'UNKNOWN');
+  const hasUnknown = Boolean(unknown && (unknown.acceptedOrders > 0 || unknown.crmLeads > 0 || (unknown.realizedOrders ?? 0) > 0));
   return (
-    <Card title="Каналы продаж" subtitle="Где оформлен заказ (CRM): Avito, Ozon, Wildberries, сайт/прямые. Это не источник рекламы.">
+    <Card
+      title="Каналы заказов"
+      subtitle="Откуда заказ взялся: заявку создал сайт или её завели в CRM вручную (Avito, маркетплейсы). Это не источник рекламы — откуда пришёл человек, показывает блок «Источники визитов»."
+    >
       <TableWrap>
         <thead className="bg-gray-50">
           <tr>
@@ -289,8 +294,9 @@ export function SalesChannelsBlock({ slice, o }: { slice?: CrmSlice<SalesChannel
             <Th right>Заявки</Th>
             <Th right>Принято</Th>
             <Th right>Оплачено</Th>
-            <Th right>Сумма принятых</Th>
-            <Th right>Сумма оплаченных</Th>
+            <Th right>Выручка</Th>
+            <Th right>Себестоимость</Th>
+            <Th right>Прибыль</Th>
             <Th right>Средний чек</Th>
           </tr>
         </thead>
@@ -303,19 +309,18 @@ export function SalesChannelsBlock({ slice, o }: { slice?: CrmSlice<SalesChannel
               <Td right dim={r.crmLeads === 0}>{formatCount(r.crmLeads)}</Td>
               <Td right dim={r.acceptedOrders === 0}>{formatCount(r.acceptedOrders)}</Td>
               <Td right dim={r.paidOrders === 0}>{formatCount(r.paidOrders)}</Td>
-              <Td right dim={r.contractValue === 0}>{formatMoney(r.contractValue)}</Td>
-              <Td right dim={r.paidOrderValue === 0}>{formatMoney(r.paidOrderValue)}</Td>
-              <Td right>{formatMoney(r.paidAov)}</Td>
+              <Td right dim={!r.realizedRevenue}>{formatMoney(r.realizedRevenue)}</Td>
+              <Td right dim={!r.cogs}>{formatMoney(r.cogs)}</Td>
+              <Td right dim={!r.grossProfit}>{formatMoney(r.grossProfit)}</Td>
+              <Td right>{formatMoney(r.averageCheck)}</Td>
             </tr>
           ))}
         </tbody>
       </TableWrap>
-      {o?.financials.realized && (
-        <p className="mt-3 text-[11px] text-gray-400">
-          Прибыль по каналам отдельно не считается: финансовый отчёт раскладывает её по товарам (фото {formatMoney(o.financials.realized.byCategory.photo.profit)}, футболки{' '}
-          {formatMoney(o.financials.realized.byCategory.tshirt.profit)}, холсты {formatMoney(o.financials.realized.byCategory.canvas.profit)}).
-        </p>
-      )}
+      <p className="mt-3 text-[11px] text-gray-400">
+        Прибыль канала — валовая: выручка за товар минус себестоимость заказов. Зарплата, реклама и прочие расходы бизнеса по каналам не делятся, поэтому чистая прибыль остаётся одна на весь бизнес (блок «Деньги»).
+        {hasUnknown && ' Строка «Не определён» — старые заказы, происхождение которых по истории не доказано; они не приписаны ни сайту, ни Avito.'}
+      </p>
     </Card>
   );
 }

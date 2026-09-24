@@ -34,7 +34,8 @@ it('editing a canvas preserves the production courier option and clears pickup c
     return <OrderEditForm form={form} onChange={setForm} onSave={() => {}} onCancel={() => {}} isPending={false} productCategory="CANVAS" orderTotal={1800} />;
   }
   wrap(<Form />);
-  const delivery = screen.getAllByRole('combobox')[1];
+  // по названию, а не по порядку: в форме появляются новые поля (этап 17)
+  const delivery = screen.getByRole('combobox', { name: 'Способ доставки' });
   expect(delivery).toHaveValue('PRODUCTION_MSK');
   expect(screen.getByRole('option', { name: 'Доставка производства (Москва)' })).toBeInTheDocument();
   fireEvent.change(delivery, { target: { value: 'PICKUP' } });

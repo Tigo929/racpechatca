@@ -10,6 +10,7 @@ import {
 import { leadDeliveryCost as deliveryCostForLead } from './free-delivery';
 import { attributionFromLead } from './lead-attribution';
 import { clientPaidAtPatch, parseClientPaidAt } from './paid-at';
+import { MANUAL_DEFAULT_ORIGIN } from './order-origin';
 import { MetrikaOrderOutboxService } from 'src/metrika/orders/metrika-order-outbox.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import DtoCreateOrder from './dto/create-order.dto';
@@ -394,7 +395,8 @@ export class OrderPhotoService {
           // оплаты (работа D1). Проверка выше не даёт принести её заказу,
           // который оплаченным не является.
           ...(createdPaidAt ? { clientPaidAt: createdPaidAt } : {}),
-          sourceOrder: dto.sourceOrder,
+          // Источник выбирает сотрудник; не выбрал — текущий основной канал.
+          sourceOrder: dto.sourceOrder ?? MANUAL_DEFAULT_ORIGIN,
           communicationPlatform: dto.communicationPlatform,
           urlCommunication: buildCommunicationUrl(
             dto.communicationPlatform,
@@ -694,7 +696,10 @@ export class OrderPhotoService {
 
           status: EnumStatus.LEAD,
           statusChangedAt: new Date(),
-          sourceOrder: 'LOCAL',
+          // Происхождение ставит сервер, а не заявка: сайт не может назваться
+          // другим каналом, даже если в теле запроса что-то такое придёт
+          // (лишние поля отсекает whitelist валидации, см. LeadController).
+          sourceOrder: 'WEBSITE',
           communicationPlatform,
           urlCommunication,
           deliveryMethod,

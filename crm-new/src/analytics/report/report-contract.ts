@@ -186,8 +186,40 @@ export interface QualityItem {
   impact: string;
 }
 
+/** Строка раздела ORDER ORIGIN — происхождение заказа, не источник рекламы. */
+export interface OriginRow {
+  origin: string;
+  label: string;
+  crmLeads: number;
+  acceptedOrders: number;
+  paidOrders: number;
+  cancelledOrders: number;
+  revenue: number | null;
+  cogs: number | null;
+  profit: number | null;
+  marginPct: number | null;
+  averageCheck: number | null;
+}
+
+/** Полнота классификации происхождения — обязательные поля качества этапа 17. */
+export interface OriginCoverage {
+  /** Заказы, созданные в периоде (та же база, что у блока атрибуции). */
+  totalOrders: number;
+  websiteOrders: number;
+  avitoOrders: number;
+  unknownOriginOrders: number;
+  orderOriginCoveragePct: number | null;
+}
+
+export interface OriginBlock {
+  rows: OriginRow[];
+  all: OriginRow | null;
+  coverage: OriginCoverage;
+}
+
 export interface ReportModel {
   input: ReportInput;
+  orderOrigin: OriginBlock;
   summary: MetricRow[];
   signals: Signal[];
   siteFunnel: FunnelStep[];

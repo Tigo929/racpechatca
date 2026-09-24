@@ -34,7 +34,9 @@ export type QualityNote =
   | 'PAID_WITHOUT_DATE'
   | 'COGS_UNRELIABLE_ORDERS'
   | 'PNL_UNAVAILABLE'
-  | 'UNAVAILABLE_NO_SPEND_DATA';
+  | 'UNAVAILABLE_NO_SPEND_DATA'
+  /** Есть заказы, чьё происхождение по истории не доказано (этап 17). */
+  | 'UNKNOWN_ORDER_ORIGIN';
 
 export interface GroupQuality {
   completeness: Completeness;
@@ -309,6 +311,7 @@ export interface ProductRow {
 }
 
 export interface SalesChannelRow {
+  /** Происхождение заказа, не источник рекламы (этап 17). */
   salesChannel: string;
   crmLeads: number;
   acceptedOrders: number;
@@ -318,6 +321,14 @@ export interface SalesChannelRow {
   paidOrderValue: number;
   acceptedAov: number | null;
   paidAov: number | null;
+  realizedOrders: number | null;
+  realizedRevenue: number | null;
+  realizedGoodsRevenue: number | null;
+  cogs: number | null;
+  /** Валовая прибыль канала: зарплата и расходы бизнеса по каналам не делятся. */
+  grossProfit: number | null;
+  marginPct: number | null;
+  averageCheck: number | null;
 }
 
 export interface CrmSlice<Row> {

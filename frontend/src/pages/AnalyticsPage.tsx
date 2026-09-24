@@ -240,7 +240,7 @@ export function AnalyticsPage() {
                 {tab === 'products' && (
                   <div className="space-y-4">
                     {products.isError ? <StateBlock kind="error" message={getErrorMessage(products.error)} onRetry={() => void products.refetch()} /> : <ProductsBlock slice={products.data} />}
-                    {channels.isError ? <StateBlock kind="error" message={getErrorMessage(channels.error)} onRetry={() => void channels.refetch()} /> : <SalesChannelsBlock slice={channels.data} o={o} />}
+                    {channels.isError ? <StateBlock kind="error" message={getErrorMessage(channels.error)} onRetry={() => void channels.refetch()} /> : <SalesChannelsBlock slice={channels.data} />}
                   </div>
                 )}
                 {tab === 'pages' && (

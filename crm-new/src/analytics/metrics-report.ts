@@ -280,10 +280,15 @@ async function slices(service: AnalyticsMetricsService): Promise<number> {
     console.log(
       `  ${r.productCategory.padEnd(8)} accepted ${String(r.acceptedOrders).padStart(3)} paid ${String(r.paidOrders).padStart(3)} cancelled ${r.cancelledOrders}  contract ${money(r.contractValue).padStart(13)} paid ${money(r.paidOrderValue).padStart(13)} cogs ${money(r.cogs).padStart(12)} (reliable ${r.cogsReliableOrders}) gross ${money(r.grossContribution).padStart(13)} aov ${money(r.paidAov)}`,
     );
-  console.log('Каналы продаж CRM (sourceOrder)');
+  // Происхождение заказа (этап 17), не источник рекламы.
+  console.log(
+    'Каналы заказов (origin) [' +
+      (ch.quality.notes.join(', ') || 'complete') +
+      ']',
+  );
   for (const r of ch.rows)
     console.log(
-      `  ${r.salesChannel.padEnd(6)} leads ${String(r.crmLeads).padStart(3)} accepted ${String(r.acceptedOrders).padStart(3)} paid ${String(r.paidOrders).padStart(3)} cancelled ${r.cancelledOrders}  contract ${money(r.contractValue).padStart(13)} paid ${money(r.paidOrderValue).padStart(13)} aov ${money(r.paidAov)}`,
+      `  ${r.salesChannel.padEnd(8)} leads ${String(r.crmLeads).padStart(3)} accepted ${String(r.acceptedOrders).padStart(3)} paid ${String(r.paidOrders).padStart(3)} cancelled ${r.cancelledOrders}  contract ${money(r.contractValue).padStart(13)} paid ${money(r.paidOrderValue).padStart(13)} revenue ${money(r.realizedRevenue ?? 0).padStart(13)} cogs ${money(r.cogs ?? 0).padStart(12)} gross ${money(r.grossProfit ?? 0).padStart(13)} aov ${money(r.averageCheck ?? r.paidAov)}`,
     );
   return 0;
 }

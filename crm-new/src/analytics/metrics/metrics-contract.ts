@@ -29,7 +29,9 @@ export type QualityNote =
   | 'PAID_WITHOUT_DATE'
   | 'COGS_UNRELIABLE_ORDERS'
   | 'PNL_UNAVAILABLE'
-  | 'UNAVAILABLE_NO_SPEND_DATA';
+  | 'UNAVAILABLE_NO_SPEND_DATA'
+  /** Есть заказы, чьё происхождение по истории не доказано (этап 17). */
+  | 'UNKNOWN_ORDER_ORIGIN';
 
 export interface GroupQuality {
   completeness: Completeness;
@@ -341,7 +343,11 @@ export interface ProductRow {
 }
 
 export interface SalesChannelRow {
-  /** AVITO | OZON | WB | LOCAL (EnumSourceOrder) — канал продаж, не маркетинговый источник. */
+  /**
+   * Происхождение заказа (этап 17): WEBSITE | AVITO | OZON | WB | LOCAL |
+   * UNKNOWN. Это НЕ маркетинговый источник: откуда человек пришёл на сайт —
+   * отдельное измерение (блок «Источники визитов»).
+   */
   salesChannel: string;
   crmLeads: number;
   acceptedOrders: number;
@@ -351,6 +357,24 @@ export interface SalesChannelRow {
   paidOrderValue: number;
   acceptedAov: number | null;
   paidAov: number | null;
+  /**
+   * Деньги канала — по канонической методике этапа 08 (тот же buildPnl, та же
+   * дата признания выручки). Населённость здесь другая, чем у принятых и
+   * оплаченных выше: заказ попадает в неё по дате признания.
+   */
+  realizedOrders: number | null;
+  realizedRevenue: number | null;
+  /** Выручка за товар без доставки — из неё считается валовая прибыль. */
+  realizedGoodsRevenue: number | null;
+  cogs: number | null;
+  /**
+   * Валовая прибыль канала = товарная выручка − себестоимость заказов.
+   * Не чистая прибыль: зарплата, реклама и прочие расходы бизнеса по каналам
+   * не делятся — они не принадлежат ни одному из них.
+   */
+  grossProfit: number | null;
+  marginPct: number | null;
+  averageCheck: number | null;
 }
 
 export interface CrmSlice<Row> {
