@@ -125,8 +125,13 @@ export function CanvasItemsTable({ order }: Props) {
    * заработок занижался ровно на неё.
    */
   const designCost = order.designDevelopmentCost ?? 0;
+  /*
+   * Скидка клиенту: её мы делим с исполнителем, но на карточке холста
+   * зарплаты нет — значит здесь она целиком уменьшает мой заработок.
+   */
+  const discount = order.discountAmount ?? 0;
   const myProfit =
-    totals.profit + deliveryCharged - deliveryOwnCost + designCost;
+    totals.profit + deliveryCharged - deliveryOwnCost + designCost - discount;
 
   const invalidate = (updated: OrderPhoto) => {
     qc.setQueryData(['order', order.id], updated);
@@ -527,6 +532,12 @@ export function CanvasItemsTable({ order }: Props) {
               <div className="flex justify-between text-gray-500">
                 <span>Разработка дизайна (100% ваши)</span>
                 <span className="tabular-nums">{money(designCost)}</span>
+              </div>
+            )}
+            {discount > 0 && (
+              <div className="flex justify-between text-gray-500">
+                <span>Скидка клиенту</span>
+                <span className="tabular-nums">−{money(discount)}</span>
               </div>
             )}
             <div

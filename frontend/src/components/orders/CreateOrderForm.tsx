@@ -125,6 +125,7 @@ const baseSchema = z.object({
   deliveryCost: z.coerce.number().int().min(0),
   note: z.string().optional(),
   isUrgent: z.boolean().optional(),
+  discountAmount: z.coerce.number().int().min(0).optional(),
   // Режим «заказ с маркетплейса» (только футболки): печать индивидуального
   // принта с Ozon и т.п. Прячет срочность, доставку, цену и «нужен дизайн» —
   // деньги считаются на площадке, а CRM ведёт производство и макет.
@@ -226,6 +227,7 @@ const EMPTY_ORDER_FORM = {
   deliveryMethod: 'PICKUP',
   deliveryCost: 0,
   isUrgent: false,
+  discountAmount: 0,
   marketplace: false,
   urgencyFee: 0,
   executorId: '',
@@ -312,6 +314,9 @@ export function CreateOrderForm({ onClose }: Props) {
   const productCategory = useWatch({ control, name: 'productCategory' });
   const communicationPlatform = useWatch({ control, name: 'communicationPlatform' });
   const isUrgent = useWatch({ control, name: 'isUrgent' }) ?? false;
+  // Скидка клиенту: вычитается из чека и из заработка сразу, пока форму
+  // заполняют, — цену клиенту называют в этот же момент.
+  const discountWatch = Number(useWatch({ control, name: 'discountAmount' }) ?? 0) || 0;
   const marketplace = useWatch({ control, name: 'marketplace' }) ?? false;
   // Режим маркетплейса действует только на футболках. В нём часть полей формы
   // скрыта — деньги и доставку ведёт площадка, CRM отвечает за макет.
@@ -480,7 +485,13 @@ export function CreateOrderForm({ onClose }: Props) {
     // Разработка дизайна — тоже 100% прибыль владельца.
     const design = needsDesign ? Number(designCostWatch ?? 0) || 0 : 0;
 
-    const clientTotal = revenue + deliveryCharged + extra + design;
+    // Скидка уменьшает и то, что платит клиент, и заработок: она не может
+    // съесть доставку и срочность, поэтому потолок — товар с дизайном.
+    const discount = Math.min(
+      Math.max(0, discountWatch),
+      revenue + extra + design,
+    );
+    const clientTotal = revenue + deliveryCharged + extra + design - discount;
     const owed = cost + deliveryOwn;
     return {
       revenue,
@@ -489,6 +500,7 @@ export function CreateOrderForm({ onClose }: Props) {
       deliveryCharged,
       extra,
       design,
+      discount,
       clientTotal,
       owed,
       // Свободные позиции и дизайн идут в прибыль целиком — себестоимости
@@ -526,6 +538,7 @@ export function CreateOrderForm({ onClose }: Props) {
         note: data.note,
         isUrgent: data.isUrgent ?? false,
         urgencyFee: data.isUrgent ? (data.urgencyFee ?? 0) : 0,
+        discountAmount: data.discountAmount || 0,
         executorId: data.executorId || undefined,
         productCategory: data.productCategory,
         freePrice: true,
@@ -550,6 +563,7 @@ export function CreateOrderForm({ onClose }: Props) {
       note: data.note,
       isUrgent: data.isUrgent ?? false,
       urgencyFee: data.isUrgent ? (data.urgencyFee ?? 0) : 0,
+      discountAmount: data.discountAmount || 0,
       executorId: data.executorId || undefined,
     };
 
@@ -676,6 +690,7 @@ export function CreateOrderForm({ onClose }: Props) {
       note: data.note,
       isUrgent: data.isUrgent ?? false,
       urgencyFee: data.isUrgent ? (data.urgencyFee ?? 0) : 0,
+      discountAmount: data.discountAmount || 0,
       productCategory: data.productCategory ?? 'PHOTO',
       status: 'LEAD',
       // У внешних продуктов исполнителя нет — печатает подрядчик.
@@ -822,6 +837,20 @@ export function CreateOrderForm({ onClose }: Props) {
               {...register('urgencyFee')} />
           </div>
         )}
+
+        {/* Скидка клиенту. Отдельным полем, а не «уменьшите цену позиции»:
+            иначе через месяц не вспомнить, был ли заказ дешёвым сам по себе
+            или его продали со скидкой. Она уменьшает и чек, и базу зарплаты
+            исполнителя — скидку делим с ним (решение владельца). */}
+        <div className="mt-3">
+          <label className={labelCls} htmlFor="discountAmount">Скидка клиенту, ₽</label>
+          <input id="discountAmount" type="number" min={0} className={inputCls} placeholder="0"
+            {...register('discountAmount')} />
+          <p className="mt-1 text-xs text-gray-400">
+            Вычитается из чека и из вашего заработка. Доставку и срочность не
+            уменьшает; больше суммы товара с дизайном не принимается.
+          </p>
+        </div>
       </div>
       )}
 
@@ -1350,6 +1379,12 @@ export function CreateOrderForm({ onClose }: Props) {
                   <span className="tabular-nums">{canvasTotals.deliveryCharged.toLocaleString('ru-RU')} ₽</span>
                 </div>
               )}
+              {canvasTotals.discount > 0 && (
+                <div className="flex justify-between text-gray-500">
+                  <span>− скидка клиенту</span>
+                  <span className="tabular-nums">−{canvasTotals.discount.toLocaleString('ru-RU')} ₽</span>
+                </div>
+              )}
               <div className="mt-1 flex justify-between font-semibold text-gray-900">
                 <span>Итого клиенту</span>
                 <span className="tabular-nums">{canvasTotals.clientTotal.toLocaleString('ru-RU')} ₽</span>
@@ -1402,7 +1437,7 @@ export function CreateOrderForm({ onClose }: Props) {
                   Заказ в минус: производству отдадите на{' '}
                   {Math.abs(canvasTotals.profit).toLocaleString('ru-RU')} ₽ больше,
                   чем получите с клиента. Клиенту нужно называть от{' '}
-                  {(canvasTotals.owed - canvasTotals.deliveryCharged - canvasTotals.extra - canvasTotals.design).toLocaleString('ru-RU')} ₽
+                  {(canvasTotals.owed - canvasTotals.deliveryCharged - canvasTotals.extra - canvasTotals.design + canvasTotals.discount).toLocaleString('ru-RU')} ₽
                   за холсты, чтобы выйти в ноль.
                 </p>
               )}

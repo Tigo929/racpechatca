@@ -284,6 +284,11 @@ function generateConfirmationText(order: OrderPhoto): string {
     "",
     separator,
     `💰 Сумма по позициям: ${itemsTotal.toLocaleString("ru-RU")} ₽`,
+    // Скидку называем клиенту отдельной строкой: иначе он видит «итого»
+    // меньше суммы позиций и не понимает, откуда разница.
+    ...((order.discountAmount ?? 0) > 0
+      ? [`🎁 Скидка: −${(order.discountAmount ?? 0).toLocaleString("ru-RU")} ₽`]
+      : []),
     ...(delivery > 0
       ? [
           `🚚 Доставка (${DELIVERY_LABELS[order.deliveryMethod as keyof typeof DELIVERY_LABELS] ?? order.deliveryMethod}): ${delivery.toLocaleString("ru-RU")} ₽`,
@@ -381,6 +386,11 @@ function generateReadyText(order: OrderPhoto): string {
     "",
     separator,
     `💰 Сумма по позициям: ${itemsTotal.toLocaleString("ru-RU")} ₽`,
+    // Скидку называем клиенту отдельной строкой: иначе он видит «итого»
+    // меньше суммы позиций и не понимает, откуда разница.
+    ...((order.discountAmount ?? 0) > 0
+      ? [`🎁 Скидка: −${(order.discountAmount ?? 0).toLocaleString("ru-RU")} ₽`]
+      : []),
     ...(delivery > 0
       ? [
           `🚚 Доставка (${DELIVERY_LABELS[order.deliveryMethod as keyof typeof DELIVERY_LABELS] ?? order.deliveryMethod}): ${delivery.toLocaleString("ru-RU")} ₽`,
@@ -716,6 +726,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       deliveryMethod: order.deliveryMethod,
       deliveryCost: order.deliveryCost,
       designDevelopmentCost: order.designDevelopmentCost ?? 0,
+      discountAmount: order.discountAmount ?? 0,
       isUrgent: order.isUrgent ?? false,
       urgencyFee: order.urgencyFee ?? 0,
       prepaidAmount: order.prepaidAmount ?? null,
@@ -973,8 +984,17 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                       : 0
                   : 0;
               const deliveryProfit = charged - carrier;
+              // Скидку клиенту вычитаем здесь же: она уменьшила чек, а
+              // зарплата уже посчитана от суммы со скидкой — значит остаток
+              // скидки лежит на мне.
+              const discountRub = order.discountAmount ?? 0;
               const profit =
-                photoRevenue + designRub - paper.cost - salary + deliveryProfit;
+                photoRevenue +
+                designRub -
+                paper.cost -
+                salary +
+                deliveryProfit -
+                discountRub;
               const money = (v: number) => `${v.toLocaleString("ru-RU")} ₽`;
               const Row = ({
                 l,
@@ -997,6 +1017,9 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   <Row l="Сумма фото" v={money(photoRevenue)} />
                   {designRub > 0 && (
                     <Row l="+ Разработка дизайна" v={money(designRub)} />
+                  )}
+                  {discountRub > 0 && (
+                    <Row l="Скидка клиенту" v={`− ${money(discountRub)}`} />
                   )}
                   <Row
                     l={`Бумага (${paper.sheets} ${paper.sheets === 1 ? "лист" : "листов"})`}
@@ -1319,6 +1342,13 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 <InfoRow
                   label="Срочность"
                   value={`${(order.urgencyFee ?? 0).toLocaleString()} ₽`}
+                  onEdit={startEdit}
+                />
+              )}
+              {(order.discountAmount ?? 0) > 0 && (
+                <InfoRow
+                  label="Скидка клиенту"
+                  value={`− ${(order.discountAmount ?? 0).toLocaleString()} ₽`}
                   onEdit={startEdit}
                 />
               )}

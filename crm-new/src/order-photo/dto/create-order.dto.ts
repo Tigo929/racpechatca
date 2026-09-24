@@ -33,6 +33,16 @@ export default class DtoCreateOrder {
   @IsOptional()
   sourceOrder?: EnumSourceOrder;
 
+  /**
+   * Скидка клиенту в рублях. Не больше товара с дизайном: доставку и плату
+   * за срочность скидка не трогает, лишнее сервер обрежет сам.
+   */
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(0)
+  discountAmount?: number;
+
   @IsEnum(EnumCommunication)
   communicationPlatform!: EnumCommunication;
 

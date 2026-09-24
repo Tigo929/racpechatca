@@ -10,6 +10,7 @@ import {
 import { leadDeliveryCost as deliveryCostForLead } from './free-delivery';
 import { attributionFromLead } from './lead-attribution';
 import { clientPaidAtPatch, parseClientPaidAt } from './paid-at';
+import { clampOrderDiscount, orderTotal } from './order-total';
 import { MANUAL_DEFAULT_ORIGIN } from './order-origin';
 import { MetrikaOrderOutboxService } from 'src/metrika/orders/metrika-order-outbox.service';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -373,12 +374,23 @@ export class OrderPhotoService {
         photoCreate.reduce((s, i) => s + i.pricePosition, 0) +
         tshirtCreate.reduce((s, i) => s + i.pricePosition, 0) +
         canvasCreate.reduce((s, i) => s + i.pricePosition, 0);
-      const totalOrder =
-        (dto.customTotal != null
-          ? dto.customTotal
-          : positionsTotal + deliveryCost) +
-        designDevelopmentCost +
-        urgencyFee;
+      // Скидка клиенту: решение владельца по конкретному заказу. Обрезается
+      // потолком (товар + дизайн), чтобы не съесть доставку и срочность.
+      const discountParts = {
+        positionsTotal:
+          dto.customTotal != null ? dto.customTotal - deliveryCost : positionsTotal,
+        designDevelopmentCost,
+      };
+      const discountAmount = clampOrderDiscount(
+        dto.discountAmount ?? 0,
+        discountParts,
+      );
+      const totalOrder = orderTotal({
+        ...discountParts,
+        deliveryCost,
+        urgencyFee,
+        discountAmount,
+      });
 
       const created = await tx.orderPhoto.create({
         data: {
@@ -397,6 +409,7 @@ export class OrderPhotoService {
           // оплаты (работа D1). Проверка выше не даёт принести её заказу,
           // который оплаченным не является.
           ...(createdPaidAt ? { clientPaidAt: createdPaidAt } : {}),
+          discountAmount,
           // Источник выбирает сотрудник; не выбрал — текущий основной канал.
           sourceOrder: dto.sourceOrder ?? MANUAL_DEFAULT_ORIGIN,
           communicationPlatform: dto.communicationPlatform,
@@ -1956,9 +1969,14 @@ export class OrderPhotoService {
       const urgencyChanged =
         (dto.urgencyFee !== undefined && dto.urgencyFee !== order.urgencyFee) ||
         (dto.isUrgent !== undefined && dto.isUrgent !== order.isUrgent);
-      // Доставка, дизайн и срочность влияют на сумму заказа и на начисления.
+      const discountChanged =
+        dto.discountAmount !== undefined &&
+        dto.discountAmount !== order.discountAmount;
+      // Доставка, дизайн, срочность и скидка влияют на сумму заказа и на
+      // начисления: скидку мы делим с исполнителем, значит его база тоже
+      // меняется и невыплаченное начисление надо пересчитать.
       const financialChanged =
-        deliveryChanged || designChanged || urgencyChanged;
+        deliveryChanged || designChanged || urgencyChanged || discountChanged;
       if (financialChanged) {
         if (
           order.status === EnumStatus.PAID ||
@@ -1994,6 +2012,17 @@ export class OrderPhotoService {
         );
         if (contactError) throw new BadRequestException(contactError);
       }
+      // Позиции заказа — основа суммы. Берём их из самого заказа: правка
+      // карточки их не меняет, а вот скидку считать «правкой прежнего
+      // итога» нельзя — она зависит от того, из чего этот итог состоит.
+      const positionsTotal =
+        order.items.reduce((sum, i) => sum + (i.pricePosition ?? 0), 0) +
+        order.tshirtItems.reduce((sum, i) => sum + (i.pricePosition ?? 0), 0) +
+        order.canvasItems.reduce((sum, i) => sum + (i.pricePosition ?? 0), 0);
+      const discountAmount = clampOrderDiscount(
+        dto.discountAmount ?? order.discountAmount,
+        { positionsTotal, designDevelopmentCost },
+      );
       const maxLinkTemplate = (await this.partnerSettings.get(tx))
         .maxLinkTemplate;
       const updated = await tx.orderPhoto.update({
@@ -2026,15 +2055,17 @@ export class OrderPhotoService {
           deliveryCost,
           designDevelopmentCost,
           urgencyFee,
-          // Сумма = pricePosition (фото + футболки + холсты) + доставка + дизайн + срочность.
-          totalOrder:
-            order.totalOrder +
-            deliveryCost -
-            order.deliveryCost +
-            designDevelopmentCost -
-            order.designDevelopmentCost +
-            urgencyFee -
-            order.urgencyFee,
+          // Сумма = позиции + доставка + дизайн + срочность − скидка.
+          // Считаем от позиций, а не «правкой прежнего итога»: со скидкой
+          // разностная формула разъезжается, если позиции меняли отдельно.
+          totalOrder: orderTotal({
+            positionsTotal,
+            deliveryCost,
+            designDevelopmentCost,
+            urgencyFee,
+            discountAmount,
+          }),
+          discountAmount,
           note: dto.note ?? order.note,
           isUrgent,
           tshirtModel: dto.tshirtModel ?? order.tshirtModel,

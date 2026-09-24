@@ -51,13 +51,18 @@ const pricing = (mode: 'RETAIL' | 'WHOLESALE') => ({
 });
 
 /** Заказ с одной позицией: клиенту названо меньше, чем должны производству. */
-const order = (clientPrice: number, contractorPrice: number): OrderPhoto =>
+const order = (
+  clientPrice: number,
+  contractorPrice: number,
+  discountAmount = 0,
+): OrderPhoto =>
   ({
     id: 'ord-1',
     numberOrder: '20260924-001',
     deliveryMethod: 'PICKUP',
     deliveryCost: 0,
     designDevelopmentCost: 0,
+    discountAmount,
     canvasItems: [
       {
         id: 'item-1',
@@ -114,4 +119,20 @@ it('в розничном режиме подписаны прайс и скид
   show(order(2500, 504), 'RETAIL');
   fireEvent.click(await screen.findByLabelText('Редактировать позицию'));
   expect(await screen.findByText(/розница 630\s?₽ − 20%/)).toBeInTheDocument();
+});
+
+it('скидка клиенту вычитается из моего заработка', async () => {
+  // 2 500 клиенту, 504 производству, скидка 300 → заработок 1 696 ₽.
+  show(order(2500, 504, 300));
+  expect(await screen.findByText('Скидка клиенту')).toBeInTheDocument();
+  const profitRow = (await screen.findByText('Моя прибыль')).closest('div')!;
+  expect(profitRow.textContent).toMatch(/1\s?696/);
+});
+
+it('скидка может увести заказ в минус, и это видно', async () => {
+  // 600 клиенту при долге 504 — прибыль 96 ₽; скидка 300 уводит в −204 ₽.
+  show(order(600, 504, 300));
+  expect(
+    await screen.findByText(/Заказ в минус: производству отдадите на/),
+  ).toBeInTheDocument();
 });

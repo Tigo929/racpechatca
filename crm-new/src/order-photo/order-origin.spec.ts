@@ -274,3 +274,35 @@ describe('историческая классификация', () => {
     expect(originOf('WEBSITE')).toBe('WEBSITE');
   });
 });
+
+/**
+ * Скидка клиенту в рублях (24.09.2026).
+ *
+ * Проверяем не формулу — она своя в order-total.spec.ts, — а то, что заказ
+ * сохраняется с ней: цена клиенту падает ровно на скидку, и сама скидка
+ * ложится в заказ, иначе в карточке её никто не увидит.
+ */
+describe('скидка клиенту при создании заказа', () => {
+  it('уменьшает сумму заказа и сохраняется в нём', async () => {
+    const { service, create } = serviceWithTx();
+    await service.createOrder(manual({ discountAmount: 50 }));
+    const data = create.mock.calls[0][0].data;
+    // Позиция: 10 шт × 20 ₽ = 200 ₽, самовывоз — доставки нет.
+    expect(data.totalOrder).toBe(150);
+    expect(data.discountAmount).toBe(50);
+  });
+
+  it('без скидки заказ считается как раньше', async () => {
+    const { service, create } = serviceWithTx();
+    await service.createOrder(manual());
+    expect(create.mock.calls[0][0].data.totalOrder).toBe(200);
+    expect(create.mock.calls[0][0].data.discountAmount).toBe(0);
+  });
+
+  it('скидка больше суммы товара обрезается, а не уводит чек в минус', async () => {
+    const { service, create } = serviceWithTx();
+    await service.createOrder(manual({ discountAmount: 10_000 }));
+    expect(create.mock.calls[0][0].data.totalOrder).toBe(0);
+    expect(create.mock.calls[0][0].data.discountAmount).toBe(200);
+  });
+});

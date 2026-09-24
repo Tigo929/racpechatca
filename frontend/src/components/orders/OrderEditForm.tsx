@@ -173,6 +173,26 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, pro
         )}
       </div>
 
+      {/* Скидка клиенту. Отдельной суммой, а не правкой цены позиции: иначе
+          через месяц не понять, был ли заказ дешёвым сам по себе или его
+          продали со скидкой. Уменьшает чек и базу зарплаты исполнителя. */}
+      <div>
+        <p className={labelCls}>Скидка клиенту, ₽</p>
+        <input
+          type="number"
+          min={0}
+          className={inputCls}
+          placeholder="0"
+          aria-label="Скидка клиенту"
+          value={form.discountAmount ?? 0}
+          onChange={e => set({ discountAmount: Math.max(0, Number(e.target.value) || 0) })}
+        />
+        <p className="mt-1 text-xs text-gray-400">
+          Доставку и срочность не уменьшает; больше суммы товара с дизайном
+          сервер не примет.
+        </p>
+      </div>
+
       {/* Предоплата. Записываем реальную внесённую сумму один раз; дальше
           остаток считается как «сумма заказа − предоплата» и не пересчитывается
           на 50% при каждой правке. Работает для всех категорий одинаково. */}

@@ -7,6 +7,7 @@ import {
 import { EnumProductCategory, EnumRole } from 'src/generated/prisma/enums';
 import type { Prisma } from 'src/generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { clampOrderDiscount, orderTotal } from './order-total';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
 import { DtoCreateCanvasItem } from './dto/create-canvas-item.dto';
 import { DtoUpdateCanvasItem } from './dto/update-canvas-item.dto';
@@ -196,13 +197,20 @@ export class CanvasItemService {
       where: { id: orderId },
       include: { items: true, tshirtItems: true, canvasItems: true },
       data: {
-        totalOrder:
-          itemsTotal +
-          tshirtTotal +
-          canvasTotal +
-          order.deliveryCost +
-          order.designDevelopmentCost +
-          order.urgencyFee,
+        // Итог и скидка — одной формулой на весь проект (order-total.ts).
+        // Скидку обрезаем: позиции могли подешеветь, и прежняя скидка
+        // оказалась бы больше того, на что её давали.
+        totalOrder: orderTotal({
+          positionsTotal: itemsTotal + tshirtTotal + canvasTotal,
+          deliveryCost: order.deliveryCost,
+          designDevelopmentCost: order.designDevelopmentCost,
+          urgencyFee: order.urgencyFee,
+          discountAmount: order.discountAmount,
+        }),
+        discountAmount: clampOrderDiscount(order.discountAmount, {
+          positionsTotal: itemsTotal + tshirtTotal + canvasTotal,
+          designDevelopmentCost: order.designDevelopmentCost,
+        }),
       },
     });
 
