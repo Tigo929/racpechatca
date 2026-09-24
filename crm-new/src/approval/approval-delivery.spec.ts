@@ -42,6 +42,8 @@ describe('Telegram approval delivery', () => {
         findUnique: jest.fn(async () => row),
         updateMany: jest.fn(async () => ({ count: 1 })),
       },
+      orderPhoto: { findUnique: jest.fn(async () => ({ id: 'order', status: 'NEW', productCategory: 'TSHIRT' })), updateMany: jest.fn(async () => ({ count: 1 })) },
+      statusHistory: { create: jest.fn() },
       approvalTelegramDelivery: {
         findUnique: jest.fn(async () => null),
         findFirst: jest.fn(),
@@ -188,6 +190,38 @@ describe('Telegram approval delivery', () => {
         data: { status: 'SENT', updatedAt: date },
       }),
     );
+  });
+  async function confirmSent() {
+    db.approvalTelegramDelivery.findFirst.mockResolvedValue({
+      status: 'SENDING', approvalId: 'approval', finalizedAt: date, requestedById: 'manager',
+    });
+    return service.complete('id', { status: 'SENT', claimToken: 'token', messageId: 123 });
+  }
+  it('advances the order and records the requesting employee only after delivery', async () => {
+    await confirmSent();
+    expect(db.orderPhoto.updateMany).toHaveBeenCalledWith({ where: { id: 'order', status: 'NEW' }, data: { status: 'APPROVAL_SENT' } });
+    expect(db.statusHistory.create).toHaveBeenCalledWith({ data: { orderId: 'order', fromStatus: 'NEW', toStatus: 'APPROVAL_SENT', changedBy: 'manager' } });
+  });
+  it.each(['APPROVAL_SENT', 'SENT', 'IN_PROGRESS', 'READY', 'SHIPMENT_CREATED', 'PAID', 'COMPLETED', 'CANCELLED', 'PROBLEM'])('does not move %s backwards', async (status) => {
+    db.orderPhoto.findUnique.mockResolvedValue({ id: 'order', status, productCategory: 'TSHIRT' });
+    await confirmSent();
+    expect(db.orderPhoto.updateMany).not.toHaveBeenCalled();
+    expect(db.statusHistory.create).not.toHaveBeenCalled();
+  });
+  it('does not change the order when its status changes concurrently', async () => {
+    db.orderPhoto.updateMany.mockResolvedValue({ count: 0 });
+    await confirmSent();
+    expect(db.statusHistory.create).not.toHaveBeenCalled();
+  });
+  it('does not advance an edited or already approved version', async () => {
+    db.printApproval.updateMany.mockResolvedValue({ count: 0 });
+    await confirmSent();
+    expect(db.orderPhoto.updateMany).not.toHaveBeenCalled();
+  });
+  it.each(['FAILED', 'UNKNOWN'] as const)('does not advance after %s delivery', async (status) => {
+    db.approvalTelegramDelivery.findFirst.mockResolvedValue({ status: 'SENDING' });
+    await service.complete('id', { status, claimToken: 'token', errorCode: 'privacy' });
+    expect(db.orderPhoto.updateMany).not.toHaveBeenCalled();
   });
   it('does not downgrade successful completion on a repeated callback', async () => {
     db.approvalTelegramDelivery.findFirst.mockResolvedValue({ status: 'SENT' });
