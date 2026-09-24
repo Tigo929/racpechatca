@@ -1534,7 +1534,10 @@ Production SHA 8eabc05b5636ed8fa648d1f84c73079dbb5ab47f; применена од
 Статус:
 
 ```text
-IMPLEMENTED / READY_FOR_ROLLOUT (24.09.2026) — docs/analytics/17_ORDER_ORIGIN.md.
+ROLLED_OUT / PASS (24.09.2026) — docs/analytics/17_ORDER_ORIGIN.md.
+Production SHA 5c42ec49f07badfb4625f8b971c3d59887e1c690; применена одна additive-миграция
+(значения WEBSITE и UNKNOWN), историческая классификация — 39 заявок сайта LOCAL → WEBSITE
+по доказательству, конфликтов и неоднозначных нет. Бизнес-данные не изменены.
 ```
 
 Цель:
