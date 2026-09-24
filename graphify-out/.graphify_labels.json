@@ -382,5 +382,13 @@
   "380": "partner-outbound-items.spec.ts",
   "381": "install-windows-task.ps1",
   "382": "run-windows.ps1",
-  "385": "Push-уведомления о заявках с сайта"
+  "383": "metrika-order-outbox-processor.spec.ts",
+  "384": "DtoCreateBonus",
+  "385": "Push-уведомления о заявках с сайта",
+  "386": "ReportsController",
+  "387": "DtoCreatePayment",
+  "388": "PgAdvisoryLock",
+  "389": "salary-calculation.ts",
+  "390": "my-balance.spec.ts",
+  "391": ".createPaymentByAccruals"
 }
