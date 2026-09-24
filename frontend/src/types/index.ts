@@ -812,6 +812,7 @@ export interface ApprovalSideState {
 }
 
 export interface PrintApproval {
+  clientItem?: boolean;
   id: string;
   createdAt: string;
   updatedAt: string;

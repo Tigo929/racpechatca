@@ -179,7 +179,7 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
                   })}
                 </span>
                 <span className="text-xs text-gray-500">
-                  {approval.shirtColor} · {approval.shirtSize}
+                  {approval.clientItem ? 'Печать на изделии клиента' : `${approval.shirtColor} · ${approval.shirtSize}`}
                 </span>
                 {sides.map(([side, state]) => (
                   <span key={side} className="text-xs text-gray-500">

@@ -61,3 +61,9 @@ it('shows an explicit retry after a confirmed refusal', async () => {
   expect(await screen.findByRole('button', { name: 'Повторить отправку' })).toBeEnabled();
   expect(screen.getByRole('status')).toHaveTextContent('Клиент запретил сообщения');
 });
+
+it('shows customer-owned printing instead of the fallback garment size', async () => {
+  show({ ...approval, clientItem: true });
+  expect(await screen.findByText('Печать на изделии клиента')).toBeInTheDocument();
+  expect(screen.queryByText('Белый · M')).not.toBeInTheDocument();
+});
