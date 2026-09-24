@@ -115,8 +115,21 @@ export const SOURCE_ORDER_LABELS: Record<string, string> = {
   UNKNOWN: 'Не определён',
 };
 
-/** Что предлагается выбрать сотруднику при ручном создании заказа. */
-export const SOURCE_ORDER_OPTIONS = ['AVITO', 'OZON', 'WB', 'LOCAL'] as const;
+/**
+ * Что предлагается выбрать сотруднику при ручном создании заказа.
+ *
+ * «Сайт» в списке есть намеренно: заявки сайт заводит сам, но клиент может
+ * написать с сайта в мессенджер, и заказ придётся оформить руками. Тогда
+ * происхождение всё равно сайт — и в аналитике заказ должен попасть в его
+ * воронку, а не в Avito.
+ */
+export const SOURCE_ORDER_OPTIONS = [
+  'AVITO',
+  'OZON',
+  'WB',
+  'LOCAL',
+  'WEBSITE',
+] as const;
 
 export const DELIVERY_LABELS: Record<EnumDeliveryMethod, string> = {
   YANDEX_PVZ: 'Яндекс ПВЗ',

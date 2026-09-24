@@ -116,7 +116,7 @@ function formatMaxPhone(raw: string): string {
 
 const baseSchema = z.object({
   productCategory: z.enum(['PHOTO', 'TSHIRT', 'CANVAS']),
-  sourceOrder: z.enum(['AVITO', 'OZON', 'WB', 'LOCAL']),
+  sourceOrder: z.enum(['AVITO', 'OZON', 'WB', 'LOCAL', 'WEBSITE']),
   communicationPlatform: z.enum(['AVITO', 'TELEGRAM', 'MAX', 'OZON']),
   urlCommunication: z.string().min(1, 'Укажите ссылку или @username'),
   deliveryMethod: z.enum([
