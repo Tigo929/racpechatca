@@ -1,4 +1,12 @@
-import { IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class DtoUpdatePartnerSettings {
   @IsOptional()
@@ -47,6 +55,15 @@ export class DtoUpdatePartnerSettings {
   @Min(0)
   @Max(10000)
   canvasDiscountBasisPoints?: number;
+
+  /**
+   * Какой прайс производства действует: розничный со скидкой или оптовый.
+   * Значение вне списка — 400: молча посчитать долг по старой системе хуже,
+   * чем отказать, потому что ошибка всплыла бы только в отчёте о прибыли.
+   */
+  @IsOptional()
+  @IsIn(['RETAIL', 'WHOLESALE'])
+  canvasPriceMode?: 'RETAIL' | 'WHOLESALE';
 
   /** Своя доставка производства по Москве: сколько платим мы. */
   @IsOptional()

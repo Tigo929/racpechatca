@@ -11,9 +11,16 @@ import { OrderFinancialIntegrityService } from './order-financial-integrity.serv
 import { DtoCreateCanvasItem } from './dto/create-canvas-item.dto';
 import { DtoUpdateCanvasItem } from './dto/update-canvas-item.dto';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
-import { resolveCanvasPosition } from 'src/canvas/canvas-production-price';
+import {
+  canvasTermsFrom,
+  resolveCanvasPosition,
+} from 'src/canvas/canvas-production-price';
 
-function canvasMoney(quantity: number, clientPrice: number, contractorPrice: number) {
+function canvasMoney(
+  quantity: number,
+  clientPrice: number,
+  contractorPrice: number,
+) {
   const pricePosition = clientPrice * quantity;
   const contractorCostPosition = contractorPrice * quantity;
   return {
@@ -48,11 +55,12 @@ export class CanvasItemService {
 
       /*
        * Цену производства считаем, а не принимаем от клиента запроса: она
-       * выводится из прайса и договорной скидки. Пришедшее в теле значение
-       * учитывается только для нестандартного размера, которого в прайсе нет.
+       * выводится из действующего прайса (розница минус скидка или опт).
+       * Пришедшее в теле значение учитывается только для нестандартного
+       * размера, которого в прайсе нет.
        */
       const settings = await this.partnerSettings.get();
-      const priced = resolveCanvasPosition(dto, settings.canvasDiscountBasisPoints);
+      const priced = resolveCanvasPosition(dto, canvasTermsFrom(settings));
 
       await tx.itemCanvas.create({
         data: {
@@ -108,7 +116,7 @@ export class CanvasItemService {
             formatCanvas: dto.formatCanvas ?? item.formatCanvas,
             contractorPrice: dto.contractorPrice ?? item.contractorPrice,
           },
-          settings.canvasDiscountBasisPoints,
+          canvasTermsFrom(settings),
         );
         formatCanvas = priced.formatCanvas;
         sizeKey = priced.sizeKey;

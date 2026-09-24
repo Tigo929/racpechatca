@@ -1234,8 +1234,13 @@ export function CreateOrderForm({ onClose }: Props) {
                 : Number(row?.contractorPrice ?? 0) || 0;
               // Розница подрядчика из прайса — чтобы показать, откуда берётся
               // «должен»: это она минус договорная скидка.
-              const retail = row?.sizeKey
-                ? (priced?.retail[row.material ?? 'SYNTHETIC'] ?? 0)
+              // Цена прайса, от которой считается долг: в рознице от неё
+              // отнимается скидка, в опте она и есть долг.
+              const wholesale = canvasPricing?.mode === 'WHOLESALE';
+              const listPrice = row?.sizeKey
+                ? ((wholesale ? priced?.wholesale : priced?.retail)?.[
+                    row.material ?? 'SYNTHETIC'
+                  ] ?? 0)
                 : 0;
               const discountPct = Math.round((canvasPricing?.discountBasisPoints ?? 0) / 100);
               const revenue = client * qty;
@@ -1301,18 +1306,28 @@ export function CreateOrderForm({ onClose }: Props) {
                         {row?.sizeKey ? 'Должен производству' : 'Подрядчик'}
                       </p>
                       <p className="font-semibold text-gray-800 tabular-nums">{cost.toLocaleString('ru-RU')} ₽</p>
-                      {row?.sizeKey && retail > 0 && (
+                      {row?.sizeKey && listPrice > 0 && (
                         <p className="mt-0.5 text-[10px] leading-tight text-gray-400 tabular-nums">
-                          прайс {retail.toLocaleString('ru-RU')} ₽ − {discountPct}%
+                          {wholesale
+                            ? `опт ${listPrice.toLocaleString('ru-RU')} ₽`
+                            : `прайс ${listPrice.toLocaleString('ru-RU')} ₽ − ${discountPct}%`}
                           {qty > 1 ? ` × ${qty}` : ''}
                         </p>
                       )}
                     </div>
-                    <div className={`rounded-lg bg-white border px-3 py-2 ${profit >= 0 ? 'border-emerald-100' : 'border-red-100'}`}>
+                    {/* Маржа позиции. Минус называем словами, а не только
+                        красным цветом: цифру со знаком легко прочитать
+                        как заработок и продать ниже себестоимости. */}
+                    <div className={`rounded-lg border px-3 py-2 ${profit >= 0 ? 'bg-white border-emerald-100' : 'bg-red-50 border-red-200'}`}>
                       <p className="text-gray-400">Маржа</p>
                       <p className={`font-semibold tabular-nums ${profit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                         {profit.toLocaleString('ru-RU')} ₽
                       </p>
+                      {profit < 0 && (
+                        <p className="mt-0.5 text-[10px] leading-tight font-medium text-red-600">
+                          ниже себестоимости на {Math.abs(profit).toLocaleString('ru-RU')} ₽
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1366,10 +1381,31 @@ export function CreateOrderForm({ onClose }: Props) {
                 </div>
                 <p className="mt-0.5 text-[11px] text-gray-500">
                   {canvasTotals.clientTotal > 0
-                    ? `${Math.round((canvasTotals.profit / canvasTotals.clientTotal) * 100)}% от того, что платит клиент · скидка производства ${canvasPricing.discountBasisPoints / 100}%`
+                    ? `${Math.round((canvasTotals.profit / canvasTotals.clientTotal) * 100)}% от того, что платит клиент`
                     : 'Укажите цену клиенту'}
+                  {' · '}
+                  {canvasPricing.mode === 'WHOLESALE'
+                    ? 'оптовый прайс производства'
+                    : `розничный прайс производства − ${canvasPricing.discountBasisPoints / 100}%`}
                 </p>
               </div>
+
+              {/*
+                Заказ в минус. Отдельной полосой, а не красной цифрой:
+                владелец называет цену клиенту в этот же момент, и «минус
+                200 ₽» он должен увидеть до того, как назовёт, а не в отчёте
+                через месяц. Оформление не блокируем: бывает осознанная
+                уступка — но тогда она осознанная.
+              */}
+              {canvasTotals.profit < 0 && canvasTotals.clientTotal > 0 && (
+                <p className="mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-medium text-red-700">
+                  Заказ в минус: производству отдадите на{' '}
+                  {Math.abs(canvasTotals.profit).toLocaleString('ru-RU')} ₽ больше,
+                  чем получите с клиента. Клиенту нужно называть от{' '}
+                  {(canvasTotals.owed - canvasTotals.deliveryCharged - canvasTotals.extra - canvasTotals.design).toLocaleString('ru-RU')} ₽
+                  за холсты, чтобы выйти в ноль.
+                </p>
+              )}
             </div>
           )}
         </div>

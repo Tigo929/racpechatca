@@ -228,6 +228,7 @@ interface FormState {
   maxLinkTemplate: string;
   leadMentionUsernames: string;
   deliveryPriceYandexPvz: string;
+  canvasPriceMode: 'RETAIL' | 'WHOLESALE';
 }
 
 function toForm(s: PartnerSettings): FormState {
@@ -240,6 +241,7 @@ function toForm(s: PartnerSettings): FormState {
     maxLinkTemplate: s.maxLinkTemplate,
     leadMentionUsernames: s.leadMentionUsernames ?? '',
     deliveryPriceYandexPvz: String(s.deliveryPriceYandexPvz),
+    canvasPriceMode: s.canvasPriceMode ?? 'RETAIL',
   };
 }
 
@@ -295,6 +297,7 @@ export default function SettingsPage() {
       maxLinkTemplate: form.maxLinkTemplate.trim(),
       leadMentionUsernames: form.leadMentionUsernames.trim(),
       deliveryPriceYandexPvz: Math.max(0, Math.round(Number(form.deliveryPriceYandexPvz)) || 0),
+      canvasPriceMode: form.canvasPriceMode,
     });
   };
 
@@ -366,6 +369,34 @@ export default function SettingsPage() {
                   onChange={(e) => setForm({ ...form, canvasContractorName: e.target.value })}
                 />
                 <span className="mt-1 block text-xs text-gray-400">Показывается в отчёте рядом с себестоимостью холстов.</span>
+              </label>
+              {/*
+                Какой прайс производства действует. Переключатель, а не
+                правка кода: договорённости меняются переговорами, и ради
+                них не должно быть выкладки. Меняет только НОВЫЕ позиции —
+                в сохранённых заказах лежат свои числа, и пересчитывать их
+                задним числом нельзя: по ним уже рассчитались.
+              */}
+              <label className="block sm:col-span-2">
+                <span className="text-sm font-medium text-gray-700">Прайс производства на холст</span>
+                <select
+                  className={`mt-1 ${field}`}
+                  value={form.canvasPriceMode}
+                  onChange={(e) =>
+                    setForm({ ...form, canvasPriceMode: e.target.value as FormState['canvasPriceMode'] })
+                  }
+                >
+                  <option value="RETAIL">
+                    Розничный — минус скидка {(data?.canvasDiscountBasisPoints ?? 2000) / 100}%
+                  </option>
+                  <option value="WHOLESALE">Оптовый — платим цену прайса</option>
+                </select>
+                <span className="mt-1 block text-xs text-gray-500">
+                  {form.canvasPriceMode === 'WHOLESALE'
+                    ? 'Долг производству равен оптовой цене: скидка сверху не вычитается — она уже в прайсе.'
+                    : `Долг производству = розничная цена прайса минус ${(data?.canvasDiscountBasisPoints ?? 2000) / 100}%.`}
+                  {' '}Влияет на новые позиции холста; уже сохранённые заказы не пересчитываются.
+                </span>
               </label>
               <label className="block sm:col-span-2">
                 <span className="text-sm font-medium text-gray-700">Кого тегать в Telegram по заявкам с сайта</span>

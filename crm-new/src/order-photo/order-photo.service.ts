@@ -50,7 +50,10 @@ import {
 } from 'src/salary/salary-calculation';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
-import { resolveCanvasPosition } from 'src/canvas/canvas-production-price';
+import {
+  canvasTermsFrom,
+  resolveCanvasPosition,
+} from 'src/canvas/canvas-production-price';
 import { hasTechSpecFiles } from 'src/partner/tech-spec-paths';
 import { GulianOutboxService } from 'src/gulian/gulian-outbox.service';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
@@ -331,15 +334,14 @@ export class OrderPhotoService {
         };
       });
       /*
-       * Цена производства выводится из прайса и договорной скидки, а не
-       * принимается из тела запроса: занизить себестоимость значит уйти
-       * в минус незаметно. Руками её задают только для нестандартного
+       * Цена производства выводится из действующего прайса (розница минус
+       * скидка или опт), а не принимается из тела запроса: занизить
+       * себестоимость значит уйти в минус незаметно. Руками её задают только для нестандартного
        * размера, которого в прайсе нет.
        */
-      const canvasDiscount = (await this.partnerSettings.get(tx))
-        .canvasDiscountBasisPoints;
+      const canvasTerms = canvasTermsFrom(await this.partnerSettings.get(tx));
       const canvasCreate = (dto.canvasItems ?? []).map((e) => {
-        const priced = resolveCanvasPosition(e, canvasDiscount);
+        const priced = resolveCanvasPosition(e, canvasTerms);
         return {
           formatCanvas: priced.formatCanvas,
           sizeKey: priced.sizeKey,

@@ -6,8 +6,10 @@ import { EnumRole } from 'src/generated/prisma/enums';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 import {
   CANVAS_MATERIAL_KIND_LABELS,
+  CANVAS_PRICE_MODE_LABELS,
   CANVAS_PRODUCTION_PRICES,
   canvasContractorCost,
+  canvasTermsFrom,
 } from './canvas-production-price';
 
 /**
@@ -17,9 +19,10 @@ import {
  * почём мы берём холст у производства и какая у нас скидка. Это условия
  * договора, а не публичная цена.
  *
- * Отдаём сразу и розницу производства, и то, сколько мы должны, — чтобы
- * калькулятор в браузере не пересчитывал скидку сам и не разошёлся с сервером
- * на округлении.
+ * Отдаём сразу цены обеих систем и то, сколько мы должны по действующей, —
+ * чтобы калькулятор в браузере ничего не пересчитывал сам и не разошёлся
+ * с сервером на округлении. Режим приходит здесь же: интерфейс обязан
+ * называть, по какому прайсу считает, иначе цифру не с чем сверить.
  */
 @Controller('canvas/production')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -30,10 +33,12 @@ export class CanvasProductionController {
   @Get('pricing')
   async pricing() {
     const s = await this.settings.get();
-    const discount = s.canvasDiscountBasisPoints;
+    const terms = canvasTermsFrom(s);
 
     return {
-      discountBasisPoints: discount,
+      mode: terms.mode,
+      modeLabels: CANVAS_PRICE_MODE_LABELS,
+      discountBasisPoints: terms.discountBasisPoints,
       delivery: {
         cost: s.canvasDeliveryCost,
         price: s.canvasDeliveryPrice,
@@ -45,9 +50,13 @@ export class CanvasProductionController {
         widthCm: row.widthCm,
         heightCm: row.heightCm,
         retail: { SYNTHETIC: row.synthetic, COTTON: row.cotton },
+        wholesale: {
+          SYNTHETIC: row.wholesaleSynthetic,
+          COTTON: row.wholesaleCotton,
+        },
         cost: {
-          SYNTHETIC: canvasContractorCost(row.key, 'SYNTHETIC', discount),
-          COTTON: canvasContractorCost(row.key, 'COTTON', discount),
+          SYNTHETIC: canvasContractorCost(row.key, 'SYNTHETIC', terms),
+          COTTON: canvasContractorCost(row.key, 'COTTON', terms),
         },
       })),
     };

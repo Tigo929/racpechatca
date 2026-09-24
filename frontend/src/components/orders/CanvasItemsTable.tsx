@@ -180,9 +180,25 @@ export function CanvasItemsTable({ order }: Props) {
   const costOf = (state: EditState): number =>
     pricing?.sizes.find((x) => x.key === state.sizeKey)?.cost[state.material] ?? 0;
 
-  /** Розница производства — показываем рядом, чтобы видеть, от чего скидка. */
-  const retailOf = (state: EditState): number =>
-    pricing?.sizes.find((x) => x.key === state.sizeKey)?.retail[state.material] ?? 0;
+  /**
+   * Цена действующего прайса — показываем рядом, чтобы было видно, откуда
+   * взялся долг: в рознице от неё отнимается скидка, в опте она и есть долг.
+   */
+  const listPriceOf = (state: EditState): number => {
+    const row = pricing?.sizes.find((x) => x.key === state.sizeKey);
+    if (!row) return 0;
+    return pricing?.mode === 'WHOLESALE'
+      ? row.wholesale[state.material]
+      : row.retail[state.material];
+  };
+
+  /** Подпись под ценой: по какому прайсу она посчитана. */
+  const priceHint = (state: EditState): string => {
+    const list = listPriceOf(state);
+    if (!list) return '';
+    if (pricing?.mode === 'WHOLESALE') return `опт ${money(list)}`;
+    return `розница ${money(list)} − ${Math.round((pricing?.discountBasisPoints ?? 0) / 100)}%`;
+  };
 
   const renderInputs = (
     state: EditState,
@@ -255,7 +271,7 @@ export function CanvasItemsTable({ order }: Props) {
               {money(costOf(state))}
             </span>
             <span className="block text-[11px] text-gray-400">
-              розница {money(retailOf(state))}
+              {priceHint(state)}
             </span>
           </div>
         ) : (
@@ -521,6 +537,14 @@ export function CanvasItemsTable({ order }: Props) {
               <span>Моя прибыль</span>
               <span className="tabular-nums">{money(myProfit)}</span>
             </div>
+            {/* Минус называем словами: красная цифра со знаком читается
+                как заработок, и заказ уходит ниже себестоимости. */}
+            {myProfit < 0 && (
+              <p className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-medium text-red-700">
+                Заказ в минус: производству отдадите на {money(Math.abs(myProfit))} больше,
+                чем получите с клиента.
+              </p>
+            )}
           </div>
         </div>
       )}

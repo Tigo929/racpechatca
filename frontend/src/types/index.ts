@@ -725,6 +725,14 @@ export interface PartnerSettings {
   partnerName: string;
   /** Кто печатает холсты — показывается в отчёте. */
   canvasContractorName: string;
+  /**
+   * Какой прайс производства на холст действует: розничный минус скидка
+   * или оптовый. Влияет только на новые позиции — в сохранённых заказах
+   * лежат свои числа.
+   */
+  canvasPriceMode: 'RETAIL' | 'WHOLESALE';
+  /** Договорная скидка производства в сотых процента: 2000 = 20%. */
+  canvasDiscountBasisPoints: number;
   /** Шаблон ссылки на переписку в MAX: {phone} / {phone_plus}. */
   maxLinkTemplate: string;
   /** Себестоимость фотопечати: коробка бумаги и сколько в ней листов. */
