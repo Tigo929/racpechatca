@@ -186,7 +186,7 @@ export class ApprovalDeliveryService {
       if (updated.count && dto.status === 'SENT') {
         // Delivery metadata must not make an unchanged image appear outdated,
         // nor overwrite a later customer approval or manager edit.
-        await tx.printApproval.updateMany({
+        const approvalUpdated = await tx.printApproval.updateMany({
           where: {
             id: row.approvalId,
             finalizedAt: row.finalizedAt,
@@ -195,6 +195,33 @@ export class ApprovalDeliveryService {
           },
           data: { status: 'SENT', updatedAt: row.finalizedAt },
         });
+        if (approvalUpdated.count) {
+          const approval = await tx.printApproval.findUnique({
+            where: { id: row.approvalId },
+            select: { orderId: true },
+          });
+          const order = approval && await tx.orderPhoto.findUnique({
+            where: { id: approval.orderId },
+            select: { id: true, status: true, productCategory: true },
+          });
+          // A delayed Telegram callback must never move production or closed
+          // orders backwards. Only the pre-production stages can advance.
+          if (order?.productCategory === 'TSHIRT' &&
+            ['LEAD', 'NEW', 'FOLDER_STRUCTURE_CREATED', 'PRINTED'].includes(order.status)) {
+            const changed = await tx.orderPhoto.updateMany({
+              where: { id: order.id, status: order.status },
+              data: { status: 'APPROVAL_SENT' },
+            });
+            if (changed.count) await tx.statusHistory.create({
+              data: {
+                orderId: order.id,
+                fromStatus: order.status,
+                toStatus: 'APPROVAL_SENT',
+                changedBy: row.requestedById,
+              },
+            });
+          }
+        }
       }
       return { ok: true };
     });

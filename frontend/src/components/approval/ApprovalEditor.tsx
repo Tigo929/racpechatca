@@ -393,7 +393,8 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
         <div className="mx-auto grid max-w-6xl gap-6 p-4 sm:p-6 lg:grid-cols-[360px_1fr]">
           {/* ── Параметры ─────────────────────────────────── */}
           <div className="space-y-4">
-            <Block title="Футболка">
+            <Block title={approval?.clientItem ? "Изделие клиента" : "Футболка"}>
+              {approval?.clientItem && <p className="text-xs text-gray-500">Цвет ниже используется для примера на макете.</p>}
               <div className="flex flex-wrap gap-2">
                 {colors.map((color) => (
                   <button
@@ -412,7 +413,9 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
               </div>
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">Размер</span>
-                <select
+                {approval?.clientItem ? (
+                  <input className={`mt-1 ${field}`} value="Печать на изделии клиента" readOnly />
+                ) : <select
                   className={`mt-1 ${field}`}
                   value={draft.shirtSize}
                   onChange={(e) =>
@@ -424,7 +427,7 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
                       {label}
                     </option>
                   ))}
-                </select>
+                </select>}
               </label>
             </Block>
 

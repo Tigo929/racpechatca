@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Download, FileImage, Pencil, Plus, Trash2, Send } from 'lucide-react';
@@ -54,6 +54,17 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
     queryFn: () => approvalsApi.list(orderId),
     refetchInterval: (query) => query.state.data?.some((a) => ['PENDING', 'SENDING'].includes(a.telegramDelivery?.status ?? '')) ? 3000 : false,
   });
+
+  const sentDeliveries = approvals
+    .filter((approval) => approval.telegramDelivery?.status === 'SENT')
+    .map((approval) => approval.telegramDelivery!.id)
+    .join(',');
+
+  useEffect(() => {
+    if (!sentDeliveries) return;
+    void qc.invalidateQueries({ queryKey: ['order', orderId] });
+    void qc.invalidateQueries({ queryKey: ['orders'] });
+  }, [sentDeliveries, orderId, qc]);
 
   const sendMutation = useMutation({
     mutationFn: (id: string) => approvalsApi.sendTelegram(id),
@@ -179,7 +190,7 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
                   })}
                 </span>
                 <span className="text-xs text-gray-500">
-                  {approval.shirtColor} · {approval.shirtSize}
+                  {approval.clientItem ? 'Печать на изделии клиента' : `${approval.shirtColor} · ${approval.shirtSize}`}
                 </span>
                 {sides.map(([side, state]) => (
                   <span key={side} className="text-xs text-gray-500">
