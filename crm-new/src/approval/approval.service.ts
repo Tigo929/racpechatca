@@ -50,6 +50,7 @@ const DEFAULT_WIDTH_MM = 280;
 const approvalInclude = {
   createdBy: { select: { id: true, username: true } },
   telegramDelivery: { select: deliverySelect },
+  order: { select: { items: { select: { printOnClientItem: true } }, tshirtItems: { select: { clientItem: true } } } },
 } satisfies Prisma.PrintApprovalInclude;
 
 @Injectable()
@@ -396,10 +397,12 @@ export class ApprovalService {
         numberOrder: true,
         // Печать на изделии заказчика — свободная позиция с этим признаком.
         items: { select: { printOnClientItem: true } },
+        tshirtItems: { select: { clientItem: true } },
       },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
-    const clientItem = order.items.some((i) => i.printOnClientItem);
+    const clientItem = order.items.some((i) => i.printOnClientItem) ||
+      order.tshirtItems.some((i) => i.clientItem);
 
     const templates = await this.prisma.mockupTemplate.findMany({
       where: { key: { in: filled.map((f) => f.state.templateKey) } },
@@ -447,10 +450,12 @@ export class ApprovalService {
    * updatedAt, и этого достаточно, чтобы понять — картинка уже не та.
    */
   private toView<
-    T extends { sides: unknown; updatedAt: Date; finalizedAt: Date | null },
+    T extends { sides: unknown; updatedAt: Date; finalizedAt: Date | null; order: { items: { printOnClientItem: boolean }[]; tshirtItems: { clientItem: boolean }[] } },
   >(approval: T) {
+    const { order, ...view } = approval;
     return {
-      ...approval,
+      ...view,
+      clientItem: order.items.some((item) => item.printOnClientItem) || order.tshirtItems.some((item) => item.clientItem),
       sides: parseSides(approval.sides),
       fileOutdated: Boolean(
         approval.finalizedAt &&
