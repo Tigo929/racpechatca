@@ -80,7 +80,11 @@ function kindOf(status: number): MetrikaErrorKind {
   return 'http';
 }
 
-function humanize(kind: MetrikaErrorKind, status: number, apiMessage?: string): string {
+function humanize(
+  kind: MetrikaErrorKind,
+  status: number,
+  apiMessage?: string,
+): string {
   switch (kind) {
     case 'not_configured':
       return 'Интеграция с Яндекс Метрикой не настроена: нет YANDEX_METRIKA_COUNTER_ID или YANDEX_METRIKA_OAUTH_TOKEN.';
@@ -134,7 +138,8 @@ export class YandexMetrikaClient {
   /** Счётчик и его параметры. `fields` — например ['goals'], чтобы получить цели тем же запросом. */
   async getCounter(fields: string[] = []): Promise<MetrikaCounter> {
     const id = this.requireCounter();
-    const query = fields.length > 0 ? `?field=${encodeURIComponent(fields.join(','))}` : '';
+    const query =
+      fields.length > 0 ? `?field=${encodeURIComponent(fields.join(','))}` : '';
     const body = await this.get<MetrikaCounterResponse>(
       'counter',
       `/management/v1/counter/${id}${query}`,
@@ -158,7 +163,8 @@ export class YandexMetrikaClient {
     const params = new URLSearchParams();
     params.set('ids', String(id));
     params.set('metrics', query.metrics.join(','));
-    if (query.dimensions?.length) params.set('dimensions', query.dimensions.join(','));
+    if (query.dimensions?.length)
+      params.set('dimensions', query.dimensions.join(','));
     params.set('date1', query.date1);
     params.set('date2', query.date2);
     if (query.filters) params.set('filters', query.filters);
@@ -167,7 +173,10 @@ export class YandexMetrikaClient {
     if (query.offset !== undefined) params.set('offset', String(query.offset));
     if (query.accuracy) params.set('accuracy', query.accuracy);
     if (query.lang) params.set('lang', query.lang);
-    return this.get<MetrikaStatsResponse>('stats', `/stat/v1/data?${params.toString()}`);
+    return this.get<MetrikaStatsResponse>(
+      'stats',
+      `/stat/v1/data?${params.toString()}`,
+    );
   }
 
   /**
@@ -181,12 +190,39 @@ export class YandexMetrikaClient {
     mergeMode: MetrikaMergeMode = 'SAVE',
   ): Promise<MetrikaUploading> {
     const id = this.requireCounter();
-    const params = new URLSearchParams({ merge_mode: mergeMode, delimiter_type: 'COMMA' });
+    const params = new URLSearchParams({
+      merge_mode: mergeMode,
+      delimiter_type: 'COMMA',
+    });
     const form = new FormData();
     form.append('file', new Blob([csv], { type: 'text/csv' }), 'orders.csv');
     const body = await this.post<MetrikaUploadingResponse>(
       'simple_orders',
       `/cdp/api/v1/counter/${id}/data/simple_orders?${params.toString()}`,
+      form,
+    );
+    return body.uploading;
+  }
+
+  /**
+   * Офлайн-конверсии по метке клика Директа:
+   * POST /management/v1/counter/{id}/offline_conversions/upload?client_id_type=YCLID
+   *
+   * Отдельный канал от загрузки заказов CDP и нужен только там, где у
+   * заказа нет ClientID: без него Директ не узнаёт, что его клик закончился
+   * оплаченным заказом. Повторов внутри нет — их ведёт очередь.
+   */
+  async uploadYclidConversions(csv: string): Promise<MetrikaUploading> {
+    const id = this.requireCounter();
+    const form = new FormData();
+    form.append(
+      'file',
+      new Blob([csv], { type: 'text/csv' }),
+      'conversions.csv',
+    );
+    const body = await this.post<MetrikaUploadingResponse>(
+      'offline_conversions',
+      `/management/v1/counter/${id}/offline_conversions/upload?client_id_type=YCLID`,
       form,
     );
     return body.uploading;
@@ -204,7 +240,11 @@ export class YandexMetrikaClient {
 
   private requireCounter(): number {
     if (!this.isConfigured() || this.config.counterId === null) {
-      throw new MetrikaApiError('not_configured', 0, humanize('not_configured', 0));
+      throw new MetrikaApiError(
+        'not_configured',
+        0,
+        humanize('not_configured', 0),
+      );
     }
     return this.config.counterId;
   }
@@ -216,7 +256,11 @@ export class YandexMetrikaClient {
   private async get<T>(operation: string, path: string): Promise<T> {
     const token = this.config.token;
     if (!token) {
-      throw new MetrikaApiError('not_configured', 0, humanize('not_configured', 0));
+      throw new MetrikaApiError(
+        'not_configured',
+        0,
+        humanize('not_configured', 0),
+      );
     }
     let attempt = 0;
     for (;;) {
@@ -226,7 +270,8 @@ export class YandexMetrikaClient {
         this.log(operation, 200, startedAt, true);
         return result;
       } catch (error) {
-        const e = error instanceof MetrikaApiError ? error : this.wrapUnknown(error);
+        const e =
+          error instanceof MetrikaApiError ? error : this.wrapUnknown(error);
         this.log(operation, e.status, startedAt, false, e.kind);
         const delay = RETRY_DELAYS_MS[attempt];
         if (RETRYABLE.has(e.kind) && delay !== undefined) {
@@ -240,18 +285,30 @@ export class YandexMetrikaClient {
   }
 
   /** POST без повторов: одна попытка — один ответ, дальше решает вызывающий. */
-  private async post<T>(operation: string, path: string, form: FormData): Promise<T> {
+  private async post<T>(
+    operation: string,
+    path: string,
+    form: FormData,
+  ): Promise<T> {
     const token = this.config.token;
     if (!token) {
-      throw new MetrikaApiError('not_configured', 0, humanize('not_configured', 0));
+      throw new MetrikaApiError(
+        'not_configured',
+        0,
+        humanize('not_configured', 0),
+      );
     }
     const startedAt = Date.now();
     try {
-      const result = await this.once<T>(path, token, { method: 'POST', body: form });
+      const result = await this.once<T>(path, token, {
+        method: 'POST',
+        body: form,
+      });
       this.log(operation, 200, startedAt, true);
       return result;
     } catch (error) {
-      const e = error instanceof MetrikaApiError ? error : this.wrapUnknown(error);
+      const e =
+        error instanceof MetrikaApiError ? error : this.wrapUnknown(error);
       this.log(operation, e.status, startedAt, false, e.kind);
       throw e;
     }
@@ -296,13 +353,23 @@ export class YandexMetrikaClient {
         apiMessage = raw.slice(0, 200) || undefined;
       }
       const kind = kindOf(res.status);
-      throw new MetrikaApiError(kind, res.status, humanize(kind, res.status, apiMessage), raw.slice(0, 500));
+      throw new MetrikaApiError(
+        kind,
+        res.status,
+        humanize(kind, res.status, apiMessage),
+        raw.slice(0, 500),
+      );
     }
 
     try {
       return JSON.parse(raw) as T;
     } catch {
-      throw new MetrikaApiError('http', res.status, 'Метрика вернула не JSON.', raw.slice(0, 200));
+      throw new MetrikaApiError(
+        'http',
+        res.status,
+        'Метрика вернула не JSON.',
+        raw.slice(0, 200),
+      );
     }
   }
 

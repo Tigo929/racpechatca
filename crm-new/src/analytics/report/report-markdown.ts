@@ -1,5 +1,9 @@
 import type { AnalyticsPeriod } from '../metrics/analytics-period';
 import type { FunnelStep, MetricRow, ReportModel } from './report-contract';
+import type {
+  SiteFunnelMetrics as FunnelSource,
+  SpendMetrics,
+} from '../metrics/metrics-contract';
 
 /**
  * Печать отчёта (этап 15). Всё, что нужно внешнему аналитику, обязано лежать
@@ -13,13 +17,13 @@ import type { FunnelStep, MetricRow, ReportModel } from './report-contract';
 
 const DASH = '—';
 
-function money(v: number | null): string {
-  if (v === null) return DASH;
+function money(v: number | null | undefined): string {
+  if (v === null || v === undefined) return DASH;
   return `${Math.round(v).toLocaleString('ru-RU')} ₽`;
 }
 
-function num(v: number | null): string {
-  return v === null ? DASH : v.toLocaleString('ru-RU');
+function num(v: number | null | undefined): string {
+  return v === null || v === undefined ? DASH : v.toLocaleString('ru-RU');
 }
 
 /** Дробные значения печатаем с одним знаком: сырой float читать невозможно. */
@@ -28,8 +32,10 @@ function rounded(v: number | null): string {
   return Number.isInteger(v) ? num(v) : v.toFixed(1);
 }
 
-function pct(v: number | null, digits = 1): string {
-  return v === null ? DASH : `${v.toFixed(digits)} %`;
+function pct(v: number | null | undefined, digits = 1): string {
+  // undefined приходит от среза более старого контракта: печатаем «—»,
+  // а не падаем на toFixed — отчёт не должен зависеть от версии соседа.
+  return v === null || v === undefined ? DASH : `${v.toFixed(digits)} %`;
 }
 
 function value(row: MetricRow, v: number | null): string {
@@ -86,9 +92,81 @@ function funnelTable(steps: FunnelStep[]): string {
   );
 }
 
+/**
+ * Экономика рекламы: расход против результата сайта.
+ *
+ * Три честных состояния вместо одной красивой цифры: расходов нет — считать
+ * нечего; расходы есть, но связь «клик → заказ» доказана у меньшинства
+ * заказов — цена заявки известна, окупаемость нет; доказана — считаем всё.
+ */
+function spendBlock(spend: SpendMetrics, site: FunnelSource): string {
+  if (spend.status === 'UNAVAILABLE_NO_SPEND_DATA') {
+    return [
+      '```text',
+      'UNAVAILABLE_NO_SPEND_DATA — рекламные расходы за период в систему не заводились.',
+      'CPL, CPA, CPO, ROAS и ROMI не считаются. Как только расходы появятся',
+      '(npm run ads:import), раздел посчитает их сам.',
+      '```',
+    ].join('\n');
+  }
+  const lines = [
+    table(
+      ['Показатель', 'Значение'],
+      [
+        ['Расход на рекламу', money(spend.spend)],
+        ['Клики', num(spend.clicks)],
+        ['Показы', num(spend.impressions)],
+        ['Заявок с сайта', num(site.siteLeads)],
+        ['CPL — цена заявки', money(spend.cpl)],
+        ['CPA — цена принятого заказа сайта', money(spend.cpa)],
+        ['CPO — цена оплаченного заказа сайта', money(spend.cpo)],
+        [
+          'ROAS — выручка на рубль расхода',
+          spend.roas === null ? DASH : rounded(spend.roas),
+        ],
+        [
+          'ROMI — прибыль на рубль расхода',
+          spend.romi === null ? DASH : rounded(spend.romi),
+        ],
+      ],
+    ),
+  ];
+  if (spend.status === 'ATTRIBUTION_COVERAGE_TOO_LOW') {
+    lines.push(
+      '',
+      '_ОГРАНИЧЕНИЕ: связь «реклама → заказ» доказана меньше чем у половины заказов сайта, поэтому ROAS и ROMI не считаются. Цена заявки и заказа выше — честные: они делят известный расход на известное число заявок, а не приписывают рекламе чужую выручку._',
+    );
+  }
+  lines.push(
+    '',
+    '_Рекламе приписываются только заказы происхождения WEBSITE. Ручные заказы Avito и маркетплейсов в этот расчёт не входят: сайт их не создавал._',
+  );
+  return lines.join('\n');
+}
+
+/**
+ * Что означает причина пропуска очереди.
+ *
+ * Без расшифровки таблица читается как список поломок, хотя большая её
+ * часть — ожидаемое поведение: ручному заказу с Avito взяться ClientID
+ * неоткуда. Настоящая проблема — только строки про заказы сайта.
+ */
+const SKIP_REASON_MEANING: Record<string, string> = {
+  manual_order_no_web_identity:
+    'ручной заказ (Avito, маркетплейсы) — идентификатора визита не бывает, это норма',
+  no_client_id: 'заказ САЙТА без ClientID и без метки клика — настоящий пробел',
+  yclid_channel_disabled:
+    'есть метка клика Директа, но канал офлайн-конверсий не настроен в кабинете',
+  invalid_client_id:
+    'ClientID не похож на идентификатор Метрики — разобрать вручную',
+  not_eligible_rejected_lead:
+    'отклонённая заявка — в Метрику не отправляется намеренно',
+};
+
 export function renderMarkdown(model: ReportModel): string {
   const i = model.input;
   const cur = i.current.overview;
+  const dq = i.current.dataQuality;
   const curRealized = cur.financials.realized;
   const out: string[] = [];
   const add = (...lines: string[]) => out.push(...lines, '');
@@ -230,12 +308,21 @@ export function renderMarkdown(model: ReportModel): string {
     '',
     '```text',
     'NOT ATTRIBUTABLE — выручку и прибыль нельзя разложить по источникам трафика.',
-    'Причина: связь «визит → заказ» держится на ClientID, а его покрытие у принятых заказов',
-    `составляет ${pct(i.current.dataQuality.clientIdCoverageAccepted)}. Рекламные расходы в систему не заводятся,`,
-    'поэтому CPL, CPA, CPO, ROAS и ROMI не считаются (в контракте метрик они помечены',
-    'как UNAVAILABLE_NO_SPEND_DATA). Достоверно доступны только цели Метрики по источникам',
-    'и общие финансовые итоги периода.',
+    'Причина: связь «визит → заказ» держится на ClientID, а он есть не у всех заказов сайта.',
+    `Покрытие ClientID у принятых заказов САЙТА: ${pct(dq.websiteClientIdCoverage)} (${num(dq.websiteAccepted)} заказов);`,
+    `yclid: ${pct(dq.websiteYclidCoverage)}; UTM: ${pct(dq.websiteUtmCoverage)};`,
+    `совсем без связи с визитом: ${num(dq.websiteWithoutIdentity)}.`,
+    'Общее покрытие по всем заказам ниже и само по себе ни о чём не говорит: ручные заказы',
+    'Avito и маркетплейсов сайт не создавал, и ClientID у них не бывает по природе.',
+    'Достоверно доступны цели Метрики по источникам и общие финансовые итоги периода.',
     '```',
+    '',
+    '## Экономика рекламы',
+    '',
+    spendBlock(
+      i.current.overview.financials.spend,
+      i.current.overview.siteFunnel,
+    ),
     '',
     '## Страницы входа и заявок',
     '',
@@ -591,8 +678,12 @@ export function renderMarkdown(model: ReportModel): string {
     '',
     s.skipReasons.length
       ? table(
-          ['Причина пропуска', 'Строк'],
-          s.skipReasons.map((r) => [r.reason, num(r.rows)]),
+          ['Причина пропуска', 'Строк', 'Что это значит'],
+          s.skipReasons.map((r) => [
+            r.reason,
+            num(r.rows),
+            SKIP_REASON_MEANING[r.reason] ?? 'разобрать вручную',
+          ]),
         )
       : '_Пропусков нет._',
     '',

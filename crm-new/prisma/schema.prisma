@@ -1120,6 +1120,37 @@ model ExpenseOrder {
 /// Настройки расчёта с партнёром-исполнителем (печать футболок).
 /// Одна строка на систему; правится администратором. Значения по умолчанию
 /// подставляются в новую позицию, но в самой позиции их можно переопределить.
+/// Рекламные расходы по дням и кампаниям.
+///
+/// Без них отчёт не может ответить на главный вопрос владельца — окупается
+/// реклама или нет: выручку он считает, а сколько за неё заплачено, не знал.
+///
+/// Данные кладёт CLI (`npm run ads:import`) из выгрузки кабинета: API Директа
+/// требует OAuth-доступа, которого у системы нет, а CSV владелец выгружает
+/// сам за минуту. Ключ (date, source, campaignId) делает импорт идемпотентным:
+/// повторная загрузка того же дня переписывает строку, а не удваивает расход.
+model AdSpend {
+  id        String   @id() @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// День расхода (московский календарь, полночь UTC как у остальной аналитики).
+  date   DateTime
+  /// Рекламная площадка: YANDEX_DIRECT и далее по мере появления.
+  source String   @default("YANDEX_DIRECT")
+  /// Идентификатор кампании в кабинете; пусто — расход за день целиком.
+  campaignId   String @default("")
+  campaignName String @default("")
+
+  /// Потрачено за день, ₽ (с НДС — как в кабинете).
+  spend       Int
+  clicks      Int @default(0)
+  impressions Int @default(0)
+
+  @@unique([date, source, campaignId])
+  @@index([date])
+}
+
 model PartnerSettings {
   id        String   @id @default("default")
   updatedAt DateTime @updatedAt

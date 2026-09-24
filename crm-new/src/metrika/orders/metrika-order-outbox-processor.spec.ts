@@ -39,6 +39,9 @@ const ORDER = {
   id: 'order-1',
   createdAt: T0,
   yandexClientId: '17263548291736450123',
+  // Заказ сайта: только у него бывают идентификаторы визита.
+  sourceOrder: 'WEBSITE',
+  yclid: null,
   totalOrder: 1500,
   productCategory: 'PHOTO',
   items: [

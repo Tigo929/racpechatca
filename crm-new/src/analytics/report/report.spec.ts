@@ -169,6 +169,12 @@ function dataQuality(
     },
     clientIdCoverageAccepted: 19.4,
     clientIdCoveragePaid: 0,
+    // Покрытие по заказам САЙТА — та цифра, которую можно чинить.
+    websiteAccepted: 9,
+    websiteClientIdCoverage: 77.8,
+    websiteYclidCoverage: 55.6,
+    websiteUtmCoverage: 0,
+    websiteWithoutIdentity: 2,
     eligibleAccepted: 7,
     eligibleDeliveredToMetrika: 7,
     metrikaMatchCoverage: 100,
@@ -1111,5 +1117,81 @@ describe('35. сверка происхождения с канонически�
     expect(renderMarkdown(model)).toContain(
       `Себестоимость: ${rub(7000)} против ${rub(6999)} → РАЗНИЦА +1 — себестоимость бумаги округляется`,
     );
+  });
+});
+
+/**
+ * Экономика рекламы в отчёте.
+ *
+ * Отчёт обязан отличать три состояния: расходов нет, расходы есть но
+ * атрибуция слабая, и всё посчитано. Единственная цифра ROAS без этого
+ * различения — решение о бюджете, принятое по выдуманному числу.
+ */
+describe('раздел «Экономика рекламы»', () => {
+  const withSpend = (spend: Partial<Overview['financials']['spend']>) => {
+    const base = input();
+    return buildReportModel({
+      ...base,
+      current: {
+        ...base.current,
+        overview: {
+          ...base.current.overview,
+          financials: {
+            ...base.current.overview.financials,
+            spend: {
+              status: 'AVAILABLE',
+              spend: 10000,
+              clicks: 300,
+              impressions: 12000,
+              cpl: 666,
+              cpa: 1250,
+              cpo: 5000,
+              roas: 6.2,
+              romi: 2.1,
+              attributionReliable: true,
+              ...spend,
+            } as Overview['financials']['spend'],
+          },
+        },
+      },
+    });
+  };
+
+  it('без расходов раздел честно говорит, что считать нечего', () => {
+    const md = renderMarkdown(buildReportModel(input()));
+    expect(md).toContain('# ATTRIBUTION');
+    expect(md).toContain('## Экономика рекламы');
+    expect(md).toContain('UNAVAILABLE_NO_SPEND_DATA');
+    expect(md).toContain('npm run ads:import');
+  });
+
+  it('с расходами показывает цену заявки, заказа и окупаемость', () => {
+    const md = renderMarkdown(withSpend({}));
+    expect(md).toContain('CPL — цена заявки');
+    expect(md).toMatch(/ROAS — выручка на рубль расхода \| 6\.2/);
+    expect(md).toMatch(/ROMI — прибыль на рубль расхода \| 2\.1/);
+    expect(md).toContain('только заказы происхождения WEBSITE');
+  });
+
+  it('слабая атрибуция: цена заявки есть, окупаемости нет и это названо', () => {
+    const md = renderMarkdown(
+      withSpend({
+        status: 'ATTRIBUTION_COVERAGE_TOO_LOW',
+        roas: null,
+        romi: null,
+        attributionReliable: false,
+      }),
+    );
+    expect(md).toContain('CPL — цена заявки');
+    expect(md).toMatch(/ОГРАНИЧЕНИЕ: связь «реклама → заказ» доказана меньше/);
+  });
+
+  it('покрытие атрибуции печатается по заказам сайта, а не по всем', () => {
+    const md = renderMarkdown(buildReportModel(input()));
+    // 77,8 % по сайту вместо 19,4 % «по всем принятым»: ручные заказы Avito
+    // ClientID иметь не могут, и смешивать их в одну цифру — врать себе.
+    expect(md).toContain('Покрытие ClientID у принятых заказов САЙТА: 77.8 %');
+    expect(md).toContain('yclid: 55.6 %');
+    expect(md).toMatch(/совсем без связи с визитом: 2/);
   });
 });

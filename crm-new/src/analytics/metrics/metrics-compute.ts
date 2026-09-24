@@ -5,6 +5,11 @@ import {
 } from '../../reports/order-cogs';
 import type { PnlReport } from '../../reports/reports.service';
 import {
+  computeSpendMetrics,
+  sumAdSpend,
+  type AdSpendRow,
+} from '../ads/ad-spend';
+import {
   ORDER_ORIGINS,
   originOf,
   type OrderOrigin,
@@ -42,6 +47,7 @@ import type {
   RealizedFinancials,
   SalesChannelRow,
   SiteFunnelMetrics,
+  SpendMetrics,
   Slice,
   SourceRow,
   TrafficMetrics,
@@ -76,6 +82,10 @@ export interface CrmOrderInput extends OrderCogsSource {
   statusChangedAt: Date | null;
   sentAt: Date | null;
   yandexClientId: string | null;
+  /** Метка клика Яндекс.Директа — второй идентификатор рекламного заказа. */
+  yclid: string | null;
+  /** Первая UTM-метка визита; пусто — меток не было (органика, прямой заход). */
+  utmSource: string | null;
   statusHistory: LifecycleTransition[];
   /** Есть доставленная строка очереди CRM→Метрика. */
   deliveredToMetrika: boolean;
@@ -444,10 +454,30 @@ export function realizedFromPnl(pnl: PnlReport): RealizedFinancials {
   };
 }
 
+/** Расходов за период нет — статус, а не нули. */
+export const NO_AD_SPEND: SpendMetrics = {
+  status: 'UNAVAILABLE_NO_SPEND_DATA',
+  spend: 0,
+  clicks: 0,
+  impressions: 0,
+  cpl: null,
+  cpa: null,
+  cpo: null,
+  roas: null,
+  romi: null,
+  attributionReliable: false,
+};
+
 export function computeFinancials(
   sets: CrmPeriodSets,
   pnl: PnlReport | null,
   settings: CostSettings,
+  /**
+   * Экономика рекламы. Не передана — расходов за период нет, и отчёт
+   * говорит это статусом, а не нулями: ноль читается как «реклама
+   * бесплатна», а не «мы не знаем».
+   */
+  spend?: SpendMetrics,
 ): FinancialMetrics {
   const accepted = cogsOf(sets.accepted, settings);
   const paid = cogsOf(sets.paid, settings);
@@ -473,14 +503,7 @@ export function computeFinancials(
       grossContribution: paidValue - paid.cogs,
     },
     realized: pnl ? realizedFromPnl(pnl) : null,
-    spend: {
-      status: 'UNAVAILABLE_NO_SPEND_DATA',
-      cpl: null,
-      cpa: null,
-      cpo: null,
-      roas: null,
-      romi: null,
-    },
+    spend: spend ?? NO_AD_SPEND,
     quality: quality(notes, pnl ? undefined : 'partial'),
   };
 }
@@ -497,6 +520,29 @@ export function computeDataQuality(
   ).length;
   const paidWithClientId = sets.paid.filter(
     (o) => o.order.yandexClientId,
+  ).length;
+  /*
+   * Рекламная атрибуция бывает только у заказов сайта.
+   *
+   * Покрытие «по всем принятым» читалось как провал (11 %), хотя считало
+   * вместе с ним три сотни ручных заказов Avito, у которых ClientID нет и
+   * быть не может: человек писал в мессенджер, а не приходил на сайт.
+   * Чинить там нечего, и цифра эта мешала увидеть настоящую — по заказам,
+   * которые сайт создал сам.
+   */
+  const websiteAccepted = sets.accepted.filter(
+    (o) => originOf(o.order.sourceOrder) === 'WEBSITE',
+  );
+  const websiteWithClientId = websiteAccepted.filter(
+    (o) => o.order.yandexClientId,
+  ).length;
+  const websiteWithYclid = websiteAccepted.filter((o) => o.order.yclid).length;
+  const websiteWithUtm = websiteAccepted.filter(
+    (o) => o.order.utmSource,
+  ).length;
+  // Заказ, который вообще нельзя связать с визитом: ни ClientID, ни yclid.
+  const websiteWithoutIdentity = websiteAccepted.filter(
+    (o) => !o.order.yandexClientId && !o.order.yclid,
   ).length;
   const eligible = sets.accepted.filter(
     (o) =>
@@ -525,6 +571,14 @@ export function computeDataQuality(
       sets.accepted.length,
     ),
     clientIdCoveragePaid: percent(paidWithClientId, sets.paid.length),
+    websiteAccepted: websiteAccepted.length,
+    websiteClientIdCoverage: percent(
+      websiteWithClientId,
+      websiteAccepted.length,
+    ),
+    websiteYclidCoverage: percent(websiteWithYclid, websiteAccepted.length),
+    websiteUtmCoverage: percent(websiteWithUtm, websiteAccepted.length),
+    websiteWithoutIdentity,
     eligibleAccepted: eligible.length,
     eligibleDeliveredToMetrika: eligibleDelivered,
     metrikaMatchCoverage: percent(eligibleDelivered, eligible.length),
@@ -549,6 +603,45 @@ export interface PeriodComputation {
   dataQuality: DataQualityMetrics;
 }
 
+/**
+ * Экономика рекламы за период.
+ *
+ * Результат считаем ТОЛЬКО по заказам сайта: ручной заказ с Avito сайт не
+ * создавал, и делить на него рекламный бюджет значит рисовать себе
+ * окупаемость, которой нет.
+ *
+ * Деньги берём канонической функцией себестоимости — той же, что и весь
+ * остальной финансовый контур; второй формулы прибыли здесь не появляется.
+ */
+function spendFor(
+  adSpend: AdSpendRow[] | undefined,
+  sets: CrmPeriodSets,
+  site: SiteFunnelMetrics,
+  quality: DataQualityMetrics,
+  settings: CostSettings,
+): SpendMetrics | undefined {
+  if (!adSpend || adSpend.length === 0) return undefined;
+  const websiteOf = (list: OrderWithLifecycle[]) =>
+    list.filter((o) => originOf(o.order.sourceOrder) === 'WEBSITE');
+  const paid = websiteOf(sets.paid);
+  const paidValue = contractValue(paid);
+  const paidCogs = cogsOf(paid, settings);
+  return computeSpendMetrics(sumAdSpend(adSpend), {
+    siteLeads: site.siteLeads,
+    acceptedOrders: websiteOf(sets.accepted).length,
+    paidOrders: paid.length,
+    revenue: paidValue,
+    grossProfit: paidValue - paidCogs.cogs,
+    identityCoveragePct:
+      quality.websiteAccepted > 0
+        ? percent(
+            quality.websiteAccepted - quality.websiteWithoutIdentity,
+            quality.websiteAccepted,
+          )
+        : null,
+  });
+}
+
 export function computePeriod(
   period: AnalyticsPeriod,
   metrika: MetrikaPeriodInput,
@@ -557,22 +650,30 @@ export function computePeriod(
   goalIds: CanonicalGoalIds,
   settings: CostSettings,
   freshness: Freshness,
+  /** Рекламные расходы периода; нет — экономика рекламы не считается. */
+  adSpend?: AdSpendRow[],
 ): PeriodComputation {
   const sets = crmPeriodSets(all, period);
   const siteFunnel = computeSiteFunnel(metrika, goalIds, period);
+  const dataQuality = computeDataQuality(
+    sets,
+    siteFunnel,
+    metrika,
+    period,
+    freshness,
+  );
   return {
     traffic: computeTraffic(metrika, period, freshness),
     siteFunnel,
     crmFunnel: computeCrmFunnel(sets),
     orders: computeOrders(sets),
-    financials: computeFinancials(sets, pnl, settings),
-    dataQuality: computeDataQuality(
+    financials: computeFinancials(
       sets,
-      siteFunnel,
-      metrika,
-      period,
-      freshness,
+      pnl,
+      settings,
+      spendFor(adSpend, sets, siteFunnel, dataQuality, settings),
     ),
+    dataQuality,
   };
 }
 

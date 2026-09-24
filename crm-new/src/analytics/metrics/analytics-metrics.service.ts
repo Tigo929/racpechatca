@@ -8,6 +8,7 @@ import {
 } from '../../metrika/analytics/metrika-dates';
 import { ReportsService, type PnlReport } from '../../reports/reports.service';
 import type { OriginPnl } from './metrics-compute';
+import type { AdSpendRow } from '../ads/ad-spend';
 import type { CostSettings } from '../../reports/order-cogs';
 import { METRIKA_SCOPE_COUNTER } from './analytics-constants';
 import {
@@ -90,6 +91,8 @@ const ORDER_SELECT = {
   statusChangedAt: true,
   sentAt: true,
   yandexClientId: true,
+  yclid: true,
+  utmSource: true,
   items: {
     select: {
       formatPaper: true,
@@ -205,16 +208,19 @@ export class AnalyticsMetricsService {
     previous: PeriodComputation;
     comparison: ComparisonSet;
   }> {
-    const [orders, settings, lastSync, cur, prev] = await Promise.all([
-      this.loadOrders(
-        periodBoundsUtc(period.to > previous.to ? period : previous)
-          .endExclusive,
-      ),
-      this.reports.costSettings(),
-      this.lastMetrikaSyncAt(),
-      this.loadPeriod(period),
-      this.loadPeriod(previous),
-    ]);
+    const [orders, settings, lastSync, cur, prev, spendNow, spendBefore] =
+      await Promise.all([
+        this.loadOrders(
+          periodBoundsUtc(period.to > previous.to ? period : previous)
+            .endExclusive,
+        ),
+        this.reports.costSettings(),
+        this.lastMetrikaSyncAt(),
+        this.loadPeriod(period),
+        this.loadPeriod(previous),
+        this.adSpendFor(period),
+        this.adSpendFor(previous),
+      ]);
     const all = withLifecycles(orders);
     const freshness = freshnessOf(lastSync, this.now());
     const current = computePeriod(
@@ -225,6 +231,7 @@ export class AnalyticsMetricsService {
       this.goalIds,
       settings,
       freshness,
+      spendNow,
     );
     const before = computePeriod(
       previous,
@@ -234,6 +241,7 @@ export class AnalyticsMetricsService {
       this.goalIds,
       settings,
       freshness,
+      spendBefore,
     );
     return {
       current,
@@ -349,14 +357,35 @@ export class AnalyticsMetricsService {
 
   // ---------------------------------------------------------------------------
 
+  /**
+   * Рекламные расходы периода. Пусто — экономика рекламы не считается:
+   * ноль читался бы как «реклама бесплатна», а не «мы не знаем».
+   */
+  async adSpendFor(period: AnalyticsPeriod): Promise<AdSpendRow[]> {
+    const rows = await this.prisma.adSpend.findMany({
+      where: { date: this.dateWhere(period) },
+      orderBy: { date: 'asc' },
+    });
+    return rows.map((r) => ({
+      date: utcDateToIso(r.date),
+      source: r.source,
+      campaignId: r.campaignId,
+      campaignName: r.campaignName,
+      spend: r.spend,
+      clicks: r.clicks,
+      impressions: r.impressions,
+    }));
+  }
+
   private async computeOne(
     period: AnalyticsPeriod,
   ): Promise<PeriodComputation> {
-    const [orders, settings, lastSync, cur] = await Promise.all([
+    const [orders, settings, lastSync, cur, spend] = await Promise.all([
       this.loadOrders(periodBoundsUtc(period).endExclusive),
       this.reports.costSettings(),
       this.lastMetrikaSyncAt(),
       this.loadPeriod(period),
+      this.adSpendFor(period),
     ]);
     return computePeriod(
       period,
@@ -366,6 +395,7 @@ export class AnalyticsMetricsService {
       this.goalIds,
       settings,
       freshnessOf(lastSync, this.now()),
+      spend,
     );
   }
 
@@ -395,6 +425,8 @@ export class AnalyticsMetricsService {
       statusChangedAt: r.statusChangedAt,
       sentAt: r.sentAt,
       yandexClientId: r.yandexClientId,
+      yclid: r.yclid,
+      utmSource: r.utmSource,
       items: r.items,
       tshirtItems: r.tshirtItems,
       canvasItems: r.canvasItems,

@@ -158,13 +158,37 @@ export interface RealizedFinancials {
   byCategory: { photo: CategoryPnl; tshirt: CategoryPnl; canvas: CategoryPnl };
 }
 
+/**
+ * Экономика рекламы.
+ *
+ * `UNAVAILABLE_NO_SPEND_DATA` — расходов за период в системе нет, считать
+ * нечего. `ATTRIBUTION_COVERAGE_TOO_LOW` — деньги известны, но связь
+ * «клик → заказ» доказана у меньшинства заказов сайта: цену заявки
+ * показать честно можно, окупаемость — нет. `AVAILABLE` — считается всё.
+ */
+export type SpendStatus =
+  | 'UNAVAILABLE_NO_SPEND_DATA'
+  | 'ATTRIBUTION_COVERAGE_TOO_LOW'
+  | 'AVAILABLE';
+
 export interface SpendMetrics {
-  status: 'UNAVAILABLE_NO_SPEND_DATA';
-  cpl: null;
-  cpa: null;
-  cpo: null;
-  roas: null;
-  romi: null;
+  status: SpendStatus;
+  /** Потрачено за период, ₽. */
+  spend: number;
+  clicks: number;
+  impressions: number;
+  /** Цена заявки с сайта, ₽. */
+  cpl: number | null;
+  /** Цена принятого заказа сайта, ₽. */
+  cpa: number | null;
+  /** Цена оплаченного заказа сайта, ₽. */
+  cpo: number | null;
+  /** Выручка сайта на рубль расхода. */
+  roas: number | null;
+  /** (Валовая прибыль сайта − расход) / расход. */
+  romi: number | null;
+  /** Доказана ли связь «реклама → заказ» на достаточной доле заказов. */
+  attributionReliable: boolean;
 }
 
 export interface FinancialMetrics {
@@ -189,6 +213,20 @@ export interface DataQualityMetrics {
   freshness: Freshness;
   clientIdCoverageAccepted: number | null;
   clientIdCoveragePaid: number | null;
+  /**
+   * Покрытие атрибуции среди принятых заказов САЙТА (этап атрибуции).
+   *
+   * Общее покрытие считает вместе с ручными заказами Avito, у которых
+   * ClientID нет по природе, и потому показывает провал там, где чинить
+   * нечего. Рекламная атрибуция имеет смысл только для заказов, которые
+   * создал сайт, — эти четыре поля про них.
+   */
+  websiteAccepted: number;
+  websiteClientIdCoverage: number | null;
+  websiteYclidCoverage: number | null;
+  websiteUtmCoverage: number | null;
+  /** Заказы сайта, которые нельзя связать с визитом вообще: ни ClientID, ни yclid. */
+  websiteWithoutIdentity: number;
   /** Принятые после включения CRM→Метрика и с ClientID — честная база сопоставления. */
   eligibleAccepted: number;
   eligibleDeliveredToMetrika: number;

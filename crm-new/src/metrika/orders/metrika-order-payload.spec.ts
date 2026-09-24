@@ -17,6 +17,9 @@ function order(partial: Partial<OrderForMetrika> = {}): OrderForMetrika {
     id: 'order-1',
     createdAt: new Date('2026-09-11T15:30:00Z'),
     yandexClientId: '17263548291736450123',
+    // Заказ сайта: рекламная атрибуция бывает только у него.
+    sourceOrder: 'WEBSITE',
+    yclid: null,
     totalOrder: 1500,
     productCategory: 'PHOTO',
     items: [
@@ -145,5 +148,114 @@ describe('маскирование ClientID для логов', () => {
   it('показывает четыре цифры и длину', () => {
     expect(maskClientId('17263548291736450123')).toBe('1726…(20 цифр)');
     expect(maskClientId('12')).toBe('****');
+  });
+});
+
+/**
+ * Второй идентификатор и честные причины пропуска (этап сквозной атрибуции).
+ *
+ * До этого всё, у чего не было ClientID, копилось как `no_client_id` — и три
+ * сотни ручных заказов Avito, которым ClientID иметь неоткуда, выглядели в
+ * отчётах поломкой. Теперь причина называет, что произошло: чинить нужно
+ * только заказы сайта.
+ */
+describe('идентификаторы заказа', () => {
+  const TARGETS = { CREATED: 'crm_created_ad', PAID: 'crm_paid_ad', CANCELLED: '' };
+
+  it('ручной заказ без ClientID — своя причина, а не «нет ClientID»', () => {
+    const snap = buildOrderSnapshot(
+      order({ yandexClientId: null, sourceOrder: 'AVITO' }),
+      'PAID',
+      SETTINGS,
+      TZ,
+      false,
+    );
+    expect(snap).toEqual({ kind: 'skip', reason: 'manual_order_no_web_identity' });
+  });
+
+  it('заказ сайта без ClientID и без метки клика — настоящий пропуск', () => {
+    const snap = buildOrderSnapshot(
+      order({ yandexClientId: null, sourceOrder: 'WEBSITE' }),
+      'PAID',
+      SETTINGS,
+      TZ,
+      false,
+    );
+    expect(snap).toEqual({ kind: 'skip', reason: 'no_client_id' });
+  });
+
+  it('есть yclid, но канал не настроен — так и сказано, а не «нет ClientID»', () => {
+    const snap = buildOrderSnapshot(
+      order({ yandexClientId: null, yclid: 'ABCdef123456' }),
+      'PAID',
+      SETTINGS,
+      TZ,
+      false,
+    );
+    expect(snap).toEqual({ kind: 'skip', reason: 'yclid_channel_disabled' });
+  });
+
+  it('есть yclid и цель — заказ уходит офлайн-конверсией по метке клика', () => {
+    const snap = buildOrderSnapshot(
+      order({ yandexClientId: null, yclid: 'ABCdef123456' }),
+      'PAID',
+      SETTINGS,
+      TZ,
+      false,
+      TARGETS,
+    );
+    expect(snap).toEqual({
+      kind: 'yclid',
+      status: 'PAID',
+      row: {
+        yclid: 'ABCdef123456',
+        target: 'crm_paid_ad',
+        // Время события, а не загрузки: иначе вчерашняя оплата встанет
+        // в отчёт сегодняшним днём.
+        dateTime: Math.floor(new Date('2026-09-11T15:30:00Z').getTime() / 1000),
+        price: 1500,
+      },
+    });
+  });
+
+  it('перехода без своей цели по yclid не отправляем', () => {
+    const snap = buildOrderSnapshot(
+      order({
+        yandexClientId: null,
+        yclid: 'ABCdef123456',
+        statusHistory: [{ fromStatus: 'NEW', toStatus: 'CANCELLED' }],
+      }),
+      'CANCELLED',
+      SETTINGS,
+      TZ,
+      false,
+      TARGETS,
+    );
+    expect(snap).toEqual({ kind: 'skip', reason: 'yclid_channel_disabled' });
+  });
+
+  it('ClientID главнее: при обоих идентификаторах уходит загрузка заказов', () => {
+    // Иначе один заказ дал бы и заказ CDP, и офлайн-конверсию — двойной счёт.
+    const snap = buildOrderSnapshot(
+      order({ yclid: 'ABCdef123456' }),
+      'PAID',
+      SETTINGS,
+      TZ,
+      false,
+      TARGETS,
+    );
+    expect(snap.kind).toBe('row');
+  });
+
+  it('мусорный yclid не выдаётся за метку клика', () => {
+    const snap = buildOrderSnapshot(
+      order({ yandexClientId: null, yclid: 'нет' }),
+      'PAID',
+      SETTINGS,
+      TZ,
+      false,
+      TARGETS,
+    );
+    expect(snap).toEqual({ kind: 'skip', reason: 'no_client_id' });
   });
 });

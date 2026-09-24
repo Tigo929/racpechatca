@@ -1,7 +1,10 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client.js';
 import type { PrismaService } from '../prisma/prisma.service';
-import { MetrikaApiError, YandexMetrikaClient } from '../metrika/metrika-api.client';
+import {
+  MetrikaApiError,
+  YandexMetrikaClient,
+} from '../metrika/metrika-api.client';
 import { metrikaConfigFromEnv } from '../metrika/metrika.config';
 import { costSettingsFrom } from '../reports/order-cogs';
 import {
@@ -9,7 +12,14 @@ import {
   formatCounterDateTime,
   isValidTimeZone,
 } from '../metrika/orders/metrika-order-csv';
-import { buildOrderSnapshot, maskClientId } from '../metrika/orders/metrika-order-payload';
+import {
+  buildOrderSnapshot,
+  maskClientId,
+} from '../metrika/orders/metrika-order-payload';
+import {
+  buildYclidConversionsCsv,
+  yclidTargetsFromEnv,
+} from '../metrika/orders/metrika-yclid-conversions';
 import {
   findSourceTransition,
   normalizeMetrikaStatus,
@@ -74,6 +84,8 @@ const ORDER_SELECT = {
   createdAt: true,
   status: true,
   yandexClientId: true,
+  yclid: true,
+  sourceOrder: true,
   totalOrder: true,
   productCategory: true,
   items: {
@@ -99,9 +111,15 @@ const ORDER_SELECT = {
   statusHistory: { select: { fromStatus: true, toStatus: true } },
 } as const;
 
-async function counterTimeZone(client: YandexMetrikaClient): Promise<{ name: string | null; offset: number | null; note: string }> {
+async function counterTimeZone(
+  client: YandexMetrikaClient,
+): Promise<{ name: string | null; offset: number | null; note: string }> {
   if (!client.isConfigured()) {
-    return { name: null, offset: null, note: 'клиент не настроен — пояс счётчика неизвестен' };
+    return {
+      name: null,
+      offset: null,
+      note: 'клиент не настроен — пояс счётчика неизвестен',
+    };
   }
   try {
     const counter = await client.getCounter();
@@ -117,15 +135,22 @@ async function counterTimeZone(client: YandexMetrikaClient): Promise<{ name: str
   }
 }
 
-async function status(prisma: PrismaClient, client: YandexMetrikaClient): Promise<void> {
-  const outbox = new MetrikaOrderOutboxService(prisma as unknown as PrismaService);
+async function status(
+  prisma: PrismaClient,
+  client: YandexMetrikaClient,
+): Promise<void> {
+  const outbox = new MetrikaOrderOutboxService(
+    prisma as unknown as PrismaService,
+  );
   const c = await outbox.counters();
   console.log('Очередь MetrikaOrderOutbox:');
   console.log(`  pending:    ${c.pending}`);
   console.log(`  processing: ${c.processing}`);
   console.log(`  delivered:  ${c.delivered}`);
   console.log(`  failed:     ${c.failed}`);
-  console.log(`  skipped:    ${c.skipped}  (из них без ClientID: ${c.skippedNoClientId})`);
+  console.log(
+    `  skipped:    ${c.skipped}  (из них без ClientID: ${c.skippedNoClientId})`,
+  );
   console.log(`  last success: ${fmt(c.lastSuccessAt)}`);
   console.log(`  last failure: ${fmt(c.lastFailureAt)}`);
 
@@ -139,7 +164,9 @@ async function status(prisma: PrismaClient, client: YandexMetrikaClient): Promis
     console.log(
       `  ${fmt(r.updatedAt)}  ${r.status.padEnd(10)} заказ ${r.order.numberOrder} → ${r.sentMetrikaStatus ?? r.targetMetrikaStatus}` +
         `, попыток ${r.attemptCount}` +
-        (r.remoteUploadingId ? `, uploading ${r.remoteUploadingId} (${r.apiValidationStatus})` : '') +
+        (r.remoteUploadingId
+          ? `, uploading ${r.remoteUploadingId} (${r.apiValidationStatus})`
+          : '') +
         (r.skipReason ? `, пропуск: ${r.skipReason}` : '') +
         (r.lastError ? `, ошибка: ${r.lastError.slice(0, 120)}` : ''),
     );
@@ -147,10 +174,14 @@ async function status(prisma: PrismaClient, client: YandexMetrikaClient): Promis
   if (recent.length === 0) console.log('  (пусто)');
 
   const tz = await counterTimeZone(client);
-  console.log(`Часовой пояс счётчика: ${tz.name ?? '—'}${tz.offset !== null ? ` (смещение ${tz.offset} мин)` : ''} — ${tz.note}`);
+  console.log(
+    `Часовой пояс счётчика: ${tz.name ?? '—'}${tz.offset !== null ? ` (смещение ${tz.offset} мин)` : ''} — ${tz.note}`,
+  );
 
   if (!client.isConfigured()) {
-    console.log('Последние загрузки в Метрике: клиент не настроен (нет YANDEX_METRIKA_COUNTER_ID / YANDEX_METRIKA_OAUTH_TOKEN)');
+    console.log(
+      'Последние загрузки в Метрике: клиент не настроен (нет YANDEX_METRIKA_COUNTER_ID / YANDEX_METRIKA_OAUTH_TOKEN)',
+    );
     return;
   }
   try {
@@ -163,12 +194,19 @@ async function status(prisma: PrismaClient, client: YandexMetrikaClient): Promis
     }
     if (uploads.length === 0) console.log('  (загрузок ещё не было)');
   } catch (e) {
-    const msg = e instanceof MetrikaApiError ? `${e.kind}, HTTP ${e.status}: ${e.humanMessage}` : String(e);
+    const msg =
+      e instanceof MetrikaApiError
+        ? `${e.kind}, HTTP ${e.status}: ${e.humanMessage}`
+        : String(e);
     console.log(`Последние загрузки в Метрике: не прочитаны (${msg})`);
   }
 }
 
-async function preview(prisma: PrismaClient, client: YandexMetrikaClient, orderId: string): Promise<boolean> {
+async function preview(
+  prisma: PrismaClient,
+  client: YandexMetrikaClient,
+  orderId: string,
+): Promise<boolean> {
   const order = await prisma.orderPhoto.findFirst({
     where: { OR: [{ id: orderId }, { numberOrder: orderId }] },
     select: ORDER_SELECT,
@@ -177,13 +215,19 @@ async function preview(prisma: PrismaClient, client: YandexMetrikaClient, orderI
     console.error(`Заказ ${orderId} не найден (id или номер).`);
     return false;
   }
-  const settings = costSettingsFrom(await prisma.partnerSettings.findUnique({ where: { id: 'default' } }));
-  const delivered = await prisma.metrikaOrderOutbox.count({ where: { orderId: order.id, status: 'delivered' } });
+  const settings = costSettingsFrom(
+    await prisma.partnerSettings.findUnique({ where: { id: 'default' } }),
+  );
+  const delivered = await prisma.metrikaOrderOutbox.count({
+    where: { orderId: order.id, status: 'delivered' },
+  });
   const tz = await counterTimeZone(client);
   const zone = tz.name ?? 'UTC';
 
   console.log(`Заказ ${order.numberOrder} (${order.id})`);
-  console.log(`  статус CRM:        ${order.status} → Метрика: ${normalizeMetrikaStatus(order.status) ?? '— (заявка)'}`);
+  console.log(
+    `  статус CRM:        ${order.status} → Метрика: ${normalizeMetrikaStatus(order.status) ?? '— (заявка)'}`,
+  );
   console.log(`  категория:         ${order.productCategory}`);
   console.log(`  создан (UTC):      ${fmt(order.createdAt)}`);
   console.log(`  пояс счётчика:     ${tz.name ?? 'неизвестен'} — ${tz.note}`);
@@ -194,11 +238,19 @@ async function preview(prisma: PrismaClient, client: YandexMetrikaClient, orderI
         : 'LIVE_TOKEN_REQUIRED_BEFORE_WRITE — пояс счётчика читается из API, без токена не вычисляется'
     }`,
   );
-  const ageDays = Math.floor((Date.now() - order.createdAt.getTime()) / 86_400_000);
-  console.log(`  возраст:           ${ageDays} дн. ${ageDays <= 21 ? '(в окне 21 день)' : '(старше 21 дня — к визиту не привяжется)'}`);
-  console.log(`  ClientID:          ${order.yandexClientId ? maskClientId(order.yandexClientId) : 'нет'}`);
+  const ageDays = Math.floor(
+    (Date.now() - order.createdAt.getTime()) / 86_400_000,
+  );
+  console.log(
+    `  возраст:           ${ageDays} дн. ${ageDays <= 21 ? '(в окне 21 день)' : '(старше 21 дня — к визиту не привяжется)'}`,
+  );
+  console.log(
+    `  ClientID:          ${order.yandexClientId ? maskClientId(order.yandexClientId) : 'нет'}`,
+  );
   console.log(`  totalOrder:        ${order.totalOrder}`);
-  console.log(`  история:           ${order.statusHistory.map((h) => `${h.fromStatus ?? '—'}→${h.toStatus}`).join(', ') || '(пусто)'}`);
+  console.log(
+    `  история:           ${order.statusHistory.map((h) => `${h.fromStatus ?? '—'}→${h.toStatus}`).join(', ') || '(пусто)'}`,
+  );
   console.log(`  доставлялся ранее: ${delivered > 0 ? 'да' : 'нет'}`);
 
   const target = normalizeMetrikaStatus(order.status);
@@ -206,22 +258,53 @@ async function preview(prisma: PrismaClient, client: YandexMetrikaClient, orderI
     console.log('Итог: НЕ отправляется — заявка (LEAD), заказа ещё нет');
     return false;
   }
-  const snapshot = buildOrderSnapshot(order, target, settings, zone, delivered > 0);
+  const snapshot = buildOrderSnapshot(
+    order,
+    target,
+    settings,
+    zone,
+    delivered > 0,
+    yclidTargetsFromEnv(process.env),
+  );
   if (snapshot.kind === 'skip') {
     console.log(`Итог: НЕ отправляется — ${snapshot.reason}`);
     return false;
   }
-  console.log(`Итог: отправляется как ${snapshot.status}, revenue ${snapshot.row.revenue}, cost ${snapshot.row.cost ?? 'пусто (ненадёжна)'}`);
-  const csv = buildSimpleOrdersCsv([{ ...snapshot.row, clientId: maskClientId(snapshot.row.clientId) }]);
-  console.log(`CSV (ClientID скрыт${tz.name ? '' : '; дата в UTC — до чтения пояса счётчика'}):`);
+  if (snapshot.kind === 'yclid') {
+    // Второй канал: ClientID нет, но есть метка клика Директа.
+    console.log(
+      `Итог: отправляется офлайн-конверсией по yclid как ${snapshot.status}, цель ${snapshot.row.target}, сумма ${snapshot.row.price}`,
+    );
+    const conversionCsv = buildYclidConversionsCsv([snapshot.row]);
+    for (const line of conversionCsv.trimEnd().split(String.fromCharCode(10))) {
+      console.log(`  ${line}`);
+    }
+    return true;
+  }
+  console.log(
+    `Итог: отправляется как ${snapshot.status}, revenue ${snapshot.row.revenue}, cost ${snapshot.row.cost ?? 'пусто (ненадёжна)'}`,
+  );
+  const csv = buildSimpleOrdersCsv([
+    { ...snapshot.row, clientId: maskClientId(snapshot.row.clientId) },
+  ]);
+  console.log(
+    `CSV (ClientID скрыт${tz.name ? '' : '; дата в UTC — до чтения пояса счётчика'}):`,
+  );
   for (const line of csv.trimEnd().split('\n')) console.log(`  ${line}`);
   return true;
 }
 
-async function send(prisma: PrismaClient, client: YandexMetrikaClient, orderId: string, live: boolean): Promise<number> {
+async function send(
+  prisma: PrismaClient,
+  client: YandexMetrikaClient,
+  orderId: string,
+  live: boolean,
+): Promise<number> {
   const ok = await preview(prisma, client, orderId);
   if (!live) {
-    console.log('Режим: preview. Для реальной отправки добавьте --live (только по разрешению владельца).');
+    console.log(
+      'Режим: preview. Для реальной отправки добавьте --live (только по разрешению владельца).',
+    );
     return ok ? 0 : 1;
   }
   if (!ok) return 1;
@@ -236,7 +319,9 @@ async function send(prisma: PrismaClient, client: YandexMetrikaClient, orderId: 
   const target = normalizeMetrikaStatus(order?.status);
   if (!order || !target) return 1;
 
-  const outbox = new MetrikaOrderOutboxService(prisma as unknown as PrismaService);
+  const outbox = new MetrikaOrderOutboxService(
+    prisma as unknown as PrismaService,
+  );
   const processor = new MetrikaOrderOutboxProcessorService(
     prisma as unknown as PrismaService,
     client,
@@ -263,7 +348,9 @@ async function send(prisma: PrismaClient, client: YandexMetrikaClient, orderId: 
       toStatus: source.toStatus,
       statusHistoryId: source.id,
     });
-    const existing = await prisma.metrikaOrderOutbox.findUnique({ where: { dedupeKey: `history:${source.id}` } });
+    const existing = await prisma.metrikaOrderOutbox.findUnique({
+      where: { dedupeKey: `history:${source.id}` },
+    });
     if (!existing) return 1;
     id = existing.id;
     console.log(
@@ -275,16 +362,23 @@ async function send(prisma: PrismaClient, client: YandexMetrikaClient, orderId: 
     }
   } else {
     id = (await outbox.enqueueManual(order.id, target, 'live-test')).id;
-    console.log(`Строка очереди ${id}: реального перехода в ${target} в истории нет — ручная (live-test), target ${target}`);
+    console.log(
+      `Строка очереди ${id}: реального перехода в ${target} в истории нет — ручная (live-test), target ${target}`,
+    );
   }
-  console.log('Отправляем через MetrikaOrderOutboxProcessor (один захват, одна попытка)…');
+  console.log(
+    'Отправляем через MetrikaOrderOutboxProcessor (один захват, одна попытка)…',
+  );
   const outcome = await processor.processById(id);
   if (outcome === null) {
     const blocking = await outbox.blockingRows(id);
     console.log(
       blocking.length > 0
         ? `Строка НЕ отправлена: у заказа есть более ранние незакрытые строки очереди (порядок строгий): ${blocking
-            .map((b) => `${b.id} ${b.status} ${b.targetMetrikaStatus}${b.lastError ? ` — ${b.lastError.slice(0, 80)}` : ''}`)
+            .map(
+              (b) =>
+                `${b.id} ${b.status} ${b.targetMetrikaStatus}${b.lastError ? ` — ${b.lastError.slice(0, 80)}` : ''}`,
+            )
             .join('; ')}. Сначала requeue или skip --row.`
         : 'Строка НЕ отправлена: захват не удался (строка уже не pending).',
     );
@@ -303,7 +397,9 @@ async function skipRow(prisma: PrismaClient, rowId?: string): Promise<number> {
     console.error('Укажите --row <id строки очереди>.');
     return 2;
   }
-  const outbox = new MetrikaOrderOutboxService(prisma as unknown as PrismaService);
+  const outbox = new MetrikaOrderOutboxService(
+    prisma as unknown as PrismaService,
+  );
   const ok = await outbox.markSkipped(rowId, 'manual');
   console.log(
     ok
@@ -313,12 +409,18 @@ async function skipRow(prisma: PrismaClient, rowId?: string): Promise<number> {
   return ok ? 0 : 1;
 }
 
-async function requeue(prisma: PrismaClient, orderId?: string, allFailed = false): Promise<number> {
+async function requeue(
+  prisma: PrismaClient,
+  orderId?: string,
+  allFailed = false,
+): Promise<number> {
   if (!orderId && !allFailed) {
     console.error('Укажите --order <id> или --all-failed.');
     return 2;
   }
-  const outbox = new MetrikaOrderOutboxService(prisma as unknown as PrismaService);
+  const outbox = new MetrikaOrderOutboxService(
+    prisma as unknown as PrismaService,
+  );
   const count = await outbox.requeueFailed(orderId);
   console.log(`Возвращено в очередь: ${count}`);
   return 0;
@@ -367,7 +469,12 @@ async function main(): Promise<void> {
         code = 2;
     }
   } catch (e) {
-    const msg = e instanceof MetrikaApiError ? `${e.kind}, HTTP ${e.status}: ${e.humanMessage}` : e instanceof Error ? e.message : String(e);
+    const msg =
+      e instanceof MetrikaApiError
+        ? `${e.kind}, HTTP ${e.status}: ${e.humanMessage}`
+        : e instanceof Error
+          ? e.message
+          : String(e);
     console.error(`Ошибка: ${msg}`);
     code = 1;
   } finally {

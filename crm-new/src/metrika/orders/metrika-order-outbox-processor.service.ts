@@ -3,6 +3,12 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { costSettingsFrom } from 'src/reports/order-cogs';
 import { MetrikaApiError, YandexMetrikaClient } from '../metrika-api.client';
 import { buildSimpleOrdersCsv, isValidTimeZone } from './metrika-order-csv';
+import {
+  buildYclidConversionsCsv,
+  yclidChannelEnabled,
+  yclidTargetsFromEnv,
+  type YclidConversionTargets,
+} from './metrika-yclid-conversions';
 import { buildOrderSnapshot, maskClientId } from './metrika-order-payload';
 import type { MetrikaOrderStatus } from './metrika-order-status';
 
@@ -57,6 +63,8 @@ const STALE_LOCK_MINUTES = 10;
 export interface ProcessorOptions {
   /** YANDEX_METRIKA_ORDERS_SYNC_ENABLED — отправлять ли по расписанию. */
   syncEnabled: boolean;
+  /** Цели офлайн-конверсий по yclid; не заданы — берутся из окружения. */
+  yclidTargets?: YclidConversionTargets;
 }
 
 export type ClaimedRow = {
@@ -68,7 +76,13 @@ export type ClaimedRow = {
 };
 
 export type ProcessOutcome =
-  | { result: 'delivered'; status: string; uploadingId: string; elementsCount: number | null; durationMs: number }
+  | {
+      result: 'delivered';
+      status: string;
+      uploadingId: string;
+      elementsCount: number | null;
+      durationMs: number;
+    }
   | { result: 'skipped'; reason: string }
   | { result: 'failed'; error: string; permanent: boolean }
   | { result: 'retry'; error: string; nextAttemptAt: Date };
@@ -79,13 +93,27 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
   private running = false;
   private timeZoneCache: string | null = null;
 
+  /**
+   * Цели канала yclid. Читаются один раз: менять их на ходу незачем, а
+   * пустые означают, что канал выключен и ни одного запроса не уйдёт.
+   */
+  private readonly yclidTargets: YclidConversionTargets;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly client: YandexMetrikaClient,
     private readonly options: ProcessorOptions,
-  ) {}
+  ) {
+    this.yclidTargets =
+      options.yclidTargets ?? yclidTargetsFromEnv(process.env);
+  }
 
   onModuleInit() {
+    if (yclidChannelEnabled(this.yclidTargets)) {
+      this.logger.log(
+        'Метрика: канал офлайн-конверсий по yclid включён — заказы без ClientID пойдут по метке клика',
+      );
+    }
     if (!this.options.syncEnabled) {
       this.logger.log(
         'Метрика: отправка заказов выключена (YANDEX_METRIKA_ORDERS_SYNC_ENABLED) — очередь копится, наружу не уходит',
@@ -202,7 +230,9 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
         AND "lockedAt" < now() - make_interval(mins => ${STALE_LOCK_MINUTES})
     `;
     if (released > 0) {
-      this.logger.warn(`Метрика: возвращено в очередь зависших строк — ${released}`);
+      this.logger.warn(
+        `Метрика: возвращено в очередь зависших строк — ${released}`,
+      );
     }
   }
 
@@ -219,6 +249,8 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
             id: true,
             createdAt: true,
             yandexClientId: true,
+            yclid: true,
+            sourceOrder: true,
             totalOrder: true,
             productCategory: true,
             items: {
@@ -274,6 +306,7 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
         costSettingsFrom(settingsRow),
         timeZone,
         deliveredBefore > 0,
+        this.yclidTargets,
       );
 
       if (snapshot.kind === 'skip') {
@@ -293,8 +326,22 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
         return { result: 'skipped', reason: snapshot.reason };
       }
 
-      const csv = buildSimpleOrdersCsv([snapshot.row]);
-      const uploading = await this.client.uploadSimpleOrders(csv, 'SAVE');
+      /*
+       * Канал отправки выбирает снимок: заказ с ClientID уходит загрузкой
+       * заказов CDP, заказ без ClientID, но с меткой клика Директа —
+       * офлайн-конверсией по yclid. Второй канал включается только когда
+       * владелец завёл под него отдельные цели: на общие цели он давал бы
+       * двойной счёт вместе с загрузкой CDP.
+       */
+      const uploading =
+        snapshot.kind === 'yclid'
+          ? await this.client.uploadYclidConversions(
+              buildYclidConversionsCsv([snapshot.row]),
+            )
+          : await this.client.uploadSimpleOrders(
+              buildSimpleOrdersCsv([snapshot.row]),
+              'SAVE',
+            );
       const durationMs = Date.now() - startedAt;
       const validation = uploading.api_validation_status ?? 'UNKNOWN';
 
@@ -316,7 +363,11 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
         this.logger.warn(
           `Метрика: заказ ${row.orderId} ${target} — файл отклонён (${validation}), uploading=${uploading.uploading_id}, попытка ${attempt}, ${durationMs} мс`,
         );
-        return { result: 'failed', error: `api_validation_status=${validation}`, permanent: true };
+        return {
+          result: 'failed',
+          error: `api_validation_status=${validation}`,
+          permanent: true,
+        };
       }
 
       await this.prisma.metrikaOrderOutbox.update({
@@ -334,10 +385,16 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
           lockedAt: null,
         },
       });
+      const identity =
+        snapshot.kind === 'yclid'
+          ? `yclid ${snapshot.row.yclid.slice(0, 4)}…, цель ${snapshot.row.target}`
+          : `ClientID ${maskClientId(snapshot.row.clientId)}`;
+      const costNote =
+        snapshot.kind === 'row' && !snapshot.costReliable
+          ? ', себестоимость не передана'
+          : '';
       this.logger.log(
-        `Метрика: заказ ${row.orderId} → ${target}, ClientID ${maskClientId(snapshot.row.clientId)}, попытка ${attempt}, HTTP 200, ${durationMs} мс, uploading=${uploading.uploading_id}${
-          snapshot.costReliable ? '' : ', себестоимость не передана'
-        }`,
+        `Метрика: заказ ${row.orderId} → ${target}, ${identity}, попытка ${attempt}, HTTP 200, ${durationMs} мс, uploading=${uploading.uploading_id}${costNote}`,
       );
       return {
         result: 'delivered',
@@ -361,12 +418,21 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
     const status = api?.status ?? null;
 
     if (api?.kind === 'not_configured') {
-      const nextAttemptAt = new Date(Date.now() + NOT_CONFIGURED_DELAY_SECONDS * 1000);
+      const nextAttemptAt = new Date(
+        Date.now() + NOT_CONFIGURED_DELAY_SECONDS * 1000,
+      );
       await this.prisma.metrikaOrderOutbox.update({
         where: { id: row.id },
-        data: { status: 'pending', nextAttemptAt, lastError: message, lockedAt: null },
+        data: {
+          status: 'pending',
+          nextAttemptAt,
+          lastError: message,
+          lockedAt: null,
+        },
       });
-      this.logger.warn(`Метрика: заказ ${row.orderId} отложен — интеграция не настроена`);
+      this.logger.warn(
+        `Метрика: заказ ${row.orderId} отложен — интеграция не настроена`,
+      );
       return { result: 'retry', error: message, nextAttemptAt };
     }
 
@@ -379,7 +445,10 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
       return this.finishFailed(row, attempt, message, permanent, status);
     }
 
-    const delaySec = RETRY_DELAYS_SECONDS[Math.min(attempt - 1, RETRY_DELAYS_SECONDS.length - 1)];
+    const delaySec =
+      RETRY_DELAYS_SECONDS[
+        Math.min(attempt - 1, RETRY_DELAYS_SECONDS.length - 1)
+      ];
     const nextAttemptAt = new Date(Date.now() + delaySec * 1000);
     await this.prisma.metrikaOrderOutbox.update({
       where: { id: row.id },
