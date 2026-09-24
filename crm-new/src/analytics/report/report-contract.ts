@@ -211,10 +211,24 @@ export interface OriginCoverage {
   orderOriginCoveragePct: number | null;
 }
 
+/**
+ * Сверка суммы каналов с итогом периода. Ненулевая разница допустима только
+ * как округление: себестоимость бумаги округляется вверх до рубля в каждой
+ * корзине (правило этапа 08), поэтому корзин больше — рублей больше.
+ */
+export interface OriginReconciliation {
+  metric: string;
+  originsSum: number | null;
+  periodTotal: number | null;
+  difference: number | null;
+  explanation: string | null;
+}
+
 export interface OriginBlock {
   rows: OriginRow[];
   all: OriginRow | null;
   coverage: OriginCoverage;
+  reconciliation: OriginReconciliation[];
 }
 
 export interface ReportModel {

@@ -5,6 +5,7 @@ import type {
   FunnelStep,
   MetricRow,
   OriginBlock,
+  OriginReconciliation,
   OriginRow,
   PeriodSnapshot,
   QualityItem,
@@ -626,6 +627,53 @@ export function buildOrderOrigin(input: ReportInput): OriginBlock {
       }
     : null;
 
+  const realized = input.current.overview.financials.realized;
+  const orders = input.current.overview.orders;
+  const rounding =
+    'себестоимость бумаги округляется вверх до рубля в каждой корзине (правило этапа 08): чем больше корзин, тем больше рублей';
+  const check = (
+    metric: string,
+    originsSum: number | null,
+    periodTotal: number | null,
+    explanation: string | null,
+  ): OriginReconciliation => ({
+    metric,
+    originsSum,
+    periodTotal,
+    difference:
+      originsSum === null || periodTotal === null
+        ? null
+        : originsSum - periodTotal,
+    explanation,
+  });
+  const reconciliation: OriginReconciliation[] = [
+    check(
+      'Принятые заказы',
+      all?.acceptedOrders ?? null,
+      orders.acceptedOrders,
+      null,
+    ),
+    check(
+      'Оплаченные заказы',
+      all?.paidOrders ?? null,
+      orders.paidOrders,
+      null,
+    ),
+    check(
+      'Реализованная выручка',
+      all?.revenue ?? null,
+      realized?.realizedRevenue ?? null,
+      null,
+    ),
+    check('Себестоимость', all?.cogs ?? null, realized?.cogs ?? null, rounding),
+    check(
+      'Валовая прибыль',
+      all?.profit ?? null,
+      realized?.grossContribution ?? null,
+      rounding,
+    ),
+  ];
+
   const ordersOf = (origin: string) =>
     input.attribution.bySource
       .filter((s) => s.source === origin)
@@ -635,6 +683,7 @@ export function buildOrderOrigin(input: ReportInput): OriginBlock {
   return {
     rows,
     all,
+    reconciliation,
     coverage: {
       totalOrders: total,
       websiteOrders: ordersOf('WEBSITE'),

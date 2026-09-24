@@ -435,6 +435,21 @@ export function renderMarkdown(model: ReportModel): string {
       ? `_ОГРАНИЧЕНИЕ ДАННЫХ: у ${num(origin.coverage.unknownOriginOrders)} заказов периода происхождение по истории не доказано. Они показаны строкой «Не определён» и не приписаны ни одному каналу._`
       : '_Все заказы периода классифицированы: строк с недоказанным происхождением нет._',
     '',
+    '## Сверка: сумма каналов против итога периода',
+    '',
+    '```text',
+    ...origin.reconciliation.map((r) => {
+      const diff = r.difference;
+      const verdict =
+        diff === null
+          ? 'НЕТ ДАННЫХ'
+          : diff === 0
+            ? 'СОВПАДАЕТ'
+            : `РАЗНИЦА ${diff > 0 ? '+' : ''}${num(diff)} — ${r.explanation ?? 'требует разбора'}`;
+      return `${r.metric}: ${num(r.originsSum)} против ${num(r.periodTotal)} → ${verdict}`;
+    }),
+    '```',
+    '',
     '## Методика (правила, которые нельзя нарушать при анализе)',
     '',
     '```text',

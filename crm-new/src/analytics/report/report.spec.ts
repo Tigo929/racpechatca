@@ -1036,3 +1036,80 @@ describe('ORDER ORIGIN в отчёте', () => {
     expect(renderMarkdown(empty)).toContain('_Нет заказов за период._');
   });
 });
+
+/**
+ * Сверка каналов с итогом периода (этап 17, пункт 35).
+ *
+ * Разрез по происхождению обязан складываться в бизнес целиком. Разница
+ * допустима только объяснённая — округление себестоимости бумаги вверх в
+ * каждой корзине; всё остальное означает, что канал считает деньги своей
+ * формулой, а это ровно то, чего этап 17 обязан не допустить.
+ */
+describe('35. сверка происхождения с каноническими итогами', () => {
+  it('совпадение печатается как СОВПАДАЕТ', () => {
+    const base = input();
+    const model = buildReportModel({
+      ...base,
+      current: {
+        ...base.current,
+        overview: {
+          ...base.current.overview,
+          orders: {
+            ...base.current.overview.orders,
+            acceptedOrders: 37,
+            paidOrders: 11,
+          },
+          financials: {
+            ...base.current.overview.financials,
+            realized: {
+              ...base.current.overview.financials.realized!,
+              realizedRevenue: 28000,
+              cogs: 7000,
+              grossContribution: 19800,
+            },
+          },
+        },
+      },
+    });
+    const md = renderMarkdown(model);
+    expect(md).toContain('## Сверка: сумма каналов против итога периода');
+    expect(md).toMatch(/Принятые заказы: 37 против 37 → СОВПАДАЕТ/);
+    const rub = (v: number) => v.toLocaleString('ru-RU');
+    expect(md).toContain(
+      `Реализованная выручка: ${rub(28000)} против ${rub(28000)} → СОВПАДАЕТ`,
+    );
+    const acc = model.orderOrigin.reconciliation.find(
+      (r) => r.metric === 'Принятые заказы',
+    )!;
+    expect(acc.difference).toBe(0);
+  });
+
+  it('разница по себестоимости названа округлением, а не молчаливо скрыта', () => {
+    const base = input();
+    const model = buildReportModel({
+      ...base,
+      current: {
+        ...base.current,
+        overview: {
+          ...base.current.overview,
+          financials: {
+            ...base.current.overview.financials,
+            realized: {
+              ...base.current.overview.financials.realized!,
+              cogs: 6999,
+            },
+          },
+        },
+      },
+    });
+    const cogs = model.orderOrigin.reconciliation.find(
+      (r) => r.metric === 'Себестоимость',
+    )!;
+    expect(cogs.difference).toBe(1);
+    expect(cogs.explanation).toMatch(/округля/);
+    const rub = (v: number) => v.toLocaleString('ru-RU');
+    expect(renderMarkdown(model)).toContain(
+      `Себестоимость: ${rub(7000)} против ${rub(6999)} → РАЗНИЦА +1 — себестоимость бумаги округляется`,
+    );
+  });
+});
