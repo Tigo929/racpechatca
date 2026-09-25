@@ -169,6 +169,7 @@ export interface RealizedFinancials {
 export type SpendStatus =
   | 'UNAVAILABLE_NO_SPEND_DATA'
   | 'ATTRIBUTION_COVERAGE_TOO_LOW'
+  | 'ATTRIBUTION_NOT_ESTABLISHED'
   | 'AVAILABLE';
 
 export interface SpendMetrics {
@@ -176,7 +177,8 @@ export interface SpendMetrics {
   /** Потрачено за период, ₽. */
   spend: number;
   clicks: number;
-  impressions: number;
+  impressions: number | null;
+  vatBasis?: string;
   /** Цена заявки с сайта, ₽. */
   cpl: number | null;
   /** Цена принятого заказа сайта, ₽. */
