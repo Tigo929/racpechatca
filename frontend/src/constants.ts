@@ -131,6 +131,21 @@ export const SOURCE_ORDER_OPTIONS = [
   'WEBSITE',
 ] as const;
 
+/**
+ * Площадки, с которых приходит печать индивидуального принта.
+ *
+ * Заказ с маркетплейса ведёт сама площадка: «местным» или авитошным он быть
+ * не может. Поэтому отметка «Заказ с маркетплейса» ставит в форме Ozon —
+ * основную площадку, — а сохранение страхует выбор: всё, кроме Wildberries,
+ * уходит как Ozon. Иначе черновик, восстановленный из прошлой сессии, мог бы
+ * принести в заказ маркетплейса источник, которого у него не бывает.
+ */
+export const MARKETPLACE_DEFAULT_SOURCE_ORDER = 'OZON' as const;
+
+export function marketplaceSourceOrder(value: string | undefined): 'OZON' | 'WB' {
+  return value === 'WB' ? 'WB' : MARKETPLACE_DEFAULT_SOURCE_ORDER;
+}
+
 export const DELIVERY_LABELS: Record<EnumDeliveryMethod, string> = {
   YANDEX_PVZ: 'Яндекс ПВЗ',
   OZON_PVZ: 'Ozon ПВЗ',

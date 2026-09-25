@@ -9,7 +9,12 @@ import toast from 'react-hot-toast';
 import { ordersApi } from '../../api/orders';
 import { canvasProductionApi } from '../../api/canvasProduction';
 import { PHOTO_FORMATS, sheetHint } from '../../config/photo-formats';
-import { SOURCE_ORDER_LABELS, SOURCE_ORDER_OPTIONS } from '../../constants';
+import {
+  MARKETPLACE_DEFAULT_SOURCE_ORDER,
+  marketplaceSourceOrder,
+  SOURCE_ORDER_LABELS,
+  SOURCE_ORDER_OPTIONS,
+} from '../../constants';
 import { printsPerSheet } from '../../utils/photo-material';
 import { usersApi } from '../../api/users';
 import { partnerSettingsApi } from '../../api/partnerSettings';
@@ -321,6 +326,7 @@ export function CreateOrderForm({ onClose }: Props) {
   // Режим маркетплейса действует только на футболках. В нём часть полей формы
   // скрыта — деньги и доставку ведёт площадка, CRM отвечает за макет.
   const marketMode = productCategory === 'TSHIRT' && marketplace;
+  const marketplaceReg = register('marketplace');
   // Переключились на MAX — сразу ставим «+7 », чтобы человек вводил с девятки.
   // Только если поле пустое или там остался телеграм-ник: готовый телефон/ссылку
   // не затираем.
@@ -603,15 +609,20 @@ export function CreateOrderForm({ onClose }: Props) {
           !isMarketplace && data.needsDesign
             ? data.designDevelopmentCost || 0
             : undefined,
-        // Маркетплейс: без срочности и доставки, источник — Ozon, и флаг,
-        // который включает статус «Разработка макета» на карточке заказа.
+        // Маркетплейс: без срочности и доставки, и флаг, который включает
+        // статус «Разработка макета» на карточке заказа.
+        //
+        // Источник берут из формы: при отметке чекбокса там уже стоит Ozon,
+        // и его можно переключить на Wildberries. Всё остальное сохранение
+        // возвращает к Ozon — у заказа с площадки другого происхождения
+        // не бывает, а восстановленный черновик мог принести старое значение.
         ...(isMarketplace
           ? {
               isUrgent: false,
               urgencyFee: 0,
               deliveryMethod: 'PICKUP' as const,
               deliveryCost: 0,
-              sourceOrder: 'OZON' as const,
+              sourceOrder: marketplaceSourceOrder(data.sourceOrder),
               isMarketplacePrint: true,
             }
           : {}),
@@ -787,7 +798,17 @@ export function CreateOrderForm({ onClose }: Props) {
         >
           <input
             type="checkbox"
-            {...register('marketplace')}
+            {...marketplaceReg}
+            onChange={(e) => {
+              void marketplaceReg.onChange(e);
+              // Отметили маркетплейс — источник по умолчанию Ozon (основная
+              // площадка). Выбор остаётся: можно переключить на WB вручную.
+              if (e.target.checked) {
+                setValue('sourceOrder', MARKETPLACE_DEFAULT_SOURCE_ORDER, {
+                  shouldDirty: true,
+                });
+              }
+            }}
             className="w-4 h-4 accent-amber-600"
           />
           <span className="text-sm font-medium text-gray-800">
