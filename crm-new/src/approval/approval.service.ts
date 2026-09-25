@@ -53,6 +53,8 @@ const approvalInclude = {
   order: { select: { items: { select: { printOnClientItem: true } }, tshirtItems: { select: { clientItem: true } } } },
 } satisfies Prisma.PrintApprovalInclude;
 
+import { displayOrderNumber } from '../order-photo/order-number';
+
 @Injectable()
 export class ApprovalService {
   constructor(
@@ -277,11 +279,13 @@ export class ApprovalService {
     }
     const order = await this.prisma.orderPhoto.findUnique({
       where: { id: approval.orderId },
-      select: { numberOrder: true },
+      select: { numberOrder: true, marketplaceOrderNumber: true },
     });
+    // Файл называется тем же номером, что и лист: у заказа с площадки его
+    // ищут по номеру кабинета, а не по внутреннему.
     return {
       buffer: await this.storage.readSheet(approval.previewFile),
-      filename: `Согласование_${order?.numberOrder ?? approval.orderId}_v${approval.version}.png`,
+      filename: `Согласование_${order ? displayOrderNumber(order) : approval.orderId}_v${approval.version}.png`,
     };
   }
 
@@ -395,6 +399,7 @@ export class ApprovalService {
       where: { id: approval.orderId },
       select: {
         numberOrder: true,
+        marketplaceOrderNumber: true,
         // Печать на изделии заказчика — свободная позиция с этим признаком.
         items: { select: { printOnClientItem: true } },
         tshirtItems: { select: { clientItem: true } },
@@ -433,7 +438,8 @@ export class ApprovalService {
     );
 
     return {
-      numberOrder: order.numberOrder,
+      // Лист уходит покупателю: заказ с площадки подписывается её номером.
+      numberOrder: displayOrderNumber(order),
       version: approval.version,
       shirtColor: approval.shirtColor,
       shirtSizeLabel: SIZE_LABELS[approval.shirtSize] ?? approval.shirtSize,

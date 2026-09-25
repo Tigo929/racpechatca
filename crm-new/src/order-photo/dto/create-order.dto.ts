@@ -19,6 +19,7 @@ import {
   EnumSourceOrder,
   EnumStatus,
 } from 'src/generated/prisma/enums';
+import { MARKETPLACE_NUMBER_MAX } from '../order-number';
 import DtoCreateItemOrder from './create-item-order.dto';
 import { DtoCreateCanvasItem } from './create-canvas-item.dto';
 import { DtoCreateTshirtItem } from './create-tshirt-item.dto';
@@ -118,6 +119,17 @@ export default class DtoCreateOrder {
   @IsBoolean()
   @IsOptional()
   isMarketplacePrint?: boolean;
+
+  /**
+   * Номер заказа на самой площадке — тот, которым заказ назван в кабинете
+   * Ozon. Им заказ и показывается в CRM: наш внутренний номер покупателю
+   * ничего не говорит. Необязателен: заказ с площадки лучше завести без
+   * номера, чем не завести вовсе; номер можно дописать правкой карточки.
+   */
+  @IsString()
+  @IsOptional()
+  @MaxLength(MARKETPLACE_NUMBER_MAX)
+  marketplaceOrderNumber?: string;
 
   /**
    * Плата за срочность. Входит в чек клиента отдельной строкой, но НЕ входит

@@ -55,6 +55,7 @@ import {
   canvasTermsFrom,
   resolveCanvasPosition,
 } from 'src/canvas/canvas-production-price';
+import { normalizeMarketplaceNumber } from './order-number';
 import { hasTechSpecFiles } from 'src/partner/tech-spec-paths';
 import { GulianOutboxService } from 'src/gulian/gulian-outbox.service';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
@@ -427,6 +428,12 @@ export class OrderPhotoService {
           // Заказ с маркетплейса на печать принта — включает статус
           // «Разработка макета» и «Дизайнер принта» на карточке.
           isMarketplacePrint: dto.isMarketplacePrint ?? false,
+          // Номер заказа на площадке. Только у маркетплейсных: у обычного
+          // заказа такого номера не бывает, и принести его в карточку
+          // нельзя — иначе заказ начал бы называться чужим номером.
+          marketplaceOrderNumber: dto.isMarketplacePrint
+            ? normalizeMarketplaceNumber(dto.marketplaceOrderNumber)
+            : null,
           tshirtModel: dto.tshirtModel,
           productCategory,
           executorId: dto.executorId ?? undefined,
@@ -1085,6 +1092,14 @@ export class OrderPhotoService {
         ? {
             OR: [
               { numberOrder: { contains: searchTerm, mode: 'insensitive' } },
+              // Заказ с площадки ищут её номером: именно он открыт в кабинете,
+              // когда заказ понадобился.
+              {
+                marketplaceOrderNumber: {
+                  contains: searchTerm,
+                  mode: 'insensitive',
+                },
+              },
               {
                 urlCommunication: { contains: searchTerm, mode: 'insensitive' },
               },
@@ -2069,6 +2084,13 @@ export class OrderPhotoService {
           note: dto.note ?? order.note,
           isUrgent,
           tshirtModel: dto.tshirtModel ?? order.tshirtModel,
+          // Номер площадки дописывают правкой карточки: в момент оформления
+          // его не всегда знают. Пустая строка стирает номер — заказ снова
+          // называется внутренним номером. Поле не прислали — не трогаем.
+          marketplaceOrderNumber:
+            dto.marketplaceOrderNumber === undefined
+              ? order.marketplaceOrderNumber
+              : normalizeMarketplaceNumber(dto.marketplaceOrderNumber),
           // Предоплата записывается реальной суммой и дальше не пересчитывается:
           // меняется только остаток при правках заказа (см. computePrepayment).
           // null — снять запись (вернуться к ориентиру 50%); undefined — не трогать.

@@ -17,12 +17,17 @@ interface Props {
   productCategory: 'PHOTO' | 'TSHIRT' | 'CANVAS';
   /** Текущая сумма заказа — чтобы сразу показать остаток от внесённой предоплаты. */
   orderTotal: number;
+  /**
+   * Заказ с маркетплейса: только у такого есть номер площадки. У обычного
+   * заказа поле не показывается — принести туда чужой номер нельзя.
+   */
+  marketplacePrint?: boolean;
 }
 
 const inputCls = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent';
 const labelCls = 'text-xs text-gray-500 mb-1';
 
-export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, productCategory, orderTotal }: Props) {
+export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, productCategory, orderTotal, marketplacePrint = false }: Props) {
   const set = (patch: Partial<UpdateOrderDto>) => onChange({ ...form, ...patch });
   // Цена доставки Яндекс ПВЗ из настроек — та же, что подставляется при
   // оформлении новой заявки. Нужна, чтобы при смене способа на «Яндекс ПВЗ»
@@ -72,6 +77,23 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, pro
           </select>
         </div>
       </div>
+
+      {/* Номер заказа на площадке. Правится здесь, потому что в момент
+          оформления его иногда не знают, а опечатка в номере делает заказ
+          ненаходимым со стороны кабинета. Пустое поле возвращает заказу
+          внутренний номер. */}
+      {marketplacePrint && (
+        <div>
+          <p className={labelCls}>Номер заказа на площадке</p>
+          <input
+            className={inputCls}
+            aria-label="Номер заказа на площадке"
+            placeholder="например 0123-4567-8901"
+            value={form.marketplaceOrderNumber ?? ''}
+            onChange={e => set({ marketplaceOrderNumber: e.target.value })}
+          />
+        </div>
+      )}
 
       <div>
         <p className={labelCls}>

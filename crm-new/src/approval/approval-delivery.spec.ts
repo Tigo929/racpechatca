@@ -91,6 +91,18 @@ describe('Telegram approval delivery', () => {
     expect(caption).toContain('версия 2');
     expect(caption).toContain('Макет согласован');
   });
+  it('подписывает сообщение номером площадки, если заказ с маркетплейса', async () => {
+    // Покупатель видит в кабинете Ozon свой номер. Наш внутренний номер
+    // в сообщении он не узнает — и не поймёт, к какому заказу макет.
+    row.order.marketplaceOrderNumber = '0123-4567-8901';
+    const result = await service.enqueue('approval', 'manager');
+    expect(result.caption).toContain('0123-4567-8901');
+    expect(result.caption).not.toContain('20260919-1');
+  });
+  it('обычный заказ остаётся подписан внутренним номером', async () => {
+    const result = await service.enqueue('approval', 'manager');
+    expect(result.caption).toContain('20260919-1');
+  });
   it('protects staff and worker routes separately', () => {
     expect(Reflect.getMetadata(GUARDS_METADATA, ApprovalController)).toContain(
       JwtAuthGuard,

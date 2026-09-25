@@ -21,6 +21,7 @@ import {
   STATUS_LABELS,
   TSHIRT_STATUS_LABELS,
 } from '../constants';
+import { displayOrderNumber } from '../utils/order-number';
 import { AppShell } from '../components/layout/AppShell';
 import { useAuth } from '../context/useAuth';
 import type { EnumStatus, EnumProductCategory, OrdersQuery } from '../types/index';
@@ -312,9 +313,12 @@ export function OrdersPage({ section }: Props) {
                     </span>
                     <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1.5">
+                      {/* Номер площадки, если заказ с неё: в списке его ищут
+                          глазами, сверяя с кабинетом Ozon. Внутренний номер
+                          остаётся в карточке заказа. */}
                       <span className="flex items-center gap-1.5 font-mono text-sm font-bold text-indigo-700 tabular-nums">
                         {showUrgent && <Flame size={13} className="text-red-500 flex-shrink-0" aria-hidden="true" />}
-                        {order.numberOrder}
+                        {displayOrderNumber(order)}
                       </span>
                       <StatusBadge status={order.status} productCategory={order.productCategory} deliveryMethod={order.deliveryMethod} size="sm" />
                     </div>
@@ -423,7 +427,7 @@ export function OrdersPage({ section }: Props) {
                             <Flame size={13} className="text-red-500 flex-shrink-0 motion-safe:animate-pulse" aria-hidden="true" />
                           )}
                           <span className="font-mono text-sm font-bold text-indigo-700 group-hover:text-indigo-900 tabular-nums">
-                            {order.numberOrder}
+                            {displayOrderNumber(order)}
                           </span>
                         </div>
                       </td>

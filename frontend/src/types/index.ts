@@ -138,6 +138,17 @@ export interface OrderPhoto {
   clientPaidAt?: string | null;
   /** Модель футболки — производственные данные для исполнителя-партнёра. */
   tshirtModel?: string | null;
+  /**
+   * Заказ с маркетплейса на печать принта: деньги считает площадка, CRM
+   * ведёт производство и макет.
+   */
+  isMarketplacePrint?: boolean;
+  /**
+   * Номер заказа на площадке (Ozon и т.п.). Им заказ и называется везде,
+   * где его показывают людям: внутренний numberOrder остаётся для зарплаты,
+   * задач и отчётов. Пусто у всех заказов, кроме маркетплейсных.
+   */
+  marketplaceOrderNumber?: string | null;
   /** Первый ТЗ-файл (оставлен для старых заказов и совместимости). */
   techSpecPhotoPath?: string | null;
   /** Все прикреплённые ТЗ-файлы (согласованный макет + уточнения). */
@@ -267,6 +278,8 @@ export interface CreateOrderDto {
    * Включает статус «Разработка макета» и режим формы без цены/доставки.
    */
   isMarketplacePrint?: boolean;
+  /** Номер заказа на площадке — им заказ называется в CRM и на согласовании. */
+  marketplaceOrderNumber?: string;
   /** Модель футболки — производственные данные для исполнителя-партнёра. */
   tshirtModel?: string;
   items?: CreateItemDto[];
@@ -293,6 +306,11 @@ export interface UpdateOrderDto {
   note?: string;
   isUrgent?: boolean;
   tshirtModel?: string;
+  /**
+   * Номер заказа на площадке. Пустая строка стирает номер — заказ снова
+   * называется внутренним.
+   */
+  marketplaceOrderNumber?: string;
   /**
    * Фактически внесённая клиентом предоплата (₽). Записывается реальной суммой;
    * дальше остаток = totalOrder − prepaidAmount и не «уезжает» при правках.

@@ -13,6 +13,7 @@ import {
   deliverySelect,
 } from './approval-delivery-state';
 import { CompleteApprovalDeliveryDto } from './dto/approval-delivery.dto';
+import { displayOrderNumber } from '../order-photo/order-number';
 
 @Injectable()
 export class ApprovalDeliveryService {
@@ -28,6 +29,7 @@ export class ApprovalDeliveryService {
         order: {
           select: {
             numberOrder: true,
+            marketplaceOrderNumber: true,
             communicationPlatform: true,
             urlCommunication: true,
           },
@@ -103,7 +105,11 @@ export class ApprovalDeliveryService {
       if (existing && existing.status !== 'FAILED') return existing;
       const data = {
         recipient,
-        caption: approvalCaption(approval.order.numberOrder, approval.version),
+        // Сообщение читает покупатель: заказ с площадки называем её номером.
+        caption: approvalCaption(
+          displayOrderNumber(approval.order),
+          approval.version,
+        ),
         image: new Uint8Array(image),
         requestedById,
         finalizedAt: approval.finalizedAt!,

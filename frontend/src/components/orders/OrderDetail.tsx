@@ -22,6 +22,7 @@ import {
   resolvePickupAddress,
 } from "../../config/business";
 import { DELIVERY_LABELS, SOURCE_ORDER_LABELS } from "../../constants";
+import { displayOrderNumber, marketplaceNumber } from "../../utils/order-number";
 import { GulianSyncBlock } from './GulianSyncBlock';
 import { DispatchToExecutorModal } from './DispatchToExecutorModal';
 import { GreetingCopyButton } from './GreetingCopyButton';
@@ -731,6 +732,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       urgencyFee: order.urgencyFee ?? 0,
       prepaidAmount: order.prepaidAmount ?? null,
       note: order.note,
+      marketplaceOrderNumber: order.marketplaceOrderNumber ?? '',
     });
     setEditing(true);
   };
@@ -763,9 +765,21 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
+            {/* Заказ с площадки называется её номером: именно он открыт
+                в кабинете Ozon и стоит на листе согласования у покупателя.
+                Внутренний номер остаётся рядом — на нём зарплата, задачи
+                и отчёты, и искать заказ по нему тоже должны уметь. */}
             <span className="text-2xl font-bold text-gray-900">
-              #{order.numberOrder}
+              #{displayOrderNumber(order)}
             </span>
+            {marketplaceNumber(order) && (
+              <span className="flex items-center gap-2 text-xs text-gray-400">
+                <span className="rounded-md bg-indigo-50 px-2 py-0.5 font-medium text-indigo-600">
+                  {SOURCE_ORDER_LABELS[order.sourceOrder] ?? 'Маркетплейс'}
+                </span>
+                <span className="font-mono">в CRM #{order.numberOrder}</span>
+              </span>
+            )}
             <StatusBadge
               status={order.status}
               productCategory={order.productCategory} deliveryMethod={order.deliveryMethod}
@@ -1057,7 +1071,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       {isAdmin && order.productCategory === "TSHIRT" && (
         <ApprovalsBlock
           orderId={order.id}
-          orderNumber={String(order.numberOrder ?? order.id)}
+          orderNumber={displayOrderNumber(order)}
           tshirtItems={order.tshirtItems ?? []}
           communicationPlatform={order.communicationPlatform}
           communicationUrl={order.urlCommunication}
@@ -1279,7 +1293,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
 
       {showDispatchModal && order && canDispatch && (
         <DispatchToExecutorModal
-          orderNumber={String(order.numberOrder ?? order.id)}
+          orderNumber={displayOrderNumber(order)}
           payout={tshirtPayout}
           hasFreePositions={hasFreePositions}
           isResend={(order as any).executorSentAt != null}
@@ -1299,6 +1313,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           isPending={updateMutation.isPending}
           productCategory={order.productCategory}
           orderTotal={order.totalOrder ?? 0}
+          marketplacePrint={order.isMarketplacePrint ?? false}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">

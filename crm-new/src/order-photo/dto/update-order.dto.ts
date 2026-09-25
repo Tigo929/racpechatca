@@ -14,6 +14,8 @@ import {
   EnumSourceOrder,
 } from 'src/generated/prisma/enums';
 
+import { MARKETPLACE_NUMBER_MAX } from '../order-number';
+
 export class DtoUpdateOrder {
   @IsEnum(EnumSourceOrder)
   @IsOptional()
@@ -73,6 +75,16 @@ export class DtoUpdateOrder {
   @IsOptional()
   @MaxLength(255)
   tshirtModel?: string;
+
+  /**
+   * Номер заказа на площадке. Правится отдельно от остальных полей: его
+   * узнают не всегда в момент оформления, а пустая строка означает «номера
+   * нет» — заказ снова показывается внутренним номером.
+   */
+  @IsString()
+  @IsOptional()
+  @MaxLength(MARKETPLACE_NUMBER_MAX)
+  marketplaceOrderNumber?: string;
 
   /**
    * Фактически внесённая клиентом предоплата (рублей). Записывается один раз

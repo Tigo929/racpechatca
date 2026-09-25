@@ -135,6 +135,10 @@ const baseSchema = z.object({
   // принта с Ozon и т.п. Прячет срочность, доставку, цену и «нужен дизайн» —
   // деньги считаются на площадке, а CRM ведёт производство и макет.
   marketplace: z.boolean().optional(),
+  // Номер заказа на площадке: тот, которым заказ назван в кабинете Ozon.
+  // Им заказ дальше и называется — в списке, в карточке и на листе
+  // согласования, который видит покупатель.
+  marketplaceOrderNumber: z.string().optional(),
   // Плата за срочность: входит в чек клиента, но не в базу зарплаты.
   urgencyFee: z.coerce.number().int().min(0).optional(),
   executorId: z.string().optional(),
@@ -215,6 +219,20 @@ const fullSchema = baseSchema.superRefine((data, ctx) => {
       });
     }
   }
+  // Заказ с площадки без её номера теряет смысл: по внутреннему номеру его
+  // не найти ни в кабинете, ни в переписке с покупателем, и лист согласования
+  // будет подписан номером, которого покупатель не знает.
+  if (
+    data.productCategory === 'TSHIRT' &&
+    data.marketplace &&
+    !(data.marketplaceOrderNumber ?? '').trim()
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Укажите номер заказа на площадке — он в кабинете рядом с заказом',
+      path: ['marketplaceOrderNumber'],
+    });
+  }
   if (data.productCategory === 'CANVAS' && (!data.canvasItems || data.canvasItems.length === 0)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Добавьте хотя бы одну позицию', path: ['canvasItems'] });
   }
@@ -234,6 +252,7 @@ const EMPTY_ORDER_FORM = {
   isUrgent: false,
   discountAmount: 0,
   marketplace: false,
+  marketplaceOrderNumber: '',
   urgencyFee: 0,
   executorId: '',
   freePrice: false,
@@ -623,6 +642,7 @@ export function CreateOrderForm({ onClose }: Props) {
               deliveryMethod: 'PICKUP' as const,
               deliveryCost: 0,
               sourceOrder: marketplaceSourceOrder(data.sourceOrder),
+              marketplaceOrderNumber: (data.marketplaceOrderNumber ?? '').trim(),
               isMarketplacePrint: true,
             }
           : {}),
@@ -818,6 +838,33 @@ export function CreateOrderForm({ onClose }: Props) {
             печать принта (Ozon и т.п.)
           </span>
         </label>
+      )}
+
+      {/* Номер заказа на площадке. Обязателен: заказ с Ozon без номера Ozon
+          нельзя ни найти в кабинете, ни назвать покупателю — а именно этим
+          номером подписывается лист согласования, который он видит. */}
+      {marketMode && (
+        <div>
+          <label className={labelCls} htmlFor="marketplaceOrderNumber">
+            Номер заказа на площадке
+          </label>
+          <input
+            id="marketplaceOrderNumber"
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            className={inputCls}
+            placeholder="например 0123-4567-8901"
+            {...register('marketplaceOrderNumber')}
+          />
+          {errors.marketplaceOrderNumber ? (
+            <p className={errorCls}>{errors.marketplaceOrderNumber.message}</p>
+          ) : (
+            <p className="mt-1 text-xs text-gray-400">
+              Этим номером заказ будет называться в CRM и на листе согласования.
+            </p>
+          )}
+        </div>
       )}
 
       {!marketMode && (

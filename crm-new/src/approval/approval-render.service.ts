@@ -62,6 +62,11 @@ export interface RenderSideInput {
 }
 
 export interface RenderSheetInput {
+  /**
+   * Номер, которым заказ назван на листе. У заказа с маркетплейса это номер
+   * площадки: лист смотрит покупатель, и наш внутренний номер ему ничего
+   * не говорит. Кто именно его выбирает — см. displayOrderNumber.
+   */
   numberOrder: string;
   version: number;
   shirtColor: string;
