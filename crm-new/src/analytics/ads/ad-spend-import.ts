@@ -18,7 +18,7 @@ export interface ParsedSpendRow {
   date: string;
   campaignId: string;
   campaignName: string;
-  /** Рубли, целое: копейки в рекламном бюджете ничего не решают. */
+  /** Рубли с точностью до 4 знаков, как в API Метрики. */
   spend: number;
   clicks: number;
   impressions: number;
@@ -46,7 +46,16 @@ const COLUMN_ALIASES: Record<keyof ParsedSpendRow, string[]> = {
     'кампания',
     'название кампании',
   ],
-  spend: ['spend', 'cost', 'расход', 'расход (руб.)', 'затраты', 'стоимость'],
+  spend: [
+    'spend',
+    'cost',
+    'расход',
+    'расход (руб.)',
+    'расход, ₽',
+    'расход (руб)',
+    'затраты',
+    'стоимость',
+  ],
   clicks: ['clicks', 'клики', 'клики (все)', 'переходы'],
   impressions: ['impressions', 'показы', 'показы (все)'],
 };
@@ -86,25 +95,36 @@ function detectDelimiter(header: string): string {
   return counts[0].n > 1 ? counts[0].d : ',';
 }
 
-/** «1 234,56» и «1234.56» — одно и то же число; копейки отбрасываем. */
+/** «1 234,56» и «1234.56» — одно и то же число; дробная часть сохраняется. */
 export function parseMoney(value: string): number | null {
   const normalized = value
     .replace(new RegExp(String.fromCharCode(160), 'g'), '')
     .replace(/\s/g, '')
     .replace(/,/g, '.');
-  if (!normalized) return 0;
+  if (!normalized) return null;
   const num = Number(normalized);
-  return Number.isFinite(num) ? Math.round(num) : null;
+  return Number.isFinite(num) && num >= 0
+    ? Math.round(num * 10000) / 10000
+    : null;
 }
 
 /** Дата кабинета: 2026-09-24, 24.09.2026 или 24/09/2026. */
 export function parseSpendDate(value: string): string | null {
   const raw = value.trim();
-  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
-  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
-  const local = /^(\d{2})[./](\d{2})[./](\d{4})/.exec(raw);
-  if (local) return `${local[3]}-${local[2]}-${local[1]}`;
-  return null;
+  const iso = /^(\d{4})-(\d{2})-(\d{2})(?:[ T]00:00:00)?$/.exec(raw);
+
+  const local = /^(\d{2})[./](\d{2})[./](\d{4})$/.exec(raw);
+  const date = iso
+    ? `${iso[1]}-${iso[2]}-${iso[3]}`
+    : local
+      ? `${local[3]}-${local[2]}-${local[1]}`
+      : null;
+  if (!date) return null;
+  const parsed = new Date(`${date}T00:00:00Z`);
+  return Number.isFinite(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === date
+    ? date
+    : null;
 }
 
 export function parseSpendCsv(content: string): ParseResult {
@@ -116,8 +136,19 @@ export function parseSpendCsv(content: string): ParseResult {
     return { rows: [], errors: [{ line: 0, reason: 'файл пуст' }] };
   }
 
-  const delimiter = detectDelimiter(lines[0]);
-  const header = splitLine(lines[0], delimiter).map((h) => h.toLowerCase());
+  const headerAt = lines.findIndex((line) => {
+    const cells = splitLine(line, detectDelimiter(line)).map((h) =>
+      h.toLowerCase(),
+    );
+    return (
+      cells.some((h) => COLUMN_ALIASES.date.includes(h)) &&
+      cells.some((h) => COLUMN_ALIASES.spend.includes(h))
+    );
+  });
+  const delimiter = detectDelimiter(lines[Math.max(0, headerAt)]);
+  const header = splitLine(lines[Math.max(0, headerAt)], delimiter).map((h) =>
+    h.toLowerCase(),
+  );
   const indexOf = (field: keyof ParsedSpendRow): number =>
     header.findIndex((h) => COLUMN_ALIASES[field].includes(h));
 
@@ -142,8 +173,9 @@ export function parseSpendCsv(content: string): ParseResult {
 
   const rows: ParsedSpendRow[] = [];
   const errors: ParseResult['errors'] = [];
-  for (let i = 1; i < lines.length; i += 1) {
+  for (let i = headerAt + 1; i < lines.length; i += 1) {
     const cells = splitLine(lines[i], delimiter);
+    if (/^(итого|total)/i.test(cells[0] ?? '')) continue;
     const date = parseSpendDate(cells[dateAt] ?? '');
     if (!date) {
       errors.push({
@@ -160,19 +192,27 @@ export function parseSpendCsv(content: string): ParseResult {
       });
       continue;
     }
+    const clicks = clicksAt >= 0 ? parseMoney(cells[clicksAt] ?? '') : 0;
+    const impressions = showsAt >= 0 ? parseMoney(cells[showsAt] ?? '') : 0;
+    if (
+      clicks === null ||
+      impressions === null ||
+      !Number.isSafeInteger(clicks) ||
+      !Number.isSafeInteger(impressions)
+    ) {
+      errors.push({
+        line: i + 1,
+        reason: 'клики и показы должны быть неотрицательными целыми числами',
+      });
+      continue;
+    }
     rows.push({
       date,
       campaignId: (idAt >= 0 ? (cells[idAt] ?? '') : '').slice(0, 64),
       campaignName: (nameAt >= 0 ? (cells[nameAt] ?? '') : '').slice(0, 200),
       spend: Math.max(0, spend),
-      clicks: Math.max(
-        0,
-        (clicksAt >= 0 ? parseMoney(cells[clicksAt] ?? '') : 0) ?? 0,
-      ),
-      impressions: Math.max(
-        0,
-        (showsAt >= 0 ? parseMoney(cells[showsAt] ?? '') : 0) ?? 0,
-      ),
+      clicks,
+      impressions,
     });
   }
 
@@ -195,7 +235,7 @@ function mergeDuplicates(rows: ParsedSpendRow[]): ParsedSpendRow[] {
       byKey.set(key, { ...row });
       continue;
     }
-    existing.spend += row.spend;
+    existing.spend = Math.round((existing.spend + row.spend) * 10000) / 10000;
     existing.clicks += row.clicks;
     existing.impressions += row.impressions;
     if (!existing.campaignName) existing.campaignName = row.campaignName;
