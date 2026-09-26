@@ -7,12 +7,30 @@ interface Props {
   title: string;
   children: React.ReactNode;
   size?: 'md' | 'lg' | 'xl';
+  /**
+   * Управление, которое остаётся на виду, пока содержимое прокручивают, —
+   * например переход к соседнему заказу. Живёт в шапке рядом с заголовком:
+   * карточка длинная, и внутри неё такая кнопка уезжала бы за экран.
+   */
+  headerExtra?: React.ReactNode;
+  /**
+   * Меняется — значит внутри окна другая сущность, и прокрутку надо вернуть
+   * к началу. Без этого переход к соседнему заказу открывал бы его с той
+   * высоты, до которой дочитали предыдущий: человек видит середину карточки
+   * и не понимает, сменился заказ или нет.
+   */
+  bodyKey?: string | number | null;
 }
 
-export function Modal({ open, onClose, title, children, size = 'md' }: Props) {
+export function Modal({ open, onClose, title, children, size = 'md', headerExtra, bodyKey }: Props) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bodyRef.current?.scrollTo({ top: 0 });
+  }, [bodyKey]);
 
   useEffect(() => {
     if (open) {
@@ -73,7 +91,10 @@ export function Modal({ open, onClose, title, children, size = 'md' }: Props) {
           className="flex items-center justify-between gap-2 px-4 sm:px-6 pb-4 border-b border-gray-100"
           style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
         >
-          <h2 id={titleId} className="text-lg font-semibold text-gray-900">{title}</h2>
+          <div className="flex items-center gap-3 min-w-0">
+            <h2 id={titleId} className="text-lg font-semibold text-gray-900">{title}</h2>
+            {headerExtra}
+          </div>
           <button
             ref={closeRef}
             onClick={onClose}
@@ -83,7 +104,10 @@ export function Modal({ open, onClose, title, children, size = 'md' }: Props) {
             <X size={22} aria-hidden="true" />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div
+          ref={bodyRef}
+          className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+        >
           {children}
         </div>
       </div>

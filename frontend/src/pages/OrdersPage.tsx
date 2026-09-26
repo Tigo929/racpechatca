@@ -10,6 +10,11 @@ import { StatusBadge } from '../components/ui/StatusBadge';
 import { Modal } from '../components/ui/Modal';
 import { CreateOrderForm } from '../components/orders/CreateOrderForm';
 import { OrderDetail } from '../components/orders/OrderDetail';
+import { OrderNavigator } from '../components/orders/OrderNavigator';
+import {
+  useArrowNavigation,
+  useOrderNavigation,
+} from '../components/orders/useOrderNavigation';
 import { ExecutorFilter } from '../components/orders/ExecutorFilter';
 import { FilterChip } from '../components/ui/FilterChip';
 import { DeliveryBadge } from '../components/ui/DeliveryBadge';
@@ -114,7 +119,7 @@ export function OrdersPage({ section }: Props) {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['orders', query],
     queryFn: () => ordersApi.getAll(query),
     placeholderData: (prev) => prev,
@@ -125,6 +130,28 @@ export function OrdersPage({ section }: Props) {
 
   const orders = data?.data ?? [];
   const meta = data?.meta;
+
+  /*
+   * Переход между заказами из открытой карточки.
+   *
+   * Список берётся тот же, что на экране: с текущими фильтрами, поиском
+   * и сортировкой. Раздел сюда не передаётся — в каждом разделе своя
+   * страница со своим списком, и один и тот же хук работает в фото,
+   * футболках, холстах и обращениях одинаково.
+   */
+  const nav = useOrderNavigation({
+    orders,
+    selectedId,
+    onSelect: setSelectedId,
+    page: meta?.page ?? query.page ?? 1,
+    totalPages: meta?.totalPages ?? 1,
+    totalItems: meta?.quantityElements ?? orders.length,
+    pageSize: meta?.limit ?? PAGE_SIZE,
+    onPageChange: (page) => setQuery((q) => ({ ...q, page })),
+    isFetching,
+  });
+  // Стрелки на клавиатуре — пока карточка открыта и человек не печатает.
+  useArrowNavigation(!!selectedId, nav);
 
   const setStatus = (status: EnumStatus | undefined) =>
     setQuery(q => ({ ...q, status, page: 1 }));
@@ -531,7 +558,24 @@ export function OrdersPage({ section }: Props) {
         </Modal>
       )}
 
-      <Modal open={!!selectedId} onClose={() => setSelectedId(null)} title="Заявка" size="xl">
+      <Modal
+        open={!!selectedId}
+        onClose={() => setSelectedId(null)}
+        title="Заявка"
+        size="xl"
+        bodyKey={selectedId}
+        headerExtra={
+          <OrderNavigator
+            position={nav.position}
+            total={nav.total}
+            canPrev={nav.canPrev}
+            canNext={nav.canNext}
+            onPrev={nav.prev}
+            onNext={nav.next}
+            busy={nav.busy}
+          />
+        }
+      >
         {selectedId && (
           <OrderDetail orderId={selectedId} onDeleted={() => setSelectedId(null)} />
         )}
