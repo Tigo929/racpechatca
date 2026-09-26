@@ -217,18 +217,26 @@ export function buildSignals(rows: MetricRow[]): Signal[] {
       };
     }
     const pct = row.deltaPct;
-    if (pct === null || Math.abs(pct) < STABLE_PCT) {
+    if (
+      row.current === row.previous ||
+      (pct !== null && Math.abs(pct) < STABLE_PCT)
+    ) {
       return {
         kind: 'stable' as const,
         metric: row.label,
         statement: `${row.label}: ${fmt(row.unit, row.previous)} → ${fmt(row.unit, row.current)} (изменение в пределах ±${STABLE_PCT} %)`,
       };
     }
-    const improved = LOWER_IS_BETTER.has(row.key) ? pct < 0 : pct > 0;
+    const change = row.current - row.previous;
+    const improved = LOWER_IS_BETTER.has(row.key) ? change < 0 : change > 0;
+    const changeText =
+      pct === null
+        ? 'процент изменения не определён: предыдущая база равна нулю'
+        : `${pct > 0 ? '+' : ''}${pct.toFixed(1)} %`;
     return {
       kind: improved ? ('positive' as const) : ('negative' as const),
       metric: row.label,
-      statement: `${row.label}: ${fmt(row.unit, row.previous)} → ${fmt(row.unit, row.current)} (${pct > 0 ? '+' : ''}${pct.toFixed(1)} %)`,
+      statement: `${row.label}: ${fmt(row.unit, row.previous)} → ${fmt(row.unit, row.current)} (${changeText})`,
     };
   });
 }
@@ -264,40 +272,43 @@ export function buildSiteFunnel(
   const p = previous.overview.siteFunnel;
   return [
     step('Визиты', c.visits, null, p.visits),
-    step('Заявки с сайта', c.siteLeads, c.visits, p.siteLeads),
+    step('Достижения цели заявки', c.siteLeads, null, p.siteLeads),
     step(
-      'Приняты в работу (сопоставлено)',
+      'Достижения CRM-цели «принят» в Метрике',
       c.matchedAccepted,
-      c.siteLeads,
+      null,
       p.matchedAccepted,
     ),
     step(
-      'Оплачены (сопоставлено)',
+      'Достижения CRM-цели «оплачен» в Метрике',
       c.matchedPaid,
-      c.matchedAccepted,
+      null,
       p.matchedPaid,
     ),
   ];
 }
 
-/** Путь заказа в CRM: заявка → принят → оплачен, плюс отмены. */
+/** Конверсия только внутри одной когорты заявок; события периода — в SALES. */
 export function buildCrmFunnel(
   current: PeriodSnapshot,
   previous: PeriodSnapshot,
 ): FunnelStep[] {
-  const c = current.overview.crmFunnel.events;
-  const p = previous.overview.crmFunnel.events;
+  const c = current.overview.crmFunnel.cohorts;
+  const p = previous.overview.crmFunnel.cohorts;
   return [
-    step('Заявки CRM (LEAD)', c.crmLeads, null, p.crmLeads),
-    step('Приняты в работу', c.acceptedOrders, c.crmLeads, p.acceptedOrders),
-    step('Оплачены', c.paidOrders, c.acceptedOrders, p.paidOrders),
+    step('Заявки CRM (LEAD)', c.leadCohortSize, null, p.leadCohortSize),
     step(
-      'Реализовано (выручка признана)',
-      c.realizedOrders,
-      c.paidOrders,
-      p.realizedOrders,
+      'Из них приняты в работу',
+      c.leadCohortAccepted,
+      c.leadCohortSize,
+      p.leadCohortAccepted,
     ),
-    step('Отменены', c.cancelledOrders, null, p.cancelledOrders),
+    step(
+      'Из них оплачены',
+      c.leadCohortPaid,
+      c.leadCohortAccepted,
+      p.leadCohortPaid,
+    ),
   ];
 }
 
@@ -743,7 +754,10 @@ export function buildReportModel(input: ReportInput): ReportModel {
     );
   }
   constraints.push(
-    'рекламные расходы в систему не заводятся: CPL, CPA, ROAS и ROMI посчитать нельзя',
+    input.current.overview.financials.spend.status ===
+      'UNAVAILABLE_NO_SPEND_DATA'
+      ? 'рекламные расходы за период отсутствуют: CPL, CPA, ROAS и ROMI посчитать нельзя'
+      : 'расходы на рекламу известны; для CPL, CPA, ROAS и ROMI нужна доказанная атрибуция результатов к кампаниям',
   );
 
   return {

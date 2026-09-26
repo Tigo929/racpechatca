@@ -1149,10 +1149,12 @@ model AdSpend {
   campaignId   String @default("")
   campaignName String @default("")
 
-  /// Потрачено за день, ₽ (с НДС — как в кабинете).
-  spend       Int
+  /// Потрачено за день, ₽. API Метрики отдаёт без НДС, до 4 знаков.
+  spend       Decimal @db.Decimal(18, 4)
+  /// UNKNOWN для старых/ручных выгрузок; EXCLUDED для API Метрики.
+  vatBasis    String @default("UNKNOWN")
   clicks      Int @default(0)
-  impressions Int @default(0)
+  impressions Int? @default(0)
 
   @@unique([date, source, campaignId])
   @@index([date])

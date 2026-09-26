@@ -43,6 +43,7 @@ describe('сводка расходов', () => {
     ]);
     expect(totals).toEqual({
       spend: 1800,
+      vatBasis: 'UNKNOWN',
       clicks: 240,
       impressions: 12_000,
       days: 2,
@@ -52,17 +53,17 @@ describe('сводка расходов', () => {
 });
 
 describe('окупаемость', () => {
-  it('считает цену заявки, заказа и оплаты', () => {
+  it('не приписывает рекламе весь сайт даже при высоком покрытии идентификаторами', () => {
     const m = computeSpendMetrics(
       sumAdSpend([row({ spend: 10_000 })]),
       outcome(),
     );
-    expect(m.status).toBe('AVAILABLE');
-    expect(m.cpl).toBe(500); // 10 000 / 20 заявок
-    expect(m.cpa).toBe(1000); // 10 000 / 10 принятых
-    expect(m.cpo).toBe(2000); // 10 000 / 5 оплаченных
-    expect(m.roas).toBe(5); // 50 000 выручки на 10 000 расхода
-    expect(m.romi).toBe(2); // (30 000 − 10 000) / 10 000
+    expect(m.status).toBe('ATTRIBUTION_NOT_ESTABLISHED');
+    expect(m.cpl).toBeNull();
+    expect(m.cpa).toBeNull();
+    expect(m.cpo).toBeNull();
+    expect(m.roas).toBeNull();
+    expect(m.romi).toBeNull();
   });
 
   it('без расходов — статус, а не нули: ноль читается как «реклама бесплатна»', () => {
@@ -73,14 +74,14 @@ describe('окупаемость', () => {
     expect(m.attributionReliable).toBe(false);
   });
 
-  it('покрытие атрибуции ниже половины — цена заявки есть, окупаемости нет', () => {
+  it('при низком покрытии также не рассчитывает стоимость привлечения', () => {
     const m = computeSpendMetrics(
       sumAdSpend([row({ spend: 10_000 })]),
       outcome({ identityCoveragePct: 30 }),
     );
-    expect(m.status).toBe('ATTRIBUTION_COVERAGE_TOO_LOW');
+    expect(m.status).toBe('ATTRIBUTION_NOT_ESTABLISHED');
     // Деньги потрачены и заявки пришли — это измерено.
-    expect(m.cpl).toBe(500);
+    expect(m.cpl).toBeNull();
     // А вот что из выручки принесла реклама — не доказано.
     expect(m.roas).toBeNull();
     expect(m.romi).toBeNull();
@@ -100,7 +101,7 @@ describe('окупаемость', () => {
     );
     expect(m.spend).toBe(7000);
     expect(m.cpl).toBeNull(); // делить на ноль заявок нечем
-    expect(m.roas).toBe(0);
+    expect(m.roas).toBeNull();
   });
 });
 
@@ -118,7 +119,7 @@ describe('разбор выгрузки кабинета', () => {
         date: '2026-09-24',
         campaignId: '123',
         campaignName: 'Фотопечать',
-        spend: 1235,
+        spend: 1234.56,
         clicks: 100,
         impressions: 5000,
       },
@@ -173,11 +174,28 @@ describe('разбор выгрузки кабинета', () => {
   });
 
   it('форматы чисел и дат', () => {
-    expect(parseMoney('1 234,56')).toBe(1235);
-    expect(parseMoney('')).toBe(0);
+    expect(parseMoney('1 234,56')).toBe(1234.56);
+    expect(parseMoney('')).toBeNull();
     expect(parseMoney('нет')).toBeNull();
     expect(parseSpendDate('24/09/2026')).toBe('2026-09-24');
     expect(parseSpendDate('2026-09-24 00:00:00')).toBe('2026-09-24');
     expect(parseSpendDate('позавчера')).toBeNull();
+  });
+});
+
+describe('import integrity', () => {
+  it('reads report preface and ruble-sign headers without rounding spend', () => {
+    const result = parseSpendCsv(
+      'Отчёт Директа\nПериод\nДата;№ кампании;Расход, ₽;Клики\n24.09.2026;123;12,3456;1\nИтого;;12,3456;1',
+    );
+    expect(result.errors).toEqual([]);
+    expect(result.rows[0].spend).toBe(12.3456);
+  });
+  it('rejects impossible dates, negative/missing spend and fractional clicks', () => {
+    const result = parseSpendCsv(
+      'date,cost,clicks\n2026-02-30,1,1\n2026-09-24,-1,1\n2026-09-24,,1\n2026-09-24,1,1.5',
+    );
+    expect(result.rows).toEqual([]);
+    expect(result.errors).toHaveLength(4);
   });
 });

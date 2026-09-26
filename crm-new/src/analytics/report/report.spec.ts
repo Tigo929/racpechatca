@@ -6,6 +6,8 @@ import type {
 } from '../metrics/metrics-contract';
 import {
   buildReportModel,
+  buildSignals,
+  metricRow,
   weekStart,
   MIN_FORECAST_WEEKS,
 } from './report-build';
@@ -569,21 +571,21 @@ describe('числа отчёта — те же, что у дашборда', ()
 });
 
 describe('воронки', () => {
-  it('считает конверсии и отвал по шагам', () => {
+  it('не делит достижения разных целей как одну когорту', () => {
     const model = buildReportModel(input());
     const [visits, leads, accepted] = model.siteFunnel;
     expect(visits.count).toBe(115);
-    expect(leads.conversionFromPrevious).toBeCloseTo((15 / 115) * 100, 3);
-    expect(leads.dropOff).toBe(100);
-    expect(accepted.conversionFromPrevious).toBeCloseTo((8 / 15) * 100, 3);
+    expect(leads.conversionFromPrevious).toBeNull();
+    expect(leads.dropOff).toBeNull();
+    expect(accepted.conversionFromPrevious).toBeNull();
   });
 
   it('называет самый большой отвал и не объясняет его причину', () => {
     const model = buildReportModel(input());
-    expect(model.biggestDropOff?.name).toBe('Заявки с сайта');
+    expect(model.biggestDropOff).toBeNull();
     const md = renderMarkdown(model);
-    expect(md).toContain('Самый большой отвал');
-    expect(md).toContain('Причина отвала отчётом не устанавливается');
+    expect(md).not.toContain('**Самый большой отвал:**');
+    expect(md).toContain('не одна когорта');
   });
 
   it('воронка CRM показывает заявки, принятие, оплату и отмены', () => {
@@ -591,9 +593,9 @@ describe('воронки', () => {
     expect(md).toContain('# CRM FUNNEL');
     for (const step of [
       'Заявки CRM (LEAD)',
-      'Приняты в работу',
-      'Оплачены',
-      'Отменены',
+      'Из них приняты в работу',
+      'Из них оплачены',
+      'Отменённые заказы',
     ]) {
       expect(md).toContain(step);
     }
@@ -1193,5 +1195,35 @@ describe('раздел «Экономика рекламы»', () => {
     expect(md).toContain('Покрытие ClientID у принятых заказов САЙТА: 77.8 %');
     expect(md).toContain('yclid: 55.6 %');
     expect(md).toMatch(/совсем без связи с визитом: 2/);
+  });
+});
+
+describe('целостность метрик', () => {
+  it('рост от нуля не называется стабильностью', () => {
+    const signals = buildSignals([
+      metricRow('siteLeads', 'Заявки', 'count', 26, 0),
+      metricRow('paidWithoutDate', 'Без даты', 'count', 40, 0),
+      metricRow('netProfit', 'Прибыль', 'rub', -50, -100),
+      metricRow('visits', 'Визиты', 'count', 0, 0),
+    ]);
+    expect(signals.map((s) => s.kind)).toEqual([
+      'positive',
+      'negative',
+      'positive',
+      'stable',
+    ]);
+    expect(signals[0].statement).toContain('база равна нулю');
+  });
+  it('сравнивает одну когорту заявок, а не 10 заявок с 36 принятыми заказами периода', () => {
+    const model = buildReportModel(input());
+    expect(model.crmFunnel.map((s) => s.count)).toEqual([10, 10, 0]);
+    expect(model.crmFunnel.map((s) => s.conversionFromPrevious)).toEqual([
+      null,
+      100,
+      0,
+    ]);
+    expect(
+      model.crmFunnel.every((s) => s.dropOff === null || s.dropOff >= 0),
+    ).toBe(true);
   });
 });

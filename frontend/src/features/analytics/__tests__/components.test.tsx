@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { DataQualityPanel, SiteFunnel } from '../sections';
+import { CrmFunnel, DataQualityPanel, SiteFunnel } from '../sections';
 import { KpiCard, StateBlock } from '../ui';
 import { TrendChart } from '../TrendChart';
 import { makeOverview } from './fixtures';
@@ -10,6 +10,13 @@ import { makeOverview } from './fixtures';
  * вместо 0 %, статусы свежести, состояния загрузки/пустоты/ошибки.
  */
 describe('KpiCard', () => {
+  it('воронка CRM показывает одну когорту, не смешивает её с событиями периода', () => {
+    render(<CrmFunnel o={makeOverview()} />);
+    expect(screen.getByText('13')).toBeInTheDocument();
+    expect(screen.getByText('11')).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.queryByText('42')).not.toBeInTheDocument();
+  });
   it('рост принятых заказов — положительный знак «+2 (+5 %)»', () => {
     render(<KpiCard metricKey="acceptedOrders" value={42} format="count" cmp={{ current: 42, previous: 40, delta: 2, deltaPct: 5, changeKind: 'UP' }} />);
     expect(screen.getByTestId('kpi-acceptedOrders')).toHaveTextContent('42');
@@ -52,7 +59,7 @@ describe('SiteFunnel', () => {
     render(<SiteFunnel o={makeOverview({ siteFunnel: { siteLeads: 2, matchedAccepted: 0, siteLeadToAccepted: 0 }, dataQuality: { eligibleAccepted: 0 } })} />);
     expect(screen.getByText('Недостаточно сопоставленных заказов')).toBeInTheDocument();
     expect(screen.queryByText('0 %')).not.toBeInTheDocument();
-    expect(screen.getByText(/Сопоставлено через Метрику\/ClientID/)).toBeInTheDocument();
+    expect(screen.getByText(/не единая когорта/)).toBeInTheDocument();
   });
 
   it('низкое покрытие ClientID — предупреждение о неполной связи, не ошибка', () => {
