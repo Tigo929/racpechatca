@@ -193,6 +193,20 @@ const row = (id: string, target: string, extra: Partial<Row> = {}): Partial<Row>
 });
 
 describe('успешная отправка', () => {
+  it.each(['UPLOADED', 'EXPORTED', 'MATCHED', 'PROCESSED', 'LINKAGE_FAILURE', 'UNKNOWN'])('offline status %s is distinct from CDP validation', async (status) => {
+    const h = harness({ order: { ...ORDER, yandexClientId: null, yclid: '123456789012345' }, rows: [row('r1', 'PAID', { sourceStatusHistoryId: 'h2' })] });
+    const uploadYclidConversions = jest.fn(async () => ({ uploading_id: '12345', api_validation_status: status, elements_count: 1 }));
+    const p = new MetrikaOrderOutboxProcessorService(h.prisma as unknown as PrismaService,
+      { ...h.client, uploadYclidConversions } as unknown as YandexMetrikaClient,
+      { syncEnabled: true, yclidTargets: { CREATED: 'created', PAID: 'paid', CANCELLED: 'cancelled' } });
+    await p.processOnce();
+    expect(h.rows[0].status).toBe(['LINKAGE_FAILURE', 'UNKNOWN'].includes(status) ? 'failed' : 'delivered');
+    expect(h.rows[0].remoteUploadingId).toBe('12345');
+    expect(h.rows[0].apiValidationStatus).toBe(status);
+    await p.processOnce();
+    expect(uploadYclidConversions).toHaveBeenCalledTimes(1);
+    expect(h.client.uploadSimpleOrders).not.toHaveBeenCalled();
+  });
   it('один заказ — один файл: id заказа, дата в поясе счётчика, статус перехода, SAVE; строка delivered с uploading_id', async () => {
     const h = harness({ rows: [row('r1', 'PAID', { sourceStatusHistoryId: 'h2' })] });
     const outcomes = await h.processor.processOnce();

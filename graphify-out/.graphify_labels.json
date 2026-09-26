@@ -390,6 +390,7 @@
   "388": "PgAdvisoryLock",
   "389": "salary-calculation.ts",
   "390": "my-balance.spec.ts",
+  "391": "@types/passport-jwt",
   "392": "DtoUpdateItemOrder",
   "393": "metrika-order-status.ts",
   "394": "DailyPlanService",
@@ -397,6 +398,5 @@
   "397": ".constructor",
   "399": "Прайс производства на холст: две системы расчёта",
   "401": "Скидка клиенту в рублях",
-  "402": "Номер заказа с маркетплейса",
-  "410": "pdfkit"
+  "402": "Номер заказа с маркетплейса"
 }
