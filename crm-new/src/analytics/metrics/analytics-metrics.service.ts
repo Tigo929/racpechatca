@@ -371,7 +371,8 @@ export class AnalyticsMetricsService {
       source: r.source,
       campaignId: r.campaignId,
       campaignName: r.campaignName,
-      spend: r.spend,
+      spend: Number(r.spend),
+      vatBasis: r.vatBasis,
       clicks: r.clicks,
       impressions: r.impressions,
     }));

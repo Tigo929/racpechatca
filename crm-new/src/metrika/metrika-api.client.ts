@@ -162,6 +162,8 @@ export class YandexMetrikaClient {
     const id = this.requireCounter();
     const params = new URLSearchParams();
     params.set('ids', String(id));
+    if (query.direct_client_logins?.length)
+      params.set('direct_client_logins', query.direct_client_logins.join(','));
     params.set('metrics', query.metrics.join(','));
     if (query.dimensions?.length)
       params.set('dimensions', query.dimensions.join(','));

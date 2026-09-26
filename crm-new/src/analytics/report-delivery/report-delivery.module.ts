@@ -7,13 +7,15 @@ import { AnalyticsMetricsService } from '../metrics/analytics-metrics.service';
 import { AnalyticsReportController } from './analytics-report.controller';
 import { AnalyticsReportService } from './analytics-report.service';
 import { AnalyticsReportWorker } from './analytics-report.worker';
+import { MetrikaAnalyticsModule } from '../../metrika/analytics/metrika-analytics.module';
+import { MetrikaPeriodSnapshotService } from '../../metrika/analytics/metrika-period-snapshot.service';
 
 /**
  * Выдача аналитических отчётов (этап 16). Своей аналитики нет: сервис ведёт
  * очередь заказов, воркер зовёт генератор этапа 15, контроллер отдаёт файлы.
  */
 @Module({
-  imports: [ReportsModule, AnalyticsMetricsModule],
+  imports: [ReportsModule, AnalyticsMetricsModule, MetrikaAnalyticsModule],
   controllers: [AnalyticsReportController],
   providers: [
     {
@@ -28,13 +30,23 @@ import { AnalyticsReportWorker } from './analytics-report.worker';
         AnalyticsReportService,
         AnalyticsMetricsService,
         ReportsService,
+        MetrikaPeriodSnapshotService,
       ],
       useFactory: (
         prisma: PrismaService,
         reports: AnalyticsReportService,
         metrics: AnalyticsMetricsService,
         pnl: ReportsService,
-      ) => new AnalyticsReportWorker(prisma, reports, metrics, pnl),
+        snapshots: MetrikaPeriodSnapshotService,
+      ) =>
+        new AnalyticsReportWorker(
+          prisma,
+          reports,
+          metrics,
+          pnl,
+          process.env,
+          snapshots,
+        ),
     },
   ],
   exports: [AnalyticsReportService],
