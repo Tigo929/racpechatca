@@ -661,6 +661,14 @@ export function DataQualityPanel({ o }: { o: Overview }) {
       </div>
       <dl className="mt-3 text-[11px] text-gray-400 space-y-0.5">
         <div>
+          Передано в Метрику заказов с ClientID: {formatCount(q.eligibleDeliveredToMetrika)} из {formatCount(q.eligibleAccepted)}.
+          Приём данных API не подтверждает привязку заказа к визиту. Результат привязки проверяется в отчётах Метрики.
+        </div>
+        <div>
+          Принятые заказы сайта: {formatCount(q.websiteAccepted)}; без ClientID и рекламного клика: {formatCount(q.websiteWithoutIdentity)}.
+          Покрытие UTM: {formatPercent(q.websiteUtmCoverage)}. Неизвестный источник не считается рекламным.
+        </div>
+        <div>
           Заявки сайта считаются полностью с 13 сентября 2026; Метрика собирает
           данные с{" "}
           {o.metadata.cutovers.counterDataSince.split("-").reverse().join(".")}.

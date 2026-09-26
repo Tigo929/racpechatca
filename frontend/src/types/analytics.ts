@@ -178,8 +178,12 @@ export interface DataQualityMetrics {
   freshness: Freshness;
   clientIdCoverageAccepted: number | null;
   clientIdCoveragePaid: number | null;
+  websiteAccepted?: number;
+  websiteWithoutIdentity?: number;
+  websiteUtmCoverage?: number | null;
   eligibleAccepted: number;
   eligibleDeliveredToMetrika: number;
+  metrikaDeliveryCoverage?: number | null;
   metrikaMatchCoverage: number | null;
   matchedAcceptedReaches: number;
   paidWithoutDate: number;

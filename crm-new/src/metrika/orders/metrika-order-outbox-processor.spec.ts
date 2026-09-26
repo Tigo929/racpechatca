@@ -205,6 +205,7 @@ describe('успешная отправка', () => {
     expect(h.rows[0].apiValidationStatus).toBe(status);
     await p.processOnce();
     expect(uploadYclidConversions).toHaveBeenCalledTimes(1);
+    expect(uploadYclidConversions).toHaveBeenCalledWith(expect.stringContaining(String(Math.floor(at(20).getTime() / 1000))));
     expect(h.client.uploadSimpleOrders).not.toHaveBeenCalled();
   });
   it('один заказ — один файл: id заказа, дата в поясе счётчика, статус перехода, SAVE; строка delivered с uploading_id', async () => {

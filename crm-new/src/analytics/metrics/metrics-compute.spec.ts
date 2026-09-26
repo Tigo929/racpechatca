@@ -640,7 +640,8 @@ describe('покрытие ClientID и сопоставление', () => {
     );
     expect(o.dataQuality.eligibleAccepted).toBe(1);
     expect(o.dataQuality.eligibleDeliveredToMetrika).toBe(1);
-    expect(o.dataQuality.metrikaMatchCoverage).toBe(100);
+    expect(o.dataQuality.metrikaDeliveryCoverage).toBe(100);
+    expect(o.dataQuality.metrikaMatchCoverage).toBeNull();
     expect(o.dataQuality.clientIdCoveragePaid).toBeNull();
   });
 });

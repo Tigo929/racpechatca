@@ -172,6 +172,8 @@ const SKIP_REASON_MEANING: Record<string, string> = {
     'есть метка клика Директа, но канал офлайн-конверсий не настроен в кабинете',
   invalid_client_id:
     'ClientID не похож на идентификатор Метрики — разобрать вручную',
+  missing_event_time:
+    'нет подтверждённого времени перехода: дата создания заказа не подставляется вместо даты оплаты или отмены',
   not_eligible_rejected_lead:
     'отклонённая заявка — в Метрику не отправляется намеренно',
 };
@@ -673,7 +675,7 @@ export function renderMarkdown(model: ReportModel): string {
     table(
       ['Состояние очереди', 'Строк'],
       [
-        ['delivered (доставлено)', num(s.delivered)],
+        ['delivered (принято API)', num(s.delivered)],
         ['skipped (пропущено)', num(s.skipped)],
         ['pending (ожидает)', num(s.pending)],
         ['processing (в работе)', num(s.processing)],
@@ -683,11 +685,12 @@ export function renderMarkdown(model: ReportModel): string {
     '',
     '```text',
     `Доставлено с идентификатором загрузки: ${s.deliveredWithUploadingId} из ${s.delivered}`,
-    `Прошло валидацию на стороне Метрики:    ${s.validationPassed}`,
+    `CDP: прошло валидацию PASSED:           ${s.validationPassed}`,
     `Дубли ключа дедупликации:               ${s.duplicateDedupeKeys} (норма 0)`,
     `Повторные покупки по одному заказу:     ${s.duplicatePurchasesPerOrder} (норма 0)`,
     `Последняя доставка:                     ${iso(s.lastDeliveredAt)}`,
     '```',
+    'Приём файла API (delivered, PASSED или UPLOADED) не подтверждает привязку к визиту. Офлайн-конверсии проверяются в отчёте Метрики «Офлайн-конверсии», заказы CDP — в отчётах заказов. События без привязки нельзя считать подтверждёнными рекламными продажами.',
     '',
     s.skipReasons.length
       ? table(
