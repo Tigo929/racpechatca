@@ -105,7 +105,7 @@ export function OrderContact({
   }
 
   return (
-    <div className="sm:col-span-2">
+    <div className="sm:col-span-2 lg:col-span-3">
       <p className="text-xs text-gray-500 mb-1">Связь с клиентом · {label}</p>
       {action}
     </div>

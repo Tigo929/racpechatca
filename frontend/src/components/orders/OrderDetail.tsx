@@ -63,7 +63,7 @@ function LeadNoteBlock({ note, isAdmin }: { note: string; isAdmin: boolean }) {
   const { visible, technical } = splitLeadNote(note);
   const [open, setOpen] = useState(false);
   return (
-    <div className="sm:col-span-2 space-y-2">
+    <div className="sm:col-span-2 lg:col-span-3 space-y-2">
       {visible && <InfoRow label="Примечание" value={visible} />}
       {isAdmin && technical && (
         <div>
@@ -104,6 +104,19 @@ import { useAuth } from "../../context/useAuth";
 import type { AppUser, UpdateOrderDto, OrderPhoto } from "../../types/index";
 import { getErrorMessage } from "../../utils/get-error-message";
 
+/**
+ * Кнопка действия в шапке карточки.
+ *
+ * Класс общий не ради краткости: кнопки стояли рядом с разной высотой
+ * и разной насыщенностью подписи, и ряд выглядел собранным наспех.
+ * Одна высота (36px — палец попадает, ряд не распухает), одна рамка,
+ * один вес шрифта; отличается только цвет, и он что-то значит: красный —
+ * необратимое, зелёный — текст клиенту, синий — печать, серый — правка.
+ */
+const actionBtn =
+  "inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border text-sm font-medium " +
+  "whitespace-nowrap transition-colors disabled:opacity-60 " +
+  "focus-visible:outline-none focus-visible:ring-2";
 const inputCls =
   "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:border-transparent";
 
@@ -408,15 +421,30 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 flex-wrap">
+      {/*
+        Шапка карточки.
+
+        Номер и кнопки стояли в одной строке через justify-between. В окне
+        заказа места мало, и строка расползалась: номер ломался посередине
+        («#20260917-» и ниже «139»), значки статуса вставали друг под друга,
+        а «Удалить» уезжало за край.
+
+        Теперь это всегда два ряда: имя заказа со значками и действия под ним.
+        Ставить их рядом на широком экране незачем — окно заказа шире 896px
+        не становится, и пять кнопок с номером в одну строку там всё равно
+        не помещаются. Один и тот же порядок на телефоне и на ПК читается
+        привычнее, чем два разных.
+      */}
+      <div className="flex flex-col gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             {/* Заказ с площадки называется её номером: именно он открыт
                 в кабинете Ozon и стоит на листе согласования у покупателя.
                 Внутренний номер остаётся рядом — на нём зарплата, задачи
                 и отчёты, и искать заказ по нему тоже должны уметь. */}
-            <span className="text-2xl font-bold text-gray-900">
+            {/* Номер — одно слово: перенос внутри него превращает его
+                в два огрызка, по которым заказ не опознать. */}
+            <span className="text-2xl font-bold text-gray-900 whitespace-nowrap leading-tight">
               #{displayOrderNumber(order)}
             </span>
             {marketplaceNumber(order) && (
@@ -476,7 +504,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             })()}
           </div>
         </div>
-        <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Кнопка Срочно — только для незакрытых заказов */}
           {!["PAID", "SENT", "DONE", "COMPLETED", "CANCELLED"].includes(
             order.status,
@@ -484,10 +512,10 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             <button
               onClick={toggleUrgent}
               disabled={updateMutation.isPending}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 ${
+              className={`${actionBtn} focus-visible:ring-red-500 ${
                 order.isUrgent
-                  ? "bg-red-500 text-white hover:bg-red-600"
-                  : "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+                  ? "border-red-500 bg-red-500 text-white hover:bg-red-600"
+                  : "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
               }`}
             >
               <Flame size={13} aria-hidden="true" />
@@ -503,7 +531,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
               <button
                 onClick={handlePrintClientSticker}
                 disabled={clientStickerLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 disabled:opacity-60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                className={`${actionBtn} border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus-visible:ring-indigo-500`}
               >
                 <Printer size={13} aria-hidden="true" />
                 {clientStickerLoading ? "Готовим…" : "Печать PDF"}
@@ -523,9 +551,13 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   order,
                   isNew ? "CONFIRMATION" : "READY",
                 );
-                const label = isNew
-                  ? "Скопировать подтверждение"
-                  : "Скопировать сообщение готовности";
+                // Короткая подпись: «Скопировать сообщение готовности» — треть
+                // ширины окна на телефоне, и ряд кнопок из-за неё ломался.
+                // Что именно копируется, договаривает подсказка при наведении.
+                const label = isNew ? "Подтверждение" : "Готовность";
+                const hint = isNew
+                  ? "Скопировать подтверждение заказа для клиента"
+                  : "Скопировать сообщение о готовности для клиента";
                 const copyText = () => {
                   void copyToClipboard(text).then((ok) => {
                     if (!ok) {
@@ -547,7 +579,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 return (
                   <button
                     onClick={copyText}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                    title={hint}
+                    className={`${actionBtn} border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus-visible:ring-emerald-500`}
                   >
                     <Copy size={13} aria-hidden="true" /> {label}
                   </button>
@@ -557,7 +590,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 <button
                   onClick={handlePrintSticker}
                   disabled={stickerLoading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 disabled:opacity-60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  className={`${actionBtn} border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus-visible:ring-indigo-500`}
                 >
                   <Printer size={13} aria-hidden="true" />
                   {stickerLoading ? "Готовим…" : "Стикер (PDF)"}
@@ -566,7 +599,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
               {!editing && (
                 <button
                   onClick={startEdit}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+                  className={`${actionBtn} border-gray-200 bg-gray-100 text-gray-600 hover:bg-gray-200 focus-visible:ring-gray-400`}
                 >
                   <Pencil size={13} aria-hidden="true" /> Изменить
                 </button>
@@ -576,7 +609,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   if (confirm("Удалить заявку?")) deleteMutation.mutate();
                 }}
                 disabled={deleteMutation.isPending}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                className={`${actionBtn} border-red-200 bg-red-50 text-red-600 hover:bg-red-100 focus-visible:ring-red-400`}
               >
                 <Trash2 size={13} aria-hidden="true" /> Удалить
               </button>}
@@ -960,7 +993,11 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           marketplacePrint={order.isMarketplacePrint ?? false}
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+        // Три колонки на широком экране вместо двух: пары «подпись —
+        // значение» короткие, и в двух колонках половина строки оставалась
+        // пустой, а карточка от этого росла вниз. На телефоне колонка одна:
+        // «Доставка производства (Москва)» в половину ширины не помещается.
+        <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
           {/* Контакт клиента с действием: Telegram — кликабельный ник (сразу
               в чат), MAX — телефон + «Скопировать номер». */}
           <OrderContact
@@ -970,7 +1007,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           {/* Приветственное сообщение. Бот шлёт его сам в Telegram; здесь
               менеджер копирует ровно тот же текст и отправляет руками — так
               клиент на MAX получает то же, что клиент на Telegram. */}
-          <div className="sm:col-span-2">
+          <div className="sm:col-span-2 lg:col-span-3">
             <GreetingCopyButton orderId={order.id} />
           </div>
           {/* Строки, которые правятся, открывают правку сами. Кнопка
@@ -1020,7 +1057,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
               )}
               {order.note && <LeadNoteBlock note={order.note} isAdmin />}
               {order.productCategory === "CANVAS" && (
-                <div className="sm:col-span-2 rounded-xl border border-cyan-100 bg-cyan-50/50 p-3 grid grid-cols-3 gap-3 text-sm">
+                <div className="sm:col-span-2 lg:col-span-3 rounded-xl border border-cyan-100 bg-cyan-50/50 p-3 grid grid-cols-3 gap-3 text-sm">
                   {(() => {
                     const totals = (order.canvasItems ?? []).reduce(
                       (acc, item) => {
@@ -1065,7 +1102,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   order.prepaidAmount,
                 );
                 return (
-                  <div className="sm:col-span-2 pt-3 border-t border-gray-100">
+                  <div className="sm:col-span-2 lg:col-span-3 pt-3 border-t border-gray-100">
                     <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-3 space-y-1.5 text-sm">
                       <div className="flex items-center justify-between">
                         <span className="text-gray-500">Сумма заказа</span>
