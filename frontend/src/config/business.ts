@@ -1,3 +1,5 @@
+import { displayOrderNumber } from '../utils/order-number';
+
 /**
  * Реквизиты бизнеса для сообщений клиенту (подтверждение заказа, готовность).
  *
@@ -52,11 +54,13 @@ export const businessConfig = {
  */
 export function formatOrderNumberForClient(order: {
   numberOrder: string;
+  marketplaceOrderNumber?: string | null;
   communicationPlatform?: string;
 }): string {
-  return order.communicationPlatform === 'TELEGRAM'
-    ? `\`${order.numberOrder}\``
-    : order.numberOrder;
+  // Заказ с площадки называем её номером: покупателю с Ozon наш внутренний
+  // номер не говорит ничего. Правило общее со списком и карточкой.
+  const number = displayOrderNumber(order);
+  return order.communicationPlatform === 'TELEGRAM' ? `\`${number}\`` : number;
 }
 
 /**

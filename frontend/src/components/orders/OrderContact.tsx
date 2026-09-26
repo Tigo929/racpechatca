@@ -1,6 +1,7 @@
 import { Copy, ExternalLink, Phone, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { COMMUNICATION_LABELS } from '../../constants';
+import { copyToClipboard } from '../../utils/clipboard';
 
 /**
  * Контакт клиента в карточке заказа — с действием под способ связи.
@@ -19,12 +20,12 @@ function formatRuPhone(digits: string): string {
 }
 
 async function copy(text: string, ok: string) {
-  try {
-    await navigator.clipboard.writeText(text);
+  // Общий способ копирования: с запасным путём для iPhone.
+  if (await copyToClipboard(text)) {
     toast.success(ok);
-  } catch {
-    toast.error('Не удалось скопировать');
+    return;
   }
+  toast.error('Не удалось скопировать');
 }
 
 export function OrderContact({

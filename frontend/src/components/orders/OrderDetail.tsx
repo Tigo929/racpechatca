@@ -15,136 +15,18 @@ import {
   AlarmClock,
 } from "lucide-react";
 import { usersApi } from "../../api/users";
-import {
-  businessConfig,
-  formatOrderNumberForClient,
-  formatPaymentPhoneForClient,
-  resolvePickupAddress,
-} from "../../config/business";
 import { DELIVERY_LABELS, SOURCE_ORDER_LABELS } from "../../constants";
 import { displayOrderNumber, marketplaceNumber } from "../../utils/order-number";
+import {
+  buildClientMessage,
+  prepaymentNeedsAttention,
+} from "../../utils/client-message";
+import { copyToClipboard } from "../../utils/clipboard";
 import { GulianSyncBlock } from './GulianSyncBlock';
 import { DispatchToExecutorModal } from './DispatchToExecutorModal';
 import { GreetingCopyButton } from './GreetingCopyButton';
 import { OrderContact } from './OrderContact';
 import { ApprovalsBlock } from '../approval/ApprovalsBlock';
-
-/**
- * Напоминание о ПВЗ выделено: без пункта выдачи и телефона заявку на доставку
- * не оформить, а в длинном сообщении эта строка терялась.
- *
- * Подчёркивание делаем юникодной линией под каждым знаком, а не парой «__»
- * по краям: парные значки показывались получателю буквально. Здесь подчёркнут
- * сам текст, поэтому лишних символов в начале и в конце нет нигде.
- *
- * Жирный оставляем разметкой Telegram (**). Юникодного «жирного» начертания
- * для кириллицы не существует — только для латиницы, поэтому иначе никак.
- */
-/** U+0332 — подчёркивающая линия под предыдущим знаком. Задаём кодом,
- *  а не символом: сам знак невидим в редакторе, и его легко потерять. */
-const COMBINING_LOW_LINE = String.fromCharCode(0x0332);
-
-const underlineEveryChar = (text: string): string =>
-  // Раскладываем по символам, а не по кодовым единицам: иначе эмодзи и
-  // составные знаки распались бы на половинки.
-  [...text].map((char) => char + COMBINING_LOW_LINE).join('');
-
-const pvzHighlight = (text: string): string =>
-  `**${underlineEveryChar(text)}**`;
-
-/**
- * Реквизиты для перевода — одинаково в предоплате и в остатке, во всех
- * категориях. Один паттерн, чтобы телефон и получатель не разъезжались
- * между сообщениями.
- *
- * Телефон — отдельной строкой БЕЗ отступа. Отступ был не украшением:
- * пробелы в начале мешали Telegram распознать номер, и во вставленном
- * сообщении он оставался обычным текстом.
- *
- * В Telegram номер дополнительно берётся в обратные кавычки — тем же
- * правилом, что и номер заказа. Моноширинный блок копируется одним
- * нажатием, а реквизиты перевода как раз копируют, а не читают. Раньше
- * здесь стояла оговорка, что разметка работает только у ботов; номер
- * заказа давно печатается так же и работает, так что оговорка неверна.
- * В каналах без разметки (Авито, Ozon, MAX) кавычки показались бы как
- * есть, поэтому там номер остаётся обычным текстом.
- */
-function paymentRequisiteLines(order: { communicationPlatform?: string }): string[] {
-  return [
-    `📲 Реквизиты для перевода (${businessConfig.payment.label}):`,
-    formatPaymentPhoneForClient(order),
-    businessConfig.payment.recipient,
-  ];
-}
-
-function pvzReminder(deliveryMethod: string): string[] {
-  if (deliveryMethod === "YANDEX_PVZ") {
-    return [
-      "",
-      `📦 ${pvzHighlight("После оплаты пришлите чек и сообщите удобный Яндекс ПВЗ + номер телефона — оформим заявку на доставку.")}`,
-    ];
-  }
-  if (deliveryMethod === "OZON_PVZ") {
-    return [
-      "",
-      `📦 ${pvzHighlight("После оплаты пришлите чек и сообщите удобный Ozon ПВЗ + номер телефона — оформим заявку на доставку.")}`,
-    ];
-  }
-  return [];
-}
-
-type PhotoOrderItem = OrderPhoto["items"][number];
-
-function isFreeFormPhotoItem(order: OrderPhoto, item: PhotoOrderItem): boolean {
-  if (order.isFreePrice || item.isFreePrice) return true;
-  return (item.pricePosition ?? 0) !== (item.price ?? 0) * (item.quantity ?? 0);
-}
-
-function formatPhotoItemLine(order: OrderPhoto, item: PhotoOrderItem): string {
-  if (isFreeFormPhotoItem(order, item)) {
-    return `• ${item.formatPaper} × ${item.quantity} шт — ${item.pricePosition.toLocaleString("ru-RU")} ₽`;
-  }
-  const type = item.typePaper === "GLOSS" ? "Глянец" : "Матт";
-  return `• ${item.formatPaper} (${type}) × ${item.quantity} шт — ${item.pricePosition.toLocaleString("ru-RU")} ₽`;
-}
-
-/** Месяцы в родительном падеже — для «11–12 сентября». */
-const RU_MONTHS_GENITIVE = [
-  "января", "февраля", "марта", "апреля", "мая", "июня",
-  "июля", "августа", "сентября", "октября", "ноября", "декабря",
-];
-
-function addDays(base: Date, days: number): Date {
-  const d = new Date(base);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-
-/**
- * Строка со сроком изготовления для сообщения-подтверждения.
- *
- * Логика по просьбе владельца: день оформления НЕ считается — отсчёт со
- * следующего дня. Обычный заказ готов через businessConfig.production.days
- * дней, клиенту называем диапазон в один день запаса (+days…+days+1), например
- * «11–12 сентября». Срочный заказ сюда не попадает: его срок держит на
- * контроле менеджер, а не автоформула, — чтобы не обещать клиенту жёсткую дату
- * там, где всё решается вручную.
- */
-function productionTermLine(order: OrderPhoto): string {
-  if (order.isUrgent) {
-    return "⏱ Срочный заказ — точную дату готовности подтвердит менеджер.";
-  }
-  const base = order.createdAt ? new Date(order.createdAt) : new Date();
-  if (Number.isNaN(base.getTime())) return "";
-  const days = businessConfig.production.days;
-  const start = addDays(base, days);
-  const end = addDays(base, days + 1);
-  const term =
-    start.getMonth() === end.getMonth()
-      ? `${start.getDate()}–${end.getDate()} ${RU_MONTHS_GENITIVE[start.getMonth()]}`
-      : `${start.getDate()} ${RU_MONTHS_GENITIVE[start.getMonth()]} – ${end.getDate()} ${RU_MONTHS_GENITIVE[end.getMonth()]}`;
-  return `⏳ Срок изготовления: ${term} (день оформления не в счёт, отсчёт со следующего дня).`;
-}
 
 /**
  * Технические строки заявки с сайта — их фиксируем в примечании (данные не
@@ -203,247 +85,12 @@ function LeadNoteBlock({ note, isAdmin }: { note: string; isAdmin: boolean }) {
   );
 }
 
-function generateConfirmationText(order: OrderPhoto): string {
-  const items = order.items ?? [];
-  const tshirtItems = order.tshirtItems ?? [];
-  const canvasItems = order.canvasItems ?? [];
-  const delivery = order.deliveryCost ?? 0;
-  const total = order.totalOrder ?? 0;
-  const { prepaid: prepay, balanceDue: rest, recorded } = computePrepayment(
-    total,
-    order.prepaidAmount,
-  );
-
-  const lines: string[] = [];
-  items.forEach((i) => {
-    lines.push(formatPhotoItemLine(order, i));
-  });
-  tshirtItems.forEach((i) => {
-    lines.push(
-      `• Футболка ${i.color}, р-р ${i.size} × ${i.quantity} шт — ${i.pricePosition.toLocaleString("ru-RU")} ₽`,
-    );
-  });
-  canvasItems.forEach((i) => {
-    lines.push(
-      `• Холст ${i.formatCanvas} × ${i.quantity} шт — ${i.pricePosition.toLocaleString("ru-RU")} ₽`,
-    );
-  });
-  // Разработка дизайна — такая же позиция состава: она входит в итог заказа,
-  // и без этой строки «сумма по позициям» не сходилась бы с «итого к оплате».
-  const designCost = order.designDevelopmentCost ?? 0;
-  if (designCost > 0) {
-    lines.push(
-      `• Разработка дизайна — ${designCost.toLocaleString("ru-RU")} ₽`,
-    );
-  }
-  // Срочность — тоже позиция состава: клиент за неё платит и должен видеть,
-  // за что именно. В зарплату сотрудников она при этом не попадает.
-  const urgencyFee = order.urgencyFee ?? 0;
-  if (urgencyFee > 0) {
-    lines.push(
-      `• Срочное изготовление — ${urgencyFee.toLocaleString("ru-RU")} ₽`,
-    );
-  }
-
-  const itemsTotal =
-    [...items, ...tshirtItems, ...canvasItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
-    designCost +
-    urgencyFee;
-  const separator = "─────────────────";
-
-  const isPickup = order.deliveryMethod === "PICKUP";
-  const pickupAddr = resolvePickupAddress(order);
-
-  /*
-   * Обе строки оплаты построены одинаково: «когда — что — сколько».
-   * Прежние читались как обрывки («Остаток — 1 500 ₽ при самовывозе»):
-   * глагола нет, и непонятно, платить сейчас или потом. Для клиента это
-   * самое важное место сообщения, и гадать он тут не должен.
-   */
-  // Как называем первый платёж: если менеджер записал реальную внесённую
-  // сумму — так и пишем; пока не записана — прежний ориентир «50%».
-  const prepayLabel = recorded
-    ? `👉 Внесена предоплата: ${prepay.toLocaleString("ru-RU")} ₽`
-    : `👉 Сейчас — предоплата 50%: ${prepay.toLocaleString("ru-RU")} ₽`;
-  // Остаток. Ноль — заказ закрыт; минус — клиент переплатил (например, убрали
-  // позицию после предоплаты), и это возврат, а не «доплата с минусом».
-  const restLabel =
-    rest < 0
-      ? `↩️ Переплата к возврату: ${Math.abs(rest).toLocaleString("ru-RU")} ₽`
-      : rest === 0
-        ? "✅ Заказ оплачен полностью"
-        : isPickup
-          ? `👉 При получении — остаток: ${rest.toLocaleString("ru-RU")} ₽`
-          : `👉 Когда пришлём фото доставки — остаток: ${rest.toLocaleString("ru-RU")} ₽`;
-
-  return [
-    "✅ Отлично, ваш заказ подтверждён!",
-    `📌 Номер заказа: ${formatOrderNumberForClient(order)}`,
-    "",
-    "📋 Состав заказа:",
-    ...lines,
-    "",
-    separator,
-    `💰 Сумма по позициям: ${itemsTotal.toLocaleString("ru-RU")} ₽`,
-    // Скидку называем клиенту отдельной строкой: иначе он видит «итого»
-    // меньше суммы позиций и не понимает, откуда разница.
-    ...((order.discountAmount ?? 0) > 0
-      ? [`🎁 Скидка: −${(order.discountAmount ?? 0).toLocaleString("ru-RU")} ₽`]
-      : []),
-    ...(delivery > 0
-      ? [
-          `🚚 Доставка (${DELIVERY_LABELS[order.deliveryMethod as keyof typeof DELIVERY_LABELS] ?? order.deliveryMethod}): ${delivery.toLocaleString("ru-RU")} ₽`,
-        ]
-      : []),
-    `📦 Итого к оплате: ${total.toLocaleString("ru-RU")} ₽`,
-    separator,
-    "💳 Оплата в два этапа:",
-    prepayLabel,
-    restLabel,
-    ...(isPickup && pickupAddr ? ["", `📍 Самовывоз: ${pickupAddr}`] : []),
-    // Холсты забирают у подрядчика: свой график и своё условие выдачи —
-    // сначала показываем клиенту фото готовой работы, потом отдаём.
-    ...(isPickup && order.productCategory === "CANVAS"
-      ? [
-          `🕘 Часы работы: ${businessConfig.canvasPickup.hours}`,
-          `⏱ Готовность в среднем ${businessConfig.canvasPickup.leadTime}`,
-          "📸 Забрать можно после того, как пришлём фото готовой работы",
-        ]
-      : []),
-    ...(isPickup && !pickupAddr
-      ? ["", "📍 Самовывоз: адрес пришлём, когда заказ возьмут в работу"]
-      : []),
-    // Срок изготовления — только фото и холсты. У футболок его не показываем:
-    // печатает партнёр, и жёсткую дату здесь не обещаем.
-    ...(order.productCategory === "TSHIRT"
-      ? []
-      : ["", productionTermLine(order)]),
-    "",
-    ...paymentRequisiteLines(order),
-    "",
-    "👉 Как только внесёте предоплату, пришлите, пожалуйста, чек.",
-    "",
-    "Спасибо за доверие! Приступаем к работе 🙌",
-  ].join("\n");
-}
-
-function generateReadyText(order: OrderPhoto): string {
-  const items = order.items ?? [];
-  const tshirtItems = order.tshirtItems ?? [];
-  const canvasItems = order.canvasItems ?? [];
-  const delivery = order.deliveryCost ?? 0;
-  const total = order.totalOrder ?? 0;
-  const { prepaid: prepay, recorded } = computePrepayment(
-    total,
-    order.prepaidAmount,
-  );
-
-    const rest = actualBalanceDue(total, order.prepaidAmount, order.status);
-  const lines: string[] = [];
-  items.forEach((i) => {
-    lines.push(formatPhotoItemLine(order, i));
-  });
-  tshirtItems.forEach((i) => {
-    lines.push(
-      `• Футболка ${i.color}, р-р ${i.size} × ${i.quantity} шт — ${i.pricePosition.toLocaleString("ru-RU")} ₽`,
-    );
-  });
-  canvasItems.forEach((i) => {
-    lines.push(
-      `• Холст ${i.formatCanvas} × ${i.quantity} шт — ${i.pricePosition.toLocaleString("ru-RU")} ₽`,
-    );
-  });
-  // Разработка дизайна — такая же позиция состава: она входит в итог заказа,
-  // и без этой строки «сумма по позициям» не сходилась бы с «итого к оплате».
-  const designCost = order.designDevelopmentCost ?? 0;
-  if (designCost > 0) {
-    lines.push(
-      `• Разработка дизайна — ${designCost.toLocaleString("ru-RU")} ₽`,
-    );
-  }
-  // Срочность — тоже позиция состава: клиент за неё платит и должен видеть,
-  // за что именно. В зарплату сотрудников она при этом не попадает.
-  const urgencyFee = order.urgencyFee ?? 0;
-  if (urgencyFee > 0) {
-    lines.push(
-      `• Срочное изготовление — ${urgencyFee.toLocaleString("ru-RU")} ₽`,
-    );
-  }
-
-  const itemsTotal =
-    [...items, ...tshirtItems, ...canvasItems].reduce((s, i) => s + (i.pricePosition ?? 0), 0) +
-    designCost +
-    urgencyFee;
-  const separator = "─────────────────";
-  const isPickup = order.deliveryMethod === "PICKUP";
-  const pickupAddr = resolvePickupAddress(order);
-
-  return [
-    "🎉 Ваш заказ готов!",
-    `📌 Номер заказа: ${formatOrderNumberForClient(order)}`,
-    "",
-    "📋 Состав заказа:",
-    ...lines,
-    "",
-    separator,
-    `💰 Сумма по позициям: ${itemsTotal.toLocaleString("ru-RU")} ₽`,
-    // Скидку называем клиенту отдельной строкой: иначе он видит «итого»
-    // меньше суммы позиций и не понимает, откуда разница.
-    ...((order.discountAmount ?? 0) > 0
-      ? [`🎁 Скидка: −${(order.discountAmount ?? 0).toLocaleString("ru-RU")} ₽`]
-      : []),
-    ...(delivery > 0
-      ? [
-          `🚚 Доставка (${DELIVERY_LABELS[order.deliveryMethod as keyof typeof DELIVERY_LABELS] ?? order.deliveryMethod}): ${delivery.toLocaleString("ru-RU")} ₽`,
-        ]
-      : []),
-    `📦 Итого к оплате: ${total.toLocaleString("ru-RU")} ₽`,
-    "",
-    separator,
-    // Заголовок «Остаток к оплате» стоял над двумя строками, одну из
-    // которых платить не нужно — она уже оплачена. Теперь заголовок про
-    // оплату целиком, а строки сами говорят, что внесено и что осталось.
-    "💳 Оплата:",
-    recorded
-      ? `👉 Предоплата — ${prepay.toLocaleString("ru-RU")} ₽, уже внесена`
-      : "👉 Предоплата не отмечена в CRM — проверьте поступление перед выдачей.",
-    !recorded
-      ? `👉 К оплате — ${total.toLocaleString("ru-RU")} ₽ (до подтверждения предоплаты)`
-      : rest < 0
-      ? `↩️ Переплата к возврату — ${Math.abs(rest).toLocaleString("ru-RU")} ₽`
-      : rest === 0
-        ? "✅ Заказ оплачен полностью"
-        : `👉 Осталось доплатить — ${rest.toLocaleString("ru-RU")} ₽`,
-    ...(isPickup && pickupAddr ? ["", `📍 Самовывоз: ${pickupAddr}`] : []),
-    // Заказ уже готов, поэтому здесь только часы работы. Срок изготовления
-    // и «заберёте после фото готовой работы» — условия из подтверждения
-    // заказа: в сообщении о готовности они противоречат самому сообщению.
-    ...(isPickup && order.productCategory === "CANVAS"
-      ? [`🕘 Часы работы: ${businessConfig.canvasPickup.hours}`]
-      : []),
-    ...(isPickup && !pickupAddr
-      ? ["", "📍 Самовывоз: адрес пришлём, когда заказ возьмут в работу"]
-      : []),
-    "",
-    ...paymentRequisiteLines(order),
-    "",
-    // При самовывозе платить переводом необязательно — в подтверждении
-    // заказа клиенту так и обещали «остаток при получении». Требовать
-    // здесь перевод значит противоречить самим себе.
-    isPickup
-      ? "👉 Остаток можно внести при получении или переводом заранее — тогда пришлите, пожалуйста, чек."
-      : "👉 Пожалуйста, доплатите остаток и пришлите чек — реквизиты выше.",
-    ...pvzReminder(order.deliveryMethod),
-    "",
-    "Спасибо! Ждём вас 🙌",
-  ].join("\n");
-}
 import { getDeadlineInfo } from "../../utils/deadline";
 import { getStalledDays } from "../../utils/stalled";
 import { ordersApi } from "../../api/orders";
 import { partnerSettingsApi } from "../../api/partnerSettings";
 import { computeSettlement } from "../../utils/settlement";
-import { computePrepayment, actualBalanceDue } from "../../utils/prepayment";
+import { computePrepayment } from "../../utils/prepayment";
 import { computePaperUsage } from "../../utils/photo-material";
 import { StatusStepper } from "./StatusStepper";
 import { PaidAtBlock } from "./PaidAtBlock";
@@ -865,40 +512,37 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           {isAdmin && (
             <>
               {/* Копирование текста клиенту: подтверждение при NEW, сообщение
-                  готовности с остатком к оплате при READY. Одинаково для фото
-                  и футболок — «готов» у обоих теперь READY. */}
+                  готовности при READY. Оба собирает buildClientMessage — одна
+                  цепочка на оба сообщения, чтобы состав, суммы и реквизиты
+                  не разъезжались между ними. */}
               {(() => {
                 const isNew = order.status === "NEW";
                 const isReady = order.status === "READY";
                 if (!isNew && !isReady) return null;
-                const text = isNew
-                  ? generateConfirmationText(order)
-                  : generateReadyText(order);
+                const text = buildClientMessage(
+                  order,
+                  isNew ? "CONFIRMATION" : "READY",
+                );
                 const label = isNew
                   ? "Скопировать подтверждение"
                   : "Скопировать сообщение готовности";
                 const copyText = () => {
-                  try {
-                    if (navigator.clipboard && window.isSecureContext) {
-                      navigator.clipboard
-                        .writeText(text)
-                        .then(() => toast.success("Текст скопирован!"))
-                        .catch(() => toast.error("Не удалось скопировать"));
-                    } else {
-                      const ta = document.createElement("textarea");
-                      ta.value = text;
-                      ta.style.position = "fixed";
-                      ta.style.opacity = "0";
-                      document.body.appendChild(ta);
-                      ta.focus();
-                      ta.select();
-                      document.execCommand("copy");
-                      document.body.removeChild(ta);
-                      toast.success("Текст скопирован!");
+                  void copyToClipboard(text).then((ok) => {
+                    if (!ok) {
+                      toast.error("Не удалось скопировать");
+                      return;
                     }
-                  } catch {
-                    toast.error("Не удалось скопировать");
-                  }
+                    toast.success("Текст скопирован!");
+                    // Предупреждение о непроставленной предоплате — менеджеру
+                    // и только здесь: в сообщении клиенту стоит ориентир 50%,
+                    // обещанный при оформлении, и служебным репликам там
+                    // не место.
+                    if (isReady && prepaymentNeedsAttention(order)) {
+                      toast("Предоплата не записана — проверьте поступление", {
+                        icon: "⚠️",
+                      });
+                    }
+                  });
                 };
                 return (
                   <button
@@ -1456,10 +1100,24 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                         </span>
                       </div>
                       {!recorded && (
-                        <p className="text-xs text-gray-400 pt-1">
-                          Нажмите «Изменить» → «Клиент внёс предоплату», чтобы записать
-                          реальную сумму. Тогда остаток перестанет пересчитываться на 50%.
-                        </p>
+                        /* Заказ готов, а фактическая предоплата не записана —
+                           это надо проверить до выдачи. Раньше предупреждение
+                           попадало в текст, который копируют клиенту; теперь
+                           оно здесь, а клиент получает ориентир 50%, который
+                           ему и обещали при оформлении. */
+                        order.status === "READY" ? (
+                          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 mt-1">
+                            Фактическая предоплата не записана. В сообщении клиенту стоит
+                            ориентир 50% — {prepaid.toLocaleString("ru-RU")} ₽. Проверьте
+                            поступление до выдачи и запишите реальную сумму:
+                            «Изменить» → «Клиент внёс предоплату».
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-400 pt-1">
+                            Нажмите «Изменить» → «Клиент внёс предоплату», чтобы записать
+                            реальную сумму. Тогда остаток перестанет пересчитываться на 50%.
+                          </p>
+                        )
                       )}
                     </div>
                   </div>

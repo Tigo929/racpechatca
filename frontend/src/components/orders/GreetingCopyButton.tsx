@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { ordersApi } from '../../api/orders';
+import { copyToClipboard } from '../../utils/clipboard';
 
 /**
  * Кнопка «Скопировать сообщение клиенту».
@@ -21,7 +22,12 @@ export function GreetingCopyButton({ orderId }: { orderId: string }) {
     setBusy(true);
     try {
       const text = await ordersApi.getGreetingText(orderId);
-      await navigator.clipboard.writeText(text);
+      // Копируем общим способом: у него есть запасной путь для iPhone,
+      // где Clipboard API отказывает чаще всего.
+      if (!(await copyToClipboard(text))) {
+        toast.error('Не удалось скопировать — попробуйте ещё раз');
+        return;
+      }
       toast.success('Сообщение скопировано');
     } catch {
       // Буфер недоступен или запрос не прошёл. Молчать нельзя: менеджер
