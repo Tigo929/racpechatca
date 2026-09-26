@@ -222,12 +222,22 @@ export class YandexMetrikaClient {
       new Blob([csv], { type: 'text/csv' }),
       'conversions.csv',
     );
-    const body = await this.post<MetrikaUploadingResponse>(
+    const body = await this.post<{ uploading: { id?: number; status?: string; line_quantity?: number; source_quantity?: number } }>(
       'offline_conversions',
       `/management/v1/counter/${id}/offline_conversions/upload?client_id_type=YCLID`,
       form,
     );
-    return body.uploading;
+    // Offline conversions use a different response contract from CDP orders.
+    // Preserve the remote status: UPLOADED means accepted, not attributed.
+    const u = body.uploading;
+    const validId = Number.isSafeInteger(u?.id) && u.id! > 0;
+    const validRows = Number.isSafeInteger(u?.line_quantity) && u.line_quantity! > 0 &&
+      u.line_quantity === u.source_quantity;
+    return {
+      uploading_id: validId ? String(u.id) : '',
+      api_validation_status: validId && validRows ? (u.status ?? 'UNKNOWN') : 'INVALID_OFFLINE_RESPONSE',
+      elements_count: u?.line_quantity,
+    };
   }
 
   /** Последние загрузки CDP (заказы/контакты) — для проверки, что отправка дошла. */

@@ -685,8 +685,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderDetail.tsx": {
-    "mtime": 1790349458.9386947,
-    "ast_hash": "703b2634ee4e53f3b0ae29c0c4b9b3f5",
+    "mtime": 1790429237.075739,
+    "ast_hash": "4077d26de9f8b8797e095add6441f237",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderEditForm.tsx": {
@@ -720,8 +720,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/ui/Modal.tsx": {
-    "mtime": 1789817777.4176564,
-    "ast_hash": "9fbe709299c5942127facbe4e2f98bde",
+    "mtime": 1790429237.0795033,
+    "ast_hash": "cea3fe746d742140777c06546f71097c",
     "semantic_hash": ""
   },
   "frontend/src/components/ui/StatusBadge.tsx": {
@@ -730,8 +730,8 @@
     "semantic_hash": ""
   },
   "frontend/src/config/business.ts": {
-    "mtime": 1789817777.4206824,
-    "ast_hash": "42f997740f71d1f84d92ee7dbbb551e0",
+    "mtime": 1790429237.0795033,
+    "ast_hash": "bec28236ecec0a330c91365070bb17d7",
     "semantic_hash": ""
   },
   "frontend/src/constants.ts": {
@@ -775,8 +775,8 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/OrdersPage.tsx": {
-    "mtime": 1790349458.9402926,
-    "ast_hash": "87387541c1670469390f9d8ff2e8c13d",
+    "mtime": 1790429237.0820487,
+    "ast_hash": "4c9134dc2bd224aa904ed2f044686294",
     "semantic_hash": ""
   },
   "frontend/src/pages/ReportsPage.tsx": {
@@ -2275,8 +2275,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/GreetingCopyButton.tsx": {
-    "mtime": 1789817777.4040475,
-    "ast_hash": "f0fb75a5b9f1be784c8cb74abd136548",
+    "mtime": 1790429237.07294,
+    "ast_hash": "eff031fb5a4e820a33ad9455a9910520",
     "semantic_hash": ""
   },
   "frontend/src/config/features.ts": {
@@ -2480,13 +2480,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/metrika/metrika-api.client.spec.ts": {
-    "mtime": 1789817776.8263981,
-    "ast_hash": "94ea4d1726746ca0c7f2cef037fea8bc",
+    "mtime": 1790429290.1316514,
+    "ast_hash": "ffa4ed877dad14f37aa2525be789b66d",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/metrika-api.client.ts": {
-    "mtime": 1790367705.030338,
-    "ast_hash": "a1dff8ffa4be0b65797da22ea2f73f94",
+    "mtime": 1790429269.245296,
+    "ast_hash": "38820b13a8e320203557205cf23264a0",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/metrika.config.spec.ts": {
@@ -2520,13 +2520,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/metrika/orders/metrika-order-outbox-processor.service.ts": {
-    "mtime": 1790349458.9117556,
-    "ast_hash": "e2cd34154d93524481ecd5aede1b0db2",
+    "mtime": 1790429269.2473786,
+    "ast_hash": "eeb7dcc8a10c0852b48aefb6a2781e83",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/orders/metrika-order-outbox-processor.spec.ts": {
-    "mtime": 1790349458.9134445,
-    "ast_hash": "33ccf629d4a5878e6eb12b56621e1f68",
+    "mtime": 1790429345.9857476,
+    "ast_hash": "e7f68a7d2c8db36002a75c1e00f59936",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/orders/metrika-order-outbox.service.spec.ts": {
@@ -2775,8 +2775,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderContact.tsx": {
-    "mtime": 1789817777.4068294,
-    "ast_hash": "5227fee9656c6721ff86f9296581a376",
+    "mtime": 1790429237.0743873,
+    "ast_hash": "0e730c8d39d048a635f22de2f7c23c38",
     "semantic_hash": ""
   },
   "docs/analytics/08_ANALYTICS_METRICS_FIX_01.md": {
@@ -4437,6 +4437,36 @@
   "docs/analytics-integrity.md": {
     "mtime": 1790367875.22309,
     "ast_hash": "dd26a968a90ba4d88b8ffd07caf59995",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/orders/OrderNavigation.test.tsx": {
+    "mtime": 1790429237.075739,
+    "ast_hash": "a0a11e32285dd95e3344a5cd5c46b65a",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/orders/OrderNavigator.tsx": {
+    "mtime": 1790429237.0769398,
+    "ast_hash": "f9fa01def8a2e237539f7c3f3352f75f",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/orders/useOrderNavigation.ts": {
+    "mtime": 1790429237.0780673,
+    "ast_hash": "eb1731e4da1000e242b1a78a6c89ed70",
+    "semantic_hash": ""
+  },
+  "frontend/src/utils/client-message.test.ts": {
+    "mtime": 1790429237.0830474,
+    "ast_hash": "b53171b77ca0ee16169eb73644b05dc3",
+    "semantic_hash": ""
+  },
+  "frontend/src/utils/client-message.ts": {
+    "mtime": 1790429237.0840428,
+    "ast_hash": "a20a5d0197eeb78e113b159e6edc237d",
+    "semantic_hash": ""
+  },
+  "frontend/src/utils/clipboard.ts": {
+    "mtime": 1790429237.0850475,
+    "ast_hash": "54f80f40ce1f87215026285073a51949",
     "semantic_hash": ""
   }
 }

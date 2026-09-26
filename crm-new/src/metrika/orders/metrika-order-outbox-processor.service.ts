@@ -345,7 +345,10 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
       const durationMs = Date.now() - startedAt;
       const validation = uploading.api_validation_status ?? 'UNKNOWN';
 
-      if (validation !== 'PASSED') {
+      const accepted = snapshot.kind === 'yclid'
+        ? ['UPLOADED', 'EXPORTED', 'MATCHED', 'PROCESSED'].includes(validation)
+        : validation === 'PASSED';
+      if (!accepted) {
         await this.prisma.metrikaOrderOutbox.update({
           where: { id: row.id },
           data: {
