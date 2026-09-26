@@ -293,6 +293,9 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
       if (!order) {
         return this.finishFailed(row, attempt, 'Заказ не найден', true);
       }
+      if (row.sourceStatusHistoryId && !source) {
+        return this.finishFailed(row, attempt, 'Исходный переход статуса не найден', true);
+      }
 
       // Право на отправку решается историей ДО этого перехода включительно:
       // то, что случилось с заказом позже, на смысл этого события не влияет.
@@ -301,7 +304,7 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
         : order.statusHistory;
 
       const snapshot = buildOrderSnapshot(
-        { ...order, statusHistory: historyUpTo },
+        { ...order, statusHistory: historyUpTo, eventOccurredAt: source?.createdAt },
         target,
         costSettingsFrom(settingsRow),
         timeZone,

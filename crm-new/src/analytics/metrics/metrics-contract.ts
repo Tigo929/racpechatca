@@ -232,6 +232,9 @@ export interface DataQualityMetrics {
   /** Принятые после включения CRM→Метрика и с ClientID — честная база сопоставления. */
   eligibleAccepted: number;
   eligibleDeliveredToMetrika: number;
+  /** Доля принятых API событий; не подтверждает привязку к визиту. */
+  metrikaDeliveryCoverage?: number | null;
+  /** Без поштучной сверки привязки неизвестно; delivered не является matched. */
   metrikaMatchCoverage: number | null;
   matchedAcceptedReaches: number;
   paidWithoutDate: number;
