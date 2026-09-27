@@ -2825,28 +2825,28 @@
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/__tests__/analytics-view.test.ts": {
-    "mtime": 1789817777.434632,
-    "ast_hash": "ac328de6406e73e7790de3732a8ef88f",
+    "mtime": 1790526525.3103416,
+    "ast_hash": "5c1deea6e699ff5a37d8374acc33a4ce",
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/__tests__/components.test.tsx": {
-    "mtime": 1790367956.8334396,
-    "ast_hash": "9e825ad30da63db1575b3006a62c3114",
+    "mtime": 1790526393.9393444,
+    "ast_hash": "5b3ebe09b48f36c3c62471c575aa5ed7",
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/__tests__/fixtures.ts": {
-    "mtime": 1789817777.4366293,
-    "ast_hash": "24e40cb3ba126bdf056153e9f312e04f",
+    "mtime": 1790526177.73271,
+    "ast_hash": "d10b918068b8d00182cce0e119d714aa",
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/analytics-view.ts": {
-    "mtime": 1790499896.9186518,
-    "ast_hash": "3a11ea911399e1aac113ddd804d9ca06",
+    "mtime": 1790526660.457015,
+    "ast_hash": "1dcbeac9451024f3dcfd9b91fafa0b82",
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/sections.tsx": {
-    "mtime": 1790457148.6256917,
-    "ast_hash": "c0ec7125e2d8ad84dd80483563adf280",
+    "mtime": 1790526177.7305207,
+    "ast_hash": "9410db3b0498feb9a0d7ab7d18115614",
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/ui.tsx": {
@@ -2865,8 +2865,8 @@
     "semantic_hash": ""
   },
   "frontend/src/types/analytics.ts": {
-    "mtime": 1790453891.50445,
-    "ast_hash": "bdb9ad86d2581e3f6f69e0377405bdc4",
+    "mtime": 1790526660.454987,
+    "ast_hash": "a156f09487d4edf51f28e0c7e54a2244",
     "semantic_hash": ""
   },
   "frontend/vitest.config.ts": {
@@ -4075,18 +4075,18 @@
     "semantic_hash": ""
   },
   "crm-new/src/analytics/report/report-build.ts": {
-    "mtime": 1790367958.5049708,
-    "ast_hash": "22e61bdca1c4560409d083cda7ecd4ad",
+    "mtime": 1790526697.84561,
+    "ast_hash": "de928ba646bd53957b0864df76d1fe42",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/report/report-collect.ts": {
-    "mtime": 1790246665.166607,
-    "ast_hash": "8393f4a7ab0dcfb0ff5014a1f95d149e",
+    "mtime": 1790526636.502731,
+    "ast_hash": "fc781fc14e6f1e24b659b7c357eba8c3",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/report/report-contract.ts": {
-    "mtime": 1790246665.167609,
-    "ast_hash": "5b7fe3eaf3894eef6423f2d6d3930124",
+    "mtime": 1790526545.3318846,
+    "ast_hash": "28a0d0e59dc8b78b093f07c43991cb28",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/report/report-generate.ts": {
@@ -4100,13 +4100,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/analytics/report/report-markdown.ts": {
-    "mtime": 1790453785.8867106,
-    "ast_hash": "d17d2623eb60adf8d8951f8cab15e3d1",
+    "mtime": 1790526545.4166832,
+    "ast_hash": "2b76aa3e13c10e2988cfded9f762aa3b",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/report/report.spec.ts": {
-    "mtime": 1790367704.9466105,
-    "ast_hash": "4fc0012a67208553fcd2e571a8e5c0cb",
+    "mtime": 1790526545.526515,
+    "ast_hash": "16d4ad0dd0f0316674926d72c540b0d5",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/retention-cli.ts": {
@@ -4482,6 +4482,11 @@
   "crm-new/src/analytics/metrics/metrika-freshness.ts": {
     "mtime": 1790456972.4122071,
     "ast_hash": "72eea8360bf4a6f1a38e6a2df8fcb505",
+    "semantic_hash": ""
+  },
+  "docs/analytics/FACTUAL_AUDIT_20260927.md": {
+    "mtime": 1790500214.828667,
+    "ast_hash": "fcf46e22fe8a6d6dfcb341f3a0855c18",
     "semantic_hash": ""
   }
 }
