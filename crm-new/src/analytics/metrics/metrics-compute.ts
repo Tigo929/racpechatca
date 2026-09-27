@@ -102,6 +102,7 @@ export interface DailyGoalInput {
   date: string;
   goalId: number;
   reaches: number;
+  goalVisits?: number;
 }
 
 export interface DimensionDailyInput {
@@ -165,9 +166,9 @@ export interface OverviewInputs {
   goalIds: CanonicalGoalIds;
   settings: CostSettings;
   lastMetrikaSyncAt: Date | null;
-  current: { metrika: MetrikaPeriodInput; pnl: PnlReport | null };
+  current: { metrika: MetrikaPeriodInput; pnl: PnlReport | null; adSpend?: AdSpendRow[] };
   /** Для сравнения; без него comparison = null. */
-  previous?: { metrika: MetrikaPeriodInput; pnl: PnlReport | null };
+  previous?: { metrika: MetrikaPeriodInput; pnl: PnlReport | null; adSpend?: AdSpendRow[] };
   /** Все заказы, созданные до конца периода сравнения (или текущего). */
   orders: CrmOrderInput[];
 }
@@ -269,6 +270,11 @@ export function computeSiteFunnel(
   const siteLeads = goalSum(m.goals, goalIds.lead);
   const matchedAccepted = goalSum(m.goals, goalIds.created);
   const matchedPaid = goalSum(m.goals, goalIds.paid);
+  const goalConversion = (id: number) => {
+    const rows = m.goals.filter((g) => g.goalId === id);
+    if (!rows.length || rows.some((g) => g.goalVisits === undefined)) return null;
+    return percent(sum(rows, (g) => g.goalVisits!), visits);
+  };
   const notes: QualityNote[] = [];
   if (siteLeadsLegacy(period)) notes.push('INCOMPLETE_LEGACY_SITE_LEADS');
   if (crmGoalsBeforeRollout(period)) notes.push('CRM_GOALS_BEFORE_ROLLOUT');
@@ -277,11 +283,12 @@ export function computeSiteFunnel(
     siteLeads,
     matchedAccepted,
     matchedPaid,
-    siteLeadConversion: percent(siteLeads, visits),
-    siteAcceptedConversion: percent(matchedAccepted, visits),
-    sitePaidConversion: percent(matchedPaid, visits),
-    siteLeadToAccepted: percent(matchedAccepted, siteLeads),
-    siteAcceptedToPaid: percent(matchedPaid, matchedAccepted),
+    siteLeadConversion: goalConversion(goalIds.lead),
+    siteAcceptedConversion: goalConversion(goalIds.created),
+    sitePaidConversion: goalConversion(goalIds.paid),
+    // Separate goal totals cannot prove a sequential cohort transition.
+    siteLeadToAccepted: null,
+    siteAcceptedToPaid: null,
     quality: quality(notes),
   };
 }
@@ -484,7 +491,7 @@ export function computeFinancials(
   const contract = contractValue(sets.accepted);
   const paidValue = contractValue(sets.paid);
   const notes: QualityNote[] = [];
-  if (accepted.reliable < sets.accepted.length)
+  if (accepted.reliable < sets.accepted.length || paid.reliable < sets.paid.length || cogsOf(sets.realized, settings).reliable < sets.realized.length)
     notes.push('COGS_UNRELIABLE_ORDERS');
   if (!pnl) notes.push('PNL_UNAVAILABLE');
   return {
@@ -663,17 +670,15 @@ export function computePeriod(
     period,
     freshness,
   );
+  const financials = computeFinancials(sets, pnl, settings,
+    spendFor(adSpend, sets, siteFunnel, dataQuality, settings));
+  dataQuality.notes = [...new Set([...dataQuality.notes, ...financials.quality.notes])];
   return {
     traffic: computeTraffic(metrika, period, freshness),
     siteFunnel,
     crmFunnel: computeCrmFunnel(sets),
     orders: computeOrders(sets),
-    financials: computeFinancials(
-      sets,
-      pnl,
-      settings,
-      spendFor(adSpend, sets, siteFunnel, dataQuality, settings),
-    ),
+    financials,
     dataQuality,
   };
 }
@@ -759,6 +764,7 @@ export function computeOverview(inputs: OverviewInputs): Overview {
     inputs.goalIds,
     inputs.settings,
     freshness,
+    inputs.current.adSpend,
   );
   const prev = inputs.previous
     ? computePeriod(
@@ -769,6 +775,7 @@ export function computeOverview(inputs: OverviewInputs): Overview {
         inputs.goalIds,
         inputs.settings,
         freshness,
+        inputs.previous.adSpend,
       )
     : null;
   return {

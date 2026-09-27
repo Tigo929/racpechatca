@@ -67,7 +67,7 @@ function metrika(
 ): MetrikaPeriodInput {
   return {
     traffic,
-    goals,
+    goals: goals.map(g => ({ goalVisits: g.reaches, ...g })),
     pagesPageviews: traffic.reduce((s, r) => s + r.pageviews, 0) + 10,
     snapshot,
   };
@@ -88,6 +88,15 @@ function inputs(over: Partial<OverviewInputs> = {}): OverviewInputs {
 }
 
 describe('воронка сайта — конверсии из итогов', () => {
+  it('three repeated submissions in one of ten visits mean 10% conversion, not 30%', () => {
+    const o = computeOverview(inputs({ current: {
+      metrika: metrika([{ date: '2026-09-01', visits: 10, users: 10, pageviews: 30 }],
+        [{ date: '2026-09-01', goalId: GOALS.lead, reaches: 3, goalVisits: 1 }]), pnl: null,
+    } }));
+    expect(o.siteFunnel.siteLeads).toBe(3);
+    expect(o.siteFunnel.siteLeadConversion).toBe(10);
+    expect(o.siteFunnel.siteLeadToAccepted).toBeNull();
+  });
   it('день 1/1 и день 1/9 → 20 %, не среднее дневных', () => {
     const o = computeOverview(
       inputs({
@@ -109,7 +118,7 @@ describe('воронка сайта — конверсии из итогов', (
     expect(o.siteFunnel.visits).toBe(10);
     expect(o.siteFunnel.siteLeads).toBe(2);
     expect(o.siteFunnel.siteLeadConversion).toBe(20);
-    expect(o.siteFunnel.siteLeadToAccepted).toBe(0);
+    expect(o.siteFunnel.siteLeadToAccepted).toBeNull();
     expect(o.siteFunnel.siteAcceptedToPaid).toBeNull();
   });
 

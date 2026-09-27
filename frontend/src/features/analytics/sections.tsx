@@ -150,9 +150,9 @@ export function CrmFunnel({ o }: { o: Overview }) {
         Конверсии — по когорте: доля заявок (заказов) этого периода, которые
         когда-либо стали заказом (оплатой). Отменено за период:{" "}
         {formatCount(e.cancelledOrders)}
-        {c.crmCancellationRate !== null &&
-          ` (${formatPercent(c.crmCancellationRate)} принятых)`}
-        .
+        . Из заказов, принятых в выбранном периоде, когда-либо отменялись:{" "}
+        {formatCount(c.acceptedCohortCancelled)}
+        {c.crmCancellationRate !== null && ` (${formatPercent(c.crmCancellationRate)})`}.
       </p>
     </Card>
   );
@@ -185,11 +185,11 @@ function RateHead({ first }: { first: string }) {
       <tr>
         <Th>{first}</Th>
         <Th right>Визиты</Th>
-        <Th right>Заявки</Th>
-        <Th right>Сопост. заказы</Th>
-        <Th right>Сопост. оплаты</Th>
-        <Th right>Конв. в заявку</Th>
-        <Th right>Конв. в заказ</Th>
+        <Th right>Достижения заявки</Th>
+        <Th right>Достижения CRM-заказа</Th>
+        <Th right>Достижения CRM-оплаты</Th>
+        <Th right>Заявок на 100 визитов</Th>
+        <Th right>CRM-целей на 100 визитов</Th>
       </tr>
     </thead>
   );
@@ -570,7 +570,8 @@ export function MoneyDetails({ o }: { o: Overview }) {
           <p className="mt-1 text-xs text-gray-600">
             Результаты сайта включают органику и прямые заходы. Окупаемость
             рекламы требует сопоставления заказов с кампаниями. Этот расход не
-            вычитается из прибыли повторно.
+            показан отдельно; в прибыль включены только расходы, заведённые
+            в финансовом учёте CRM. Их полноту нужно сверять с расходами рекламы.
           </p>
         </div>
       )}
