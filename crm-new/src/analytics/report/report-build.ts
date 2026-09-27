@@ -1,4 +1,4 @@
-import type { TrendPoint } from '../metrics/metrics-contract';
+import type { FinancialMetrics, TrendPoint } from '../metrics/metrics-contract';
 import { compare } from '../metrics/ratios';
 import { addDays } from '../../metrika/analytics/metrika-dates';
 import type {
@@ -69,6 +69,12 @@ export function metricRow(
 
 function realized(snapshot: PeriodSnapshot) {
   return snapshot.overview.financials.realized;
+}
+
+function realizedCostsIncomplete(financials: FinancialMetrics): boolean {
+  return financials.evidence
+    ? financials.evidence.realized.missingCostOrders > 0
+    : financials.quality.notes.includes('COGS_UNRELIABLE_ORDERS');
 }
 
 /** Ключевые метрики периода: то, с чего начинается чтение отчёта. */
@@ -222,9 +228,7 @@ export function buildSummary(
     }
     if (
       ['cogs', 'netProfit', 'marginPct'].includes(row.key) &&
-      snapshots.some((s) =>
-        s.overview.financials.quality.notes.includes('COGS_UNRELIABLE_ORDERS'),
-      )
+      snapshots.some((s) => realizedCostsIncomplete(s.overview.financials))
     )
       note = 'Неполная себестоимость; изменение прибыли не подтверждено';
     return note
@@ -897,9 +901,7 @@ export function buildReportModel(input: ReportInput): ReportModel {
   if (
     unresolvedPayments > 0 ||
     input.current.overview.financials.realized === null ||
-    input.current.overview.financials.quality.notes.includes(
-      'COGS_UNRELIABLE_ORDERS',
-    )
+    realizedCostsIncomplete(input.current.overview.financials)
   ) {
     forecast.available = false;
     forecast.confidence = 'LOW';

@@ -556,6 +556,25 @@ export function MoneyDetails({ o }: { o: Overview }) {
           )}
         </div>
       </div>
+      {f.evidence && (
+        <div className="mt-4 rounded-lg bg-amber-50 p-3 text-sm" aria-label="Достоверность финансовых данных">
+          <p className="font-semibold">Полнота данных для расчёта</p>
+          <p>Без расчётной себестоимости среди принятых: {formatCount(f.evidence.accepted.missingCostOrders)} из {formatCount(f.evidence.accepted.orders)}; среди заказов с датой оплаты: {formatCount(f.evidence.paid.missingCostOrders)} из {formatCount(f.evidence.paid.orders)}. Эти группы пересекаются.</p>
+          <p>
+            Среди реализованных заказов без расчётной себестоимости: {formatCount(f.evidence.realized.missingCostOrders)} из {formatCount(f.evidence.realized.orders)}.
+            Сумма этих заказов: {formatMoney(f.evidence.realized.affectedOrderValue)} — это оборот с неполными затратами, не сумма недостающих расходов.
+          </p>
+          {f.evidence.realized.byCategory.map(part => (
+            <p key={part.category}>{PRODUCT_LABELS[part.category] ?? part.category}: {formatCount(part.missingCostOrders)} заказов, {formatMoney(part.affectedOrderValue)}.</p>
+          ))}
+          <p className="mt-2 text-xs">Прибыль рассчитана по внесённым данным. Наличие позиций не подтверждает закупочные цены и полноту всех расходов.</p>
+          <p className="mt-2 font-semibold">По какой дате признана выручка</p>
+          {f.evidence.recognition.filter(row => row.orders > 0).map(row => (
+            <p key={row.basis}>{({ clientPaidAt: 'Оплата клиента', completedAt: 'Завершение заказа', statusChangedAt: 'Смена статуса', sentAt: 'Отгрузка', createdAt: 'Создание заказа' } as Record<string, string>)[row.basis] ?? row.basis}: {formatCount(row.orders)} заказов, {formatMoney(row.orderValue)}.</p>
+          ))}
+          <p className="mt-2 text-xs">Завершение, смена статуса, отгрузка и создание не подтверждают получение денег. Заказы с датой оплаты также требуют сверки с платежами.</p>
+        </div>
+      )}
       {f.spend.status !== "UNAVAILABLE_NO_SPEND_DATA" && (
         <div className="mt-4 rounded-lg bg-indigo-50 p-3 text-sm">
           <p className="font-semibold">
@@ -569,7 +588,7 @@ export function MoneyDetails({ o }: { o: Overview }) {
           </p>
           <p className="mt-1 text-xs text-gray-600">
             Результаты сайта включают органику и прямые заходы. Окупаемость
-            рекламы требует сопоставления заказов с кампаниями. Этот расход не
+            рекламы требует сопоставления заказов с кампаниями. Этот расход
             показан отдельно; в прибыль включены только расходы, заведённые
             в финансовом учёте CRM. Их полноту нужно сверять с расходами рекламы.
           </p>

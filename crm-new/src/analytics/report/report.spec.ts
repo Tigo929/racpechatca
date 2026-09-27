@@ -37,6 +37,36 @@ const PREV = customPeriod('2026-09-08', '2026-09-14');
 const AVG30 = customPeriod('2026-08-23', '2026-09-21');
 
 describe('повторный аудит бизнес-логики отчёта', () => {
+  it('unknown costs in accepted backlog do not invalidate a complete realized profit comparison', () => {
+    const base = input();
+    const complete = {
+      orders: 1,
+      missingCostOrders: 0,
+      affectedOrderValue: 0,
+      byCategory: [],
+    };
+    for (const period of [base.current, base.previous]) {
+      period.overview.financials.quality.notes = ['COGS_UNRELIABLE_ORDERS'];
+      period.overview.financials.evidence = {
+        accepted: {
+          ...complete,
+          missingCostOrders: 1,
+          affectedOrderValue: 700,
+        },
+        paid: complete,
+        realized: complete,
+        recognition: [],
+      };
+    }
+    expect(
+      buildReportModel(base).summary.find((row) => row.key === 'netProfit')
+        ?.comparisonNote,
+    ).toBeUndefined();
+    const md = renderMarkdown(buildReportModel(base));
+    expect(md).toContain('# FINANCIAL DATA EVIDENCE');
+    expect(md).toContain('Стоимость затронутых заказов');
+    expect(md).toContain('не является оценкой недостающих расходов');
+  });
   it('сокращение убытка имеет положительный процент, а рост затрат не объявляется плохим', () => {
     expect(metricRow('netProfit', 'Прибыль', 'rub', -50, -100).deltaPct).toBe(
       50,
