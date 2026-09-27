@@ -31,6 +31,10 @@ describe('ratio / percent', () => {
 });
 
 describe('compare', () => {
+  it('shows shrinking losses as improvement and growing losses as decline', () => {
+    expect(compare(-50, -100)).toMatchObject({ delta: 50, deltaPct: 50, changeKind: 'UP' });
+    expect(compare(-150, -100)).toMatchObject({ delta: -50, deltaPct: -50, changeKind: 'DOWN' });
+  });
   it('рост и падение', () => {
     expect(compare(120, 100)).toEqual({
       current: 120,

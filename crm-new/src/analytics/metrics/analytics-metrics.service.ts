@@ -11,6 +11,7 @@ import type { OriginPnl } from './metrics-compute';
 import type { AdSpendRow } from '../ads/ad-spend';
 import type { CostSettings } from '../../reports/order-cogs';
 import { METRIKA_SCOPE_COUNTER } from './analytics-constants';
+import { lastCompleteSyncAt, OVERVIEW_DATASETS } from './metrika-freshness';
 import {
   periodBoundsUtc,
   previousPeriod,
@@ -143,12 +144,14 @@ export class AnalyticsMetricsService {
     withComparison = true,
   ): Promise<Overview> {
     const prev = previousPeriod(period);
-    const [orders, settings, lastSync, current, previous] = await Promise.all([
+    const [orders, settings, lastSync, current, previous, spend, previousSpend] = await Promise.all([
       this.loadOrders(periodBoundsUtc(period).endExclusive),
       this.reports.costSettings(),
       this.lastMetrikaSyncAt(),
       this.loadPeriod(period),
       withComparison ? this.loadPeriod(prev) : Promise.resolve(undefined),
+      this.adSpendFor(period),
+      withComparison ? this.adSpendFor(prev) : Promise.resolve(undefined),
     ]);
     return computeOverview({
       period,
@@ -157,8 +160,8 @@ export class AnalyticsMetricsService {
       goalIds: this.goalIds,
       settings,
       lastMetrikaSyncAt: lastSync,
-      current,
-      previous,
+      current: { ...current, adSpend: spend },
+      previous: previous ? { ...previous, adSpend: previousSpend } : undefined,
       orders,
     });
   }
@@ -454,7 +457,7 @@ export class AnalyticsMetricsService {
             in: [this.goalIds.lead, this.goalIds.created, this.goalIds.paid],
           },
         },
-        select: { date: true, goalId: true, reaches: true },
+        select: { date: true, goalId: true, reaches: true, goalVisits: true },
       }),
       this.prisma.metrikaDailyPage.aggregate({
         where,
@@ -491,12 +494,7 @@ export class AnalyticsMetricsService {
   }
 
   async lastMetrikaSyncAt(): Promise<Date | null> {
-    const run = await this.prisma.metrikaSyncRun.findFirst({
-      where: { status: 'SUCCESS', finishedAt: { not: null } },
-      orderBy: { finishedAt: 'desc' },
-      select: { finishedAt: true },
-    });
-    return run?.finishedAt ?? null;
+    return lastCompleteSyncAt(this.prisma, OVERVIEW_DATASETS);
   }
 
   /** Для сверок: сами настройки себестоимости и P&L за границы периода. */
