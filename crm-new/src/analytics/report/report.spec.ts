@@ -7,13 +7,19 @@ import type {
 import {
   buildReportModel,
   buildSignals,
+  buildWeekly,
+  buildForecast,
   metricRow,
   weekStart,
   MIN_FORECAST_WEEKS,
 } from './report-build';
 import { renderMarkdown } from './report-markdown';
 import { markdownToHtml, renderPrintableHtml } from './report-html';
-import { lastCompleteDay } from './report-collect';
+import {
+  lastCompleteDay,
+  reportMonthPeriods,
+  collectReport,
+} from './report-collect';
 import type { PeriodSnapshot, ReportInput } from './report-contract';
 
 /**
@@ -29,6 +35,124 @@ import type { PeriodSnapshot, ReportInput } from './report-contract';
 const PERIOD = customPeriod('2026-09-15', '2026-09-21');
 const PREV = customPeriod('2026-09-08', '2026-09-14');
 const AVG30 = customPeriod('2026-08-23', '2026-09-21');
+
+describe('повторный аудит бизнес-логики отчёта', () => {
+  it('сокращение убытка имеет положительный процент, а рост затрат не объявляется плохим', () => {
+    expect(metricRow('netProfit', 'Прибыль', 'rub', -50, -100).deltaPct).toBe(
+      50,
+    );
+    expect(
+      buildSignals([metricRow('cogs', 'Затраты', 'rub', 200, 100)])[0].kind,
+    ).toBe('neutral');
+    expect(
+      buildSignals([metricRow('cancelledOrders', 'Отмены', 'count', 2, 1)])[0]
+        .kind,
+    ).toBe('neutral');
+  });
+
+  it('семь полных недель включая воскресенье допустимы, частичная первая неделя не полная', () => {
+    const weeks = buildWeekly(daily(42, '2026-09-20'));
+    expect(weeks).toHaveLength(6);
+    expect(weeks.every((w) => w.complete)).toBe(true);
+    expect(buildForecast(weeks).available).toBe(true);
+    const partial = buildWeekly(daily(41, '2026-09-20'));
+    expect(partial[0].observedDays).toBe(6);
+    expect(buildForecast(partial).available).toBe(false);
+    const hole = daily(49, '2026-09-20').filter((d) => d.date !== '2026-09-01');
+    expect(buildForecast(buildWeekly(hole)).available).toBe(false);
+  });
+
+  it('нулевая подложка до первого заказа не создаёт историю, старые неизвестные оплаты блокируют прогноз', () => {
+    const short = buildReportModel(
+      forecastInput({
+        historyQuality: { firstOrderDay: '2026-09-01', paidWithoutDate: 0 },
+      }),
+    );
+    expect(short.forecast.available).toBe(false);
+    const incomplete = buildReportModel(
+      forecastInput({
+        historyQuality: { firstOrderDay: '2026-01-01', paidWithoutDate: 56 },
+      }),
+    );
+    expect(incomplete.forecast.available).toBe(false);
+    expect(incomplete.forecast.horizons).toEqual([]);
+    expect(incomplete.forecast.reason).toContain('56');
+  });
+
+  it('старая методика целей сохраняет числа, но не выдаёт рост и аномалии за доказанные', () => {
+    const base = input();
+    base.previous.dataQuality.siteLeadsLegacy = true;
+    base.current.overview.siteFunnel.siteLeads = 50;
+    const model = buildReportModel(base);
+    const row = model.summary.find((r) => r.key === 'siteLeads')!;
+    expect(row.current).toBe(50);
+    expect(row.deltaPct).toBeNull();
+    expect(row.comparisonNote).toBeDefined();
+    expect(model.signals.find((s) => s.metric === row.label)?.kind).toBe(
+      'insufficient',
+    );
+  });
+
+  it('неполная себестоимость не превращается в улучшение прибыли', () => {
+    const base = input();
+    base.current.overview.financials.quality.notes = ['COGS_UNRELIABLE_ORDERS'];
+    expect(
+      buildReportModel(base).summary.find((r) => r.key === 'netProfit')
+        ?.comparisonNote,
+    ).toBeDefined();
+  });
+
+  it('месяц отчёта заканчивается его датой, а сверка полных месяцев не заглядывает вперёд', () => {
+    const periods = reportMonthPeriods('2026-09-20');
+    expect(periods.current.to).toBe('2026-09-20');
+    expect(periods.previous.to).toBe('2026-08-20');
+    expect(periods.reconciliation).toMatchObject({
+      from: '2026-08-01',
+      to: '2026-08-31',
+    });
+    expect(reportMonthPeriods('2026-03-31').previous.to).toBe('2026-02-28');
+  });
+
+  it('CLI и генератор не допускают будущий/неполный день и дробную длину периода', async () => {
+    const deps = {} as Parameters<typeof collectReport>[0];
+    await expect(
+      collectReport(deps, {
+        until: '2026-09-27',
+        now: new Date('2026-09-27T12:00:00Z'),
+      }),
+    ).rejects.toThrow('последнего полного дня');
+    await expect(collectReport(deps, { days: 1.5 })).rejects.toThrow('1–366');
+  });
+
+  it('частичные суммы каналов не превращаются в полные, null не равен подтверждённой сверке', () => {
+    const base = input();
+    base.salesChannels.rows[0].cogs = null;
+    base.reconciliation.trendSumRealizedRevenue = null;
+    base.reconciliation.overviewRealizedRevenue = null;
+    const model = buildReportModel(base);
+    expect(model.orderOrigin.all?.cogs).toBeNull();
+    expect(renderMarkdown(model)).toContain(
+      'Сумма выручки по дням = итог периода: — против — → НЕТ ДАННЫХ',
+    );
+  });
+
+  it('отчёт объясняет счётчики, суммы и различие доставки/COGS', () => {
+    const md = renderMarkdown(buildReportModel(input()));
+    expect(md).toContain('СУММЫ за 30 дней');
+    expect(md).toContain('Достижения заявки на 100 визитов (не конверсия)');
+    expect(md).toContain('Доставка перевозчику НЕ входит в COGS');
+    expect(md).not.toContain('Единственный ключ связи');
+    expect(md).not.toContain('Суммы верны, смещаются только когорты');
+  });
+  it('несовпадение финансовой сверки запрещает прогноз и видимо аналитику', () => {
+    const base = forecastInput();
+    base.reconciliation.monthlyPnl!.serviceNetProfit! += 1;
+    const model = buildReportModel(base);
+    expect(model.forecast.available).toBe(false);
+    expect(model.forecast.reason).toContain('RECONCILIATION_FAILED');
+    expect(model.constraints.join(' ')).toContain('СВЕРКА НЕ ПРОЙДЕНА');
+  });
+});
 
 function quality() {
   return { completeness: 'complete' as const, notes: [] };
@@ -495,6 +619,26 @@ function input(over: Partial<ReportInput> = {}): ReportInput {
   };
 }
 
+function forecastInput(over: Partial<ReportInput> = {}): ReportInput {
+  const base = input();
+  const totals = base.current.overview.financials.realized!;
+  base.salesChannels.rows = [
+    {
+      ...base.salesChannels.rows[0],
+      acceptedOrders: base.current.overview.orders.acceptedOrders,
+      paidOrders: base.current.overview.orders.paidOrders,
+      realizedRevenue: totals.realizedRevenue,
+      cogs: totals.cogs,
+      grossProfit: totals.grossContribution,
+    },
+  ];
+  return {
+    ...base,
+    historyQuality: { firstOrderDay: '2026-01-01', paidWithoutDate: 0 },
+    ...over,
+  };
+}
+
 describe('периоды и сравнение', () => {
   it('последний полный день — вчерашний по Москве, текущий день в периоды не входит', () => {
     // 23:30 UTC 22.09 = 02:30 MSK 23.09 → последний полный московский день 22.09
@@ -549,7 +693,7 @@ describe('числа отчёта — те же, что у дашборда', ()
       i.current.overview.orders.paidWithoutDate,
     );
     expect(pick('clientIdCoverage')).toBe(
-      i.current.dataQuality.clientIdCoverageAccepted,
+      i.current.dataQuality.websiteClientIdCoverage,
     );
   });
 
@@ -638,7 +782,7 @@ describe('атрибуция и качество данных', () => {
         current: snapshot(
           PERIOD,
           {},
-          dataQuality({ clientIdCoverageAccepted: 0 }),
+          dataQuality({ websiteClientIdCoverage: 0 }),
         ),
       }),
     );
@@ -694,7 +838,7 @@ describe('аномалии, рост и прогноз', () => {
   });
 
   it('короткая история — прогноз не строится, а пишется прямо', () => {
-    const model = buildReportModel(input({ daily: daily(14) }));
+    const model = buildReportModel(forecastInput({ daily: daily(14) }));
     expect(model.forecast.available).toBe(false);
     expect(model.forecast.reason).toContain(
       'INSUFFICIENT HISTORY FOR RELIABLE FORECAST',
@@ -703,7 +847,7 @@ describe('аномалии, рост и прогноз', () => {
   });
 
   it('достаточная история — прогноз с методом, уверенностью и ограничениями', () => {
-    const model = buildReportModel(input());
+    const model = buildReportModel(forecastInput());
     expect(model.weekly.length).toBeGreaterThan(MIN_FORECAST_WEEKS);
     expect(model.forecast.available).toBe(true);
     expect(model.forecast.method).not.toBe('—');
@@ -982,7 +1126,7 @@ describe('ORDER ORIGIN в отчёте', () => {
 
   it('методика запрещает смешивать происхождение и рекламу', () => {
     expect(md).toContain(
-      'Конверсия сайта считается ТОЛЬКО по населённости WEBSITE.',
+      'Конверсия заявки сайта = целевые визиты / все визиты × 100',
     );
     expect(md).toContain(
       'Делить все заказы CRM на визиты сайта нельзя: ручные заказы сайт не создавал.',
@@ -1092,7 +1236,7 @@ describe('35. сверка происхождения с канонически�
     expect(acc.difference).toBe(0);
   });
 
-  it('разница по себестоимости названа округлением, а не молчаливо скрыта', () => {
+  it('расхождение себестоимости требует разбора, не списывается на округление', () => {
     const base = input();
     const model = buildReportModel({
       ...base,
@@ -1114,10 +1258,10 @@ describe('35. сверка происхождения с канонически�
       (r) => r.metric === 'Себестоимость',
     )!;
     expect(cogs.difference).toBe(1);
-    expect(cogs.explanation).toMatch(/округля/);
+    expect(cogs.explanation).toContain('требует разбора');
     const rub = (v: number) => v.toLocaleString('ru-RU');
     expect(renderMarkdown(model)).toContain(
-      `Себестоимость: ${rub(7000)} против ${rub(6999)} → РАЗНИЦА +1 — себестоимость бумаги округляется`,
+      `Себестоимость: ${rub(7000)} против ${rub(6999)} → РАЗНИЦА +1 — требует разбора`,
     );
   });
 });

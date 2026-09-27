@@ -81,7 +81,8 @@ describe('DataQualityPanel', () => {
 
   it('покрытие ClientID и полнота себестоимости — процентами', () => {
     render(<DataQualityPanel o={makeOverview({ financials: { contract: { orders: 130, cogsReliableOrders: 124 } } })} />);
-    expect(screen.getByText('9,52 %')).toBeInTheDocument();
+    expect(screen.getByText('40 %')).toBeInTheDocument();
+    expect(screen.queryByText('9,52 %')).not.toBeInTheDocument();
     expect(screen.getByText('95,38 %')).toBeInTheDocument();
   });
 });

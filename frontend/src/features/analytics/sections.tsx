@@ -646,8 +646,8 @@ export function DataQualityPanel({ o }: { o: Overview }) {
         </div>
         <QualityItem
           k="clientIdCoverage"
-          value={formatPercent(q.clientIdCoverageAccepted)}
-          sub={`оплаченные: ${formatPercent(q.clientIdCoveragePaid)}; готовы к сопоставлению: ${formatCount(q.eligibleAccepted)}`}
+          value={formatPercent(q.websiteClientIdCoverage)}
+          sub={`среди ${formatCount(q.websiteAccepted)} принятых заказов сайта; рекламный клик: ${formatPercent(q.websiteYclidCoverage)}`}
         />
         <QualityItem
           k="cogsReliability"
@@ -662,7 +662,7 @@ export function DataQualityPanel({ o }: { o: Overview }) {
       </div>
       <dl className="mt-3 text-[11px] text-gray-400 space-y-0.5">
         <div>
-          Передано в Метрику заказов с ClientID: {formatCount(q.eligibleDeliveredToMetrika)} из {formatCount(q.eligibleAccepted)}.
+          Принято API Метрики заказов с ClientID: {formatCount(q.eligibleDeliveredToMetrika)} из {formatCount(q.eligibleAccepted)} подходящих к отправке по этому идентификатору.
           Приём данных API не подтверждает привязку заказа к визиту. Результат привязки проверяется в отчётах Метрики.
         </div>
         <div>

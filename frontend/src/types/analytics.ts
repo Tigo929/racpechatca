@@ -179,6 +179,8 @@ export interface DataQualityMetrics {
   clientIdCoverageAccepted: number | null;
   clientIdCoveragePaid: number | null;
   websiteAccepted?: number;
+  websiteClientIdCoverage?: number | null;
+  websiteYclidCoverage?: number | null;
   websiteWithoutIdentity?: number;
   websiteUtmCoverage?: number | null;
   eligibleAccepted: number;
