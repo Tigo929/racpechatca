@@ -624,6 +624,72 @@ export function renderMarkdown(model: ReportModel): string {
     '```',
   );
 
+  const evidence = cur.financials.evidence;
+  add(
+    '# FINANCIAL DATA EVIDENCE',
+    '',
+    'Ниже — полнота входных данных расчёта, не процент вероятности правильной прибыли. Сумма затронутых заказов не является оценкой недостающих расходов. Принятые, оплаченные и реализованные группы пересекаются; складывать их нельзя.',
+    '',
+    evidence
+      ? table(
+          [
+            'Группа заказов',
+            'Всего',
+            'Без расчётной себестоимости',
+            'Стоимость затронутых заказов',
+          ],
+          (
+            [
+              ['Принятые', evidence.accepted],
+              ['С датой оплаты', evidence.paid],
+              ['Реализованные', evidence.realized],
+            ] as const
+          ).map(([name, row]) => [
+            name,
+            num(row.orders),
+            num(row.missingCostOrders),
+            money(row.affectedOrderValue),
+          ]),
+        )
+      : 'Нет детализации полноты себестоимости.',
+    '',
+    evidence?.realized.byCategory.length
+      ? table(
+          [
+            'Направление в реализации',
+            'Без расчётной себестоимости',
+            'Стоимость затронутых заказов',
+          ],
+          evidence.realized.byCategory.map((row) => [
+            row.category,
+            num(row.missingCostOrders),
+            money(row.affectedOrderValue),
+          ]),
+        )
+      : '',
+    '',
+    '## Основание даты признания выручки',
+    '',
+    evidence
+      ? table(
+          ['Дата', 'Заказов', 'Выручка'],
+          evidence.recognition.map((row) => [
+            {
+              clientPaidAt: 'Оплата клиента',
+              completedAt: 'Завершение',
+              statusChangedAt: 'Смена статуса',
+              sentAt: 'Отгрузка',
+              createdAt: 'Создание',
+            }[row.basis],
+            num(row.orders),
+            money(row.orderValue),
+          ]),
+        )
+      : 'Нет детализации дат признания.',
+    '',
+    'Выручка по резервным датам не подтверждает поступление денег. Даже наличие clientPaidAt и всех позиций не заменяет сверку с платежами и закупками. Не превращай расчётную прибыль в подтверждённую фактическую прибыль. Недостающую себестоимость не подставляй нулём в выводах и не оценивай из оборота.',
+  );
+
   // ── attribution ──────────────────────────────────────────────────────────
   const a = i.attribution;
   const share = (part: number) =>

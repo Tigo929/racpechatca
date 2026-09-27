@@ -36,6 +36,8 @@ import type {
   DataQualityMetrics,
   DeviceRow,
   FinancialMetrics,
+  FinancialEvidence,
+  CostEvidence,
   Freshness,
   GroupQuality,
   LandingRow,
@@ -166,9 +168,17 @@ export interface OverviewInputs {
   goalIds: CanonicalGoalIds;
   settings: CostSettings;
   lastMetrikaSyncAt: Date | null;
-  current: { metrika: MetrikaPeriodInput; pnl: PnlReport | null; adSpend?: AdSpendRow[] };
+  current: {
+    metrika: MetrikaPeriodInput;
+    pnl: PnlReport | null;
+    adSpend?: AdSpendRow[];
+  };
   /** Для сравнения; без него comparison = null. */
-  previous?: { metrika: MetrikaPeriodInput; pnl: PnlReport | null; adSpend?: AdSpendRow[] };
+  previous?: {
+    metrika: MetrikaPeriodInput;
+    pnl: PnlReport | null;
+    adSpend?: AdSpendRow[];
+  };
   /** Все заказы, созданные до конца периода сравнения (или текущего). */
   orders: CrmOrderInput[];
 }
@@ -272,8 +282,12 @@ export function computeSiteFunnel(
   const matchedPaid = goalSum(m.goals, goalIds.paid);
   const goalConversion = (id: number) => {
     const rows = m.goals.filter((g) => g.goalId === id);
-    if (!rows.length || rows.some((g) => g.goalVisits === undefined)) return null;
-    return percent(sum(rows, (g) => g.goalVisits!), visits);
+    if (!rows.length || rows.some((g) => g.goalVisits === undefined))
+      return null;
+    return percent(
+      sum(rows, (g) => g.goalVisits!),
+      visits,
+    );
   };
   const notes: QualityNote[] = [];
   if (siteLeadsLegacy(period)) notes.push('INCOMPLETE_LEGACY_SITE_LEADS');
@@ -475,6 +489,57 @@ export const NO_AD_SPEND: SpendMetrics = {
   attributionReliable: false,
 };
 
+function costEvidence(
+  rows: OrderWithLifecycle[],
+  settings: CostSettings,
+): CostEvidence {
+  const missing = rows.filter(
+    ({ order }) => !orderCostOfGoods(order, settings).reliable,
+  );
+  const categories = [
+    ...new Set(missing.map(({ order }) => order.productCategory)),
+  ].sort();
+  return {
+    orders: rows.length,
+    missingCostOrders: missing.length,
+    affectedOrderValue: contractValue(missing),
+    byCategory: categories.map((category) => {
+      const part = missing.filter(
+        ({ order }) => order.productCategory === category,
+      );
+      return {
+        category,
+        missingCostOrders: part.length,
+        affectedOrderValue: contractValue(part),
+      };
+    }),
+  };
+}
+
+export function financialEvidence(
+  sets: CrmPeriodSets,
+  settings: CostSettings,
+): FinancialEvidence {
+  const bases = [
+    'clientPaidAt',
+    'completedAt',
+    'statusChangedAt',
+    'sentAt',
+    'createdAt',
+  ] as const;
+  return {
+    accepted: costEvidence(sets.accepted, settings),
+    paid: costEvidence(sets.paid, settings),
+    realized: costEvidence(sets.realized, settings),
+    recognition: bases.map((basis) => {
+      const rows = sets.realized.filter(
+        ({ order }) => bases.find((key) => order[key] != null) === basis,
+      );
+      return { basis, orders: rows.length, orderValue: contractValue(rows) };
+    }),
+  };
+}
+
 export function computeFinancials(
   sets: CrmPeriodSets,
   pnl: PnlReport | null,
@@ -491,7 +556,11 @@ export function computeFinancials(
   const contract = contractValue(sets.accepted);
   const paidValue = contractValue(sets.paid);
   const notes: QualityNote[] = [];
-  if (accepted.reliable < sets.accepted.length || paid.reliable < sets.paid.length || cogsOf(sets.realized, settings).reliable < sets.realized.length)
+  if (
+    accepted.reliable < sets.accepted.length ||
+    paid.reliable < sets.paid.length ||
+    cogsOf(sets.realized, settings).reliable < sets.realized.length
+  )
     notes.push('COGS_UNRELIABLE_ORDERS');
   if (!pnl) notes.push('PNL_UNAVAILABLE');
   return {
@@ -512,6 +581,7 @@ export function computeFinancials(
     realized: pnl ? realizedFromPnl(pnl) : null,
     spend: spend ?? NO_AD_SPEND,
     quality: quality(notes, pnl ? undefined : 'partial'),
+    evidence: financialEvidence(sets, settings),
   };
 }
 
@@ -670,9 +740,15 @@ export function computePeriod(
     period,
     freshness,
   );
-  const financials = computeFinancials(sets, pnl, settings,
-    spendFor(adSpend, sets, siteFunnel, dataQuality, settings));
-  dataQuality.notes = [...new Set([...dataQuality.notes, ...financials.quality.notes])];
+  const financials = computeFinancials(
+    sets,
+    pnl,
+    settings,
+    spendFor(adSpend, sets, siteFunnel, dataQuality, settings),
+  );
+  dataQuality.notes = [
+    ...new Set([...dataQuality.notes, ...financials.quality.notes]),
+  ];
   return {
     traffic: computeTraffic(metrika, period, freshness),
     siteFunnel,

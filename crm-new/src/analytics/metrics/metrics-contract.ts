@@ -200,6 +200,36 @@ export interface FinancialMetrics {
   realized: RealizedFinancials | null;
   spend: SpendMetrics;
   quality: GroupQuality;
+  /** Completeness of calculation inputs, not a probability of financial accuracy. */
+  evidence?: FinancialEvidence;
+}
+
+export interface CostEvidence {
+  orders: number;
+  missingCostOrders: number;
+  /** Total order value affected, NOT an estimate of missing costs. */
+  affectedOrderValue: number;
+  byCategory: {
+    category: string;
+    missingCostOrders: number;
+    affectedOrderValue: number;
+  }[];
+}
+
+export interface FinancialEvidence {
+  accepted: CostEvidence;
+  paid: CostEvidence;
+  realized: CostEvidence;
+  recognition: {
+    basis:
+      | 'clientPaidAt'
+      | 'completedAt'
+      | 'statusChangedAt'
+      | 'sentAt'
+      | 'createdAt';
+    orders: number;
+    orderValue: number;
+  }[];
 }
 
 export type FreshnessStatus = 'FRESH' | 'STALE' | 'NO_DATA';

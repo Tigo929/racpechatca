@@ -136,6 +136,12 @@ export interface RealizedFinancials {
 }
 
 export interface FinancialMetrics {
+  evidence?: {
+    accepted: CostEvidence;
+    paid: CostEvidence;
+    realized: CostEvidence;
+    recognition: { basis: string; orders: number; orderValue: number }[];
+  };
   currency: "RUB";
   contract: {
     orders: number;
@@ -163,6 +169,13 @@ export interface FinancialMetrics {
     vatBasis?: string;
   };
   quality: GroupQuality;
+}
+
+export interface CostEvidence {
+  orders: number;
+  missingCostOrders: number;
+  affectedOrderValue: number;
+  byCategory: { category: string; missingCostOrders: number; affectedOrderValue: number }[];
 }
 
 export type FreshnessStatus = "FRESH" | "STALE" | "NO_DATA";
