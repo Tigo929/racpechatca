@@ -199,4 +199,22 @@ describe('отрисовка согласования', () => {
     expect(left.r).toBeGreaterThan(180);
     expect(right.r).toBeGreaterThan(180);
   });
+
+  it('стикер попадает на лист: заказ с площадки печатник находит по хвосту номера', async () => {
+    // Сравниваем два листа, одинаковых во всём, кроме стикера. Разные
+    // байты означают, что значение действительно нарисовано, а не молча
+    // потерялось где-то по дороге от заказа до разметки.
+    const base = {
+      numberOrder: '48912345-0031',
+      version: 1,
+      shirtColor: 'Чёрный',
+      shirtSizeLabel: 'XL',
+      comment: null,
+      date: new Date('2026-09-28T10:00:00Z'),
+      sides: [side()],
+    };
+    const without = await render.renderSheet(base);
+    const withSticker = await render.renderSheet({ ...base, sticker: '0311' });
+    expect(Buffer.compare(without, withSticker)).not.toBe(0);
+  });
 });

@@ -434,6 +434,11 @@ export class OrderPhotoService {
           marketplaceOrderNumber: dto.isMarketplacePrint
             ? normalizeMarketplaceNumber(dto.marketplaceOrderNumber)
             : null,
+          // Номер отправления — только у заказов, заведённых из кабинета:
+          // у заказа, набранного руками, отправления нет.
+          marketplacePostingNumber: dto.isMarketplacePrint
+            ? normalizeMarketplaceNumber(dto.marketplacePostingNumber)
+            : null,
           tshirtModel: dto.tshirtModel,
           productCategory,
           executorId: dto.executorId ?? undefined,

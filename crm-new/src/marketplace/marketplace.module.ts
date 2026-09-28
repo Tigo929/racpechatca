@@ -22,6 +22,8 @@ import { OzonWarehouseService } from './ozon/ozon-warehouse.service';
 import { OzonStockService } from './ozon/ozon-stock.service';
 import { OzonBulkStockService } from './ozon/ozon-bulk-stock.service';
 import { OzonBulkStockProcessorService } from './ozon/ozon-bulk-stock-processor.service';
+import { OzonCrmOrderService } from './ozon-crm-order.service';
+import { OrderPhotoModule } from 'src/order-photo/order-photo.module';
 
 /**
  * Интеграции с маркетплейсами. Ozon — первая площадка; следующая добавляется
@@ -29,7 +31,7 @@ import { OzonBulkStockProcessorService } from './ozon/ozon-bulk-stock-processor.
  * (MarketplaceAccountService) переиспользуется как есть.
  */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, OrderPhotoModule],
   // OzonPhotoController раньше OzonCatalogController: его путь
   // marketplace/ozon/photos/:file не должен попасть под :accountId-маршруты.
   controllers: [
@@ -57,6 +59,7 @@ import { OzonBulkStockProcessorService } from './ozon/ozon-bulk-stock-processor.
     OzonStockService,
     OzonBulkStockService,
     OzonBulkStockProcessorService,
+    OzonCrmOrderService,
   ],
   exports: [
     MarketplaceAccountService,

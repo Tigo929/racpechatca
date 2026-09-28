@@ -54,6 +54,7 @@ const approvalInclude = {
 } satisfies Prisma.PrintApprovalInclude;
 
 import { displayOrderNumber } from '../order-photo/order-number';
+import { stickerCode } from '../marketplace/ozon/ozon-article';
 
 @Injectable()
 export class ApprovalService {
@@ -400,6 +401,7 @@ export class ApprovalService {
       select: {
         numberOrder: true,
         marketplaceOrderNumber: true,
+        marketplacePostingNumber: true,
         // Печать на изделии заказчика — свободная позиция с этим признаком.
         items: { select: { printOnClientItem: true } },
         tshirtItems: { select: { clientItem: true } },
@@ -440,6 +442,9 @@ export class ApprovalService {
     return {
       // Лист уходит покупателю: заказ с площадки подписывается её номером.
       numberOrder: displayOrderNumber(order),
+      // Хвост стикера — у заказов с площадки. Печатник кладёт по нему
+      // готовую футболку к нужной посылке.
+      sticker: stickerCode(order.marketplacePostingNumber),
       version: approval.version,
       shirtColor: approval.shirtColor,
       shirtSizeLabel: SIZE_LABELS[approval.shirtSize] ?? approval.shirtSize,

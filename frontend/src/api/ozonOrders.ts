@@ -41,6 +41,13 @@ export interface OzonOrdersPage {
   hasNext: boolean;
 }
 
+/** Заказ CRM, заведённый по отправлению; null — ещё не заводили. */
+export interface OzonCrmOrderLink {
+  id: string;
+  numberOrder: string;
+  marketplaceOrderNumber: string | null;
+}
+
 export const ozonOrdersApi = {
   list: async (
     accountId: string,
@@ -49,6 +56,31 @@ export const ozonOrdersApi = {
     const { data } = await api.get<OzonOrdersPage>(
       `/marketplace/ozon/${accountId}/orders`,
       { params },
+    );
+    return data;
+  },
+
+  /** Есть ли уже заказ CRM по отправлению. */
+  crmOrder: async (
+    accountId: string,
+    postingNumber: string,
+  ): Promise<OzonCrmOrderLink | null> => {
+    const { data } = await api.get<{ order: OzonCrmOrderLink | null }>(
+      `/marketplace/ozon/${accountId}/orders/${encodeURIComponent(postingNumber)}/crm-order`,
+    );
+    return data.order;
+  },
+
+  /**
+   * Завести отправление в CRM. Повторный вызов открывает тот же заказ:
+   * отправление связано с заказом уникальной колонкой на сервере.
+   */
+  createCrmOrder: async (
+    accountId: string,
+    postingNumber: string,
+  ): Promise<{ orderId: string; created: boolean }> => {
+    const { data } = await api.post<{ orderId: string; created: boolean }>(
+      `/marketplace/ozon/${accountId}/orders/${encodeURIComponent(postingNumber)}/crm-order`,
     );
     return data;
   },

@@ -120,6 +120,30 @@ export class OzonOrdersService {
     };
   }
 
+  /**
+   * Одно отправление по номеру.
+   *
+   * Список сюда не годится: заказ заводят в CRM и через неделю после
+   * оформления, а список отдаёт только последние страницы. Да и брать
+   * двести отправлений ради одного — лишний запрос к площадке.
+   */
+  async get(
+    creds: OzonCredentials,
+    postingNumber: string,
+  ): Promise<OzonOrderView | null> {
+    const res = await this.api.post<{ result?: RawPosting }>(
+      creds,
+      '/v3/posting/fbs/get',
+      {
+        posting_number: postingNumber,
+        with: { financial_data: true },
+      },
+    );
+    const posting = res.result;
+    if (!posting?.posting_number) return null;
+    return this.toView(posting);
+  }
+
   private toView(p: RawPosting): OzonOrderView {
     const status = p.status ?? 'unknown';
     const group = groupForStatus(status);

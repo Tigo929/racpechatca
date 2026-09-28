@@ -29,7 +29,13 @@ export function Modal({ open, onClose, title, children, size = 'md', headerExtra
   const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bodyRef.current?.scrollTo({ top: 0 });
+    const body = bodyRef.current;
+    if (!body) return;
+    // scrollTo у элемента есть не везде: в Safari до 14 и в jsdom его нет,
+    // и вызов ронял всё окно целиком. Прокрутка к началу — удобство,
+    // ради которого окно падать не должно.
+    if (typeof body.scrollTo === 'function') body.scrollTo({ top: 0 });
+    else body.scrollTop = 0;
   }, [bodyKey]);
 
   useEffect(() => {

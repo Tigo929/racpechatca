@@ -44,5 +44,8 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
     TshirtPartnerTelegramService,
     SiteLeadTokenGuard,
   ],
+  // Заведение заказа из кабинета Ozon собирает заказ тем же методом, что
+  // и оформление руками: второй ветки создания заказов быть не должно.
+  exports: [OrderPhotoService],
 })
 export class OrderPhotoModule {}

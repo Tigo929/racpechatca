@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, Package, RefreshCw, Truck } from 'lucide-react';
 import { ozonOrdersApi, type OzonOrder, type OzonOrderGroup } from '../../api/ozonOrders';
 import { FilterChip } from '../ui/FilterChip';
+import { OzonOrderModal } from './OzonOrderModal';
+import { parseOzonArticle } from '../../utils/ozon-article';
 
 /**
  * Заказы Ozon. Главный вопрос оператора — «что горит по отгрузке», поэтому
@@ -37,11 +39,17 @@ function deadlineHint(iso: string | null): string {
   return diffMs >= 0 ? `осталось ${text}` : `просрочено на ${text}`;
 }
 
-function OrderCard({ order }: { order: OzonOrder }) {
+/**
+ * Карточка отправления. Нажатие открывает её как заказ CRM: цвет, размер
+ * и принт уже выведены из артикула, и по ним собирается макет.
+ */
+function OrderCard({ order, onOpen }: { order: OzonOrder; onOpen: () => void }) {
   const overdue = order.shipmentOverdue;
   return (
-    <div
-      className={`bg-white rounded-2xl border p-4 space-y-3 ${
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`w-full text-left bg-white rounded-2xl border p-4 space-y-3 transition-colors hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
         overdue ? 'border-red-200 ring-1 ring-red-100' : 'border-gray-200'
       }`}
     >
@@ -86,15 +94,27 @@ function OrderCard({ order }: { order: OzonOrder }) {
       )}
 
       <div className="space-y-1">
-        {order.items.map((item) => (
-          <div key={item.offerId + item.sku} className="flex items-baseline justify-between gap-2 text-xs">
-            <span className="min-w-0 truncate text-gray-700">
-              <span className="font-mono text-gray-500">{item.offerId}</span>
-              {item.quantity > 1 && <span className="ml-1 text-gray-500">× {item.quantity}</span>}
-            </span>
-            <span className="flex-shrink-0 tabular-nums text-gray-600">{money(item.price * item.quantity)}</span>
-          </div>
-        ))}
+        {order.items.map((item) => {
+          // Цвет и размер видно прямо в списке: оператор замечает чужой
+          // артикул до того, как заказ заведён, а не после печати.
+          const article = parseOzonArticle(item.offerId);
+          return (
+            <div key={item.offerId + item.sku} className="flex items-baseline justify-between gap-2 text-xs">
+              <span className="min-w-0 truncate text-gray-700">
+                {article ? (
+                  <span>
+                    {article.colorLabel} · {article.size}
+                    <span className="ml-1 font-mono text-gray-400">{article.printSlug}</span>
+                  </span>
+                ) : (
+                  <span className="font-mono text-gray-500">{item.offerId}</span>
+                )}
+                {item.quantity > 1 && <span className="ml-1 text-gray-500">× {item.quantity}</span>}
+              </span>
+              <span className="flex-shrink-0 tabular-nums text-gray-600">{money(item.price * item.quantity)}</span>
+            </div>
+          );
+        })}
       </div>
 
       <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 text-xs">
@@ -108,12 +128,13 @@ function OrderCard({ order }: { order: OzonOrder }) {
       {order.cancelReason && (
         <p className="text-xs text-gray-500">Причина отмены: {order.cancelReason}</p>
       )}
-    </div>
+    </button>
   );
 }
 
 export function OrdersTab({ accountId }: { accountId: string }) {
   const [group, setGroup] = useState<OzonOrderGroup | 'all'>('to_ship');
+  const [openPosting, setOpenPosting] = useState<string | null>(null);
 
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['ozon-orders', accountId],
@@ -194,9 +215,26 @@ export function OrdersTab({ accountId }: { accountId: string }) {
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {visible.map((o) => <OrderCard key={o.postingNumber} order={o} />)}
+          {visible.map((o) => (
+            <OrderCard
+              key={o.postingNumber}
+              order={o}
+              onOpen={() => setOpenPosting(o.postingNumber)}
+            />
+          ))}
         </div>
       )}
+
+      {openPosting && (() => {
+        const posting = all.find((o) => o.postingNumber === openPosting);
+        return posting ? (
+          <OzonOrderModal
+            accountId={accountId}
+            order={posting}
+            onClose={() => setOpenPosting(null)}
+          />
+        ) : null;
+      })()}
 
       {data?.hasNext && (
         <p className="text-xs text-gray-400">

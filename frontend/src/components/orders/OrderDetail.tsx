@@ -752,6 +752,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           tshirtItems={order.tshirtItems ?? []}
           communicationPlatform={order.communicationPlatform}
           communicationUrl={order.urlCommunication}
+          marketplace={order.isMarketplacePrint ?? false}
         />
       )}
 

@@ -1,0 +1,115 @@
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { OrderPhotoService } from 'src/order-photo/order-photo.service';
+import {
+  EnumCommunication,
+  EnumDeliveryMethod,
+  EnumProductCategory,
+  EnumSourceOrder,
+} from 'src/generated/prisma/enums';
+import type { OzonCredentials } from './ozon/ozon-api.client';
+import {
+  OzonOrdersService,
+  type OzonOrderView,
+} from './ozon/ozon-orders.service';
+import {
+  buildMarketplaceOrderDraft,
+  OzonArticleError,
+  type MarketplaceOrderDraft,
+} from './ozon/ozon-crm-order';
+
+/**
+ * «Завести отправление Ozon в CRM».
+ *
+ * Собирает заказ теми же методами, что и оформление руками
+ * (OrderPhotoService.createOrder): номер заказа, история статусов,
+ * уведомления — всё как у обычного заказа, второй ветки создания не
+ * появилось. Отличается только источник данных: не человек, а отправление.
+ *
+ * Повторное нажатие не плодит заказы. Отправление связано с заказом
+ * уникальной колонкой marketplacePostingNumber, и если заказ уже есть,
+ * возвращается он же — оператор попадает в ту же карточку.
+ */
+@Injectable()
+export class OzonCrmOrderService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ozonOrders: OzonOrdersService,
+    private readonly orders: OrderPhotoService,
+  ) {}
+
+  /** Уже заведённый заказ по номеру отправления; null — ещё нет. */
+  async findByPosting(postingNumber: string) {
+    return this.prisma.orderPhoto.findUnique({
+      where: { marketplacePostingNumber: postingNumber },
+      select: { id: true, numberOrder: true, marketplaceOrderNumber: true },
+    });
+  }
+
+  async createFromPosting(
+    creds: OzonCredentials,
+    postingNumber: string,
+    adminId?: string,
+  ): Promise<{ orderId: string; created: boolean }> {
+    const existing = await this.findByPosting(postingNumber);
+    if (existing) return { orderId: existing.id, created: false };
+
+    const posting = await this.ozonOrders.get(creds, postingNumber);
+    if (!posting) {
+      throw new NotFoundException('Отправление не найдено в кабинете Ozon');
+    }
+
+    const draft = this.draftOrRefuse(posting);
+
+    const created = await this.orders.createOrder(
+      {
+        productCategory: EnumProductCategory.TSHIRT,
+        sourceOrder: EnumSourceOrder.OZON,
+        // Переписка идёт в кабинете площадки: своего Telegram у покупателя
+        // для нас нет, и приветственные сообщения такому заказу не шлются.
+        communicationPlatform: EnumCommunication.OZON,
+        urlCommunication: `Ozon · отправление ${draft.marketplacePostingNumber}`,
+        // Доставку ведёт площадка: в CRM ни способа, ни стоимости.
+        deliveryMethod: EnumDeliveryMethod.PICKUP,
+        deliveryCost: 0,
+        isUrgent: false,
+        urgencyFee: 0,
+        isMarketplacePrint: true,
+        marketplaceOrderNumber: draft.marketplaceOrderNumber,
+        marketplacePostingNumber: draft.marketplacePostingNumber,
+        note: draft.note,
+        tshirtItems: draft.items.map((item) => ({
+          color: item.color,
+          size: item.size,
+          printLocation: item.printLocation,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+      },
+      adminId,
+    );
+
+    return { orderId: created.id, created: true };
+  }
+  /**
+   * Черновик или понятный отказ.
+   *
+   * Артикул не по схеме — это не сбой сервера, а ситуация, в которой
+   * заводить заказ нельзя: сказать человеку причину полезнее, чем
+   * подставить выдуманный цвет.
+   */
+  private draftOrRefuse(posting: OzonOrderView): MarketplaceOrderDraft {
+    try {
+      return buildMarketplaceOrderDraft(posting);
+    } catch (error) {
+      if (error instanceof OzonArticleError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+}

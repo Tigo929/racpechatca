@@ -19,6 +19,16 @@ interface Props {
   tshirtItems: ItemTshirt[];
   communicationPlatform: string;
   communicationUrl: string | null;
+  /**
+   * Заказ с площадки: согласовывать не с кем.
+   *
+   * Покупатель на Ozon макет не утверждает — он купил карточку, и печатать
+   * надо то, что на ней. Лист здесь нужен производству: по нему печатник
+   * видит цвет, размер, размещение и номер посылки. Поэтому меняются только
+   * подписи; кнопка отправки клиенту и так не появляется — она есть лишь
+   * у заказов с Telegram.
+   */
+  marketplace?: boolean;
 }
 
 const STATUS_LABELS: Record<EnumApprovalStatus, string> = {
@@ -45,7 +55,7 @@ const btn =
  * редактор. Старые версии не удаляются сами — по ним видно, что именно
  * подтверждал клиент, если на производстве возникнет спор.
  */
-export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicationPlatform, communicationUrl }: Props) {
+export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicationPlatform, communicationUrl, marketplace = false }: Props) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -128,7 +138,7 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
     <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-medium text-gray-500">
-          Согласование макета с клиентом
+          {marketplace ? 'Макет для печати' : 'Согласование макета с клиентом'}
         </p>
         <div className="flex items-center gap-2">
           {latest && (
@@ -148,7 +158,7 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
             className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
           >
             <FileImage size={14} aria-hidden="true" />
-            Создать согласование
+            {marketplace ? 'Создать макет' : 'Создать согласование'}
           </button>
         </div>
       </div>
@@ -157,9 +167,9 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
         <p className="text-xs text-gray-400">Загрузка…</p>
       ) : approvals.length === 0 ? (
         <p className="text-xs text-gray-500">
-          Согласований пока нет. Соберите макет, покажите клиенту и только потом
-          отправляйте заказ исполнителю — переделка после начала печати
-          оплачивается заготовкой.
+          {marketplace
+            ? 'Макета пока нет. Соберите его, скачайте лист и приложите к заданию исполнителю: по листу печатник видит цвет, размер, размещение и номер посылки.'
+            : 'Согласований пока нет. Соберите макет, покажите клиенту и только потом отправляйте заказ исполнителю — переделка после начала печати оплачивается заготовкой.'}
         </p>
       ) : (
         <ul className="space-y-2">

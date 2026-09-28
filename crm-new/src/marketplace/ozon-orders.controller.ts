@@ -3,6 +3,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -13,12 +14,21 @@ import { MarketplaceAccessGuard } from './marketplace-access.guard';
 import { EnumRole } from 'src/generated/prisma/enums';
 import { MarketplaceAccountService } from './marketplace-account.service';
 import { OzonOrdersService } from './ozon/ozon-orders.service';
+import { OzonCrmOrderService } from './ozon-crm-order.service';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 
 /**
- * Заказы Ozon. Пока только чтение: увидеть, что горит по срокам отгрузки,
- * не заходя в кабинет. Перенос в заказы CRM (склад, партнёр, зарплата) —
- * следующий шаг, там уже нужны решения по процессу.
+ * Заказы Ozon: список отправлений и заведение отправления в заказ CRM.
+ *
+ * Заведение — не перенос всей экономики, а только производственная часть:
+ * цвет, размер и принт из артикула, номера заказа и отправления. Деньги
+ * остаются на площадке (см. ozon/ozon-crm-order.ts).
  */
+/** Что кладёт в запрос JwtAuthGuard: тот же приём, что в карточке заказа. */
+interface RequestUser {
+  id: string;
+}
+
 @Controller('marketplace/ozon')
 @UseGuards(JwtAuthGuard, RolesGuard, MarketplaceAccessGuard)
 // Заказы ведёт и менеджер по оформлению, а не только владелец — в отличие
@@ -28,6 +38,7 @@ export class OzonOrdersController {
   constructor(
     private readonly accounts: MarketplaceAccountService,
     private readonly orders: OzonOrdersService,
+    private readonly crmOrders: OzonCrmOrderService,
   ) {}
 
   @Get(':accountId/orders')
@@ -43,5 +54,33 @@ export class OzonOrdersController {
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,
     });
+  }
+
+  /**
+   * Есть ли уже заказ CRM по этому отправлению. Нужен списку: кнопка должна
+   * говорить «Открыть заказ», а не предлагать завести второй.
+   */
+  @Get(':accountId/orders/:postingNumber/crm-order')
+  async crmOrder(
+    @Param('accountId', ParseUUIDPipe) accountId: string,
+    @Param('postingNumber') postingNumber: string,
+  ) {
+    await this.accounts.credentials(accountId);
+    const order = await this.crmOrders.findByPosting(postingNumber);
+    return { order };
+  }
+
+  /**
+   * Завести отправление в CRM и вернуть заказ. Повторное нажатие открывает
+   * тот же заказ: отправление связано с заказом уникальной колонкой.
+   */
+  @Post(':accountId/orders/:postingNumber/crm-order')
+  async createCrmOrder(
+    @Param('accountId', ParseUUIDPipe) accountId: string,
+    @Param('postingNumber') postingNumber: string,
+    @CurrentUser() me: RequestUser,
+  ) {
+    const creds = await this.accounts.credentials(accountId);
+    return this.crmOrders.createFromPosting(creds, postingNumber, me.id);
   }
 }

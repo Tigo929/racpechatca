@@ -68,6 +68,15 @@ export interface RenderSheetInput {
    * не говорит. Кто именно его выбирает — см. displayOrderNumber.
    */
   numberOrder: string;
+  /**
+   * Последние цифры стикера на посылке — только у заказов с площадки.
+   *
+   * Лист согласования у такого заказа читает не покупатель, а печатник:
+   * он печатает футболку и кладёт её к нужной коробке. Полный номер
+   * отправления на столе упаковки не сверяют, сверяют хвост — его видно
+   * с расстояния вытянутой руки.
+   */
+  sticker?: string | null;
   version: number;
   shirtColor: string;
   shirtSizeLabel: string;
@@ -281,6 +290,7 @@ export class ApprovalRenderService {
     const rows: [string, string][] = input.clientItem
       ? [
           ['Заказ №', input.numberOrder],
+          ...(input.sticker ? ([['Стикер', `…${input.sticker}`]] as [string, string][]) : []),
           // Изделие принёс клиент — цвет и размер футболки тут ни при чём,
           // на них печатник ориентироваться не должен.
           ['Изделие', 'Клиента'],
@@ -288,6 +298,7 @@ export class ApprovalRenderService {
         ]
       : [
           ['Заказ №', input.numberOrder],
+          ...(input.sticker ? ([['Стикер', `…${input.sticker}`]] as [string, string][]) : []),
           ['Цвет футболки', input.shirtColor],
           ['Размер футболки', input.shirtSizeLabel],
         ];
