@@ -217,4 +217,27 @@ describe('отрисовка согласования', () => {
     const withSticker = await render.renderSheet({ ...base, sticker: '0311' });
     expect(Buffer.compare(without, withSticker)).not.toBe(0);
   });
+
+  it('лист для площадки печатает артикул вместо размера принта', async () => {
+    // Печатнику нужен артикул: по нему он сверяется с карточкой Ozon.
+    // Размер принта он видит на самом макете, и строка под мокапом только
+    // занимает место.
+    const base = {
+      numberOrder: '48912345-0031',
+      version: 1,
+      shirtColor: 'Чёрный',
+      shirtSizeLabel: 'XL',
+      comment: null,
+      date: new Date('2026-09-28T10:00:00Z'),
+      sides: [side()],
+    };
+    const usual = await render.renderSheet(base);
+    const market = await render.renderSheet({
+      ...base,
+      marketplace: true,
+      sticker: '0311',
+      article: 'JDM-1-1-black-XL',
+    });
+    expect(Buffer.compare(usual, market)).not.toBe(0);
+  });
 });

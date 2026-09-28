@@ -105,6 +105,11 @@ export function buildMarketplaceOrderDraft(
  * Артикулы оставлены целиком не для красоты — по ним видно, из чего выведены
  * цвет и размер, и спор «почему белая» решается на месте.
  */
+/*
+ * Срок отгрузки в примечание не пишем: он живёт в кабинете и меняется там,
+ * а замороженная копия в тексте заказа через день врёт. Смотреть срок —
+ * в списке отправлений, где он приходит от площадки.
+ */
 function buildNote(
   posting: OzonOrderView,
   items: MarketplaceOrderDraftItem[],
@@ -114,11 +119,7 @@ function buildNote(
     `Заказ Ozon: ${posting.orderNumber || '—'}`,
     `Отправление: ${posting.postingNumber}`,
     ...(sticker ? [`Стикер: …${sticker}`] : []),
-    ...(posting.shipmentDate
-      ? [
-          `Отгрузить до: ${new Date(posting.shipmentDate).toLocaleString('ru-RU')}`,
-        ]
-      : []),
+
     'Позиции по артикулу:',
     ...items.map(
       (i) =>

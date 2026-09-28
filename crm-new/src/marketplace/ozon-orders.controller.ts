@@ -1,10 +1,13 @@
 import {
+  Body,
   Controller,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
@@ -15,6 +18,8 @@ import { EnumRole } from 'src/generated/prisma/enums';
 import { MarketplaceAccountService } from './marketplace-account.service';
 import { OzonOrdersService } from './ozon/ozon-orders.service';
 import { OzonCrmOrderService } from './ozon-crm-order.service';
+import type { Response } from 'express';
+import { DtoCreateOzonCrmOrder } from './dto/create-ozon-crm-order.dto';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 
 /**
@@ -78,9 +83,36 @@ export class OzonOrdersController {
   async createCrmOrder(
     @Param('accountId', ParseUUIDPipe) accountId: string,
     @Param('postingNumber') postingNumber: string,
+    @Body() dto: DtoCreateOzonCrmOrder,
     @CurrentUser() me: RequestUser,
   ) {
     const creds = await this.accounts.credentials(accountId);
-    return this.crmOrders.createFromPosting(creds, postingNumber, me.id);
+    return this.crmOrders.createFromPosting(
+      creds,
+      accountId,
+      postingNumber,
+      me.id,
+      dto.chatUrl,
+    );
+  }
+
+  /**
+   * Ярлык отправления в PDF — тот, который клеят на посылку. Печатаем ярлык
+   * площадки, а не свой: по нему посылку принимает Ozon.
+   */
+  @Get(':accountId/orders/:postingNumber/label')
+  @Header('Content-Type', 'application/pdf')
+  async label(
+    @Param('accountId', ParseUUIDPipe) accountId: string,
+    @Param('postingNumber') postingNumber: string,
+    @Res() res: Response,
+  ) {
+    const creds = await this.accounts.credentials(accountId);
+    const pdf = await this.orders.packageLabel(creds, postingNumber);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="ozon-${postingNumber}.pdf"`,
+    );
+    res.send(pdf);
   }
 }

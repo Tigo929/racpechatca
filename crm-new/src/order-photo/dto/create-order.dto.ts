@@ -142,6 +142,11 @@ export default class DtoCreateOrder {
   @MaxLength(MARKETPLACE_NUMBER_MAX)
   marketplacePostingNumber?: string;
 
+  /** Кабинет площадки, из которого заведён заказ: за ярлыком идём в него. */
+  @IsString()
+  @IsOptional()
+  marketplaceAccountId?: string;
+
   /**
    * Плата за срочность. Входит в чек клиента отдельной строкой, но НЕ входит
    * в базу зарплаты — ни исполнителю, ни менеджеру. Учитывается только у

@@ -92,6 +92,66 @@ export class OzonApiClient {
     return this.request<T>(creds, 'GET', path);
   }
 
+  /**
+   * POST, ответ которого — файл, а не JSON (ярлык отправления в PDF).
+   *
+   * Отдельный метод, а не флаг в request: разбор ошибок у них общий, но
+   * тело ответа читается по-разному, и «прочитать PDF как текст» — это
+   * молча испорченный файл, а не ошибка, которую заметят.
+   */
+  async postBinary(
+    creds: OzonCredentials,
+    path: string,
+    body: unknown = {},
+  ): Promise<Buffer> {
+    let res: Response;
+    try {
+      res = await fetch(`${OZON_API}${path}`, {
+        method: 'POST',
+        headers: {
+          'Client-Id': creds.clientId,
+          'Api-Key': creds.apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body ?? {}),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e);
+      this.logger.warn(`Ozon ${path}: сеть недоступна — ${reason}`);
+      throw new OzonApiError(
+        0,
+        'Не удалось связаться с Ozon: сеть недоступна или запрос вышел за таймаут.',
+        reason,
+      );
+    }
+
+    if (!res.ok) {
+      const raw = await res.text();
+      let ozonMessage: string | undefined;
+      try {
+        ozonMessage = (JSON.parse(raw) as OzonErrorBody).message;
+      } catch {
+        ozonMessage = raw.slice(0, 200) || undefined;
+      }
+      this.logger.warn(`Ozon ${path} → ${res.status}`);
+      throw new OzonApiError(
+        res.status,
+        humanize(res.status, ozonMessage),
+        raw.slice(0, 500),
+      );
+    }
+
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.length === 0) {
+      throw new OzonApiError(
+        res.status,
+        'Ozon вернул пустой файл — ярлык ещё не готов, попробуйте позже.',
+      );
+    }
+    return buffer;
+  }
+
   private async request<T>(
     creds: OzonCredentials,
     method: 'GET' | 'POST',

@@ -52,8 +52,10 @@ export class OzonCrmOrderService {
 
   async createFromPosting(
     creds: OzonCredentials,
+    accountId: string,
     postingNumber: string,
     adminId?: string,
+    chatUrl?: string,
   ): Promise<{ orderId: string; created: boolean }> {
     const existing = await this.findByPosting(postingNumber);
     if (existing) return { orderId: existing.id, created: false };
@@ -72,9 +74,11 @@ export class OzonCrmOrderService {
         // Переписка идёт в кабинете площадки: своего Telegram у покупателя
         // для нас нет, и приветственные сообщения такому заказу не шлются.
         communicationPlatform: EnumCommunication.OZON,
-        // Контакт — номер отправления: чата с покупателем на Ozon у нас
-        // нет, а по этому номеру заказ находят в кабинете.
-        urlCommunication: draft.marketplacePostingNumber,
+        // Контакт: ссылка на переписку, если оператор её вставил, иначе
+        // номер отправления. Чат с покупателем живёт в кабинете, и ссылки
+        // на него у отправления нет — но по номеру заказ там находят.
+        urlCommunication:
+          (chatUrl ?? '').trim() || draft.marketplacePostingNumber,
         // Доставку ведёт площадка: в CRM ни способа, ни стоимости.
         deliveryMethod: EnumDeliveryMethod.PICKUP,
         deliveryCost: 0,
@@ -83,6 +87,7 @@ export class OzonCrmOrderService {
         isMarketplacePrint: true,
         marketplaceOrderNumber: draft.marketplaceOrderNumber,
         marketplacePostingNumber: draft.marketplacePostingNumber,
+        marketplaceAccountId: accountId,
         note: draft.note,
         tshirtItems: draft.items.map((item) => ({
           color: item.color,
@@ -90,6 +95,7 @@ export class OzonCrmOrderService {
           printLocation: item.printLocation,
           quantity: item.quantity,
           price: item.price,
+          marketplaceArticle: item.offerId,
         })),
       },
       adminId,

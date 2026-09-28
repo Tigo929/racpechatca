@@ -149,6 +149,10 @@ export interface OrderPhoto {
    * задач и отчётов. Пусто у всех заказов, кроме маркетплейсных.
    */
   marketplaceOrderNumber?: string | null;
+  /** Номер отправления площадки: им подписан стикер на посылке. */
+  marketplacePostingNumber?: string | null;
+  /** Кабинет площадки, из которого заведён заказ: за ярлыком идём в него. */
+  marketplaceAccountId?: string | null;
   /** Первый ТЗ-файл (оставлен для старых заказов и совместимости). */
   techSpecPhotoPath?: string | null;
   /** Все прикреплённые ТЗ-файлы (согласованный макет + уточнения). */
@@ -562,6 +566,11 @@ export interface PnlMetrics {
 export interface MonthData extends PnlMetrics {
   month: number;
   label: string;
+  /**
+   * Футболки с маркетплейса, пришедшие в этом месяце. Только счётчик:
+   * в выручку, себестоимость и прибыль они не входят — деньги считает площадка.
+   */
+  marketplaceTshirtOrders?: number;
 }
 
 export interface Contractors {
@@ -574,7 +583,7 @@ export interface Contractors {
 export interface MonthlyReport {
   year: number;
   months: MonthData[];
-  totals: PnlMetrics;
+  totals: PnlMetrics & { marketplaceTshirtOrders?: number };
   contractors: Contractors;
 }
 

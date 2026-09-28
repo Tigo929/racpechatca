@@ -88,6 +88,7 @@ function LeadNoteBlock({ note, isAdmin }: { note: string; isAdmin: boolean }) {
 import { getDeadlineInfo } from "../../utils/deadline";
 import { getStalledDays } from "../../utils/stalled";
 import { ordersApi } from "../../api/orders";
+import { ozonOrdersApi } from "../../api/ozonOrders";
 import { partnerSettingsApi } from "../../api/partnerSettings";
 import { computeSettlement } from "../../utils/settlement";
 import { computePrepayment } from "../../utils/prepayment";
@@ -346,6 +347,39 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
     }
   };
 
+  /**
+   * Ярлык отправления Ozon.
+   *
+   * Скачивается файлом, а не открывается в новой вкладке: запрос идёт
+   * с токеном, и голая ссылка без него вернула бы 401. Печатают его
+   * из просмотрщика PDF, как и любой другой ярлык.
+   */
+  const [ozonLabelLoading, setOzonLabelLoading] = useState(false);
+  const handleOzonLabel = async () => {
+    if (!order?.marketplaceAccountId || !order.marketplacePostingNumber) return;
+    setOzonLabelLoading(true);
+    try {
+      const blob = await ozonOrdersApi.label(
+        order.marketplaceAccountId,
+        order.marketplacePostingNumber,
+      );
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `ozon-${order.marketplacePostingNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    } catch (error) {
+      // Ярлык готов не сразу: до сборки отправления площадка отвечает
+      // ошибкой, и её текст полезнее нашего «не получилось».
+      toast.error(getErrorMessage(error, "Ozon не отдал ярлык"));
+    } finally {
+      setOzonLabelLoading(false);
+    }
+  };
+
   const [stickerLoading, setStickerLoading] = useState(false);
   const handlePrintSticker = async () => {
     try {
@@ -418,6 +452,17 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
         ? [order.techSpecPhotoPath]
         : [];
   const hasTechSpecFiles = techSpecPaths.length > 0;
+  /*
+   * Заказ с площадки — другой проект внутри CRM.
+   *
+   * Деньги, доставку и переписку ведёт Ozon, печать — партнёр по своей
+   * схеме. Всё это в карточке такого заказа не просто лишнее: показанная
+   * «сумма заказа» без выручки и «срочность», которой площадка не знает,
+   * заставляют читать карточку и каждый раз вспоминать, что эти поля тут
+   * ничего не значат. Поэтому они не прячутся «до лучших времён», а не
+   * показываются вовсе.
+   */
+  const marketplace = order.isMarketplacePrint ?? false;
 
   return (
     <div className="space-y-6">
@@ -505,10 +550,12 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Кнопка Срочно — только для незакрытых заказов */}
-          {!["PAID", "SENT", "DONE", "COMPLETED", "CANCELLED"].includes(
-            order.status,
-          ) && (
+          {/* Кнопка Срочно — только для незакрытых заказов. У заказа
+              с площадки срочности нет: срок отгрузки ставит Ozon. */}
+          {!marketplace &&
+            !["PAID", "SENT", "DONE", "COMPLETED", "CANCELLED"].includes(
+              order.status,
+            ) && (
             <button
               onClick={toggleUrgent}
               disabled={updateMutation.isPending}
@@ -544,6 +591,9 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   цепочка на оба сообщения, чтобы состав, суммы и реквизиты
                   не разъезжались между ними. */}
               {(() => {
+                // Переписки с покупателем на Ozon у нас нет: подтверждение
+                // и готовность отправляет площадка, а не мы.
+                if (marketplace) return null;
                 const isNew = order.status === "NEW";
                 const isReady = order.status === "READY";
                 if (!isNew && !isReady) return null;
@@ -586,7 +636,23 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   </button>
                 );
               })()}
-              {order.productCategory === "TSHIRT" && (
+              {/* Ярлык площадки: тот самый, который клеят на посылку.
+                  Печатаем его, а не свой стикер, — по нему посылку
+                  принимает Ozon, и второй наклейки на коробке быть не должно. */}
+              {marketplace &&
+                order.marketplaceAccountId &&
+                order.marketplacePostingNumber && (
+                  <button
+                    onClick={() => void handleOzonLabel()}
+                    disabled={ozonLabelLoading}
+                    className={`${actionBtn} border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus-visible:ring-indigo-500`}
+                  >
+                    <Printer size={13} aria-hidden="true" />
+                    {ozonLabelLoading ? "Готовим…" : "Стикер Ozon (PDF)"}
+                  </button>
+                )}
+              {/* Наш стикер на пакет — только у своих заказов. */}
+              {order.productCategory === "TSHIRT" && !marketplace && (
                 <button
                   onClick={handlePrintSticker}
                   disabled={stickerLoading}
@@ -767,11 +833,17 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           }`}
         >
           <p className="text-xs font-medium text-gray-500">
-            Исполнитель-партнёр (печать футболок)
+            {marketplace
+              ? 'Задание исполнителю'
+              : 'Исполнитель-партнёр (печать футболок)'}
           </p>
 
-          {/* Разбивка расчёта с партнёром — сколько он зарабатывает и моя прибыль */}
+          {/* Разбивка расчёта с партнёром — сколько он зарабатывает и моя
+              прибыль. У заказа с площадки её нет: деньги считает площадка,
+              и своя «прибыль» здесь всегда уходила бы в минус. Остаются
+              ТЗ-файлы и отправка исполнителю — работа, которая есть. */}
           {partnerSettings &&
+            !marketplace &&
             (order.tshirtItems?.length ?? 0) > 0 &&
             (() => {
               const s = computeSettlement(
@@ -974,6 +1046,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           orderNumber={displayOrderNumber(order)}
           payout={tshirtPayout}
           hasFreePositions={hasFreePositions}
+          marketplace={marketplace}
           isResend={(order as any).executorSentAt != null}
           isPending={sendTshirtTelegramMutation.isPending}
           onConfirm={() => { setShowDispatchModal(false); sendTshirtTelegramMutation.mutate(); }}
@@ -1008,9 +1081,11 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           {/* Приветственное сообщение. Бот шлёт его сам в Telegram; здесь
               менеджер копирует ровно тот же текст и отправляет руками — так
               клиент на MAX получает то же, что клиент на Telegram. */}
-          <div className="sm:col-span-2 lg:col-span-3">
-            <GreetingCopyButton orderId={order.id} />
-          </div>
+          {!marketplace && (
+            <div className="sm:col-span-2 lg:col-span-3">
+              <GreetingCopyButton orderId={order.id} />
+            </div>
+          )}
           {/* Строки, которые правятся, открывают правку сами. Кнопка
               «Изменить» стоит в шапке карточки, а эти поля — под списком
               позиций: доскроллив сюда, приходилось искать дорогу обратно
@@ -1023,18 +1098,25 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             value={SOURCE_ORDER_LABELS[order.sourceOrder] ?? order.sourceOrder}
             onEdit={isAdmin ? startEdit : undefined}
           />
-          <InfoRow
-            label="Способ доставки"
-            value={DELIVERY_LABELS[order.deliveryMethod]}
-            onEdit={isAdmin ? startEdit : undefined}
-          />
+          {/* Доставку заказа с площадки ведёт сама площадка: ни способа,
+              ни стоимости у нас нет, и показывать «Самовывоз · 0 ₽» —
+              значит утверждать неправду. */}
+          {!marketplace && (
+            <InfoRow
+              label="Способ доставки"
+              value={DELIVERY_LABELS[order.deliveryMethod]}
+              onEdit={isAdmin ? startEdit : undefined}
+            />
+          )}
           {isAdmin && (
             <>
-              <InfoRow
-                label="Доставка"
-                value={`${(order.deliveryCost ?? 0).toLocaleString()} ₽`}
-                onEdit={startEdit}
-              />
+              {!marketplace && (
+                <InfoRow
+                  label="Доставка"
+                  value={`${(order.deliveryCost ?? 0).toLocaleString()} ₽`}
+                  onEdit={startEdit}
+                />
+              )}
               {(order.urgencyFee ?? 0) > 0 && (
                 <InfoRow
                   label="Срочность"
@@ -1097,6 +1179,9 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   Остаток считается от реальной предоплаты (см. computePrepayment):
                   при правках заказа он не «уезжает» на 50% от новой суммы. */}
               {(() => {
+                // Деньги по заказу с площадки считает она сама: в CRM выручки
+                // нет, и «сумма заказа» тут означала бы ноль или чужое число.
+                if (marketplace) return null;
                 const total = order.totalOrder ?? 0;
                 const { prepaid, balanceDue, recorded } = computePrepayment(
                   total,

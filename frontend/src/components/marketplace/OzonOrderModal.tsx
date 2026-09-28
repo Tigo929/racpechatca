@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { FileImage, PackageCheck } from 'lucide-react';
@@ -30,6 +31,13 @@ interface Props {
 
 export function OzonOrderModal({ accountId, order, onClose }: Props) {
   const qc = useQueryClient();
+  /*
+   * Ссылка на переписку. Единственное, чего в отправлении нет: чат
+   * с покупателем живёт в кабинете Ozon, и ссылки на него у отправления
+   * не бывает. Оператор вставляет её, если переписка началась; не вставил —
+   * контактом остаётся номер отправления, по нему заказ находят в кабинете.
+   */
+  const [chatUrl, setChatUrl] = useState('');
 
   const { data: link, isLoading } = useQuery({
     queryKey: ['ozon-crm-order', accountId, order.postingNumber],
@@ -37,7 +45,8 @@ export function OzonOrderModal({ accountId, order, onClose }: Props) {
   });
 
   const createMutation = useMutation({
-    mutationFn: () => ozonOrdersApi.createCrmOrder(accountId, order.postingNumber),
+    mutationFn: () =>
+      ozonOrdersApi.createCrmOrder(accountId, order.postingNumber, chatUrl),
     onSuccess: (res) => {
       void qc.invalidateQueries({
         queryKey: ['ozon-crm-order', accountId, order.postingNumber],
@@ -123,6 +132,25 @@ export function OzonOrderModal({ accountId, order, onClose }: Props) {
             Деньги по такому заказу считает площадка: в CRM он заводится без
             цены, доставки и расчёта с исполнителем — только производство
             и макет.
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-400" htmlFor="ozon-chat-url">
+              Ссылка на переписку с покупателем — если она есть
+            </label>
+            <input
+              id="ozon-chat-url"
+              type="url"
+              inputMode="url"
+              value={chatUrl}
+              onChange={(e) => setChatUrl(e.target.value)}
+              placeholder="https://seller.ozon.ru/app/chat/…"
+              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              Не заполняйте, если переписки нет: контактом станет номер
+              отправления — по нему заказ находят в кабинете.
+            </p>
           </div>
 
           {unparsed.length > 0 ? (

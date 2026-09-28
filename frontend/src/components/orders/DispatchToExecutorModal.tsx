@@ -14,6 +14,14 @@ type Props = {
   /** В заказе есть свободные позиции — их сумма исполнителю идёт «по составу». */
   hasFreePositions?: boolean;
   isResend: boolean;
+  /**
+   * Заказ с площадки: деньги исполнителю считает не CRM.
+   *
+   * Выплата у таких заказов идёт по договорённости с партнёром вне нашей
+   * экономики, и показанное здесь число было бы выдумкой. Окно спрашивает
+   * только то, о чём и должно: отправлять ли задание.
+   */
+  marketplace?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
   isPending: boolean;
@@ -28,6 +36,7 @@ export function DispatchToExecutorModal({
   payout,
   hasFreePositions = false,
   isResend,
+  marketplace = false,
   onConfirm,
   onCancel,
   isPending,
@@ -55,6 +64,13 @@ export function DispatchToExecutorModal({
           Отправить заказ <span className="font-bold">{orderNumber}</span> исполнителю?
         </p>
 
+        {marketplace ? (
+          <p className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 mb-6">
+            Деньги по заказу с площадки считает она сама — выплата
+            исполнителю идёт по договорённости, а не из этого заказа.
+            Исполнителю уйдут состав, цвет, размер и лист макета.
+          </p>
+        ) : (
         <div className="bg-gray-50 rounded-xl p-4 space-y-2 mb-6">
           {payout ? (
             <>
@@ -89,6 +105,7 @@ export function DispatchToExecutorModal({
             </p>
           )}
         </div>
+        )}
 
         <div className="flex gap-3">
           <button

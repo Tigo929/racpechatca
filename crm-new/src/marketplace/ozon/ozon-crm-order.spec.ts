@@ -46,6 +46,7 @@ describe('черновик заказа из отправления Ozon', () =>
         quantity: 1,
         price: 0,
         printLocation: 'FRONT',
+        offerId: 'JDM-1-1-black-S',
       }),
     ]);
   });
@@ -121,6 +122,9 @@ describe('черновик заказа из отправления Ozon', () =>
     expect(draft.note).toContain('0189070451-0031-1');
     expect(draft.note).toContain('Стикер: …0311');
     expect(draft.note).toContain('JDM-1-1-black-S → Чёрный, S');
+    // Срок отгрузки живёт в кабинете и меняется там: замороженная копия
+    // в примечании через день врёт.
+    expect(draft.note).not.toContain('Отгрузить до');
   });
 
   it('без номера заказа площадки подставляется номер отправления', () => {

@@ -402,9 +402,17 @@ export class ApprovalService {
         numberOrder: true,
         marketplaceOrderNumber: true,
         marketplacePostingNumber: true,
+        isMarketplacePrint: true,
         // Печать на изделии заказчика — свободная позиция с этим признаком.
         items: { select: { printOnClientItem: true } },
-        tshirtItems: { select: { clientItem: true } },
+        tshirtItems: {
+          select: {
+            clientItem: true,
+            color: true,
+            size: true,
+            marketplaceArticle: true,
+          },
+        },
       },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
@@ -445,6 +453,18 @@ export class ApprovalService {
       // Хвост стикера — у заказов с площадки. Печатник кладёт по нему
       // готовую футболку к нужной посылке.
       sticker: stickerCode(order.marketplacePostingNumber),
+      marketplace: order.isMarketplacePrint,
+      // Артикул берём у позиции, к которой относится лист: цвет и размер
+      // согласования выбраны из неё же. Одна позиция — она и есть.
+      article:
+        order.tshirtItems.find(
+          (item) =>
+            item.color === approval.shirtColor &&
+            item.size === approval.shirtSize,
+        )?.marketplaceArticle ??
+        (order.tshirtItems.length === 1
+          ? order.tshirtItems[0].marketplaceArticle
+          : null),
       version: approval.version,
       shirtColor: approval.shirtColor,
       shirtSizeLabel: SIZE_LABELS[approval.shirtSize] ?? approval.shirtSize,

@@ -49,6 +49,11 @@ const FONT = "'DejaVu Sans','Roboto','Segoe UI','Arial',sans-serif";
 
 const INK = '#111827';
 const MUTED = '#6b7280';
+/** Плашка стикера: синий фон, чёрный текст — просили именно так. */
+const STICKER_BG = '#bfdbfe';
+const STICKER_BOX_W = 260;
+const STICKER_BOX_H = 56;
+const STICKER_LABEL = 'Стикер';
 const LINE = '#d1d5db';
 
 export interface RenderSideInput {
@@ -77,6 +82,21 @@ export interface RenderSheetInput {
    * с расстояния вытянутой руки.
    */
   sticker?: string | null;
+  /**
+   * Артикул площадки у этой позиции: «JDM-1-1-black-S».
+   *
+   * Печатник сверяет его с карточкой Ozon — из цвета и размера артикул
+   * обратно не собрать, в нём есть ещё код принта. Заменяет строку
+   * с размером принта: размер виден на самом макете, а артикул больше
+   * взять неоткуда.
+   */
+  article?: string | null;
+  /**
+   * Лист заказа с площадки. Его читает печатник, а не покупатель, и часть
+   * подписей ему не нужна: размер принта он видит на самом макете, а
+   * согласовывать с ним нечего.
+   */
+  marketplace?: boolean;
   version: number;
   shirtColor: string;
   shirtSizeLabel: string;
@@ -276,12 +296,18 @@ export class ApprovalRenderService {
           weight: 600,
           anchor: 'middle',
         }),
-        text(
-          formatSizeCm(side.state.widthMm, side.state.heightMm),
-          place.centerX,
-          captionTop + 46,
-          { size: 30, fill: MUTED, anchor: 'middle' },
-        ),
+        // Размер печати подписываем только там, где его согласуют.
+        // На листе для печатника он лишний: размер виден на макете.
+        ...(input.marketplace
+          ? []
+          : [
+              text(
+                formatSizeCm(side.state.widthMm, side.state.heightMm),
+                place.centerX,
+                captionTop + 46,
+                { size: 30, fill: MUTED, anchor: 'middle' },
+              ),
+            ]),
       );
     }
 
@@ -290,7 +316,9 @@ export class ApprovalRenderService {
     const rows: [string, string][] = input.clientItem
       ? [
           ['Заказ №', input.numberOrder],
-          ...(input.sticker ? ([['Стикер', `…${input.sticker}`]] as [string, string][]) : []),
+          ...(input.sticker
+            ? ([[STICKER_LABEL, `…${input.sticker}`]] as [string, string][])
+            : []),
           // Изделие принёс клиент — цвет и размер футболки тут ни при чём,
           // на них печатник ориентироваться не должен.
           ['Изделие', 'Клиента'],
@@ -298,15 +326,24 @@ export class ApprovalRenderService {
         ]
       : [
           ['Заказ №', input.numberOrder],
-          ...(input.sticker ? ([['Стикер', `…${input.sticker}`]] as [string, string][]) : []),
+          ...(input.sticker
+            ? ([[STICKER_LABEL, `…${input.sticker}`]] as [string, string][])
+            : []),
           ['Цвет футболки', input.shirtColor],
           ['Размер футболки', input.shirtSizeLabel],
         ];
-    for (const side of input.sides) {
-      rows.push([
-        SIDE_LABELS[side.side],
-        formatSizeCm(side.state.widthMm, side.state.heightMm),
-      ]);
+    if (input.marketplace) {
+      // Размер принта строкой не печатаем: он виден на самом макете, а место
+      // в таблице дороже отдать артикулу — артикула на макете нет, и найти
+      // по нему заказ в кабинете получится, а по «20 × 25 см» нет.
+      if (input.article) rows.push(['Артикул', input.article]);
+    } else {
+      for (const side of input.sides) {
+        rows.push([
+          SIDE_LABELS[side.side],
+          formatSizeCm(side.state.widthMm, side.state.heightMm),
+        ]);
+      }
     }
     // Кто собирал макет, в лист не выносим: клиенту это не нужно, а в
     // базе автор всё равно записан (PrintApproval.createdById).
@@ -314,10 +351,19 @@ export class ApprovalRenderService {
 
     rows.forEach(([label, value], index) => {
       const y = INFO_TOP + index * ROW_H;
-      parts.push(
-        text(label, LABEL_X, y, { size: 30, fill: MUTED }),
-        text(value, VALUE_X, y, { size: 32, weight: 600 }),
-      );
+      parts.push(text(label, LABEL_X, y, { size: 30, fill: MUTED }));
+      if (label === STICKER_LABEL) {
+        // Стикер — единственное, что ищут на листе глазами, не читая:
+        // по нему готовую футболку кладут к нужной посылке. Плашка делает
+        // его заметным через стол, а чёрный текст на синем остаётся
+        // читаемым и на чёрно-белом принтере.
+        parts.push(
+          rect(VALUE_X - 16, y - 40, STICKER_BOX_W, STICKER_BOX_H, STICKER_BG),
+          text(value, VALUE_X, y, { size: 40, weight: 700 }),
+        );
+        return;
+      }
+      parts.push(text(value, VALUE_X, y, { size: 32, weight: 600 }));
     });
 
     if (input.comment) {
@@ -424,6 +470,16 @@ function text(
     ` font-weight="${opts.weight ?? 400}" fill="${opts.fill ?? INK}"` +
     ` text-anchor="${anchor}"${spacing}>${escapeXml(value)}</text>`
   );
+}
+
+function rect(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  fill: string,
+): string {
+  return `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="8" fill="${fill}"/>`;
 }
 
 function line(x1: number, y1: number, x2: number, y2: number): string {

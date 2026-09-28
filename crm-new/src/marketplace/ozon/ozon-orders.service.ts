@@ -144,6 +144,23 @@ export class OzonOrdersService {
     return this.toView(posting);
   }
 
+  /**
+   * Ярлык отправления (стикер) в PDF — тот самый, который клеят на посылку.
+   *
+   * Печатаем ярлык площадки, а не свой: по нему посылку принимает Ozon,
+   * и второй наклейки на коробке быть не должно. Ярлык готов не сразу
+   * после оформления — до сборки отправления площадка отвечает ошибкой,
+   * и текст этой ошибки уходит человеку как есть.
+   */
+  async packageLabel(
+    creds: OzonCredentials,
+    postingNumber: string,
+  ): Promise<Buffer> {
+    return this.api.postBinary(creds, '/v2/posting/fbs/package-label', {
+      posting_number: [postingNumber],
+    });
+  }
+
   private toView(p: RawPosting): OzonOrderView {
     const status = p.status ?? 'unknown';
     const group = groupForStatus(status);

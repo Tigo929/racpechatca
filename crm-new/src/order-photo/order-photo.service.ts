@@ -321,6 +321,8 @@ export class OrderPhotoService {
           color: e.color,
           size: e.size,
           printLocation: e.printLocation,
+          // Артикул площадки — только у позиций, заведённых из кабинета.
+          marketplaceArticle: e.marketplaceArticle?.trim() || null,
           quantity: e.quantity,
           price: e.price,
           pricePosition: lineTotal,
@@ -438,6 +440,9 @@ export class OrderPhotoService {
           // у заказа, набранного руками, отправления нет.
           marketplacePostingNumber: dto.isMarketplacePrint
             ? normalizeMarketplaceNumber(dto.marketplacePostingNumber)
+            : null,
+          marketplaceAccountId: dto.isMarketplacePrint
+            ? (dto.marketplaceAccountId ?? null)
             : null,
           tshirtModel: dto.tshirtModel,
           productCategory,

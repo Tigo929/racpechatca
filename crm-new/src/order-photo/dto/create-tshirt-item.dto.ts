@@ -19,6 +19,15 @@ export class DtoCreateTshirtItem {
   @IsEnum(EnumPrintLocation)
   printLocation!: EnumPrintLocation;
 
+  /**
+   * Артикул площадки у позиции: «JDM-1-1-black-S». Ставится только при
+   * заведении заказа из кабинета Ozon — из него выведены цвет и размер,
+   * и он же печатается на листе макета.
+   */
+  @IsOptional()
+  @IsString()
+  marketplaceArticle?: string;
+
   @IsInt()
   @Type(() => Number)
   @Min(1)

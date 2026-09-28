@@ -78,10 +78,24 @@ export const ozonOrdersApi = {
   createCrmOrder: async (
     accountId: string,
     postingNumber: string,
+    chatUrl?: string,
   ): Promise<{ orderId: string; created: boolean }> => {
     const { data } = await api.post<{ orderId: string; created: boolean }>(
       `/marketplace/ozon/${accountId}/orders/${encodeURIComponent(postingNumber)}/crm-order`,
+      { chatUrl: chatUrl?.trim() || undefined },
     );
     return data;
+  },
+
+  /**
+   * Ярлык отправления (стикер) в PDF — тот, который клеят на посылку.
+   * Печатаем ярлык площадки, а не свой: по нему посылку принимает Ozon.
+   */
+  label: async (accountId: string, postingNumber: string): Promise<Blob> => {
+    const response = await api.get(
+      `/marketplace/ozon/${accountId}/orders/${encodeURIComponent(postingNumber)}/label`,
+      { responseType: 'blob' },
+    );
+    return response.data as Blob;
   },
 };

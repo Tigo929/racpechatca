@@ -103,11 +103,29 @@ describe('отправление Ozon в CRM', () => {
       expect(ozonOrdersApi.createCrmOrder).toHaveBeenCalledWith(
         'acc',
         '0189070451-0031-1',
+        '',
       );
     });
     // Что дальше открывается карточка — проверяет следующий тест: связь
     // отправления с заказом приходит с сервера, а не из ответа на создание.
   });
+  it('ссылка на переписку уходит вместе с заведением', async () => {
+    // Чат с покупателем живёт в кабинете, и ссылки у отправления нет —
+    // единственное, что оператор добавляет руками.
+    show(order([item('JDM-1-1-black-S')]));
+    fireEvent.change(await screen.findByLabelText(/Ссылка на переписку/), {
+      target: { value: 'https://seller.ozon.ru/app/chat/42' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Завести в CRM/ }));
+    await waitFor(() => {
+      expect(ozonOrdersApi.createCrmOrder).toHaveBeenCalledWith(
+        'acc',
+        '0189070451-0031-1',
+        'https://seller.ozon.ru/app/chat/42',
+      );
+    });
+  });
+
   it('уже заведённое отправление сразу открывает карточку заказа', async () => {
     vi.mocked(ozonOrdersApi.crmOrder).mockResolvedValue({
       id: 'o42',
