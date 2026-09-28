@@ -224,7 +224,7 @@ async function overview(service: AnalyticsMetricsService): Promise<number> {
   line('spend / ROAS / ROMI', f.spend.status);
   const q = o.dataQuality;
   console.log(
-    `Качество данных: свежесть ${q.freshness.status} (${q.freshness.metrikaDataAgeSeconds ?? '—'} с), ClientID у принятых ${pct(q.clientIdCoverageAccepted)}, у оплаченных ${pct(q.clientIdCoveragePaid)}, eligible ${q.eligibleAccepted}, доставлено ${q.eligibleDeliveredToMetrika} (${pct(q.metrikaMatchCoverage)}), reaches «создан» ${q.matchedAcceptedReaches}, notes: ${q.notes.join(', ') || 'нет'}`,
+    `Качество данных: свежесть ${q.freshness.status} (${q.freshness.metrikaDataAgeSeconds ?? '—'} с), ClientID у принятых ${pct(q.clientIdCoverageAccepted)}, у оплаченных ${pct(q.clientIdCoveragePaid)}, eligible ${q.eligibleAccepted}, доставлено ${q.eligibleDeliveredToMetrika} (${pct(q.metrikaDeliveryCoverage ?? null)}), сопоставление ${pct(q.metrikaMatchCoverage)}, reaches «создан» ${q.matchedAcceptedReaches}, notes: ${q.notes.join(', ') || 'нет'}`,
   );
   if (o.comparison) {
     console.log('Сравнение с предыдущим периодом:');

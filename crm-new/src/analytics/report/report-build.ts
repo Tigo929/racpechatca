@@ -1,4 +1,6 @@
-import type { TrendPoint } from '../metrics/metrics-contract';
+import type { FinancialMetrics, TrendPoint } from '../metrics/metrics-contract';
+import { compare } from '../metrics/ratios';
+import { addDays } from '../../metrika/analytics/metrika-dates';
 import type {
   Anomaly,
   ForecastBlock,
@@ -44,7 +46,7 @@ function deltaPct(
   previous: number | null,
 ): number | null {
   if (current === null || previous === null || previous === 0) return null;
-  return ((current - previous) / previous) * 100;
+  return compare(current, previous).deltaPct;
 }
 
 export function metricRow(
@@ -69,6 +71,12 @@ function realized(snapshot: PeriodSnapshot) {
   return snapshot.overview.financials.realized;
 }
 
+function realizedCostsIncomplete(financials: FinancialMetrics): boolean {
+  return financials.evidence
+    ? financials.evidence.realized.missingCostOrders > 0
+    : financials.quality.notes.includes('COGS_UNRELIABLE_ORDERS');
+}
+
 /** Ключевые метрики периода: то, с чего начинается чтение отчёта. */
 export function buildSummary(
   current: PeriodSnapshot,
@@ -78,7 +86,7 @@ export function buildSummary(
   const p = previous.overview;
   const cr = realized(current);
   const pr = realized(previous);
-  return [
+  const rows = [
     metricRow('visits', 'Визиты', 'count', c.traffic.visits, p.traffic.visits),
     metricRow(
       'users',
@@ -96,7 +104,7 @@ export function buildSummary(
     ),
     metricRow(
       'siteLeads',
-      'Заявки с сайта',
+      'Достижения цели заявки (не уникальные заявки)',
       'count',
       c.siteFunnel.siteLeads,
       p.siteFunnel.siteLeads,
@@ -173,10 +181,10 @@ export function buildSummary(
     ),
     metricRow(
       'clientIdCoverage',
-      'Покрытие ClientID у принятых',
+      'Покрытие ClientID у принятых заказов сайта',
       'percent',
-      current.dataQuality.clientIdCoverageAccepted,
-      previous.dataQuality.clientIdCoverageAccepted,
+      current.dataQuality.websiteClientIdCoverage,
+      previous.dataQuality.websiteClientIdCoverage,
     ),
     metricRow(
       'paidWithoutDate',
@@ -186,6 +194,47 @@ export function buildSummary(
       p.orders.paidWithoutDate,
     ),
   ];
+  return rows.map((row) => {
+    const snapshots = [current, previous];
+    let note: string | undefined;
+    if (
+      [
+        'visits',
+        'users',
+        'pageviews',
+        'siteLeads',
+        'siteLeadConversion',
+      ].includes(row.key)
+    ) {
+      if (
+        snapshots.some(
+          (s) =>
+            s.dataQuality.freshness.status !== 'FRESH' ||
+            s.overview.traffic.quality.notes.includes(
+              'PERIOD_BEFORE_COUNTER',
+            ) ||
+            (row.key === 'users' &&
+              s.overview.traffic.quality.notes.includes('SNAPSHOT_SAMPLED')),
+        )
+      )
+        note =
+          'Неполные или устаревшие данные трафика; сравнение не подтверждено';
+      if (
+        ['siteLeads', 'siteLeadConversion'].includes(row.key) &&
+        snapshots.some((s) => s.dataQuality.siteLeadsLegacy)
+      )
+        note =
+          'Период включает старую методику регистрации заявки; сравнение несопоставимо';
+    }
+    if (
+      ['cogs', 'netProfit', 'marginPct'].includes(row.key) &&
+      snapshots.some((s) => realizedCostsIncomplete(s.overview.financials))
+    )
+      note = 'Неполная себестоимость; изменение прибыли не подтверждено';
+    return note
+      ? { ...row, delta: null, deltaPct: null, comparisonNote: note }
+      : row;
+  });
 }
 
 /**
@@ -205,30 +254,44 @@ function fmt(unit: MetricRow['unit'], v: number): string {
 }
 
 /** Метрики, у которых рост — это ухудшение. */
-const LOWER_IS_BETTER = new Set(['cancelledOrders', 'paidWithoutDate', 'cogs']);
+const LOWER_IS_BETTER = new Set(['paidWithoutDate']);
+// Absolute cost/cancellation counts need sales volume and mix to interpret.
+const CONTEXT_REQUIRED = new Set(['cogs', 'cancelledOrders']);
 
 export function buildSignals(rows: MetricRow[]): Signal[] {
   return rows.map((row) => {
-    if (row.current === null || row.previous === null) {
+    if (row.comparisonNote || row.current === null || row.previous === null) {
       return {
         kind: 'insufficient' as const,
         metric: row.label,
-        statement: `${row.label}: сравнение невозможно (нет данных за один из периодов)`,
+        statement: `${row.label}: ${row.comparisonNote ?? 'сравнение невозможно (нет данных за один из периодов)'}`,
       };
     }
     const pct = row.deltaPct;
-    if (pct === null || Math.abs(pct) < STABLE_PCT) {
+    if (
+      row.current === row.previous ||
+      (pct !== null && Math.abs(pct) < STABLE_PCT)
+    ) {
       return {
         kind: 'stable' as const,
         metric: row.label,
         statement: `${row.label}: ${fmt(row.unit, row.previous)} → ${fmt(row.unit, row.current)} (изменение в пределах ±${STABLE_PCT} %)`,
       };
     }
-    const improved = LOWER_IS_BETTER.has(row.key) ? pct < 0 : pct > 0;
+    const change = row.current - row.previous;
+    const improved = LOWER_IS_BETTER.has(row.key) ? change < 0 : change > 0;
+    const changeText =
+      pct === null
+        ? 'процент изменения не определён: предыдущая база равна нулю'
+        : `${pct > 0 ? '+' : ''}${pct.toFixed(1)} %`;
     return {
-      kind: improved ? ('positive' as const) : ('negative' as const),
+      kind: CONTEXT_REQUIRED.has(row.key)
+        ? ('neutral' as const)
+        : improved
+          ? ('positive' as const)
+          : ('negative' as const),
       metric: row.label,
-      statement: `${row.label}: ${fmt(row.unit, row.previous)} → ${fmt(row.unit, row.current)} (${pct > 0 ? '+' : ''}${pct.toFixed(1)} %)`,
+      statement: `${row.label}: ${fmt(row.unit, row.previous)} → ${fmt(row.unit, row.current)} (${changeText})${CONTEXT_REQUIRED.has(row.key) ? '; оценка требует объёма продаж и структуры заказов' : ''}`,
     };
   });
 }
@@ -264,40 +327,43 @@ export function buildSiteFunnel(
   const p = previous.overview.siteFunnel;
   return [
     step('Визиты', c.visits, null, p.visits),
-    step('Заявки с сайта', c.siteLeads, c.visits, p.siteLeads),
+    step('Достижения цели заявки', c.siteLeads, null, p.siteLeads),
     step(
-      'Приняты в работу (сопоставлено)',
+      'Достижения CRM-цели «принят» в Метрике',
       c.matchedAccepted,
-      c.siteLeads,
+      null,
       p.matchedAccepted,
     ),
     step(
-      'Оплачены (сопоставлено)',
+      'Достижения CRM-цели «оплачен» в Метрике',
       c.matchedPaid,
-      c.matchedAccepted,
+      null,
       p.matchedPaid,
     ),
   ];
 }
 
-/** Путь заказа в CRM: заявка → принят → оплачен, плюс отмены. */
+/** Конверсия только внутри одной когорты заявок; события периода — в SALES. */
 export function buildCrmFunnel(
   current: PeriodSnapshot,
   previous: PeriodSnapshot,
 ): FunnelStep[] {
-  const c = current.overview.crmFunnel.events;
-  const p = previous.overview.crmFunnel.events;
+  const c = current.overview.crmFunnel.cohorts;
+  const p = previous.overview.crmFunnel.cohorts;
   return [
-    step('Заявки CRM (LEAD)', c.crmLeads, null, p.crmLeads),
-    step('Приняты в работу', c.acceptedOrders, c.crmLeads, p.acceptedOrders),
-    step('Оплачены', c.paidOrders, c.acceptedOrders, p.paidOrders),
+    step('Заявки CRM (LEAD)', c.leadCohortSize, null, p.leadCohortSize),
     step(
-      'Реализовано (выручка признана)',
-      c.realizedOrders,
-      c.paidOrders,
-      p.realizedOrders,
+      'Из них приняты в работу',
+      c.leadCohortAccepted,
+      c.leadCohortSize,
+      p.leadCohortAccepted,
     ),
-    step('Отменены', c.cancelledOrders, null, p.cancelledOrders),
+    step(
+      'Из них оплачены',
+      c.leadCohortPaid,
+      c.leadCohortAccepted,
+      p.leadCohortPaid,
+    ),
   ];
 }
 
@@ -315,10 +381,13 @@ export function biggestDropOff(steps: FunnelStep[]): FunnelStep | null {
 /** Недельные агрегаты дневного ряда — вход для прогноза. */
 export function buildWeekly(daily: TrendPoint[]): WeeklyPoint[] {
   const weeks = new Map<string, WeeklyPoint>();
+  const dates = new Map<string, Set<string>>();
   for (const point of daily) {
     const monday = weekStart(point.date);
     const w = weeks.get(monday) ?? {
       week: monday,
+      observedDays: 0,
+      complete: false,
       visits: 0,
       leads: 0,
       accepted: 0,
@@ -334,11 +403,16 @@ export function buildWeekly(daily: TrendPoint[]): WeeklyPoint[] {
     w.paid += point.paidOrders;
     w.revenue += point.realizedRevenue;
     w.profit += point.netProfit;
+    const seen = dates.get(monday) ?? new Set<string>();
+    seen.add(point.date);
+    dates.set(monday, seen);
     weeks.set(monday, w);
   }
   return [...weeks.values()]
     .map((w) => ({
       ...w,
+      observedDays: dates.get(w.week)!.size,
+      complete: dates.get(w.week)!.size === 7,
       marginPct: w.revenue > 0 ? (w.profit / w.revenue) * 100 : null,
     }))
     .sort((a, b) => a.week.localeCompare(b.week));
@@ -398,7 +472,8 @@ export function buildAnomalies(
       baseline: paid.previous,
       delta: paid.delta,
       severity: 'CRITICAL',
-      evidence: 'в текущем периоде нет ни одной оплаты, в предыдущем они были',
+      evidence:
+        'в текущем периоде нет зарегистрированных clientPaidAt, в предыдущем они были; без сверки платежей это не доказывает отсутствие поступлений',
     });
   }
 
@@ -435,7 +510,20 @@ export function buildAnomalies(
  * среднее последних четырёх полных недель. Всё остальное — ложная точность.
  */
 export function buildForecast(weekly: WeeklyPoint[]): ForecastBlock {
-  const complete = weekly.slice(0, -1); // последняя неделя может быть неполной
+  // Only a consecutive run of fully observed weeks, including a full last Sunday.
+  const complete: WeeklyPoint[] = [];
+  for (const week of weekly) {
+    if (!week.complete) {
+      if (week !== weekly[weekly.length - 1]) complete.length = 0;
+      continue;
+    }
+    if (
+      complete.length &&
+      addDays(complete[complete.length - 1].week, 7) !== week.week
+    )
+      complete.length = 0;
+    complete.push(week);
+  }
   if (complete.length < MIN_FORECAST_WEEKS) {
     return {
       available: false,
@@ -463,7 +551,7 @@ export function buildForecast(weekly: WeeklyPoint[]): ForecastBlock {
         ) / mean
       : 1;
   const confidence: ForecastBlock['confidence'] =
-    spread < 0.15 ? 'HIGH' : spread < 0.35 ? 'MEDIUM' : 'LOW';
+    spread < 0.35 ? 'MEDIUM' : 'LOW';
 
   return {
     available: true,
@@ -471,9 +559,9 @@ export function buildForecast(weekly: WeeklyPoint[]): ForecastBlock {
       'среднее по четырём последним полным неделям, без сезонности и без учёта рекламных расходов',
     confidence,
     limitations: [
-      `разброс недельной выручки ±${(spread * 100).toFixed(0)} % — основа оценки уверенности`,
+      `коэффициент вариации недельной выручки ${(spread * 100).toFixed(0)} %; это не доверительный интервал и не вероятность прогноза`,
       'метод не учитывает сезонность, акции, изменения цен и рекламный бюджет',
-      'выручка признаётся по дате оплаты, а часть заказов оплачивается без даты — когорты могут смещаться',
+      'выручка признаётся по методике CRM: дата оплаты, иначе завершения, смены статуса, отгрузки или создания; это не прогноз банковских поступлений',
       'прогноз не является обязательством и не учитывает внешние события',
     ],
     horizons: [
@@ -510,21 +598,43 @@ export function buildQuality(input: ReportInput): QualityItem[] {
     total > 0 ? `${((part / total) * 100).toFixed(1)} %` : 'нет данных';
   return [
     {
-      metric: 'Покрытие ClientID у принятых заказов',
+      metric: 'Ограничения исходных данных периода',
       value:
-        dq.clientIdCoverageAccepted === null
+        [
+          ...new Set([
+            ...dq.notes,
+            ...input.current.overview.financials.quality.notes,
+          ]),
+        ].join(', ') || 'дополнительных флагов нет',
+      threshold: 'проверять до интерпретации цифр',
+      impact:
+        'Неполная себестоимость, старые цели, отсутствующие снимки и даты ограничивают выводы. Отсутствие флагов не заменяет сверку первичных документов.',
+    },
+    {
+      metric: 'Неизвестные даты оплат в истории CRM',
+      value: input.historyQuality
+        ? String(input.historyQuality.paidWithoutDate)
+        : 'нет общего подсчёта',
+      threshold: '0 для надёжного прогноза оплат',
+      impact:
+        'Это все текущие PAID без clientPaidAt, не только принятые в периоде. Они не распределяются по дням догадкой.',
+    },
+    {
+      metric: 'Покрытие ClientID у принятых заказов сайта',
+      value:
+        dq.websiteClientIdCoverage === null
           ? 'нет данных'
-          : `${dq.clientIdCoverageAccepted.toFixed(1)} %`,
+          : `${dq.websiteClientIdCoverage.toFixed(1)} %`,
       threshold: '≥ 50 %',
       impact:
-        'сопоставление «трафик → заказ» охватывает только часть заказов CRM; метрики matchedAccepted / matchedPaid считаются по этой части',
+        'наличие идентификатора позволяет попытаться связать визит и заказ, но не доказывает привязку в Метрике; CRM-цели считаются отдельно',
     },
     {
       metric: 'Заказы без даты оплаты (paidWithoutDate)',
       value: String(input.current.overview.orders.paidWithoutDate),
       threshold: '0',
       impact:
-        'выручка таких заказов признаётся по дате отгрузки — когорты по датам смещаются, суммы при этом верны',
+        'число среди заказов, принятых в периоде. Без clientPaidAt оплату нельзя отнести к дню; реализация использует резервные даты, её сумма не подтверждает получение денег',
     },
     {
       metric: 'Покрытие UTM у заказов периода',
@@ -542,8 +652,9 @@ export function buildQuality(input: ReportInput): QualityItem[] {
     {
       metric: 'Страница заявки (conversionPageUrl)',
       value: pct(a.withConversionPage, a.totalOrders),
-      threshold: '100 % для заявок с сайта',
-      impact: 'без неё неизвестно, с какой страницы пришла заявка',
+      threshold: 'не применяется ко всем заказам CRM, включая ручные',
+      impact:
+        'доля среди всех созданных заказов. Для оценки потери страницы нужен отдельный знаменатель WEBSITE',
     },
     {
       metric: 'Первая страница визита (firstTouchUrl)',
@@ -552,13 +663,14 @@ export function buildQuality(input: ReportInput): QualityItem[] {
       impact: 'ограничивает анализ входных страниц на исторических заявках',
     },
     {
-      metric: 'Очередь в Метрику: пропущено из-за отсутствия ClientID',
+      metric: 'Очередь в Метрику: события без ClientID и yclid, вся история',
       value: String(
         input.sync.skipReasons.find((r) => r.reason === 'no_client_id')?.rows ??
           0,
       ),
       threshold: '— (следствие покрытия ClientID)',
-      impact: 'такие заказы не попадают в кабинет Метрики как конверсии',
+      impact:
+        'это число пропущенных событий очереди, не уникальных заказов; причина и происхождение требуют отдельной проверки',
     },
     {
       metric: 'Свежесть данных Метрики',
@@ -606,7 +718,7 @@ export function buildOrderOrigin(input: ReportInput): OriginBlock {
     averageCheck: r.averageCheck ?? null,
   }));
   const sum = (pick: (r: OriginRow) => number | null): number | null =>
-    rows.some((r) => pick(r) !== null)
+    rows.length > 0 && rows.every((r) => pick(r) !== null)
       ? rows.reduce((acc, r) => acc + (pick(r) ?? 0), 0)
       : null;
   const revenue = sum((r) => r.revenue);
@@ -630,7 +742,7 @@ export function buildOrderOrigin(input: ReportInput): OriginBlock {
   const realized = input.current.overview.financials.realized;
   const orders = input.current.overview.orders;
   const rounding =
-    'себестоимость бумаги округляется вверх до рубля в каждой корзине (правило этапа 08): чем больше корзин, тем больше рублей';
+    'требует разбора: все группировки суммируют одинаковую себестоимость каждого заказа';
   const check = (
     metric: string,
     originsSum: number | null,
@@ -700,7 +812,14 @@ export function buildReportModel(input: ReportInput): ReportModel {
   const signals = buildSignals(summary);
   const siteFunnel = buildSiteFunnel(input.current, input.previous);
   const crmFunnel = buildCrmFunnel(input.current, input.previous);
-  const weekly = buildWeekly(input.daily);
+  const weekly = buildWeekly(
+    input.daily.filter(
+      (d) =>
+        !input.historyQuality ||
+        (input.historyQuality.firstOrderDay !== null &&
+          d.date >= input.historyQuality.firstOrderDay),
+    ),
+  );
 
   const strengths = signals
     .filter((s) => s.kind === 'positive')
@@ -711,9 +830,9 @@ export function buildReportModel(input: ReportInput): ReportModel {
 
   const constraints: string[] = [];
   const dq = input.current.dataQuality;
-  if ((dq.clientIdCoverageAccepted ?? 0) < 50) {
+  if (dq.websiteAccepted > 0 && (dq.websiteClientIdCoverage ?? 0) < 50) {
     constraints.push(
-      `покрытие ClientID ${dq.clientIdCoverageAccepted?.toFixed(1) ?? '—'} % — рекламная атрибуция охватывает меньшинство заказов`,
+      `покрытие ClientID у заказов сайта ${dq.websiteClientIdCoverage?.toFixed(1) ?? '—'} %; наличие идентификатора не доказывает рекламную атрибуцию`,
     );
   }
   if (input.attribution.withUtm === 0) {
@@ -731,7 +850,7 @@ export function buildReportModel(input: ReportInput): ReportModel {
   );
   if (manual.length) {
     constraints.push(
-      `заказы, заводимые вручную, не имеют атрибуции вовсе: ${manual
+      `заказы без сохранённых признаков атрибуции (это не доказывает ручное происхождение): ${manual
         .map((s) => `${s.source} — ${s.orders}`)
         .join(', ')}`,
     );
@@ -739,16 +858,70 @@ export function buildReportModel(input: ReportInput): ReportModel {
   const originUnknown = buildOrderOrigin(input).coverage.unknownOriginOrders;
   if (originUnknown > 0) {
     constraints.push(
-      `у ${originUnknown} заказов периода происхождение по истории не доказано (UNKNOWN) — доли каналов считаются без них`,
+      `у ${originUnknown} заказов периода происхождение по истории не доказано (UNKNOWN) — они остаются в общих итогах отдельным каналом`,
     );
   }
   constraints.push(
-    'рекламные расходы в систему не заводятся: CPL, CPA, ROAS и ROMI посчитать нельзя',
+    input.current.overview.financials.spend.status ===
+      'UNAVAILABLE_NO_SPEND_DATA'
+      ? 'рекламные расходы за период отсутствуют: CPL, CPA, ROAS и ROMI посчитать нельзя'
+      : 'расходы на рекламу известны; для CPL, CPA, ROAS и ROMI нужна доказанная атрибуция результатов к кампаниям',
   );
 
+  const orderOrigin = buildOrderOrigin(input);
+  const mismatches = orderOrigin.reconciliation
+    .filter((r) => r.difference !== null && r.difference !== 0)
+    .map((r) => r.metric);
+  const recon = input.reconciliation;
+  if (
+    recon.trendSumRealizedRevenue !== null &&
+    recon.overviewRealizedRevenue !== null &&
+    recon.trendSumRealizedRevenue !== recon.overviewRealizedRevenue
+  )
+    mismatches.push('Выручка по дням');
+  const monthly = recon.monthlyPnl;
+  if (
+    monthly &&
+    ((monthly.serviceRevenue !== null &&
+      monthly.serviceRevenue !== monthly.reportRevenue) ||
+      (monthly.serviceNetProfit !== null &&
+        monthly.serviceNetProfit !== monthly.reportNetProfit) ||
+      (monthly.serviceCogs !== null &&
+        monthly.serviceCogs !== monthly.reportCogs))
+  )
+    mismatches.push('P&L месяца');
+  if (mismatches.length)
+    constraints.push(
+      `СВЕРКА НЕ ПРОЙДЕНА: ${mismatches.join(', ')}. Не использовать эти суммы для решений до выяснения расхождения.`,
+    );
+  const forecast = buildForecast(weekly);
+  const unresolvedPayments =
+    input.historyQuality?.paidWithoutDate ??
+    input.current.overview.orders.paidWithoutDate;
+  if (
+    unresolvedPayments > 0 ||
+    input.current.overview.financials.realized === null ||
+    realizedCostsIncomplete(input.current.overview.financials)
+  ) {
+    forecast.available = false;
+    forecast.confidence = 'LOW';
+    forecast.horizons = [];
+    forecast.reason = `INSUFFICIENT DATA QUALITY: заказов PAID без даты оплаты ${unresolvedPayments}; требуется подтверждение исторических оплат и себестоимости`;
+  }
+  if (mismatches.length) {
+    forecast.available = false;
+    forecast.horizons = [];
+    forecast.confidence = 'LOW';
+    forecast.reason = `RECONCILIATION_FAILED: ${mismatches.join(', ')}`;
+  }
+  constraints.push(
+    ...summary
+      .filter((r) => r.comparisonNote)
+      .map((r) => `${r.label}: ${r.comparisonNote}`),
+  );
   return {
     input,
-    orderOrigin: buildOrderOrigin(input),
+    orderOrigin,
     summary,
     signals,
     siteFunnel,
@@ -757,16 +930,27 @@ export function buildReportModel(input: ReportInput): ReportModel {
     comparison: summary,
     weekly,
     anomalies: buildAnomalies(summary, input),
-    forecast: buildForecast(weekly),
+    forecast,
     quality: buildQuality(input),
     strengths,
     weaknesses,
     constraints,
     openQuestions: [
-      'Сколько стоил трафик за период (рекламный бюджет по источникам) — без этого окупаемость не считается.',
-      'Какие заказы из зарплатной пачки оплачены в какой день — дата оплаты известна только человеку.',
+      ...(input.current.overview.financials.spend.status ===
+      'UNAVAILABLE_NO_SPEND_DATA'
+        ? ['Каковы фактические расходы рекламы за период?']
+        : [
+            'Все ли расходы рекламы учтены в CRM и подтверждена ли привязка рекламных заказов?',
+          ]),
+      ...(unresolvedPayments > 0
+        ? ['Какими платёжными документами подтверждаются даты старых оплат?']
+        : []),
       'Были ли в периоде внешние события (акции, изменения цен, перебои) — аналитика их не видит.',
-      'Планируется ли размечать кампании UTM-метками — сейчас их нет ни у одного заказа.',
+      ...(input.attribution.withUtm === 0
+        ? [
+            'Почему у заказов периода нет сохранённых UTM: органический трафик, старый период или потеря меток?',
+          ]
+        : []),
     ],
   };
 }

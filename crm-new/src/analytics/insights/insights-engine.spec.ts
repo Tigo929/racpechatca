@@ -511,6 +511,12 @@ describe('E. разделение доменов', () => {
     );
   });
 
+  it('manual Avito orders do not dilute website identifier coverage', () => {
+    const ctx = makeContext(QUIET, QUIET);
+    ctx.dataQuality = { ...ctx.dataQuality!, websiteAccepted: 10, websiteClientIdCoverage: 100, clientIdCoverageAccepted: 2 };
+    expect(clientIdCoverageDetector.evaluate(ctx).detected).toHaveLength(0);
+  });
+
   it('E3: неполная себестоимость блокирует прибыль и даёт DATA_QUALITY', () => {
     const ctx = makeContext(
       {
@@ -818,7 +824,7 @@ describe('I. качество данных', () => {
 });
 
 describe('источники, страницы входа, товары, сдвиг смеси', () => {
-  it('источник исчез (300 → 0 визитов) — карточка INFO; доля заявок внутри источника упала — ATTENTION', () => {
+  it('detects missing traffic, but does not infer conversion change from goal reaches', () => {
     const r = sourcePerformanceDetector.evaluate(
       makeContext(
         {
@@ -842,9 +848,7 @@ describe('источники, страницы входа, товары, сдв�
     const ads = r.detected.find((d) => d.payload.entityKey === 'ads')!;
     expect(ads.payload.title).toMatch(/трафик исчез/);
     expect(ads.payload.severity).toBe('INFO');
-    const org = r.detected.find((d) => d.payload.entityKey === 'organic')!;
-    expect(org.payload.severity).toBe('ATTENTION');
-    expect(org.payload.metricKey).toBe('siteLeadRate');
+    expect(r.detected.find((d) => d.payload.entityKey === 'organic')).toBeUndefined();
   });
 
   it('источник, чьи визиты падают вместе с общим трафиком, отдельной карточки не получает (DUPLICATE) — он в гипотезе карточки визитов', () => {
