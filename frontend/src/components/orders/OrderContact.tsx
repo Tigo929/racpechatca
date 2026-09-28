@@ -91,6 +91,22 @@ export function OrderContact({
         )}
       </div>
     );
+  } else if (platform === 'OZON' && !value.startsWith('http')) {
+    // Номер отправления вместо ссылки: чата с покупателем на Ozon нет,
+    // а по этому номеру заказ находят в кабинете — поэтому его дают
+    // скопировать, как телефон у MAX.
+    action = (
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="font-mono text-sm font-medium text-gray-800">{value}</span>
+        <button
+          type="button"
+          onClick={() => copy(value, 'Номер отправления скопирован')}
+          className={`${linkBtn} text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100`}
+        >
+          <Copy size={13} aria-hidden="true" /> Скопировать номер
+        </button>
+      </div>
+    );
   } else if (value.startsWith('http')) {
     action = (
       <a

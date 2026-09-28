@@ -102,4 +102,48 @@ describe('contact validation shared by create and edit', () => {
       validateCommunicationValue(EnumCommunication.OZON, 'javascript:alert(1)'),
     ).not.toBeNull();
   });
+
+  it('принимает номер отправления как контакт заказа с Ozon', () => {
+    // Переписки по заказу на Ozon не существует: покупатель пишет
+    // в кабинет, ссылки на конкретный чат нет. Контактом служит номер
+    // отправления — по нему заказ находят в кабинете. Без этого заказ,
+    // заведённый из кабинета, вообще нельзя было создать.
+    for (const posting of [
+      '0189070451-0031-1',
+      '48912345-0031',
+      '12345678',
+    ]) {
+      expect(
+        validateCommunicationValue(EnumCommunication.OZON, posting),
+      ).toBeNull();
+    }
+  });
+
+  it('не принимает под видом номера отправления что попало', () => {
+    for (const bad of [
+      'отправление 0189070451',
+      'javascript:alert(1)',
+      '123',
+      '0189070451-',
+    ]) {
+      expect(
+        validateCommunicationValue(EnumCommunication.OZON, bad),
+      ).not.toBeNull();
+    }
+  });
+
+  it('ссылка на кабинет Ozon по-прежнему годится', () => {
+    expect(
+      validateCommunicationValue(
+        EnumCommunication.OZON,
+        'https://seller.ozon.ru/app/fbs',
+      ),
+    ).toBeNull();
+  });
+
+  it('Авито без ссылки не принимается: там переписка есть', () => {
+    expect(
+      validateCommunicationValue(EnumCommunication.AVITO, '0189070451-0031-1'),
+    ).not.toBeNull();
+  });
 });

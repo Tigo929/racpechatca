@@ -72,7 +72,9 @@ export class OzonCrmOrderService {
         // Переписка идёт в кабинете площадки: своего Telegram у покупателя
         // для нас нет, и приветственные сообщения такому заказу не шлются.
         communicationPlatform: EnumCommunication.OZON,
-        urlCommunication: `Ozon · отправление ${draft.marketplacePostingNumber}`,
+        // Контакт — номер отправления: чата с покупателем на Ozon у нас
+        // нет, а по этому номеру заказ находят в кабинете.
+        urlCommunication: draft.marketplacePostingNumber,
         // Доставку ведёт площадка: в CRM ни способа, ни стоимости.
         deliveryMethod: EnumDeliveryMethod.PICKUP,
         deliveryCost: 0,

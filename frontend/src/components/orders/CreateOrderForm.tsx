@@ -119,6 +119,9 @@ function formatMaxPhone(raw: string): string {
   return out;
 }
 
+/** Номер отправления Ozon: «0189070451-0031-1». Не ссылка — так и есть. */
+const OZON_POSTING_RE = /^[0-9]{4,}(?:-[0-9]+)*$/;
+
 const baseSchema = z.object({
   productCategory: z.enum(['PHOTO', 'TSHIRT', 'CANVAS']),
   sourceOrder: z.enum(['AVITO', 'OZON', 'WB', 'LOCAL', 'WEBSITE']),
@@ -176,8 +179,24 @@ const baseSchema = z.object({
       path: ['urlCommunication'],
     });
   }
+  // Ozon: переписки по заказу нет — покупатель пишет в кабинет, и ссылки
+  // на конкретный чат не существует. Контактом служит номер отправления,
+  // по нему заказ находят в кабинете. Правило совпадает с серверным
+  // (crm-new/src/order-photo/communication-url.ts).
   if (
-    (data.communicationPlatform === 'AVITO' || data.communicationPlatform === 'OZON') &&
+    data.communicationPlatform === 'OZON' &&
+    data.urlCommunication.length > 0 &&
+    !data.urlCommunication.startsWith('http') &&
+    !OZON_POSTING_RE.test(data.urlCommunication.trim())
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Для Ozon укажите номер отправления (0189070451-0031-1) или ссылку на кабинет',
+      path: ['urlCommunication'],
+    });
+  }
+  if (
+    data.communicationPlatform === 'AVITO' &&
     data.urlCommunication.length > 0 &&
     !data.urlCommunication.startsWith('http')
   ) {
@@ -708,7 +727,13 @@ export function CreateOrderForm({ onClose }: Props) {
       toast.error('Для Telegram укажите @username (начинается с @)');
       return;
     }
-    if (data.communicationPlatform !== 'TELEGRAM' && !url.startsWith('http')) {
+    const ozonPosting =
+      data.communicationPlatform === 'OZON' && OZON_POSTING_RE.test(url.trim());
+    if (
+      data.communicationPlatform !== 'TELEGRAM' &&
+      !ozonPosting &&
+      !url.startsWith('http')
+    ) {
       toast.error('Укажите полную ссылку (начинается с https://)');
       return;
     }

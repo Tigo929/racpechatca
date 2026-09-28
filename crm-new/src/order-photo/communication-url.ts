@@ -10,6 +10,12 @@ import { EnumCommunication } from 'src/generated/prisma/enums';
  * правки кода. Остальные каналы (Авито, Ozon) — обычная ссылка как есть.
  */
 
+/**
+ * Номер отправления Ozon: цифры и дефисы, «0189070451-0031-1».
+ * Не URL и не имя — отдельная форма контакта, см. проверку ниже.
+ */
+const OZON_POSTING_RE = /^[0-9]{4,}(?:-[0-9]+)*$/;
+
 export const DEFAULT_MAX_LINK_TEMPLATE = 'https://max.ru/{phone}';
 
 /**
@@ -70,6 +76,17 @@ export function validateCommunicationValue(
     return normalizePhone(value)
       ? null
       : 'Для MAX укажите номер телефона, например +7 999 123-45-67';
+  }
+
+  if (platform === EnumCommunication.OZON) {
+    if (/^https?:\/\//i.test(value)) return null;
+    // Переписки по заказу с Ozon у нас нет: покупатель пишет в кабинет,
+    // и ссылки на конкретный чат не существует. Контактом для такого
+    // заказа служит номер отправления — по нему заказ находят в кабинете,
+    // и именно его знает и покупатель, и склад.
+    return OZON_POSTING_RE.test(value)
+      ? null
+      : 'Для Ozon укажите номер отправления (0189070451-0031-1) или ссылку на кабинет';
   }
 
   try {
