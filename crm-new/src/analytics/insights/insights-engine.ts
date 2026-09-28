@@ -1203,6 +1203,16 @@ function entityChangeDetector(opts: {
     evaluate(ctx) {
       const rows = opts.rows(ctx);
       if (!rows) return { detected: [], suppressed: [] };
+      const aggregate = (items: EntityRow[]) => {
+        const grouped = new Map<string, EntityRow>();
+        for (const row of items) {
+          const old = grouped.get(row.key);
+          grouped.set(row.key, old ? { ...old, visits: old.visits + row.visits, leads: old.leads + row.leads } : { ...row });
+        }
+        return [...grouped.values()];
+      };
+      rows.before = aggregate(rows.before);
+      rows.after = aggregate(rows.after);
       const detected: DetectedInsight[] = [];
       const suppressed: SuppressedResult[] = [];
       const keys = new Set([
@@ -1211,7 +1221,9 @@ function entityChangeDetector(opts: {
       ]);
       const days = ctx.windows.days;
       const leadDef = GROWTH_METRICS.siteLeadRate;
-      const leadComparable = ctx.metrics.siteLeadRate.comparability.comparable;
+      // These slices store goal reaches, not converting visits. Binomial
+      // conversion tests on them would treat repeated events as people.
+      const leadComparable = false;
       for (const key of [...keys].sort()) {
         const b = rows.before.find((r) => r.key === key) ?? {
           key,
@@ -1849,7 +1861,7 @@ export const clientIdCoverageDetector: InsightDetector = {
     const d = clientIdCoverageDetector;
     const q = ctx.dataQuality;
     if (!q) return { detected: [], suppressed: [] };
-    const accepted = ctx.metrics.acceptedOrders.after.value ?? 0;
+    const accepted = q.websiteAccepted ?? 0;
     if (accepted < CLIENT_ID_COVERAGE_MIN_ACCEPTED)
       return {
         detected: [],
@@ -1864,7 +1876,7 @@ export const clientIdCoverageDetector: InsightDetector = {
           ),
         ],
       };
-    const cov = q.clientIdCoverageAccepted;
+    const cov = q.websiteClientIdCoverage;
     if (cov !== null && cov >= CLIENT_ID_COVERAGE_MIN_PCT)
       return {
         detected: [],
@@ -1886,9 +1898,9 @@ export const clientIdCoverageDetector: InsightDetector = {
           scope: 'data',
           metricKey: 'clientIdCoverageAccepted',
           entityKey: null,
-          title: `Покрытие ClientID у принятых заказов ${fmtPct(cov, 0)} — сопоставление сайт → заказ ненадёжно`,
+          title: `Покрытие ClientID у принятых заказов сайта ${fmtPct(cov, 0)} — сопоставление сайт → заказ ненадёжно`,
           fact: {
-            text: `За ${fmtPeriod(ctx.windows.after)} ClientID есть у ${fmtPct(cov, 0)} принятых заказов (принятых ${fmtInt(accepted)}); порог для сопоставленных метрик — ${CLIENT_ID_COVERAGE_MIN_PCT} %.`,
+            text: `За ${fmtPeriod(ctx.windows.after)} ClientID есть у ${fmtPct(cov, 0)} принятых заказов сайта (принятых ${fmtInt(accepted)}); порог для сопоставленных метрик — ${CLIENT_ID_COVERAGE_MIN_PCT} %.`,
             metric: 'clientIdCoverageAccepted',
             unit: 'percent',
             current: cov,
