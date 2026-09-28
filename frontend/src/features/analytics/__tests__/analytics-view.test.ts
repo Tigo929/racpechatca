@@ -62,6 +62,18 @@ describe('изменение к предыдущему периоду', () => {
 });
 
 describe('предупреждения', () => {
+  it('ручные заказы не ухудшают покрытие сайта; отсутствие заказов сайта не означает потерю меток', () => {
+    expect(coverageIsLow(makeOverview({ dataQuality: { websiteAccepted: 10, websiteClientIdCoverage: 100, clientIdCoverageAccepted: 5, eligibleAccepted: 0 } }))).toBe(false);
+    expect(coverageIsLow(makeOverview({ dataQuality: { websiteAccepted: 0, websiteClientIdCoverage: null } }))).toBe(false);
+  });
+  it('конверсия визитов не зависит от числа CRM-заказов, если сравниваются полные данные новой методики', () => {
+    const o = makeOverview({
+      previousPeriod: { from: '2026-09-13', to: '2026-09-19', kind: 'days', preset: null },
+      dataQuality: { siteLeadsLegacy: false, eligibleAccepted: 0, websiteClientIdCoverage: 100 },
+      comparison: { siteLeadConversion: { current: 1, previous: 2, delta: -1, deltaPct: -50, changeKind: 'DOWN' } },
+    });
+    expect(attentionCards(o).some((c) => c.code === 'lead-conversion-drop')).toBe(true);
+  });
   it('legacy-период, старт счётчика, нет снимка, покрытие < 50 %, неполное сравнение', () => {
     const o = makeOverview({
       dataQuality: { notes: ['INCOMPLETE_LEGACY_SITE_LEADS', 'NO_PERIOD_SNAPSHOT', 'PERIOD_BEFORE_COUNTER'], clientIdCoverageAccepted: 7.69 },
@@ -74,7 +86,7 @@ describe('предупреждения', () => {
 
   it('полные данные — предупреждений нет', () => {
     const o = makeOverview({
-      dataQuality: { notes: [], clientIdCoverageAccepted: 80, eligibleAccepted: 12, siteLeadsLegacy: false },
+      dataQuality: { notes: [], websiteClientIdCoverage: 80, clientIdCoverageAccepted: 8, eligibleAccepted: 12, siteLeadsLegacy: false },
       previousPeriod: { from: '2026-09-06', to: '2026-09-12', kind: 'days', preset: null },
     });
     expect(overviewWarnings(o)).toEqual([]);
@@ -105,7 +117,7 @@ describe('«Требует внимания»', () => {
         siteLeadConversion: { current: 1, previous: 2, delta: -1, deltaPct: -50, changeKind: 'DOWN' },
       },
       siteFunnel: { siteLeads: 3 },
-      dataQuality: { eligibleAccepted: 0, clientIdCoverageAccepted: 90, freshness: { status: 'FRESH', metrikaDataAgeSeconds: 60, lastMetrikaSyncAt: null, thresholdSeconds: 7200 } },
+      dataQuality: { eligibleAccepted: 0, websiteClientIdCoverage: 90, clientIdCoverageAccepted: 90, freshness: { status: 'FRESH', metrikaDataAgeSeconds: 60, lastMetrikaSyncAt: null, thresholdSeconds: 7200 } },
       financials: { contract: { orders: 10, cogsReliableOrders: 10 } },
     });
     expect(attentionCards(o).map((c) => c.code)).toEqual([]);

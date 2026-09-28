@@ -87,16 +87,15 @@ function StepRow({ step, prev, max, cmp }: { step: FunnelStep; prev: FunnelStep 
           <div className="h-1.5 flex-1 rounded bg-white/70" aria-hidden="true">
             <div className="h-1.5 rounded bg-indigo-500" style={{ width: `${width}%` }} />
           </div>
-          {step.stepConversion !== null && (
+          {!partial && step.stepConversion !== null && (
             <span className={`text-xs tabular-nums whitespace-nowrap ${partial ? 'text-gray-400' : 'text-gray-700'}`}>
-              {formatPercent(step.stepConversion)} от пред. шага
-              {step.dropoffRate !== null && <span className="text-gray-400"> · отвал {formatPercent(step.dropoffRate)}</span>}
+              {formatPercent(step.stepConversion)} — отношение счётчиков
               {c && <span className={`ml-1 ${deltaTone(c.visits, 'higher-good') === 'negative' ? 'text-rose-600' : deltaTone(c.visits, 'higher-good') === 'positive' ? 'text-emerald-600' : 'text-gray-400'}`}>{formatDelta(c.visits, 'count')}</span>}
             </span>
           )}
         </div>
       )}
-      {measured && partial && step.stepConversion !== null && (
+      {measured && partial && (
         <p className="mt-1 text-[11px] text-amber-700" data-testid={`partial-transition-${step.key}`}>
           окна измерения не совпадают — доля не сравнивается
           <Hint text={partialTransitionText(step, prev)} label="окна измерения" />
@@ -117,7 +116,7 @@ export function FunnelCard({ funnel, compact }: { funnel: Funnel; compact?: bool
           <SampleBadge status={funnel.sample.status} />
         </span>
       }
-      subtitle={compact ? undefined : funnel.description}
+      subtitle={compact ? undefined : `${funnel.description} Шаги — отдельные счётчики визитов; прохождение одним человеком всей последовательности не подтверждено.`}
     >
       {funnel.quality.completeness === 'unavailable' ? (
         <StateBlock kind="empty" message="За этот период поведенческих данных нет" />
