@@ -123,7 +123,7 @@ export class AnalyticsDashboardController {
     }
     const period = periodFromQuery(q);
     return this.cache.getOrCompute(
-      `${kind}:${period.from}:${period.to}:${period.kind}`,
+      `${kind}:${period.from}:${period.to}:${period.kind}:${period.preset ?? 'custom'}`,
       () => compute(period),
     );
   }

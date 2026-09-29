@@ -419,7 +419,7 @@ describe('AnalyticsInsightsService — жизненный цикл', () => {
       {
         visits: 1500,
         siteLeads: 15,
-        sources: sources(5).map((x) => ({ ...x, leads: 3 })),
+        sources: sources(5).map((x) => ({ ...x, visits: 0, leads: 0 })),
       },
       { now: NOW },
     );

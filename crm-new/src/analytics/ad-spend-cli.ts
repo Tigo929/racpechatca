@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client.js';
 import { parseSpendCsv } from './ads/ad-spend-import';
+import { PgAdvisoryLock } from '../metrika/analytics/metrika-sync-lock';
 
 /**
  * Импорт рекламных расходов из выгрузки кабинета.
@@ -72,36 +73,52 @@ async function main(): Promise<void> {
     );
     return;
   }
+  if (parsed.errors.length)
+    throw new Error('Импорт отменён: исправьте все ошибки файла перед записью');
 
   const prisma = new PrismaClient({
     adapter: new PrismaPg({ connectionString: url }),
   });
   try {
     let written = 0;
-    for (const row of parsed.rows) {
-      // Полночь UTC того же дня — так хранит даты вся остальная аналитика.
-      const date = new Date(`${row.date}T00:00:00.000Z`);
-      await prisma.adSpend.upsert({
-        where: {
-          date_source_campaignId: { date, source, campaignId: row.campaignId },
-        },
-        create: {
-          date,
-          source,
-          campaignId: row.campaignId,
-          campaignName: row.campaignName,
-          spend: row.spend,
-          clicks: row.clicks,
-          impressions: row.impressions,
-        },
-        update: {
-          campaignName: row.campaignName,
-          spend: row.spend,
-          clicks: row.clicks,
-          impressions: row.impressions,
-        },
+    const release = await new PgAdvisoryLock(url, 700_702).tryAcquire();
+    if (!release)
+      throw new Error('Другой импорт рекламных расходов уже выполняется');
+    try {
+      await prisma.$transaction(async (tx) => {
+        for (const row of parsed.rows) {
+          // Полночь UTC того же дня — так хранит даты вся остальная аналитика.
+          const date = new Date(`${row.date}T00:00:00.000Z`);
+          await tx.adSpend.upsert({
+            where: {
+              date_source_campaignId: {
+                date,
+                source,
+                campaignId: row.campaignId,
+              },
+            },
+            create: {
+              date,
+              source,
+              campaignId: row.campaignId,
+              campaignName: row.campaignName,
+              spend: row.spend,
+              clicks: row.clicks,
+              impressions: row.impressions,
+            },
+            update: {
+              vatBasis: 'UNKNOWN',
+              campaignName: row.campaignName,
+              spend: row.spend,
+              clicks: row.clicks,
+              impressions: row.impressions,
+            },
+          });
+          written += 1;
+        }
       });
-      written += 1;
+    } finally {
+      await release();
     }
     console.error(`записано строк: ${written}`);
   } finally {
