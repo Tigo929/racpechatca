@@ -16,6 +16,10 @@ import { DtoCreateLead } from './dto/create-lead.dto';
 import { SiteLeadTokenGuard } from './site-lead-token.guard';
 import { ClientGreetingService } from './client-greeting.service';
 import { isGreetingStatus } from './client-greeting';
+import {
+  ClientDraftService,
+  isDraftStatus,
+} from './client-draft.service';
 
 /**
  * Публичный контроллер для заявок с лендинга.
@@ -45,6 +49,7 @@ export class LeadController {
   constructor(
     private readonly orderPhotoService: OrderPhotoService,
     private readonly greeting: ClientGreetingService,
+    private readonly draft: ClientDraftService,
   ) {}
 
   @Post('lead')
@@ -84,6 +89,32 @@ export class LeadController {
       throw new BadRequestException(`Неизвестный итог: ${status}`);
     }
     await this.greeting.mark(id, status);
+    return { ok: true };
+  }
+
+  /*
+   * Очередь черновиков: тексты, которые надо положить в поле ввода чата,
+   * не отправляя. Тот же доверенный контур, что и у приветствий, — наши
+   * процессы на нашем сервере.
+   */
+  @Get('draft/pending')
+  async pendingDrafts(@Query('limit') limit?: string) {
+    const parsed = Number.parseInt(limit ?? '10', 10);
+    return {
+      items: await this.draft.pending(Number.isFinite(parsed) ? parsed : 10),
+    };
+  }
+
+  @Post('draft/mark')
+  @HttpCode(200)
+  async markDraft(@Body() body: { id?: string; status?: string }) {
+    const id = (body.id ?? '').trim();
+    const status = (body.status ?? '').trim();
+    if (!id) throw new BadRequestException('Не указан заказ.');
+    if (!isDraftStatus(status)) {
+      throw new BadRequestException(`Неизвестный итог: ${status}`);
+    }
+    await this.draft.mark(id, status);
     return { ok: true };
   }
 }

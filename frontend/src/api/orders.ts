@@ -75,6 +75,17 @@ export const ordersApi = {
     return data.text;
   },
 
+  /**
+   * Положить текст в поле ввода чата клиента в Telegram — не отправляя.
+   *
+   * Отправляет человек сам, когда клиент ответил. Текст передаётся тот
+   * самый, который менеджер видит в карточке: собирать его второй раз
+   * на сервере значит однажды положить в чат не то, что было на экране.
+   */
+  requestTelegramDraft: async (orderId: string, text: string): Promise<void> => {
+    await api.post(`/order-photo/${orderId}/telegram-draft`, { text });
+  },
+
   getById: async (id: string): Promise<OrderPhoto> => {
     const { data } = await api.get<OrderPhoto>(`/order-photo/${id}`);
     return data;

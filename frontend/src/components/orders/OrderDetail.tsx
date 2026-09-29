@@ -354,6 +354,23 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
    * с токеном, и голая ссылка без него вернула бы 401. Печатают его
    * из просмотрщика PDF, как и любой другой ярлык.
    */
+  /*
+   * «В чат клиента»: текст ложится в поле ввода Telegram, не уходя клиенту.
+   *
+   * Кладёт его живой аккаунт (контейнер greeter) — тот же, что пишет
+   * первое сообщение. Черновик Telegram синхронизируется между
+   * устройствами, поэтому менеджер видит готовый текст и на телефоне.
+   */
+  const draftMutation = useMutation({
+    mutationFn: (text: string) => ordersApi.requestTelegramDraft(orderId, text),
+    onSuccess: () =>
+      toast.success(
+        "Текст кладётся в чат клиента — откройте Telegram и нажмите «Отправить»",
+      ),
+    onError: (error) =>
+      toast.error(getErrorMessage(error, "Не удалось положить текст в чат")),
+  });
+
   const [ozonLabelLoading, setOzonLabelLoading] = useState(false);
   const handleOzonLabel = async () => {
     if (!order?.marketplaceAccountId || !order.marketplacePostingNumber) return;
@@ -594,7 +611,10 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 // Переписки с покупателем на Ozon у нас нет: подтверждение
                 // и готовность отправляет площадка, а не мы.
                 if (marketplace) return null;
-                const isNew = order.status === "NEW";
+                // «Обратился» здесь наравне с «Новым»: подтверждение готовят
+                // сразу, как заявка пришла, — чтобы к ответу клиента текст
+                // уже лежал в чате.
+                const isNew = order.status === "NEW" || order.status === "LEAD";
                 const isReady = order.status === "READY";
                 if (!isNew && !isReady) return null;
                 const text = buildClientMessage(
@@ -627,13 +647,30 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   });
                 };
                 return (
-                  <button
-                    onClick={copyText}
-                    title={hint}
-                    className={`${actionBtn} border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus-visible:ring-emerald-500`}
-                  >
-                    <Copy size={13} aria-hidden="true" /> {label}
-                  </button>
+                  <>
+                    <button
+                      onClick={copyText}
+                      title={hint}
+                      className={`${actionBtn} border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 focus-visible:ring-emerald-500`}
+                    >
+                      <Copy size={13} aria-hidden="true" /> {label}
+                    </button>
+                    {/* Тот же текст, но не в буфер, а прямо в поле ввода
+                        чата клиента. Отправляет человек сам, когда клиент
+                        ответил: три действия (скопировать → переключиться
+                        → вставить) превращаются в одно нажатие «Отправить». */}
+                    {order.communicationPlatform === "TELEGRAM" && (
+                      <button
+                        onClick={() => draftMutation.mutate(text)}
+                        disabled={draftMutation.isPending}
+                        title="Положить этот текст в поле ввода чата клиента, не отправляя"
+                        className={`${actionBtn} border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 focus-visible:ring-sky-500`}
+                      >
+                        <Send size={13} aria-hidden="true" />
+                        {draftMutation.isPending ? "Кладу…" : "В чат клиента"}
+                      </button>
+                    )}
+                  </>
                 );
               })()}
               {/* Ярлык площадки: тот самый, который клеят на посылку.

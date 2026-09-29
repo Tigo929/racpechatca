@@ -42,6 +42,7 @@ from greeting_text import render
 from proxy_config import describe, parse_proxy
 from signing import sign
 from approval_delivery import ApprovalQueue
+from draft_queue import DraftQueue
 
 BASE_DIR = Path(__file__).resolve().parent
 MESSAGE_DIR = Path(os.getenv("GREETER_MESSAGE_DIR", BASE_DIR))
@@ -212,6 +213,7 @@ async def main() -> int:
 
     crm = Crm()
     approvals = ApprovalQueue(crm._client, CRM_SIGNING_SECRET)
+    drafts = DraftQueue(crm._client, CRM_SIGNING_SECRET)
     client = TelegramClient(
         str(SESSION_PATH), API_ID, API_HASH, proxy=parse_proxy(PROXY_URL)
     )
@@ -236,6 +238,11 @@ async def main() -> int:
             approval_pause = await approvals.process_one(client, PEER_FLOOD_PAUSE)
             if approval_pause:
                 await asyncio.sleep(approval_pause)
+            # Черновики идут до приветствий по времени, но после них по
+            # важности: положить текст в поле ввода — действие без
+            # сообщения, Telegram за него не ограничивает, и задерживать
+            # из-за него живую очередь приветствий незачем.
+            await drafts.process_one(client)
             try:
                 queue = await crm.pending(limit=1)
             except (httpx.HTTPError, OSError) as exc:

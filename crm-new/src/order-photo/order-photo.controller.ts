@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   NotFoundException,
   Param,
   Patch,
@@ -24,6 +25,7 @@ import { OrderItemService } from './order-item.service';
 import { TshirtItemService } from './tshirt-item.service';
 import { CanvasItemService } from './canvas-item.service';
 import { ClientGreetingService } from './client-greeting.service';
+import { ClientDraftService } from './client-draft.service';
 import { StickerService } from './sticker.service';
 import { DailyPlanService } from './daily-plan.service';
 import { ReviewReminderService } from './review-reminder.service';
@@ -78,6 +80,7 @@ export class OrderPhotoController {
     private readonly tshirtPartnerTelegram: TshirtPartnerTelegramService,
     private readonly shipmentLeadService: ShipmentLeadService,
     private readonly greeting: ClientGreetingService,
+    private readonly draft: ClientDraftService,
   ) {}
 
   // ── Admin: отправить «план дня» в рабочий чат прямо сейчас ──────────────────
@@ -180,6 +183,25 @@ export class OrderPhotoController {
       throw new NotFoundException('Заказ не найден');
     }
     return { text };
+  }
+
+  /*
+   * Положить текст в поле ввода чата клиента, не отправляя.
+   *
+   * Отправляет человек сам, когда клиент ответит: решение «пора» остаётся
+   * за ним — сумма в заказе может поменяться, а клиент ещё не откликнуться.
+   * Текст приходит из карточки, а не собирается здесь: его показывает
+   * менеджеру фронт, и в чат должно лечь ровно то, что человек видел.
+   */
+  @Post(':idOrder/telegram-draft')
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  @HttpCode(200)
+  async requestTelegramDraft(
+    @Param('idOrder') idOrder: string,
+    @Body() body: { text?: string },
+  ): Promise<{ ok: true }> {
+    await this.draft.request(idOrder, body.text ?? '');
+    return { ok: true };
   }
 
   // ── Обе роли: клиентский PDF-стикер на пакет (58×40 мм) ─────────────────────

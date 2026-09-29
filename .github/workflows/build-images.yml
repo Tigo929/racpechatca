@@ -81,7 +81,7 @@ jobs:
         working-directory: greeter
         run: |
           pip install -r requirements.txt
-          python -m unittest test_approval_delivery test_signing test_proxy_config test_greeting_text
+          python -m unittest test_approval_delivery test_draft_queue test_signing test_proxy_config test_greeting_text
 
   build:
     needs: test

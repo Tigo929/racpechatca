@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { OrderPhotoService } from './order-photo.service';
+import { ClientDraftService } from './client-draft.service';
 import { ClientGreetingService } from './client-greeting.service';
 import { OrderItemService } from './order-item.service';
 import { TshirtItemService } from './tshirt-item.service';
@@ -33,6 +34,7 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
   providers: [
     OrderPhotoService,
     ClientGreetingService,
+    ClientDraftService,
     OrderItemService,
     TshirtItemService,
     CanvasItemService,
