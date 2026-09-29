@@ -46,8 +46,13 @@ class DraftQueue:
         self._unavailable = False
 
     async def pending(self, limit: int = 5) -> list[dict]:
+        # У GET тела нет, но подпись всё равно нужна: в строгом режиме
+        # сервер отбивает неподписанный запрос независимо от метода.
+        # Без неё очередь молча отвечает 401 и выглядит пустой.
         response = await self.http.get(
-            PREFIX + "/draft/pending", params={"limit": limit}
+            PREFIX + "/draft/pending",
+            params={"limit": limit},
+            headers=sign(self.secret, ""),
         )
         response.raise_for_status()
         return response.json().get("items", [])

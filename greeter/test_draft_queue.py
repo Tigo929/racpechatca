@@ -60,5 +60,38 @@ class SaveDraftTest(unittest.TestCase):
         self.assertEqual(client.sent, [])
 
 
+class PendingSignatureTest(unittest.TestCase):
+    """Очередь спрашивается подписанным запросом.
+
+    Без подписи сервер в строгом режиме отвечает 401, и очередь выглядит
+    пустой: черновики молча никуда не кладутся. Один раз уже наступили.
+    """
+
+    def test_pending_request_is_signed(self):
+        from draft_queue import DraftQueue
+
+        seen = {}
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"items": []}
+
+        class FakeHttp:
+            async def get(self, path, params=None, headers=None):
+                seen["path"] = path
+                seen["headers"] = headers or {}
+                return FakeResponse()
+
+        queue = DraftQueue(FakeHttp(), "секрет")
+        asyncio.run(queue.pending())
+        self.assertIn("/draft/pending", seen["path"])
+        self.assertTrue(
+            any(k.lower() == "x-lead-signature" for k in seen["headers"]),
+            f"запрос ушёл без подписи: {list(seen['headers'])}",
+        )
+
 if __name__ == "__main__":
     unittest.main()
