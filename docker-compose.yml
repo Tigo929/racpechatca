@@ -39,6 +39,10 @@ services:
       # Интеграция с исполнителем-партнёром (см. docs/partner-integration.md)
       TSHIRT_PARTNER_TELEGRAM_CHAT_ID: ${TSHIRT_PARTNER_TELEGRAM_CHAT_ID:-}
       TSHIRT_PARTNER_TELEGRAM_THREAD_ID: ${TSHIRT_PARTNER_TELEGRAM_THREAD_ID:-}
+      # Задания по заказам с площадки уходят в свою тему того же чата:
+      # они идут потоком и вперемешку с обычными заданиями терялись.
+      MARKETPLACE_PARTNER_TELEGRAM_CHAT_ID: ${MARKETPLACE_PARTNER_TELEGRAM_CHAT_ID:-}
+      MARKETPLACE_PARTNER_TELEGRAM_THREAD_ID: ${MARKETPLACE_PARTNER_TELEGRAM_THREAD_ID:-}
       PARTNER_WEBHOOK_ENABLED: ${PARTNER_WEBHOOK_ENABLED:-false}
       PARTNER_WEBHOOK_URL: ${PARTNER_WEBHOOK_URL:-}
       PARTNER_WEBHOOK_TOKEN: ${PARTNER_WEBHOOK_TOKEN:-}

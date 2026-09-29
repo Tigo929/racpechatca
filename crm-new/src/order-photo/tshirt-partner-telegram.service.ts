@@ -16,11 +16,15 @@ import {
   EnumPrintLocation,
   EnumPrintType,
 } from 'src/generated/prisma/enums';
-import { buildPartnerCaption, buildPartnerButtons } from 'src/order-photo/partner-telegram-format';
+import {
+  buildPartnerCaption,
+  buildPartnerButtons,
+} from 'src/order-photo/partner-telegram-format';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 import { settleOrder, settlePosition } from 'src/partner/partner-settlement';
 import { getTechSpecPaths } from 'src/partner/tech-spec-paths';
 import { settlementPositions } from 'src/partner/settlement-positions';
+import { buildMarketplacePartnerMessage } from './marketplace-partner-message';
 
 const PRINT_LOCATION_LABELS: Record<EnumPrintLocation, string> = {
   FRONT: 'Грудь',
@@ -51,6 +55,12 @@ type TshirtOrderWithItems = Prisma.OrderPhotoGetPayload<{
   include: { tshirtItems: true; items: true };
 }>;
 
+/** Куда уходит задание: чат и тема форума. */
+interface TelegramRoute {
+  chatId: string;
+  threadId: string;
+}
+
 interface TechSpecAttachment {
   filename: string;
   buffer: Buffer;
@@ -70,6 +80,16 @@ export class TshirtPartnerTelegramService {
   private readonly logger = new Logger(TshirtPartnerTelegramService.name);
   private readonly chatId: string;
   private readonly threadId: string;
+  /**
+   * Куда уходят задания по заказам с площадки.
+   *
+   * Отдельная тема того же чата: заказы Ozon идут потоком и своим ритмом,
+   * и вперемешку с обычными заданиями исполнитель терял и те, и другие.
+   * Чат по умолчанию тот же — меняется только тема; если когда-нибудь
+   * понадобится другой чат, он задаётся своей переменной.
+   */
+  private readonly marketplaceChatId: string;
+  private readonly marketplaceThreadId: string;
   private readonly uploadDir: string;
 
   constructor(
@@ -84,6 +104,13 @@ export class TshirtPartnerTelegramService {
     ).trim();
     this.threadId = (
       config.get<string>('TSHIRT_PARTNER_TELEGRAM_THREAD_ID') ?? ''
+    ).trim();
+    this.marketplaceChatId =
+      (
+        config.get<string>('MARKETPLACE_PARTNER_TELEGRAM_CHAT_ID') ?? ''
+      ).trim() || this.chatId;
+    this.marketplaceThreadId = (
+      config.get<string>('MARKETPLACE_PARTNER_TELEGRAM_THREAD_ID') ?? ''
     ).trim();
     this.uploadDir =
       config.get<string>('UPLOAD_DIR') || path.join(process.cwd(), 'uploads');
@@ -104,7 +131,9 @@ export class TshirtPartnerTelegramService {
       },
     });
 
-    if (!this.chatId) {
+    // Куда отправлять: заказ с площадки — в свою тему, остальные — в общую.
+    const route = this.routeFor(order.isMarketplacePrint);
+    if (!route.chatId) {
       await this.markFailed(
         orderId,
         'TSHIRT_PARTNER_TELEGRAM_CHAT_ID не задан — некуда отправлять ТЗ.',
@@ -120,7 +149,9 @@ export class TshirtPartnerTelegramService {
     }
 
     try {
-      const caption = await this.buildMessage(order, filenames.length);
+      const caption = order.isMarketplacePrint
+        ? buildMarketplacePartnerMessage(order, filenames.length)
+        : await this.buildMessage(order, filenames.length);
       const stickerUrl = this.stickerLinks.buildStickerUrl(orderId);
       if (!stickerUrl) {
         await this.markFailed(
@@ -136,11 +167,17 @@ export class TshirtPartnerTelegramService {
 
       const sentTechSpec =
         attachments.length === 1
-          ? await this.sendTechSpecFile(attachments[0], caption, replyMarkup)
+          ? await this.sendTechSpecFile(
+              attachments[0],
+              caption,
+              route,
+              replyMarkup,
+            )
           : await this.sendTechSpecBundle(
               order,
               attachments,
               caption,
+              route,
               replyMarkup,
             );
       // Причину показываем словами площадки, а не общей фразой: по «Telegram
@@ -160,7 +197,7 @@ export class TshirtPartnerTelegramService {
           partnerSyncStatus: EnumPartnerSyncStatus.SENT,
           partnerSyncAt: new Date(),
           partnerSyncError: null,
-          partnerTgChatId: this.chatId,
+          partnerTgChatId: route.chatId,
           partnerTgMessageId: sentTechSpec.messageId,
           executorSentAt: new Date(),
           sourceRevision: { increment: 1 },
@@ -173,6 +210,13 @@ export class TshirtPartnerTelegramService {
       );
       await this.markFailed(orderId, message);
     }
+  }
+
+  /** Чат и тема под тип заказа. */
+  private routeFor(marketplace: boolean): TelegramRoute {
+    return marketplace
+      ? { chatId: this.marketplaceChatId, threadId: this.marketplaceThreadId }
+      : { chatId: this.chatId, threadId: this.threadId };
   }
 
   private buildStatusButtons(orderId: string, stickerUrl: string) {
@@ -194,27 +238,28 @@ export class TshirtPartnerTelegramService {
   private async sendTechSpecFile(
     file: TechSpecAttachment,
     caption: string,
+    route: TelegramRoute,
     replyMarkup?: unknown,
     // id отправленного сообщения (его сохраняем, чтобы потом редактировать
     // подпись под кнопками) либо причина, по которой Telegram файл не принял.
   ): Promise<TelegramSendResult> {
     return file.contentType === 'application/pdf'
       ? this.telegram.sendDocument(
-          this.chatId,
+          route.chatId,
           file.buffer,
           file.filename,
           file.contentType,
           caption,
-          this.threadId || undefined,
+          route.threadId || undefined,
           replyMarkup,
         )
       : this.telegram.sendPhoto(
-          this.chatId,
+          route.chatId,
           file.buffer,
           file.filename,
           file.contentType,
           caption,
-          this.threadId || undefined,
+          route.threadId || undefined,
           replyMarkup,
         );
   }
@@ -223,16 +268,17 @@ export class TshirtPartnerTelegramService {
     order: TshirtOrderWithItems,
     attachments: TechSpecAttachment[],
     caption: string,
+    route: TelegramRoute,
     replyMarkup: unknown,
   ): Promise<TelegramSendResult> {
     const bundle = await this.buildTechSpecBundle(order, attachments);
     return this.telegram.sendDocument(
-      this.chatId,
+      route.chatId,
       bundle.buffer,
       bundle.filename,
       bundle.contentType,
       caption,
-      this.threadId || undefined,
+      route.threadId || undefined,
       replyMarkup,
     );
   }
@@ -359,7 +405,9 @@ export class TshirtPartnerTelegramService {
         : []),
       '',
       ...items,
-      ...(freeItems.length ? ['', '<b>Работы без нашей футболки</b>', ...freeItems] : []),
+      ...(freeItems.length
+        ? ['', '<b>Работы без нашей футболки</b>', ...freeItems]
+        : []),
       '',
       '<b>Расчёт для исполнителя</b>',
       `Без дизайна: <b>${money(
