@@ -39,6 +39,11 @@ class DraftQueue:
     def __init__(self, http: httpx.AsyncClient, secret: str):
         self.http = http
         self.secret = secret
+        # Очередь опрашивается каждые несколько секунд. Жаловаться на
+        # недоступность при каждом опросе — это тысячи одинаковых строк
+        # в журнале за сутки, в которых тонет всё остальное. Пишем один
+        # раз при переходе «работало → сломалось» и один раз обратно.
+        self._unavailable = False
 
     async def pending(self, limit: int = 5) -> list[dict]:
         response = await self.http.get(
@@ -60,9 +65,17 @@ class DraftQueue:
         """Взять один черновик и положить. True — что-то сделали."""
         try:
             items = await self.pending(limit=1)
-        except (httpx.HTTPError, OSError, ValueError):
-            log.warning("Очередь черновиков недоступна")
+        except (httpx.HTTPError, OSError, ValueError) as exc:
+            if not self._unavailable:
+                self._unavailable = True
+                log.warning(
+                    "Очередь черновиков недоступна (%s) — молчу до восстановления",
+                    type(exc).__name__,
+                )
             return False
+        if self._unavailable:
+            self._unavailable = False
+            log.info("Очередь черновиков снова отвечает")
         if not items:
             return False
 
