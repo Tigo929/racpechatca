@@ -9,7 +9,8 @@ import { ReportsService } from '../../reports/reports.service';
 import { AnalyticsMetricsService } from '../metrics/analytics-metrics.service';
 import { generateReport } from '../report/report-generate';
 import { buildIdentity } from '../../health.controller';
-import { utcDateToIso } from '../../metrika/analytics/metrika-dates';
+import { utcDateToIso, addDays } from '../../metrika/analytics/metrika-dates';
+import type { MetrikaPeriodSnapshotService } from '../../metrika/analytics/metrika-period-snapshot.service';
 import { AnalyticsReportService } from './analytics-report.service';
 import { scanReportContent } from './report-safety';
 import {
@@ -55,6 +56,7 @@ export class AnalyticsReportWorker implements OnModuleInit, OnModuleDestroy {
     private readonly metrics: AnalyticsMetricsService,
     private readonly pnl: ReportsService,
     private readonly env: NodeJS.ProcessEnv = process.env,
+    private readonly snapshots?: MetrikaPeriodSnapshotService,
   ) {}
 
   onModuleInit(): void {
@@ -97,11 +99,32 @@ export class AnalyticsReportWorker implements OnModuleInit, OnModuleDestroy {
    * очереди не поднимали базу: их интересует поведение очереди и файлов,
    * а не формулы, у которых есть свои тесты.
    */
-  protected generate(options: {
+  protected async generate(options: {
     days: number;
     until: string;
     build: string | null;
   }): Promise<{ markdown: string; html: string }> {
+    // Custom report windows are not necessarily one of the scheduled presets.
+    // Refresh their unique-user snapshots in the background worker, never by
+    // summing daily unique users or blocking the HTTP request.
+    if (this.snapshots) {
+      const currentFrom = addDays(options.until, 1 - options.days);
+      const ranges = [
+        { from: currentFrom, to: options.until },
+        {
+          from: addDays(currentFrom, -options.days),
+          to: addDays(currentFrom, -1),
+        },
+        { from: addDays(options.until, -29), to: options.until },
+      ];
+      const seen = new Set<string>();
+      for (const range of ranges) {
+        const key = `${range.from}:${range.to}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        await this.snapshots.refreshRange(range);
+      }
+    }
     return generateReport(
       { prisma: this.prisma, metrics: this.metrics, reports: this.pnl },
       options,
