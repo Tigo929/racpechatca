@@ -314,7 +314,18 @@ function clearOrderDraft(): void {
   }
 }
 
-interface Props { onClose: () => void }
+interface Props {
+  onClose: () => void;
+  /**
+   * Заявка создана — открыть её карточку.
+   *
+   * Без этого окно просто закрывалось, и человек оставался перед списком:
+   * чтобы отправить подтверждение или записать оплату, он искал только что
+   * созданный заказ глазами. А делать это нужно сразу — разговор с клиентом
+   * идёт прямо сейчас.
+   */
+  onCreated?: (orderId: string) => void;
+}
 
 
 const inputCls = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent';
@@ -322,7 +333,7 @@ const selectCls = inputCls;
 const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
 const errorCls = 'text-red-500 text-xs mt-1';
 
-export function CreateOrderForm({ onClose }: Props) {
+export function CreateOrderForm({ onClose, onCreated }: Props) {
   const qc = useQueryClient();
   // Читаем один раз при монтировании: дальше формой владеет react-hook-form.
   const [restoredDraft] = useState(readOrderDraft);
@@ -556,10 +567,13 @@ export function CreateOrderForm({ onClose }: Props) {
 
   const mutation = useMutation({
     mutationFn: ordersApi.create,
-    onSuccess: (_data, vars) => {
+    onSuccess: (created, vars) => {
       qc.invalidateQueries({ queryKey: ['orders'] });
       clearOrderDraft();
       toast.success(vars.status === 'LEAD' ? 'Обращение записано' : 'Заявка создана');
+      // Карточку открываем сразу: дальше по этой заявке идёт разговор
+      // с клиентом — подтверждение, оплата, макет.
+      if (created?.id) onCreated?.(created.id);
       onClose();
     },
     onError: (error: unknown) => toast.error(getErrorMessage(error, 'Ошибка при создании заявки')),

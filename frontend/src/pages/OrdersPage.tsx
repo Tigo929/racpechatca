@@ -554,7 +554,10 @@ export function OrdersPage({ section }: Props) {
 
       {isAdmin && (
         <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Новая заявка" size="lg">
-          <CreateOrderForm onClose={() => setCreateOpen(false)} />
+          <CreateOrderForm
+            onClose={() => setCreateOpen(false)}
+            onCreated={(orderId) => setSelectedId(orderId)}
+          />
         </Modal>
       )}
 
