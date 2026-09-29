@@ -45,6 +45,7 @@ export interface MetrikaGoalsResponse {
 
 /** GET /stat/v1/data */
 export interface MetrikaStatsQuery {
+  direct_client_logins?: string[];
   metrics: string[];
   dimensions?: string[];
   date1: string;

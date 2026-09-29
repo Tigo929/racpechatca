@@ -28,8 +28,8 @@ function order(partial: Partial<OrderForMetrika> = {}): OrderForMetrika {
     tshirtItems: [],
     canvasItems: [],
     statusHistory: [
-      { fromStatus: 'LEAD', toStatus: 'NEW' },
-      { fromStatus: 'NEW', toStatus: 'PAID' },
+      { fromStatus: 'LEAD', toStatus: 'NEW', createdAt: new Date('2026-09-12T10:00:00Z') },
+      { fromStatus: 'NEW', toStatus: 'PAID', createdAt: new Date('2026-09-15T15:30:00Z') },
     ],
     ...partial,
   };
@@ -212,7 +212,7 @@ describe('идентификаторы заказа', () => {
         target: 'crm_paid_ad',
         // Время события, а не загрузки: иначе вчерашняя оплата встанет
         // в отчёт сегодняшним днём.
-        dateTime: Math.floor(new Date('2026-09-11T15:30:00Z').getTime() / 1000),
+        dateTime: Math.floor(new Date('2026-09-15T15:30:00Z').getTime() / 1000),
         price: 1500,
       },
     });
@@ -232,6 +232,22 @@ describe('идентификаторы заказа', () => {
       TARGETS,
     );
     expect(snap).toEqual({ kind: 'skip', reason: 'yclid_channel_disabled' });
+  });
+
+  it('повтор старой оплаты сохраняет дату исходного перехода, а не последующей оплаты', () => {
+    const paidAt = new Date('2026-09-13T10:00:00Z');
+    const snap = buildOrderSnapshot(order({ yandexClientId: null, yclid: '123456789', eventOccurredAt: paidAt }), 'PAID', SETTINGS, TZ, false, TARGETS);
+    expect(snap).toMatchObject({ kind: 'yclid', row: { dateTime: paidAt.getTime() / 1000 } });
+  });
+
+  it('не выдумывает дату оплаты, если история не содержит времени события', () => {
+    const snap = buildOrderSnapshot(order({ yandexClientId: null, yclid: '123456789', statusHistory: [{ fromStatus: 'NEW', toStatus: 'PAID' }] }), 'PAID', SETTINGS, TZ, false, TARGETS);
+    expect(snap).toEqual({ kind: 'skip', reason: 'missing_event_time' });
+  });
+
+  it('создание заказа по yclid датируется принятием заявки, CDP сохраняет дату создания', () => {
+    const snap = buildOrderSnapshot(order({ yandexClientId: null, yclid: '123456789' }), 'IN_PROGRESS', SETTINGS, TZ, false, TARGETS);
+    expect(snap).toMatchObject({ kind: 'yclid', row: { dateTime: new Date('2026-09-12T10:00:00Z').getTime() / 1000 } });
   });
 
   it('ClientID главнее: при обоих идентификаторах уходит загрузка заказов', () => {

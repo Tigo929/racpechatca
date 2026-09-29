@@ -109,6 +109,8 @@ export interface ReportInput {
   previousMonth: PeriodSnapshot | null;
   /** Дневной ряд за длинное окно (для трендов и входа прогноза). */
   daily: TrendPoint[];
+  /** Earliest CRM observation and unresolved dates; padded zero days are not history. */
+  historyQuality?: { firstOrderDay: string | null; paidWithoutDate: number };
   sources: Slice<SourceRow>;
   utm: Slice<UtmRow>;
   landings: Slice<LandingRow>;
@@ -131,9 +133,15 @@ export interface MetricRow {
   previous: number | null;
   delta: number | null;
   deltaPct: number | null;
+  comparisonNote?: string;
 }
 
-export type SignalKind = 'positive' | 'negative' | 'stable' | 'insufficient';
+export type SignalKind =
+  | 'positive'
+  | 'negative'
+  | 'stable'
+  | 'neutral'
+  | 'insufficient';
 
 export interface Signal {
   kind: SignalKind;
@@ -160,6 +168,8 @@ export interface Anomaly {
 
 export interface WeeklyPoint {
   week: string;
+  observedDays: number;
+  complete: boolean;
   visits: number;
   leads: number;
   accepted: number;
@@ -212,9 +222,8 @@ export interface OriginCoverage {
 }
 
 /**
- * Сверка суммы каналов с итогом периода. Ненулевая разница допустима только
- * как округление: себестоимость бумаги округляется вверх до рубля в каждой
- * корзине (правило этапа 08), поэтому корзин больше — рублей больше.
+ * Сверка суммы каналов с итогом периода. Все группировки суммируют
+ * одинаковую себестоимость заказов; ненулевая разница требует разбора.
  */
 export interface OriginReconciliation {
   metric: string;
