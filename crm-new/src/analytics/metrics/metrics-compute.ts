@@ -36,6 +36,8 @@ import type {
   DataQualityMetrics,
   DeviceRow,
   FinancialMetrics,
+  FinancialEvidence,
+  CostEvidence,
   Freshness,
   GroupQuality,
   LandingRow,
@@ -102,6 +104,7 @@ export interface DailyGoalInput {
   date: string;
   goalId: number;
   reaches: number;
+  goalVisits?: number;
 }
 
 export interface DimensionDailyInput {
@@ -165,9 +168,17 @@ export interface OverviewInputs {
   goalIds: CanonicalGoalIds;
   settings: CostSettings;
   lastMetrikaSyncAt: Date | null;
-  current: { metrika: MetrikaPeriodInput; pnl: PnlReport | null };
+  current: {
+    metrika: MetrikaPeriodInput;
+    pnl: PnlReport | null;
+    adSpend?: AdSpendRow[];
+  };
   /** Для сравнения; без него comparison = null. */
-  previous?: { metrika: MetrikaPeriodInput; pnl: PnlReport | null };
+  previous?: {
+    metrika: MetrikaPeriodInput;
+    pnl: PnlReport | null;
+    adSpend?: AdSpendRow[];
+  };
   /** Все заказы, созданные до конца периода сравнения (или текущего). */
   orders: CrmOrderInput[];
 }
@@ -269,6 +280,15 @@ export function computeSiteFunnel(
   const siteLeads = goalSum(m.goals, goalIds.lead);
   const matchedAccepted = goalSum(m.goals, goalIds.created);
   const matchedPaid = goalSum(m.goals, goalIds.paid);
+  const goalConversion = (id: number) => {
+    const rows = m.goals.filter((g) => g.goalId === id);
+    if (!rows.length || rows.some((g) => g.goalVisits === undefined))
+      return null;
+    return percent(
+      sum(rows, (g) => g.goalVisits!),
+      visits,
+    );
+  };
   const notes: QualityNote[] = [];
   if (siteLeadsLegacy(period)) notes.push('INCOMPLETE_LEGACY_SITE_LEADS');
   if (crmGoalsBeforeRollout(period)) notes.push('CRM_GOALS_BEFORE_ROLLOUT');
@@ -277,11 +297,12 @@ export function computeSiteFunnel(
     siteLeads,
     matchedAccepted,
     matchedPaid,
-    siteLeadConversion: percent(siteLeads, visits),
-    siteAcceptedConversion: percent(matchedAccepted, visits),
-    sitePaidConversion: percent(matchedPaid, visits),
-    siteLeadToAccepted: percent(matchedAccepted, siteLeads),
-    siteAcceptedToPaid: percent(matchedPaid, matchedAccepted),
+    siteLeadConversion: goalConversion(goalIds.lead),
+    siteAcceptedConversion: goalConversion(goalIds.created),
+    sitePaidConversion: goalConversion(goalIds.paid),
+    // Separate goal totals cannot prove a sequential cohort transition.
+    siteLeadToAccepted: null,
+    siteAcceptedToPaid: null,
     quality: quality(notes),
   };
 }
@@ -468,6 +489,57 @@ export const NO_AD_SPEND: SpendMetrics = {
   attributionReliable: false,
 };
 
+function costEvidence(
+  rows: OrderWithLifecycle[],
+  settings: CostSettings,
+): CostEvidence {
+  const missing = rows.filter(
+    ({ order }) => !orderCostOfGoods(order, settings).reliable,
+  );
+  const categories = [
+    ...new Set(missing.map(({ order }) => order.productCategory)),
+  ].sort();
+  return {
+    orders: rows.length,
+    missingCostOrders: missing.length,
+    affectedOrderValue: contractValue(missing),
+    byCategory: categories.map((category) => {
+      const part = missing.filter(
+        ({ order }) => order.productCategory === category,
+      );
+      return {
+        category,
+        missingCostOrders: part.length,
+        affectedOrderValue: contractValue(part),
+      };
+    }),
+  };
+}
+
+export function financialEvidence(
+  sets: CrmPeriodSets,
+  settings: CostSettings,
+): FinancialEvidence {
+  const bases = [
+    'clientPaidAt',
+    'completedAt',
+    'statusChangedAt',
+    'sentAt',
+    'createdAt',
+  ] as const;
+  return {
+    accepted: costEvidence(sets.accepted, settings),
+    paid: costEvidence(sets.paid, settings),
+    realized: costEvidence(sets.realized, settings),
+    recognition: bases.map((basis) => {
+      const rows = sets.realized.filter(
+        ({ order }) => bases.find((key) => order[key] != null) === basis,
+      );
+      return { basis, orders: rows.length, orderValue: contractValue(rows) };
+    }),
+  };
+}
+
 export function computeFinancials(
   sets: CrmPeriodSets,
   pnl: PnlReport | null,
@@ -484,7 +556,11 @@ export function computeFinancials(
   const contract = contractValue(sets.accepted);
   const paidValue = contractValue(sets.paid);
   const notes: QualityNote[] = [];
-  if (accepted.reliable < sets.accepted.length)
+  if (
+    accepted.reliable < sets.accepted.length ||
+    paid.reliable < sets.paid.length ||
+    cogsOf(sets.realized, settings).reliable < sets.realized.length
+  )
     notes.push('COGS_UNRELIABLE_ORDERS');
   if (!pnl) notes.push('PNL_UNAVAILABLE');
   return {
@@ -505,6 +581,7 @@ export function computeFinancials(
     realized: pnl ? realizedFromPnl(pnl) : null,
     spend: spend ?? NO_AD_SPEND,
     quality: quality(notes, pnl ? undefined : 'partial'),
+    evidence: financialEvidence(sets, settings),
   };
 }
 
@@ -581,7 +658,8 @@ export function computeDataQuality(
     websiteWithoutIdentity,
     eligibleAccepted: eligible.length,
     eligibleDeliveredToMetrika: eligibleDelivered,
-    metrikaMatchCoverage: percent(eligibleDelivered, eligible.length),
+    metrikaDeliveryCoverage: percent(eligibleDelivered, eligible.length),
+    metrikaMatchCoverage: null,
     matchedAcceptedReaches: site.matchedAccepted,
     paidWithoutDate,
     siteLeadsLegacy: siteLeadsLegacy(period),
@@ -662,17 +740,21 @@ export function computePeriod(
     period,
     freshness,
   );
+  const financials = computeFinancials(
+    sets,
+    pnl,
+    settings,
+    spendFor(adSpend, sets, siteFunnel, dataQuality, settings),
+  );
+  dataQuality.notes = [
+    ...new Set([...dataQuality.notes, ...financials.quality.notes]),
+  ];
   return {
     traffic: computeTraffic(metrika, period, freshness),
     siteFunnel,
     crmFunnel: computeCrmFunnel(sets),
     orders: computeOrders(sets),
-    financials: computeFinancials(
-      sets,
-      pnl,
-      settings,
-      spendFor(adSpend, sets, siteFunnel, dataQuality, settings),
-    ),
+    financials,
     dataQuality,
   };
 }
@@ -758,6 +840,7 @@ export function computeOverview(inputs: OverviewInputs): Overview {
     inputs.goalIds,
     inputs.settings,
     freshness,
+    inputs.current.adSpend,
   );
   const prev = inputs.previous
     ? computePeriod(
@@ -768,6 +851,7 @@ export function computeOverview(inputs: OverviewInputs): Overview {
         inputs.goalIds,
         inputs.settings,
         freshness,
+        inputs.previous.adSpend,
       )
     : null;
   return {
