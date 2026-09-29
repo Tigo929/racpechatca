@@ -122,7 +122,8 @@ export function periodFromPreset(
         'days',
       );
     case 'current_month':
-      return withPreset(calendarMonth(year, month), 'month');
+      return withPreset({ from: calendarMonth(year, month).from, to: today },
+        isCalendarMonth({ from: calendarMonth(year, month).from, to: today }) ? 'month' : 'days');
     case 'previous_month': {
       const prev =
         month === 1
@@ -135,6 +136,12 @@ export function periodFromPreset(
 
 /** Предыдущий период по правилу раздела 19. */
 export function previousPeriod(period: AnalyticsPeriod): AnalyticsPeriod {
+  if (period.preset === 'current_month') {
+    const { year, month } = monthOf(period.from);
+    const previous = month === 1 ? calendarMonth(year - 1, 12) : calendarMonth(year, month - 1);
+    const day = Math.min(Number(period.to.slice(8)), Number(previous.to.slice(8)));
+    return customPeriod(previous.from, `${previous.from.slice(0, 8)}${pad(day)}`);
+  }
   if (period.kind === 'month') {
     const { year, month } = monthOf(period.from);
     const prev =

@@ -8,6 +8,11 @@ import { MetrikaAnalyticsSyncService } from './metrika-analytics-sync.service';
 import { MetrikaPeriodSnapshotService } from './metrika-period-snapshot.service';
 import { InMemoryLock, PgAdvisoryLock } from './metrika-sync-lock';
 import { PrismaMetrikaSyncStore } from './metrika-sync-store';
+import {
+  DirectSpendSync,
+  directSpendConfig,
+} from '../../analytics/ads/direct-spend-sync';
+import { rollingWindow } from './metrika-dates';
 
 /**
  * Метрика → локальная аналитика (этап 07): сервис синхронизации отчётов
@@ -41,13 +46,15 @@ import { PrismaMetrikaSyncStore } from './metrika-sync-store';
         MetrikaAnalyticsSyncService,
         YandexMetrikaClient,
         MetrikaPeriodSnapshotService,
+        PrismaService,
       ],
       useFactory: (
         sync: MetrikaAnalyticsSyncService,
         client: YandexMetrikaClient,
         snapshots: MetrikaPeriodSnapshotService,
-      ) =>
-        new MetrikaAnalyticsSchedulerService(
+        prisma: PrismaService,
+      ) => {
+        const scheduler = new MetrikaAnalyticsSchedulerService(
           sync,
           {
             enabled: metrikaAnalyticsSyncEnabledFromEnv(),
@@ -55,7 +62,21 @@ import { PrismaMetrikaSyncStore } from './metrika-sync-store';
           },
           () => new Date(),
           snapshots,
-        ),
+        );
+        const directConfig = directSpendConfig();
+        if (directConfig && process.env.DATABASE_URL) {
+          const direct = new DirectSpendSync(
+            prisma,
+            client,
+            new PgAdvisoryLock(process.env.DATABASE_URL, 700_702),
+            directConfig,
+          );
+          scheduler.registerAfterSync('direct-spend', () =>
+            direct.sync(rollingWindow(35, new Date())),
+          );
+        }
+        return scheduler;
+      },
     },
   ],
   exports: [MetrikaPeriodSnapshotService, MetrikaAnalyticsSchedulerService],

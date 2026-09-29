@@ -214,9 +214,9 @@ describe('18-19, 32. воронка сайта — только населени
     const metrika = {
       traffic: [{ date: '2026-09-01', visits: 100, users: 90, pageviews: 300 }],
       goals: [
-        { date: '2026-09-01', goalId: GOALS.lead, reaches: 10 },
-        { date: '2026-09-01', goalId: GOALS.created, reaches: 4 },
-        { date: '2026-09-01', goalId: GOALS.paid, reaches: 2 },
+        { date: '2026-09-01', goalId: GOALS.lead, reaches: 10, goalVisits: 10 },
+        { date: '2026-09-01', goalId: GOALS.created, reaches: 4, goalVisits: 4 },
+        { date: '2026-09-01', goalId: GOALS.paid, reaches: 2, goalVisits: 2 },
       ],
       pagesPageviews: 300,
       snapshot: null,

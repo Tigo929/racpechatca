@@ -93,7 +93,7 @@ function overview(period: ReturnType<typeof customPeriod>, f: Fx): Overview {
       matchedAccepted: f.matchedAccepted ?? 0,
       matchedPaid: 0,
       siteLeadConversion: null,
-      siteAcceptedConversion: null,
+      siteAcceptedConversion: f.visits ? (f.matchedAccepted ?? 0) / f.visits * 100 : null,
       sitePaidConversion: null,
       siteLeadToAccepted: null,
       siteAcceptedToPaid: null,
@@ -144,6 +144,8 @@ function overview(period: ReturnType<typeof customPeriod>, f: Fx): Overview {
       freshness: FRESH,
       clientIdCoverageAccepted:
         f.clientIdCoverage === undefined ? 80 : f.clientIdCoverage,
+      websiteAccepted: f.cohorts?.accepted ?? 0,
+      websiteClientIdCoverage: f.clientIdCoverage === undefined ? 80 : f.clientIdCoverage,
       clientIdCoveragePaid: null,
       eligibleAccepted: 0,
       eligibleDeliveredToMetrika: 0,
@@ -180,6 +182,7 @@ function behavior(
     visits: f.visits,
     sumDailyUsers: 0,
     goalTotals: new Map([
+      ['lead_submitted', g(f.siteLeads)],
       ['form_started', g(f.formStarts ?? 0)],
       ['lead_submit_attempt', g(f.attempts ?? 0)],
       ['form_error', g(f.formErrors ?? 0)],
