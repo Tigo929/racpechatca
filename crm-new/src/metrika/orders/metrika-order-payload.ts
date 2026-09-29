@@ -9,6 +9,7 @@ import {
 } from './metrika-order-csv';
 import {
   orderEligibility,
+  transitionToMetrikaStatus,
   type MetrikaOrderStatus,
 } from './metrika-order-status';
 import {
@@ -58,14 +59,17 @@ export interface OrderForMetrika extends OrderCogsSource {
   /** Происхождение заказа: у ручных каналов идентификаторов визита не бывает. */
   sourceOrder: string | null;
   totalOrder: number;
+  /** Время конкретного перехода очереди; не время отправки. */
+  eventOccurredAt?: Date | null;
   /** История переходов до отправляемого перехода включительно. */
-  statusHistory: { fromStatus: string | null; toStatus: string }[];
+  statusHistory: { fromStatus: string | null; toStatus: string; createdAt?: Date }[];
 }
 
 export type SkipReason =
   /** Заказ сайта без ClientID и без yclid — связать с визитом нечем. */
   | 'no_client_id'
   | 'invalid_client_id'
+  | 'missing_event_time'
   | 'not_eligible_rejected_lead'
   /**
    * Ручной заказ (Avito, маркетплейсы): идентификатора визита у него нет и
@@ -127,6 +131,16 @@ export function buildOrderSnapshot(
       const targetGoal = targetFor(target, yclidTargets);
       if (!targetGoal)
         return { kind: 'skip', reason: 'yclid_channel_disabled' };
+      // Для ручной отправки выбираем последний бизнес-переход нужного
+      // типа. Для очереди точное событие передаёт процессор. Никогда не
+      // подменяем неизвестную дату оплаты датой создания заказа.
+      const occurredAt = order.eventOccurredAt ?? order.statusHistory
+        .filter((h) => transitionToMetrikaStatus(h.fromStatus, h.toStatus) === target)
+        .map((h) => h.createdAt)
+        .filter((date): date is Date => date instanceof Date && Number.isFinite(date.getTime()))
+        .sort((a, b) => b.getTime() - a.getTime())[0];
+      if (!occurredAt || !Number.isFinite(occurredAt.getTime()))
+        return { kind: 'skip', reason: 'missing_event_time' };
       return {
         kind: 'yclid',
         status: target,
@@ -135,7 +149,7 @@ export function buildOrderSnapshot(
           target: targetGoal,
           // Момент конверсии — время события, а не загрузки: иначе оплата
           // вчерашнего заказа встанет в отчёт сегодняшним днём.
-          dateTime: Math.floor(order.createdAt.getTime() / 1000),
+          dateTime: Math.floor(occurredAt.getTime() / 1000),
           price: Math.max(0, Math.round(order.totalOrder)),
         },
       };

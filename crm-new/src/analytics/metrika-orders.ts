@@ -108,7 +108,7 @@ const ORDER_SELECT = {
     },
   },
   canvasItems: { select: { contractorCostPosition: true } },
-  statusHistory: { select: { fromStatus: true, toStatus: true } },
+  statusHistory: { select: { fromStatus: true, toStatus: true, createdAt: true } },
 } as const;
 
 async function counterTimeZone(

@@ -57,7 +57,8 @@ export function compare(
       return { current, previous, delta: 0, deltaPct: 0, changeKind: 'FLAT' };
     return { current, previous, delta, deltaPct: null, changeKind: 'NEW' };
   }
-  const deltaPct = (delta / previous) * 100;
+  // A shrinking loss is an improvement: -50 after -100 is +50%, not -50%.
+  const deltaPct = (delta / Math.abs(previous)) * 100;
   const changeKind: ChangeKind =
     delta === 0 ? 'FLAT' : current === 0 ? 'GONE' : delta > 0 ? 'UP' : 'DOWN';
   return { current, previous, delta, deltaPct, changeKind };
