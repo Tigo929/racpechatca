@@ -59,3 +59,52 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
   return copyViaSelection(text);
 }
+
+/**
+ * Скопировать текст, который ещё нужно загрузить.
+ *
+ * Разница с copyToClipboard принципиальная, и из-за неё кнопка
+ * «Скопировать сообщение клиенту» не работала на iPhone. Safari разрешает
+ * запись в буфер только внутри жеста человека — прямо в обработчике
+ * нажатия. Любой `await` до обращения к буферу этот жест «тратит»:
+ * пока текст едет с сервера, право на запись теряется, и обе дороги —
+ * и Clipboard API, и execCommand — упираются в отказ. На компьютере
+ * и в Chrome такого ограничения нет, поэтому там всё работало.
+ *
+ * Выход придуман не нами: в буфер кладут не строку, а ОБЕЩАНИЕ строки.
+ * ClipboardItem принимает промис, запись начинается сразу в жесте,
+ * а содержимое подставляется, когда ответ придёт.
+ */
+export async function copyPendingText(
+  load: () => Promise<string>,
+): Promise<boolean> {
+  // Запрос уходит первым делом: дальше нельзя терять ни одного такта
+  // синхронного кода, иначе жест будет израсходован.
+  const pending = load();
+
+  if (
+    typeof ClipboardItem !== 'undefined' &&
+    navigator.clipboard &&
+    window.isSecureContext
+  ) {
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/plain': pending.then(
+            (text) => new Blob([text], { type: 'text/plain' }),
+          ),
+        }),
+      ]);
+      return true;
+    } catch {
+      // Сюда попадаем и когда браузер не умеет промис в ClipboardItem,
+      // и когда сам запрос не удался. Что именно — выяснит строка ниже.
+    }
+  }
+
+  // Текст уже (или вот-вот) загружен. Если загрузка упала — пусть ошибка
+  // дойдёт до вызывающего: «не удалось скопировать» и «не удалось
+  // получить текст» человеку нужно различать.
+  const text = await pending;
+  return copyToClipboard(text);
+}

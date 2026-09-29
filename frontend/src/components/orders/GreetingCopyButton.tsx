@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { ordersApi } from '../../api/orders';
-import { copyToClipboard } from '../../utils/clipboard';
+import { copyPendingText } from '../../utils/clipboard';
 
 /**
  * Кнопка «Скопировать сообщение клиенту».
@@ -21,10 +21,10 @@ export function GreetingCopyButton({ orderId }: { orderId: string }) {
   async function copy() {
     setBusy(true);
     try {
-      const text = await ordersApi.getGreetingText(orderId);
-      // Копируем общим способом: у него есть запасной путь для iPhone,
-      // где Clipboard API отказывает чаще всего.
-      if (!(await copyToClipboard(text))) {
+      // Текст едет с сервера, поэтому копируем «обещанием»: на iPhone
+      // право на запись в буфер живёт только внутри нажатия, и обычный
+      // await его тратит (см. copyPendingText).
+      if (!(await copyPendingText(() => ordersApi.getGreetingText(orderId)))) {
         toast.error('Не удалось скопировать — попробуйте ещё раз');
         return;
       }
