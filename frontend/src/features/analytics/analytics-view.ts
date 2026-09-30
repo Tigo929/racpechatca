@@ -121,7 +121,7 @@ export const POLARITY: Record<ComparisonKey, Polarity> = {
   crmLeads: 'higher-good',
   acceptedOrders: 'higher-good',
   paidOrders: 'higher-good',
-  cancelledOrders: 'lower-good',
+  cancelledOrders: 'neutral',
   realizedOrders: 'higher-good',
   contractValue: 'higher-good',
   paidOrderValue: 'higher-good',
@@ -187,8 +187,8 @@ export const LABELS: Record<string, MetricLabel> = {
   },
   cogs: { label: 'Себестоимость', tooltip: 'Бумага по формату, вознаграждение партнёру за футболки, подрядчик по холстам — как в финансовом отчёте.' },
   netProfit: {
-    label: 'Прибыль',
-    tooltip: 'Чистая прибыль по методике финансового отчёта: выручка за товар − себестоимость − операционные расходы − начисленная зарплата + заработок на доставке.',
+    label: 'Расчётная прибыль',
+    tooltip: 'Выручка за товар − учтённая себестоимость − внесённые операционные расходы − начисленная зарплата + заработок на доставке. Это не подтверждённый остаток денег: полноту затрат и даты необходимо сверять с документами.',
   },
   paidAov: { label: 'Средний чек', tooltip: 'Сумма оплаченных заказов периода, делённая на их число. Без оплат — прочерк.' },
   contractValue: { label: 'Сумма принятых заказов', tooltip: 'Договорная сумма заказов, принятых в периоде (ещё не обязательно оплаченных).' },
@@ -198,19 +198,19 @@ export const LABELS: Record<string, MetricLabel> = {
     tooltip: 'Сумма заказов минус себестоимость. Это не чистая прибыль: зарплата, доставка и расходы бизнеса здесь не вычтены.',
   },
   matchedAccepted: {
-    label: 'Сопоставленные заказы',
-    tooltip: 'Заказы, которые Метрика связала с визитом на сайт по ClientID. Появляются только у заявок с согласием на аналитику и после 12 сентября 2026.',
+    label: 'Достижения CRM-цели «принят»',
+    tooltip: 'Достижения цели в Метрике. Это не число уникальных заказов и не подтверждение рекламного происхождения каждого заказа.',
   },
-  matchedPaid: { label: 'Сопоставленные оплаты', tooltip: 'Оплаченные заказы, связанные Метрикой с визитом на сайт по ClientID.' },
-  siteLeadConversion: { label: 'Конверсия в заявку', tooltip: 'Заявки сайта / визиты × 100. Считается из итогов периода, а не как среднее по дням.' },
-  siteAcceptedConversion: { label: 'Конверсия в заказ', tooltip: 'Сопоставленные заказы / визиты × 100 — только по заказам, связанным с сайтом через ClientID.' },
+  matchedPaid: { label: 'Достижения CRM-цели «оплачен»', tooltip: 'Достижения цели оплаты в Метрике, не число уникальных платежей.' },
+  siteLeadConversion: { label: 'Конверсия в заявку', tooltip: 'Визиты с достижением цели заявки / все визиты × 100. Повторные достижения в одном визите не увеличивают числитель.' },
+  siteAcceptedConversion: { label: 'Конверсия в CRM-цель', tooltip: 'Визиты с достижением CRM-цели «принят» / все визиты × 100. Это не число уникальных заказов CRM.' },
   crmLeadToAccepted: { label: 'Заявка → заказ', tooltip: 'Из заявок CRM, появившихся в периоде, — доля тех, что когда-либо стали заказом.' },
   crmAcceptedToPaid: { label: 'Заказ → оплата', tooltip: 'Из заказов, принятых в периоде, — доля тех, что когда-либо оплачены.' },
   clientIdCoverage: {
-    label: 'Покрытие ClientID',
-    tooltip: 'Доля принятых заказов, у которых есть идентификатор посетителя Метрики. Только такие заказы можно связать с рекламой и страницами сайта.',
+    label: 'ClientID у заказов сайта',
+    tooltip: 'Доля принятых заказов WEBSITE с идентификатором Метрики. Ручные заказы не входят в знаменатель. Для связи также может использоваться yclid; наличие метки не подтверждает рекламную атрибуцию.',
   },
-  cogsReliability: { label: 'Полнота себестоимости', tooltip: 'Доля принятых заказов, у которых есть позиции для расчёта себестоимости.' },
+  cogsReliability: { label: 'Позиции для расчёта затрат', tooltip: 'Доля принятых заказов с позициями, пригодными для расчёта себестоимости. Даже 100% не подтверждают фактические закупочные цены и полноту расходов.' },
   paidWithoutDate: { label: 'Оплачены без даты', tooltip: 'Заказы со статусом «Оплачен», у которых не указана дата оплаты — в «Оплатах» периода их нет.' },
 };
 
@@ -236,7 +236,7 @@ const NOTE_TEXT: Partial<Record<QualityNote, Warning>> = {
   INCOMPLETE_LEGACY_SITE_LEADS: {
     code: 'legacy',
     text: 'Исторические данные о заявках сайта до обновления аналитики (12 сентября 2026, 13:19) неполные',
-    tooltip: 'До этого момента часть форм не отправляла событие заявки. Заявки CRM за это время полные.',
+    tooltip: 'До этого момента часть форм не отправляла событие заявки. Полноту исторических заявок CRM нужно проверять отдельно.',
   },
   PERIOD_BEFORE_COUNTER: {
     code: 'counter',
@@ -249,14 +249,14 @@ const NOTE_TEXT: Partial<Record<QualityNote, Warning>> = {
   },
   METRIKA_STALE: { code: 'stale', text: 'Данные Метрики могут быть устаревшими: синхронизация давно не обновлялась' },
   METRIKA_NO_DATA: { code: 'no-data', text: 'Данных Метрики нет: синхронизация ещё не выполнялась' },
-  COGS_UNRELIABLE_ORDERS: { code: 'cogs', text: 'У части принятых заказов нет позиций — себестоимость по ним не посчитана' },
+  COGS_UNRELIABLE_ORDERS: { code: 'cogs', text: 'У части заказов расчёт себестоимости неполный — прибыль требует проверки' },
   PAID_WITHOUT_DATE: { code: 'paid-date', text: 'У части оплаченных заказов нет даты оплаты — в «Оплатах» периода их нет' },
 };
 
 export const COVERAGE_WARNING: Warning = {
   code: 'coverage',
   text: 'Данные о связи сайта с заказами пока неполные',
-  tooltip: 'Не все клиенты дали согласие на аналитику / не все заказы имеют ClientID. Общий бизнес-KPI считается по CRM и остаётся полным.',
+  tooltip: 'У части заказов сайта нет ClientID. Наличие yclid проверяется отдельно. Отсутствие меток не доказывает конкретную причину; финансовые показатели зависят от полноты CRM.',
 };
 
 export const MATCHING_INSUFFICIENT = 'Недостаточно сопоставленных заказов';
@@ -286,8 +286,8 @@ export function overviewWarnings(o: Overview): Warning[] {
 
 /** Покрытие ниже 50 % или сопоставлять нечего — связь сайта с заказами неполная. */
 export function coverageIsLow(o: Overview): boolean {
-  const c = o.dataQuality.clientIdCoverageAccepted;
-  return c === null || c < 50 || o.dataQuality.eligibleAccepted === 0;
+  const c = o.dataQuality.websiteClientIdCoverage;
+  return (o.dataQuality.websiteAccepted ?? 0) > 0 && (c == null || c < 50);
 }
 
 /** Сопоставленную воронку показывать нельзя как «0 %»: заказов для сопоставления нет. */
@@ -320,7 +320,7 @@ export function attentionCards(o: Overview): AttentionCard[] {
       tone: 'negative',
     });
   }
-  if (o.comparison && drop(o.comparison.siteLeadConversion) && !matchingInsufficient(o) && !o.dataQuality.siteLeadsLegacy) {
+  if (o.comparison && drop(o.comparison.siteLeadConversion) && !o.dataQuality.siteLeadsLegacy && o.previousPeriod.from > o.metadata.cutovers.leadGoalSemanticsChangedAt.slice(0, 10) && o.dataQuality.freshness.status === 'FRESH') {
     cards.push({
       code: 'lead-conversion-drop',
       title: 'Конверсия в заявку снизилась',
@@ -362,11 +362,10 @@ export function attentionCards(o: Overview): AttentionCard[] {
 export type TrendMetric = 'visits' | 'siteLeads' | 'acceptedOrders' | 'paidOrders' | 'realizedRevenue' | 'netProfit';
 
 /**
- * Сумма по дням у прибыли может отличаться от итога периода на единицы рублей:
- * P&L округляет себестоимость фото в каждом дне так же, как в недельных и
- * месячных разрезах отчёта. Итог периода — только в карточке «Прибыль».
+ * Себестоимость округляется один раз на заказ, поэтому сумма дней
+ * совпадает с итогом выбранного периода при одном снимке данных.
  */
-export const PROFIT_SUM_NOTE = 'Сумма дневных значений: себестоимость округляется в каждом дне, поэтому итог может отличаться на единицы рублей от карточки «Прибыль» — она и есть итог периода.';
+export const PROFIT_SUM_NOTE = 'Сумма дневных значений совпадает с итогом периода: себестоимость округляется один раз на заказ. Прибыль рассчитана по расходам, учтённым в CRM.';
 
 export const TREND_METRICS: { key: TrendMetric; label: string; format: MetricFormat; sumNote?: string }[] = [
   { key: 'visits', label: 'Визиты', format: 'count' },
