@@ -22,14 +22,14 @@ describe('пресеты периода (сейчас — 12.09.2026 21:30 UTC =
     ['previous_7_days', '2026-08-31', '2026-09-06'],
     ['last_30_days', '2026-08-15', '2026-09-13'],
     ['previous_30_days', '2026-07-16', '2026-08-14'],
-    ['current_month', '2026-09-01', '2026-09-30'],
+    ['current_month', '2026-09-01', '2026-09-13'],
     ['previous_month', '2026-08-01', '2026-08-31'],
   ] as const)('%s → %s..%s', (preset, from, to) => {
     const p = periodFromPreset(preset, now);
     expect(p.from).toBe(from);
     expect(p.to).toBe(to);
     expect(p.preset).toBe(preset);
-    expect(p.kind).toBe(preset.endsWith('month') ? 'month' : 'days');
+    expect(p.kind).toBe(preset === 'previous_month' ? 'month' : 'days');
   });
 
   it('previous_month в январе — декабрь прошлого года', () => {
@@ -46,6 +46,10 @@ describe('пресеты периода (сейчас — 12.09.2026 21:30 UTC =
 });
 
 describe('предыдущий период', () => {
+  it('compares month-to-date with the same elapsed days, without future zeroes', () => {
+    const p = periodFromPreset('current_month', new Date('2026-09-12T21:30:00Z'));
+    expect(previousPeriod(p)).toMatchObject({ from: '2026-08-01', to: '2026-08-13' });
+  });
   it('для 7 дней — 7 дней сразу перед началом', () => {
     const prev = previousPeriod(customPeriod('2026-09-06', '2026-09-12'));
     expect(prev).toMatchObject({
