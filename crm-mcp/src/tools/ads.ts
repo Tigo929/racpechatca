@@ -24,14 +24,33 @@ const AD_ORDER = `o.yclid IS NOT NULL AND o.yclid <> ''`;
 /** Похоже на рекламу, но метки клика нет: utm есть, yclid потерян. */
 const AD_LIKE = `(o.yclid IS NULL OR o.yclid = '') AND o."utmMedium" IS NOT NULL AND o."utmMedium" <> ''`;
 
+/**
+ * НДС. Расход в CRM приходит из двух мест: API Метрики отдаёт суммы БЕЗ НДС
+ * (vatBasis = EXCLUDED), ручные выгрузки кабинета — как в кабинете, то есть
+ * с НДС (UNKNOWN). Разница — 20 %, и ровно настолько разъезжается цена
+ * заявки, если сложить одно с другим и промолчать.
+ *
+ * Складывать всё равно приходится: разделить задним числом нельзя, у старых
+ * строк основания не записано. Поэтому сумма одна, но в ответе всегда сказано,
+ * из чего она собрана, — и если основания смешаны, это названо прямо.
+ */
+function vatNote(excluded: boolean, unknown: boolean): string {
+  if (excluded && unknown) {
+    return 'Внимание: расход собран из двух источников — часть без НДС (API Метрики), часть как в кабинете, с НДС (ручная выгрузка). Итог на 20 % неточен в той доле, что пришла с НДС; цена заявки и ДРР ниже настоящих.';
+  }
+  if (excluded) return 'Расход без НДС — так его отдаёт API Метрики. В кабинете те же дни выглядят на 20 % дороже.';
+  if (unknown) return 'Расход как в ручной выгрузке кабинета, то есть с НДС.';
+  return 'Основание по НДС у этих строк не записано.';
+}
+
 export const adSpend: Tool = {
   name: 'ad_spend',
   title: 'Расход на рекламу',
   description:
     'Сколько потрачено на рекламу за период, по кампаниям: расход, клики, показы, цена клика, CTR. ' +
     'Отвечает на «куда ушёл бюджет» и «не подорожал ли клик». ' +
-    'Данные из выгрузки кабинета, которую владелец загружает вручную (npm run ads:import) — за дни без загрузки расхода не будет, ' +
-    'и это не нулевой расход, а отсутствующие данные. Заявок и заказов тут нет: они в ad_economics.',
+    'Расход попадает в CRM из API Метрики (без НДС) или из ручной выгрузки кабинета (с НДС) — в ответе сказано, из чего собран итог. ' +
+    'За дни без загрузки расхода не будет, и это не нулевой расход, а отсутствующие данные. Заявок и заказов тут нет: они в ad_economics.',
   schema: { ...periodSchema, limit: limitSchema },
   async run(args) {
     const period = resolvePeriod(args as { from?: string; to?: string });
@@ -43,6 +62,9 @@ export const adSpend: Tool = {
       spend: number;
       clicks: number;
       impressions: number;
+      /** Клики только тех строк, где есть показы: иначе CTR завышен. */
+      clicks_s_pokazami: number;
+      vat: string;
     }>(
       `SELECT CASE WHEN a."campaignName" <> '' THEN a."campaignName"
                    WHEN a."campaignId" <> '' THEN 'кампания ' || a."campaignId"
@@ -50,7 +72,9 @@ export const adSpend: Tool = {
               count(DISTINCT a.date)::int AS dney,
               COALESCE(sum(a.spend), 0)::int AS spend,
               COALESCE(sum(a.clicks), 0)::int AS clicks,
-              COALESCE(sum(a.impressions), 0)::int AS impressions
+              COALESCE(sum(a.impressions), 0)::int AS impressions,
+              COALESCE(sum(a.clicks) FILTER (WHERE a.impressions IS NOT NULL), 0)::int AS clicks_s_pokazami,
+              string_agg(DISTINCT a."vatBasis", ',') AS vat
          FROM "AdSpend" a
         WHERE a.date >= $1::date AND a.date <= $2::date
         GROUP BY campaign
@@ -72,6 +96,8 @@ export const adSpend: Tool = {
     const spend = rows.reduce((s, r) => s + r.spend, 0);
     const clicks = rows.reduce((s, r) => s + r.clicks, 0);
     const impressions = rows.reduce((s, r) => s + r.impressions, 0);
+    const clicksWithImpressions = rows.reduce((s, r) => s + r.clicks_s_pokazami, 0);
+    const vat = rows.flatMap((r) => (r.vat ?? '').split(',')).filter(Boolean);
     const covered = await read<{ dney: number }>(
       `SELECT count(DISTINCT a.date)::int AS dney
          FROM "AdSpend" a
@@ -84,7 +110,7 @@ export const adSpend: Tool = {
       period: period.label,
       summary: [
         `Потрачено: ${money(spend)} · клики: ${int(clicks)} · цена клика: ${per(spend, clicks)}`,
-        `Показы: ${int(impressions)} · CTR: ${share(clicks, impressions)}`,
+        `Показы: ${int(impressions)} · CTR: ${share(clicksWithImpressions, impressions)}`,
         `Данные есть за ${int(covered[0]?.dney ?? 0)} дней из периода.`,
       ],
       table: table(
@@ -95,11 +121,13 @@ export const adSpend: Tool = {
           money(r.spend),
           int(r.clicks),
           per(r.spend, r.clicks),
-          int(r.impressions),
-          share(r.clicks, r.impressions),
+          r.impressions === 0 ? 'нет данных' : int(r.impressions),
+          share(r.clicks_s_pokazami, r.impressions),
         ]),
       ),
-      note: 'Расход с НДС — как в кабинете.',
+      note:
+        `${vatNote(vat.includes('EXCLUDED'), vat.includes('UNKNOWN'))} ` +
+        'CTR считается только по строкам, где показы записаны: у части выгрузок их нет, и включать их клики в CTR означало бы завысить его.',
     });
   },
 };
@@ -116,14 +144,17 @@ export const adEconomics: Tool = {
     const period = resolvePeriod(args as { from?: string; to?: string });
     const [from, to] = sqlRange(period);
 
-    const spendRows = await read<{ spend: number; clicks: number }>(
-      `SELECT COALESCE(sum(a.spend), 0)::int AS spend, COALESCE(sum(a.clicks), 0)::int AS clicks
+    const spendRows = await read<{ spend: number; clicks: number; vat: string | null }>(
+      `SELECT COALESCE(sum(a.spend), 0)::int AS spend,
+              COALESCE(sum(a.clicks), 0)::int AS clicks,
+              string_agg(DISTINCT a."vatBasis", ',') AS vat
          FROM "AdSpend" a
         WHERE a.date >= $1::date AND a.date <= $2::date`,
       [period.from, period.to],
     );
     const spend = spendRows[0]?.spend ?? 0;
     const clicks = spendRows[0]?.clicks ?? 0;
+    const vat = (spendRows[0]?.vat ?? '').split(',').filter(Boolean);
 
     const leadRows = await read<{
       ad_zayavok: number;
@@ -191,6 +222,7 @@ export const adEconomics: Tool = {
         `Без ClientID Метрики: ${int(l.bez_clientid)} — эти заявки Метрика к визиту не привяжет.`,
       ],
       note:
+        `${vatNote(vat.includes('EXCLUDED'), vat.includes('UNKNOWN'))} ` +
         'Выручка считается по заказам, созданным в периоде и уже оплаченным. Оплата приходит позже заявки, поэтому по свежим дням ДРР всегда выглядит хуже, чем окажется через две недели. ' +
         'Клик → заявка считается от кликов кабинета: часть кликов до сайта не доходит, и эта доля сюда не видна — смотрите site_traffic.',
     });
