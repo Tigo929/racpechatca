@@ -32,6 +32,24 @@ function transport(responses: (Response | Error)[]) {
 
 const noSleep = async () => {};
 
+describe('offline conversion response (distinct from CDP)', () => {
+  it.each(['UPLOADED', 'EXPORTED', 'MATCHED', 'PROCESSED', 'LINKAGE_FAILURE'])('preserves %s and remote id', async (status) => {
+    const t = transport([jsonResponse(200, { uploading: { id: 12345, status, line_quantity: 1, source_quantity: 1 } })]);
+    const client = new YandexMetrikaClient(CONFIG, t.fetchImpl, noSleep);
+    expect(await client.uploadYclidConversions('Yclid,Target,DateTime\n123456,paid,1')).toEqual({ uploading_id: '12345', api_validation_status: status, elements_count: 1 });
+    expect(t.calls).toHaveLength(1);
+  });
+  it.each([
+    { id: 1, status: 'UPLOADED', line_quantity: 0, source_quantity: 1 },
+    { id: 1, status: 'UPLOADED', line_quantity: 1, source_quantity: 2 },
+    { status: 'UPLOADED', line_quantity: 1, source_quantity: 1 },
+  ])('does not accept missing id or partially rejected rows', async (uploading) => {
+    const t = transport([jsonResponse(200, { uploading })]);
+    const client = new YandexMetrikaClient(CONFIG, t.fetchImpl, noSleep);
+    expect((await client.uploadYclidConversions('csv')).api_validation_status).toBe('INVALID_OFFLINE_RESPONSE');
+  });
+});
+
 describe('конфигурация', () => {
   it('H: без переменных клиент не настроен, а CRM не падает', () => {
     const config = metrikaConfigFromEnv({});

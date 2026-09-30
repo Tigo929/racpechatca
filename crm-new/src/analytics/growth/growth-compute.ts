@@ -176,7 +176,7 @@ export function metricValue(
     case 'siteLeads':
       return countValue(o.siteFunnel.siteLeads, days, visits);
     case 'siteLeadRate':
-      return ratioValue(o.siteFunnel.siteLeads, visits);
+      return ratioValue(goalVisits(w.behavior, 'lead_submitted'), visits);
     case 'formStarts':
       return countValue(goalVisits(w.behavior, 'form_started'), days, visits);
     case 'formStartRate':
@@ -197,7 +197,10 @@ export function metricValue(
     case 'matchedAccepted':
       return countValue(o.siteFunnel.matchedAccepted, days, visits);
     case 'matchedAcceptedRate':
-      return ratioValue(o.siteFunnel.matchedAccepted, visits);
+      return ratioValue(
+        o.siteFunnel.siteAcceptedConversion == null ? null : o.siteFunnel.siteAcceptedConversion * visits / 100,
+        visits,
+      );
     case 'matchedPaid':
       return countValue(o.siteFunnel.matchedPaid, days, visits);
     case 'crmLeads':
@@ -488,10 +491,10 @@ export function evaluateMetric(
   if (!comparability.comparable) flags.push('INCOMPARABLE_WINDOWS');
   if (def.scope === 'matched') {
     const cov = [
-      wb.overview.dataQuality.clientIdCoverageAccepted,
-      wa.overview.dataQuality.clientIdCoverageAccepted,
+      wb.overview.dataQuality.websiteClientIdCoverage,
+      wa.overview.dataQuality.websiteClientIdCoverage,
     ];
-    if (cov.some((c) => c === null || c < MATCHED_COVERAGE_MIN_PCT))
+    if (cov.some((c) => c == null || c < MATCHED_COVERAGE_MIN_PCT))
       flags.push('MATCHED_COVERAGE_LOW');
   }
   if (
@@ -616,7 +619,7 @@ const SEGMENT_METRICS: Partial<
 > = {
   visits: (r, d) => countValue(r?.visits ?? 0, d),
   siteLeads: (r, d) => countValue(r?.siteLeads ?? 0, d, r?.visits ?? 0),
-  siteLeadRate: (r) => ratioValue(r?.siteLeads ?? 0, r?.visits ?? 0),
+  siteLeadRate: (r) => r?.goals ? ratioValue(r.goals.get('lead_submitted')?.visits ?? 0, r.visits) : null,
   matchedAccepted: (r, d) =>
     countValue(r?.matchedAccepted ?? 0, d, r?.visits ?? 0),
   matchedAcceptedRate: (r) =>
@@ -637,6 +640,8 @@ export function segmentSupported(
   dimension: AudienceDefinition['dimension'],
 ): boolean {
   if (!(metric in SEGMENT_METRICS)) return false;
+  if (metric === 'matchedAcceptedRate') return false;
+  if (metric === 'siteLeadRate' && dimension !== 'device' && dimension !== 'landing') return false;
   if (metric === 'matchedPaid') return false;
   if (
     (metric === 'formStarts' || metric === 'formStartRate') &&
@@ -694,13 +699,25 @@ export function evaluateSegments(
     const rb = segmentRows(before, w.dimension);
     const ra = segmentRows(after, w.dimension);
     const extract = SEGMENT_METRICS[change.primaryMetric]!;
+    const combined = (rows: SegmentRows, key: string): SegmentRows[number] | undefined => {
+      const found = rows.filter((r) => r.key === key);
+      if (!found.length) return undefined;
+      if (found.length === 1) return found[0];
+      return {
+        key,
+        visits: found.reduce((s, r) => s + r.visits, 0),
+        siteLeads: found.reduce((s, r) => s + r.siteLeads, 0),
+        matchedAccepted: found.reduce((s, r) => s + r.matchedAccepted, 0),
+        matchedPaid: found.reduce((s, r) => s + r.matchedPaid, 0),
+      };
+    };
     for (const v of w.values) {
       const b = extract(
-        rb.find((r) => r.key === v),
+        combined(rb, v),
         windows.days,
       );
       const a = extract(
-        ra.find((r) => r.key === v),
+        combined(ra, v),
         windows.days,
       );
       if (!b || !a) continue;
@@ -865,7 +882,7 @@ export function computeConfounders(
     out.push({
       code: 'MATCHED_COVERAGE_LOW',
       severity: 'ATTENTION',
-      fact: `Покрытие ClientID у принятых заказов ниже ${MATCHED_COVERAGE_MIN_PCT} % — сопоставленные метрики не переносятся на все заказы CRM.`,
+      fact: `Покрытие ClientID у принятых заказов сайта ниже ${MATCHED_COVERAGE_MIN_PCT} % — сопоставленные метрики не переносятся на все заказы CRM.`,
     });
   if (declared.some((m) => m.flags.includes('COGS_INCOMPLETE')))
     out.push({

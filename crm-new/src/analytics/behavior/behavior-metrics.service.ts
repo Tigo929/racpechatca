@@ -7,6 +7,7 @@ import {
   type AnalyticsPeriod,
 } from '../metrics/analytics-period';
 import { freshnessOf } from '../metrics/metrics-compute';
+import { lastCompleteSyncAt, BEHAVIOR_REQUIRED_DATASETS } from '../metrics/metrika-freshness';
 import {
   computeDevices,
   computeErrors,
@@ -204,11 +205,7 @@ export class BehaviorMetricsService {
         _sum: { visits: true, pageviews: true, users: true },
       }),
       this.prisma.metrikaDailyBehaviorDevice.count({ where }),
-      this.prisma.metrikaSyncRun.findFirst({
-        where: { status: 'SUCCESS', finishedAt: { not: null } },
-        orderBy: { finishedAt: 'desc' },
-        select: { finishedAt: true },
-      }),
+      lastCompleteSyncAt(this.prisma, BEHAVIOR_REQUIRED_DATASETS),
     ]);
 
     const n = (v: number | null | undefined): number => v ?? 0;
@@ -311,7 +308,7 @@ export class BehaviorMetricsService {
       params: paramRows,
       paths: pathMap,
       behaviorRows,
-      freshness: freshnessOf(lastSync?.finishedAt ?? null, this.now()),
+      freshness: freshnessOf(lastSync, this.now()),
     };
   }
 }

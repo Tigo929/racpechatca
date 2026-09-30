@@ -29,6 +29,7 @@
     "db:push:dev": "prisma db push",
     "analytics:report": "node dist/src/analytics/analytics-report-cli.js",
     "origin:backfill": "node dist/src/analytics/order-origin-cli.js",
+    "ads:sync": "node dist/src/analytics/direct-spend-cli.js",
     "ads:import": "node dist/src/analytics/ad-spend-cli.js"
   },
   "dependencies": {

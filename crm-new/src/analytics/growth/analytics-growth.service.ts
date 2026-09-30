@@ -506,7 +506,10 @@ export class AnalyticsGrowthService {
       before,
       after,
       maturityPolicy,
-      freshness: freshnessOf(lastSync?.finishedAt ?? null, now),
+      freshness: [before.overview.dataQuality.freshness, after.overview.dataQuality.freshness,
+        before.behavior.freshness, after.behavior.freshness].map(f => f ?? freshnessOf(null, now)).reduce((oldest, item) =>
+          item.status === 'NO_DATA' || (oldest.status !== 'NO_DATA' &&
+            (item.metrikaDataAgeSeconds ?? 0) > (oldest.metrikaDataAgeSeconds ?? 0)) ? item : oldest),
       lastSyncRunId: lastSync?.id ?? null,
       overlapping,
       evaluatedAt: now,
