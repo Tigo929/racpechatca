@@ -47,6 +47,8 @@ interface PrismaStub {
     deleteMany: AsyncMock;
   };
   paymentAccrualLink: { deleteMany: AsyncMock };
+  /** Запись о причине удаления: пишется в той же транзакции, что и удаление. */
+  orderDeletion: { create: AsyncMock };
   statusHistory: { create: AsyncMock };
   orderAssignment: { create: AsyncMock };
 }
@@ -75,6 +77,7 @@ function createPrismaStub(): PrismaStub {
       deleteMany: asyncMock(),
     },
     paymentAccrualLink: { deleteMany: asyncMock() },
+    orderDeletion: { create: asyncMock() },
     statusHistory: { create: asyncMock() },
     orderAssignment: { create: asyncMock() },
   };
@@ -731,7 +734,19 @@ describe('salary accrual integrity', () => {
     });
     const service = createOrderService(stub);
 
-    const result = await service.deleteOrder('order-1');
+    // Причина обязательна: удаление без объяснения больше не проходит.
+    const result = await service.deleteOrder('order-1', 'тестовое удаление');
+
+    // Причина записана вместе со снимком заказа — иначе после удаления
+    // связать её будет не с чем.
+    expect(stub.orderDeletion.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          reason: 'тестовое удаление',
+          orderId: 'order-1',
+        }) as unknown,
+      }),
+    );
 
     // Платёжные связи удаляются раньше начислений (FK-целостность)
     expect(stub.paymentAccrualLink.deleteMany).toHaveBeenCalledWith({

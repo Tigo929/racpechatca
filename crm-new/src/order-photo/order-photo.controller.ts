@@ -32,6 +32,7 @@ import { ReviewReminderService } from './review-reminder.service';
 import { ShipmentLeadService } from './shipment-lead.service';
 import { DtoSetShipmentLead } from './dto/set-shipment-lead.dto';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
+import { DtoDeleteOrder } from './dto/delete-order.dto';
 import DtoCreateOrder from './dto/create-order.dto';
 import DtoAllOrdersforQuery from './dto/all-oreders-for-query.dto';
 import UpdateStatus from './dto/update-status.dto';
@@ -137,10 +138,22 @@ export class OrderPhotoController {
     return this.orderPhotoService.updateOrder(idOrder, dto, me.id);
   }
 
+  /*
+   * Удаление только с причиной: она уходит в OrderDeletion вместе со
+   * снимком заказа. По этим записям потом видно, почему заявки с сайта
+   * не доходят до заказа.
+   */
   @Delete(':idOrder')
   @Roles(EnumRole.ADMIN)
-  deleteOrder(@Param('idOrder') idOrder: string) {
-    return this.orderPhotoService.deleteOrder(idOrder);
+  deleteOrder(
+    @Param('idOrder') idOrder: string,
+    @Body() dto: DtoDeleteOrder,
+    @CurrentUser() me: RequestUser,
+  ) {
+    return this.orderPhotoService.deleteOrder(idOrder, dto.reason, {
+      id: me.id,
+      name: me.username,
+    });
   }
 
   // ── Admin-only: assign executor ────────────────────────────────────────────

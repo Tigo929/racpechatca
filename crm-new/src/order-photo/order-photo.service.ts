@@ -2149,10 +2149,46 @@ export class OrderPhotoService {
     });
   }
 
-  async deleteOrder(idOrder: string) {
-    await this.getOrderById(idOrder, '', EnumRole.ADMIN);
+  /**
+   * Удалить заказ — только с объяснением.
+   *
+   * Заявки с сайта иногда приходится удалять: дубль, ошибка, человек
+   * передумал. Раньше заказ исчезал молча, и через месяц никто не мог
+   * сказать, почему заявок с сайта меньше, чем визитов. Теперь причина
+   * записывается в OrderDeletion вместе со снимком заказа — в той же
+   * транзакции, что и удаление: либо есть и запись, и удаление, либо нет
+   * ни того, ни другого.
+   */
+  async deleteOrder(
+    idOrder: string,
+    reason: string,
+    deletedBy?: { id: string; name?: string },
+  ) {
+    const clean = (reason ?? '').trim();
+    if (!clean) {
+      throw new BadRequestException(
+        'Укажите причину удаления — без неё заявка не удаляется.',
+      );
+    }
+    const order = await this.getOrderById(idOrder, '', EnumRole.ADMIN);
 
     return this.prisma.$transaction(async (tx) => {
+      // Снимок пишем первым: если удаление упадёт, транзакция откатит и его,
+      // а вот обратный порядок оставил бы удалённый заказ без объяснения.
+      await tx.orderDeletion.create({
+        data: {
+          reason: clean,
+          deletedById: deletedBy?.id ?? null,
+          deletedByName: deletedBy?.name ?? null,
+          orderId: idOrder,
+          numberOrder: order.numberOrder,
+          status: order.status,
+          sourceOrder: order.sourceOrder,
+          productCategory: order.productCategory,
+          totalOrder: order.totalOrder ?? 0,
+          orderCreatedAt: order.createdAt,
+        },
+      });
       // Удаляем все начисления (любой статус) и их платёжные связи
       const accruals = await tx.salaryAccrual.findMany({
         where: { orderId: idOrder },

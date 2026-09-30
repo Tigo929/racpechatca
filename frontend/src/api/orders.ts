@@ -193,8 +193,14 @@ export const ordersApi = {
     return data;
   },
 
-  delete: async (id: string): Promise<void> => {
-    await api.delete(`/order-photo/${id}`);
+  /**
+   * Удалить заявку. Причина обязательна — сервер откажет без неё.
+   *
+   * Тело у DELETE непривычно, но уместно: причина — часть самого действия,
+   * а не отдельная запись, которую можно потерять между двумя запросами.
+   */
+  delete: async (id: string, reason: string): Promise<void> => {
+    await api.delete(`/order-photo/${id}`, { data: { reason } });
   },
 
   addItem: async (orderId: string, dto: CreateItemDto): Promise<OrderPhoto> => {

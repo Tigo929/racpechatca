@@ -24,6 +24,7 @@ import {
 import { copyToClipboard } from "../../utils/clipboard";
 import { GulianSyncBlock } from './GulianSyncBlock';
 import { DispatchToExecutorModal } from './DispatchToExecutorModal';
+import { DeleteOrderModal } from './DeleteOrderModal';
 import { GreetingCopyButton } from './GreetingCopyButton';
 import { OrderContact } from './OrderContact';
 import { ApprovalsBlock } from '../approval/ApprovalsBlock';
@@ -413,14 +414,25 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
     }
   };
 
+  /*
+   * Удаление с причиной.
+   *
+   * Заявка исчезает насовсем, а причина остаётся: по ней потом видно,
+   * почему заявки с сайта не доходят до заказа. Сервер без причины
+   * откажет — окно спрашивает её до запроса, чтобы человек не узнавал
+   * об этом из ошибки.
+   */
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const deleteMutation = useMutation({
-    mutationFn: () => ordersApi.delete(orderId),
+    mutationFn: (reason: string) => ordersApi.delete(orderId, reason),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["orders"] });
       toast.success("Заявка удалена");
+      setDeleteOpen(false);
       onDeleted();
     },
-    onError: () => toast.error("Ошибка удаления"),
+    onError: (error) =>
+      toast.error(getErrorMessage(error, "Ошибка удаления")),
   });
 
   const startEdit = () => {
@@ -708,9 +720,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 </button>
               )}
               {isOwner && <button
-                onClick={() => {
-                  if (confirm("Удалить заявку?")) deleteMutation.mutate();
-                }}
+                onClick={() => setDeleteOpen(true)}
                 disabled={deleteMutation.isPending}
                 className={`${actionBtn} border-red-200 bg-red-50 text-red-600 hover:bg-red-100 focus-visible:ring-red-400`}
               >
@@ -720,6 +730,15 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           )}
         </div>
       </div>
+
+      {deleteOpen && (
+        <DeleteOrderModal
+          orderNumber={displayOrderNumber(order)}
+          isPending={deleteMutation.isPending}
+          onConfirm={(reason) => deleteMutation.mutate(reason)}
+          onCancel={() => setDeleteOpen(false)}
+        />
+      )}
 
       {/* Status flow */}
       <div className="bg-gray-50 rounded-xl p-4 space-y-3">
