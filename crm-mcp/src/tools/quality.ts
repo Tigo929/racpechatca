@@ -240,6 +240,21 @@ export const dataHealth: Tool = {
       [period.from, period.to],
     );
 
+    /**
+     * Расход на рекламу записан в CRM дважды: в AdSpend (по дням и кампаниям,
+     * для расчёта окупаемости) и расходом с категорией «Реклама» (для P&L).
+     * Это два независимых ввода, и расходиться они могут молча — тогда
+     * окупаемость считается по одному числу, а прибыль по другому.
+     */
+    const adVsExpense = await read<{ ad: number; expense: number }>(
+      `SELECT (SELECT COALESCE(sum(a.spend), 0)::int FROM "AdSpend" a
+                WHERE a.date >= $1::date AND a.date <= $2::date) AS ad,
+              (SELECT COALESCE(sum(e.amount), 0)::int FROM "ExpenseOrder" e
+                WHERE e."createdAt" >= $3 AND e."createdAt" < $4
+                  AND e.category = 'MARKETING') AS expense`,
+      [period.from, period.to, from, to],
+    );
+
     const periodDays =
       Math.round(
         (Date.parse(`${period.to}T00:00:00Z`) - Date.parse(`${period.from}T00:00:00Z`)) / 86_400_000,
@@ -323,6 +338,17 @@ export const dataHealth: Tool = {
         `${int(periodDays - trDays)} из ${int(periodDays)}`,
         'трафик сайта за эти дни не показывается вовсе',
       ]);
+
+    const ad = adVsExpense[0]?.ad ?? 0;
+    const adExpense = adVsExpense[0]?.expense ?? 0;
+    const bigger = Math.max(ad, adExpense);
+    if (bigger > 0 && Math.abs(ad - adExpense) > bigger * 0.1) {
+      problems.push([
+        'Расход на рекламу записан двумя числами',
+        `${money(ad)} в AdSpend против ${money(adExpense)} в расходах`,
+        'окупаемость (ad_economics) считается по первому, прибыль в P&L — по второму; одно из двух неполно',
+      ]);
+    }
 
     const sampledSets = sync.filter((r) => r.sampled === true).map((r) => r.dataset);
     if (sampledSets.length)
