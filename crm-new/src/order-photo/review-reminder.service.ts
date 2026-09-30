@@ -25,6 +25,20 @@ const REVIEW_REMINDER_LIMIT = 20;
 const AVITO_REVIEW_URL =
   'https://www.avito.ru/user/review?fid=2_dJdTVNpmTbcI6Hkpz9w4CujowHx4ZBZ87DElF8B0nlyL6RdaaYzvyPSWRjp4ZyNE';
 
+/**
+ * Куда зовём клиента с сайта: карточка на Яндекс Картах.
+ *
+ * На Авито его звать некуда — он там не покупал, и отзыв от человека без
+ * сделки площадка не примет. Яндекс Карты видит любой, кто ищет печать
+ * фото рядом с собой, и отзыв там работает на тот же поиск, из которого
+ * этот клиент и пришёл.
+ *
+ * Ссылка без координат и масштаба: они привязывают карту к чужому экрану
+ * и на телефоне открывают не то.
+ */
+const YANDEX_REVIEW_URL =
+  'https://yandex.ru/maps/org/raspechatka/169229058790/reviews/';
+
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
@@ -45,9 +59,55 @@ function categoryLabel(category: EnumProductCategory): string {
   return 'Фото';
 }
 
-export function buildReviewRequestText(
+/** Что человек заказывал — одной строкой, для первой фразы. */
+function whatWasOrdered(category: EnumProductCategory): string {
+  if (category === EnumProductCategory.TSHIRT) return 'футболку с принтом';
+  if (category === EnumProductCategory.CANVAS) return 'печать на холсте';
+  return 'печать фотографий';
+}
+
+/**
+ * Просьба об отзыве для клиента с сайта.
+ *
+ * Отдельный текст, а не правка общего: у клиента с сайта другая площадка
+ * (Яндекс Карты вместо Авито) и другой подарок.
+ *
+ * Порядок фраз важен. Сначала «нам поможет ваше мнение», и только потом
+ * подарок: если начать с подарка, отзыв читается как купленный — человек
+ * либо не пишет вовсе, либо пишет дежурно. Подарок здесь благодарность,
+ * а не условие.
+ */
+export function buildSiteReviewRequestText(
   productCategory: EnumProductCategory = EnumProductCategory.PHOTO,
 ): string {
+  return [
+    'Здравствуйте! 😊',
+    '',
+    `Спасибо, что доверили нам ${whatWasOrdered(productCategory)}. Надеемся, всё получилось так, как хотелось.`,
+    '',
+    'Нам очень поможет ваше мнение. Если найдётся пара минут, оставьте, пожалуйста, отзыв на Яндекс Картах: по отзывам нас находят новые люди, а мы понимаем, что сделали хорошо.',
+    '',
+    `⭐ Оставить отзыв: ${YANDEX_REVIEW_URL}`,
+    '',
+    'Пяти звёзд и пары слов о том, что понравилось, будет достаточно — это правда занимает минуту.',
+    '',
+    'А в благодарность за отзыв к следующему заказу подарим на выбор:',
+    '🚚 бесплатную доставку',
+    '📸 10–15 фотографий в стиле Polaroid',
+    '',
+    'Спасибо, что выбрали нас! Будем рады помочь снова 🙌',
+  ].join('\n');
+}
+
+export function buildReviewRequestText(
+  productCategory: EnumProductCategory = EnumProductCategory.PHOTO,
+  sourceOrder?: string,
+): string {
+  // Заявка с сайта — своя площадка и свой подарок.
+  if (sourceOrder === 'WEBSITE') {
+    return buildSiteReviewRequestText(productCategory);
+  }
+
   if (productCategory === EnumProductCategory.TSHIRT) {
     return [
       'Добрый день! 😊',
@@ -144,10 +204,12 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
    * Telegram не принимает больше ~20 сообщений в минуту в один чат, поэтому
    * шлём с паузой и в фоне: HTTP-ответ отдаём сразу, прогресс — в логах.
    */
-  async resendAllWithoutReview(opts: {
-    limit?: number;
-    dryRun?: boolean;
-  } = {}): Promise<{ total: number; dryRun: boolean }> {
+  async resendAllWithoutReview(
+    opts: {
+      limit?: number;
+      dryRun?: boolean;
+    } = {},
+  ): Promise<{ total: number; dryRun: boolean }> {
     const orders = await this.prisma.orderPhoto.findMany({
       where: { clientReviewLeft: false },
       orderBy: { createdAt: 'desc' },
@@ -156,6 +218,7 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
         id: true,
         numberOrder: true,
         productCategory: true,
+        sourceOrder: true,
         sentAt: true,
         communicationPlatform: true,
         urlCommunication: true,
@@ -229,6 +292,7 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
           id: true,
           numberOrder: true,
           productCategory: true,
+          sourceOrder: true,
           sentAt: true,
           communicationPlatform: true,
           urlCommunication: true,
@@ -273,6 +337,9 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
   private buildGroupNotification(order: {
     numberOrder: string;
     productCategory: EnumProductCategory;
+    // Источник решает, куда звать за отзывом: сайт — на Яндекс Карты,
+    // остальные — на Авито.
+    sourceOrder: string;
     sentAt: Date | null;
     communicationPlatform: EnumCommunication;
     urlCommunication: string;
@@ -284,7 +351,7 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
     const sentAt = order.sentAt ? formatRuDateTime(order.sentAt) : 'не указано';
     const dialogUrl = escapeHtml(order.urlCommunication);
     const customerText = escapeHtml(
-      buildReviewRequestText(order.productCategory),
+      buildReviewRequestText(order.productCategory, order.sourceOrder),
     );
 
     return [
