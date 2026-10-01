@@ -5,7 +5,13 @@ import { allTools, assertUniqueNames } from '../src/tools/registry.ts';
 import { PAID_STATUSES, label, paidSql } from '../src/statuses.ts';
 
 /** Инструменты, которым аргумент обязателен: у остальных вызов без аргументов должен работать. */
-const REQUIRES_ARGS = new Set(['order_find']);
+const REQUIRES_ARGS = new Set(['order_find', 'sql_select']);
+
+/** Наименьший набор аргументов, при котором схема инструмента проходит. */
+const MINIMAL_ARGS: Record<string, Record<string, unknown>> = {
+  order_find: { query: '2026' },
+  sql_select: { query: 'SELECT 1 AS a' },
+};
 
 test('имена инструментов не повторяются', () => {
   assert.doesNotThrow(() => assertUniqueNames());
@@ -96,8 +102,19 @@ test('limit ограничен сверху: инструмент не долж�
   for (const tool of allTools) {
     if (!('limit' in tool.schema)) continue;
     const schema = z.object(tool.schema);
-    assert.equal(schema.safeParse({ limit: 1000 }).success, false, `${tool.name}: limit без потолка`);
-    assert.equal(schema.safeParse({ limit: 10 }).success, true);
+    // У инструментов с обязательным аргументом он подставляется: иначе
+    // проверка limit провалилась бы из-за отсутствия query, а не из-за limit.
+    const base = MINIMAL_ARGS[tool.name] ?? {};
+    assert.equal(
+      schema.safeParse({ ...base, limit: 1000 }).success,
+      false,
+      `${tool.name}: limit без потолка`,
+    );
+    assert.equal(
+      schema.safeParse({ ...base, limit: 10 }).success,
+      true,
+      `${tool.name}: limit=10 должен проходить`,
+    );
   }
 });
 
