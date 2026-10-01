@@ -16,6 +16,7 @@ import { orderTools } from './orders.js';
 import { productionTools } from './production.js';
 import { qualityTools } from './quality.js';
 import { salaryTools } from './salary.js';
+import { sqlTools } from './sql.js';
 import type { Tool } from './types.js';
 
 export const allTools: Tool[] = [
@@ -27,6 +28,10 @@ export const allTools: Tool[] = [
   ...salaryTools,
   ...marketplaceTools,
   ...qualityTools,
+  // Запасной выход в конце списка намеренно: модель читает инструменты
+  // сверху, и произвольный SQL должен попасться ей последним — после того,
+  // как она не нашла готового ответа выше.
+  ...sqlTools,
 ];
 
 /**
