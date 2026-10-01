@@ -19,6 +19,9 @@ import { allTools } from './tools/registry.js';
 /** Аргументы для инструментов, которым без них нечего искать. */
 const ARGS: Record<string, Record<string, unknown>> = {
   order_find: { query: '2026' },
+  // Запрос нарочно безобидный и ничего не значащий: самопроверка смотрит,
+  // что инструмент отвечает, а не считает им показатели.
+  sql_select: { query: 'SELECT count(*) AS "заказов" FROM "OrderPhoto"' },
 };
 
 async function main(): Promise<void> {
