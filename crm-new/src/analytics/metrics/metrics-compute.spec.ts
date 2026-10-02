@@ -3,6 +3,7 @@ import { buildPnl, type OrderRow } from '../../reports/reports.service';
 import { customPeriod } from './analytics-period';
 import {
   computeOverview,
+  financialEvidence,
   computeProducts,
   computeSalesChannels,
   computeSources,
@@ -26,6 +27,66 @@ const GOALS = { lead: 611379890, created: 596990603, paid: 596990604 };
 const PERIOD = customPeriod('2026-09-01', '2026-09-07');
 const PREV = customPeriod('2026-08-25', '2026-08-31');
 const NOW = T('2026-09-08T09:00:00Z');
+
+describe('financial evidence: missing costs and recognition dates', () => {
+  it('separates missing cost exposure from paid orders and partitions revenue by actual precedence', () => {
+    const orders = [
+      photoOrder({
+        status: 'PAID',
+        totalOrder: 500,
+        clientPaidAt: T('2026-09-03T10:00:00Z'),
+        completedAt: T('2026-09-04T10:00:00Z'),
+      }),
+      photoOrder({
+        status: 'PAID',
+        productCategory: 'TSHIRT',
+        totalOrder: 2000,
+        completedAt: T('2026-09-03T10:00:00Z'),
+      }),
+      photoOrder({
+        status: 'PAID',
+        statusChangedAt: T('2026-09-03T10:00:00Z'),
+      }),
+      photoOrder({ status: 'SENT', sentAt: T('2026-09-03T10:00:00Z') }),
+      photoOrder({ status: 'PAID' }),
+    ];
+    const evidence = financialEvidence(
+      crmPeriodSets(withLifecycles(orders), PERIOD),
+      settings,
+    );
+    expect(evidence.realized).toEqual({
+      orders: 5,
+      missingCostOrders: 1,
+      affectedOrderValue: 2000,
+      byCategory: [
+        { category: 'TSHIRT', missingCostOrders: 1, affectedOrderValue: 2000 },
+      ],
+    });
+    expect(evidence.paid).toMatchObject({
+      orders: 1,
+      missingCostOrders: 0,
+      affectedOrderValue: 0,
+    });
+    expect(evidence.recognition.map((row) => row.orders)).toEqual([
+      1, 1, 1, 1, 1,
+    ]);
+    expect(
+      evidence.recognition.reduce((sum, row) => sum + row.orderValue, 0),
+    ).toBe(5500);
+  });
+  it('missing inputs on a new unfulfilled order do not imply missing realized costs', () => {
+    const evidence = financialEvidence(
+      crmPeriodSets(withLifecycles([photoOrder({ items: [] })]), PERIOD),
+      settings,
+    );
+    expect(evidence.accepted.missingCostOrders).toBe(1);
+    expect(evidence.realized).toMatchObject({
+      orders: 0,
+      missingCostOrders: 0,
+      affectedOrderValue: 0,
+    });
+  });
+});
 
 function photoOrder(over: Partial<CrmOrderInput> = {}): CrmOrderInput {
   return {
@@ -67,7 +128,7 @@ function metrika(
 ): MetrikaPeriodInput {
   return {
     traffic,
-    goals,
+    goals: goals.map((g) => ({ goalVisits: g.reaches, ...g })),
     pagesPageviews: traffic.reduce((s, r) => s + r.pageviews, 0) + 10,
     snapshot,
   };
@@ -88,6 +149,29 @@ function inputs(over: Partial<OverviewInputs> = {}): OverviewInputs {
 }
 
 describe('воронка сайта — конверсии из итогов', () => {
+  it('three repeated submissions in one of ten visits mean 10% conversion, not 30%', () => {
+    const o = computeOverview(
+      inputs({
+        current: {
+          metrika: metrika(
+            [{ date: '2026-09-01', visits: 10, users: 10, pageviews: 30 }],
+            [
+              {
+                date: '2026-09-01',
+                goalId: GOALS.lead,
+                reaches: 3,
+                goalVisits: 1,
+              },
+            ],
+          ),
+          pnl: null,
+        },
+      }),
+    );
+    expect(o.siteFunnel.siteLeads).toBe(3);
+    expect(o.siteFunnel.siteLeadConversion).toBe(10);
+    expect(o.siteFunnel.siteLeadToAccepted).toBeNull();
+  });
   it('день 1/1 и день 1/9 → 20 %, не среднее дневных', () => {
     const o = computeOverview(
       inputs({
@@ -109,7 +193,7 @@ describe('воронка сайта — конверсии из итогов', (
     expect(o.siteFunnel.visits).toBe(10);
     expect(o.siteFunnel.siteLeads).toBe(2);
     expect(o.siteFunnel.siteLeadConversion).toBe(20);
-    expect(o.siteFunnel.siteLeadToAccepted).toBe(0);
+    expect(o.siteFunnel.siteLeadToAccepted).toBeNull();
     expect(o.siteFunnel.siteAcceptedToPaid).toBeNull();
   });
 
@@ -640,7 +724,8 @@ describe('покрытие ClientID и сопоставление', () => {
     );
     expect(o.dataQuality.eligibleAccepted).toBe(1);
     expect(o.dataQuality.eligibleDeliveredToMetrika).toBe(1);
-    expect(o.dataQuality.metrikaMatchCoverage).toBe(100);
+    expect(o.dataQuality.metrikaDeliveryCoverage).toBe(100);
+    expect(o.dataQuality.metrikaMatchCoverage).toBeNull();
     expect(o.dataQuality.clientIdCoveragePaid).toBeNull();
   });
 });
