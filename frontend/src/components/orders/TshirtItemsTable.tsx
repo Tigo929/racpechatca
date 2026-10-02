@@ -20,7 +20,6 @@ import type {
   EnumTshirtSize,
   EnumPrintLocation,
 } from '../../types/index';
-import { isMarketplaceTshirt } from '../../utils/marketplace-tshirt';
 
 interface Props { order: OrderPhoto }
 
@@ -436,8 +435,7 @@ export function TshirtItemsTable({ order }: Props) {
               </table>
             )}
 
-            {/* У футболки с маркетплейса разбора денег нет: их считает площадка. */}
-            {isAdmin && partnerSettings && !isMarketplaceTshirt(order) && editingId !== item.id && (
+            {isAdmin && partnerSettings && editingId !== item.id && (
               <PositionMoney
                 item={item}
                 rateBasisPoints={partnerSettings.partnerRateBasisPoints}
