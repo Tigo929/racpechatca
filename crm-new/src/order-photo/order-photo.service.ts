@@ -492,12 +492,12 @@ export class OrderPhotoService {
         result,
         result.executor.telegramUsername ?? '',
       );
-      // Есть тема исполнителя — пишем прямо в неё; иначе в общую группу.
+      // Есть тема исполнителя — пишем прямо в неё; иначе в начало чата.
       const threadId =
         result.executor.telegramTopicId != null
           ? String(result.executor.telegramTopicId)
           : undefined;
-      this.telegram.sendToGroup(text, threadId).catch(() => {});
+      this.telegram.sendToExecutor(text, threadId).catch(() => {});
     }
 
     return result;
@@ -1285,12 +1285,12 @@ export class OrderPhotoService {
           executor.telegramUsername ?? '',
         );
         // Если у исполнителя задана тема — задача уходит прямо в его тему
-        // («заказы Лёша»), иначе в общую группу с упоминанием по нику.
+        // («задачи Лёхи»), иначе в начало чата с упоминанием по нику.
         const threadId =
           executor.telegramTopicId != null
             ? String(executor.telegramTopicId)
             : undefined;
-        this.telegram.sendToGroup(text, threadId).catch(() => {});
+        this.telegram.sendToExecutor(text, threadId).catch(() => {});
       } else {
         this.logger.warn(
           `Заказ ${result.numberOrder}: у исполнителя нет ни Telegram-ника, ни темы — уведомление пропущено`,

@@ -47,12 +47,23 @@ export class TelegramService {
   // обратно в общую рабочую группу (см. sendReviewReminder).
   private readonly reviewChatId: string;
   private readonly reviewThreadId: string;
+  /**
+   * Чат с задачами исполнителям. Пусто — общая рабочая группа.
+   *
+   * Отдельный чат, потому что у исполнителей свой: в нём по теме на каждого
+   * («задачи Максима», «задачи Лёхи»), и задача приходит прямо туда, а не
+   * тонет в общем потоке. Какая тема чья — хранится у самого сотрудника
+   * (User.telegramTopicId), а не здесь: людей добавляют и меняют чаще, чем
+   * перенастраивают чат.
+   */
+  private readonly executorChatId: string;
 
   constructor(private config: ConfigService) {
     this.token = config.get<string>('TELEGRAM_BOT_TOKEN') ?? '';
     this.groupChatId = config.get<string>('TELEGRAM_GROUP_CHAT_ID') ?? '';
     this.reviewChatId = config.get<string>('TELEGRAM_REVIEW_CHAT_ID') ?? '';
     this.reviewThreadId = config.get<string>('TELEGRAM_REVIEW_THREAD_ID') ?? '';
+    this.executorChatId = config.get<string>('TELEGRAM_EXECUTOR_CHAT_ID') ?? '';
   }
 
   /**
@@ -168,6 +179,22 @@ export class TelegramService {
       return false;
     }
     return this.sendMessage(this.groupChatId, text, threadId);
+  }
+
+  /**
+   * Задача исполнителю: в чат исполнителей (TELEGRAM_EXECUTOR_CHAT_ID), в его
+   * тему. Чат не задан — уходит в общую рабочую группу, как было раньше:
+   * отсутствие настройки не должно съедать уведомление.
+   */
+  async sendToExecutor(text: string, threadId?: string): Promise<boolean> {
+    const chatId = this.executorChatId || this.groupChatId;
+    if (!chatId) {
+      this.logger.warn(
+        'Ни TELEGRAM_EXECUTOR_CHAT_ID, ни TELEGRAM_GROUP_CHAT_ID не заданы — задача исполнителю не отправлена',
+      );
+      return false;
+    }
+    return this.sendMessage(chatId, text, threadId);
   }
 
   /**
