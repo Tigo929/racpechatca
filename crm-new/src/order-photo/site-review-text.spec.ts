@@ -1,68 +1,75 @@
 import { EnumProductCategory } from 'src/generated/prisma/enums';
-import {
-  buildReviewRequestText,
-  buildSiteReviewRequestText,
-} from './review-reminder.service';
+import { buildReviewRequestText, reviewPlace } from './review-reminder.service';
 
 /**
- * Просьба об отзыве у клиента с сайта.
+ * Просьба об отзыве: текст один, площадка и подарок зависят от источника.
  *
- * Он не покупал на Авито — звать его туда некуда, площадка отзыв без сделки
- * не примет. Тесты сторожат площадку, подарок и порядок фраз: если подарок
- * окажется раньше просьбы, отзыв читается как купленный.
+ * Тесты сторожат три вещи, в которых ошибка стоит дорого: площадку (зовём
+ * человека туда, где он покупал), подарок на Ozon (его там быть не должно —
+ * площадка запрещает вознаграждать за отзывы) и порядок фраз (подарок
+ * раньше просьбы превращает отзыв в купленный).
  */
-describe('просьба об отзыве для клиента с сайта', () => {
-  const text = buildSiteReviewRequestText(EnumProductCategory.PHOTO);
+describe('просьба об отзыве', () => {
+  const site = buildReviewRequestText(EnumProductCategory.PHOTO, 'WEBSITE');
+  const avito = buildReviewRequestText(EnumProductCategory.PHOTO, 'AVITO');
+  const ozon = buildReviewRequestText(EnumProductCategory.TSHIRT, 'OZON');
 
-  it('зовёт на Яндекс Карты, а не на Авито', () => {
-    expect(text).toContain(
-      'yandex.ru/maps/org/raspechatka/169229058790/reviews/',
-    );
-    expect(text).not.toContain('avito.ru');
+  it('клиента с сайта зовёт на Яндекс Карты, а не на Авито', () => {
+    expect(site).toContain('yandex.ru/maps/org/raspechatka/169229058790/reviews/');
+    expect(site).not.toContain('avito.ru');
   });
 
-  it('ссылка без координат и масштаба — они открывают не то на телефоне', () => {
-    expect(text).not.toContain('ll=');
-    expect(text).not.toContain('z=');
+  it('ссылка на карты без координат и масштаба — они открывают не то на телефоне', () => {
+    expect(site).not.toContain('ll=');
+    expect(site).not.toContain('z=');
   });
 
-  it('просит мнение и объясняет зачем', () => {
-    expect(text).toContain('поможет ваше мнение');
-    expect(text).toContain('находят новые люди');
+  it('покупателя с Авито зовёт на Авито', () => {
+    expect(avito).toContain('avito.ru');
+    expect(avito).not.toContain('yandex.ru/maps');
   });
 
-  it('подсказывает про пять звёзд', () => {
-    expect(text).toMatch(/пят[ии] звёзд/i);
+  it('покупателя с площадки зовёт на площадку', () => {
+    expect(ozon).toContain('ozon.ru');
+    expect(ozon).not.toContain('avito.ru');
+    expect(ozon).not.toContain('yandex.ru/maps');
   });
 
-  it('обещает выбор: доставка или полароиды', () => {
-    expect(text).toContain('бесплатную доставку');
-    expect(text).toContain('10–15 фотографий в стиле Polaroid');
+  it('на Ozon подарка нет: площадка запрещает вознаграждать за отзывы', () => {
+    expect(ozon).not.toContain('благодарность');
+    expect(ozon).not.toContain('подарим');
+    expect(ozon).not.toContain('доставку');
+    expect(reviewPlace('OZON').gift).toBeNull();
+    expect(reviewPlace('WB').gift).toBeNull();
+  });
+
+  it('своим клиентам подарок обещан', () => {
+    expect(site).toContain('бесплатную доставку на следующий заказ');
+    expect(avito).toContain('бесплатную доставку на следующий заказ');
   });
 
   it('подарок идёт ПОСЛЕ просьбы, а не вместо неё', () => {
     // Иначе это выглядит как покупка отзыва.
-    expect(text.indexOf('поможет ваше мнение')).toBeLessThan(
-      text.indexOf('в благодарность'),
+    expect(site.indexOf('оставить небольшой отзыв')).toBeLessThan(
+      site.indexOf('в благодарность'),
     );
+  });
+
+  it('объясняет, зачем это покупателю, а не только нам', () => {
+    expect(site).toContain('другим покупателям легче определиться');
   });
 
   it('называет то, что человек заказывал', () => {
-    expect(buildSiteReviewRequestText(EnumProductCategory.TSHIRT)).toContain(
-      'футболку с принтом',
-    );
-    expect(buildSiteReviewRequestText(EnumProductCategory.CANVAS)).toContain(
-      'печать на холсте',
-    );
-    expect(text).toContain('печать фотографий');
+    expect(
+      buildReviewRequestText(EnumProductCategory.TSHIRT, 'AVITO'),
+    ).toContain('футболку с принтом');
+    expect(
+      buildReviewRequestText(EnumProductCategory.CANVAS, 'AVITO'),
+    ).toContain('печать на холсте');
+    expect(site).toContain('печать фотографий');
   });
 
-  it('источник решает площадку: сайт — Яндекс, остальные — Авито', () => {
-    const site = buildReviewRequestText(EnumProductCategory.PHOTO, 'WEBSITE');
-    const avito = buildReviewRequestText(EnumProductCategory.PHOTO, 'AVITO');
-    expect(site).toContain('yandex.ru/maps');
-    expect(avito).toContain('avito.ru');
-    // Без источника — прежнее поведение: текст Авито.
+  it('без источника — прежнее поведение: текст Авито', () => {
     expect(buildReviewRequestText(EnumProductCategory.PHOTO)).toContain(
       'avito.ru',
     );

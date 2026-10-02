@@ -10,6 +10,8 @@ import { OzonCatalogTemplateService } from './ozon-catalog-template.service';
 import { OzonPrintService } from './ozon-print.service';
 import { OzonImportService } from './ozon-import.service';
 import { OzonImportPollService } from './ozon-import-poll.service';
+import { OzonShippedCloseService } from './ozon-shipped-close.service';
+import { OzonShippedClosePollService } from './ozon-shipped-close-poll.service';
 import { OzonCatalogController } from './ozon-catalog.controller';
 import { OzonPhotoController } from './ozon-photo.controller';
 import { OzonPhotoStorageService } from './ozon/ozon-photo-storage.service';
@@ -51,6 +53,8 @@ import { OrderPhotoModule } from 'src/order-photo/order-photo.module';
     OzonPrintService,
     OzonImportService,
     OzonImportPollService,
+    OzonShippedCloseService,
+    OzonShippedClosePollService,
     OzonPhotoStorageService,
     OzonOrdersService,
     OzonProductCatalogService,

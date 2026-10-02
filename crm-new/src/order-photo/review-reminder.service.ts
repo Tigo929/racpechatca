@@ -12,6 +12,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TelegramService } from 'src/telegram/telegram.service';
 import {
+  MARKETPLACE_REVIEW_DELAY_MS,
   REVIEW_REMINDER_CATEGORIES,
   REVIEW_REMINDER_DELAY_MS,
   REVIEW_REMINDER_PICKUP_DELAY_MS,
@@ -36,6 +37,19 @@ const AVITO_REVIEW_URL =
  * Ссылка без координат и масштаба: они привязывают карту к чужому экрану
  * и на телефоне открывают не то.
  */
+/**
+ * Куда зовём покупателя с Ozon: список его заказов в кабинете.
+ *
+ * Отдельной страницы «оставить отзыв продавцу» у Ozon нет — отзыв
+ * оставляют на товар из своего заказа. Поэтому ведём в список заказов,
+ * откуда это делается в два нажатия.
+ *
+ * ВАЖНО про подарок: площадка запрещает вознаграждать за отзывы, и в
+ * тексте для Ozon подарка нет. Обещать бесплатную доставку там нельзя
+ * вдвойне — доставку считает сама площадка.
+ */
+const OZON_REVIEW_URL = 'https://www.ozon.ru/my/orderlist';
+
 const YANDEX_REVIEW_URL =
   'https://yandex.ru/maps/org/raspechatka/169229058790/reviews/';
 
@@ -67,100 +81,77 @@ function whatWasOrdered(category: EnumProductCategory): string {
 }
 
 /**
- * Просьба об отзыве для клиента с сайта.
+ * Куда звать за отзывом и что обещать — зависит от того, откуда заказ.
  *
- * Отдельный текст, а не правка общего: у клиента с сайта другая площадка
- * (Яндекс Карты вместо Авито) и другой подарок.
+ * На Авито зовём только тех, кто там покупал: отзыв от человека без сделки
+ * площадка не примет. Клиента с сайта — на Яндекс Карты: его видит любой,
+ * кто ищет печать фото рядом с собой, то есть отзыв работает на тот же
+ * поиск, из которого клиент и пришёл. Покупателя с Ozon — в его список
+ * заказов, отзыв там оставляют на товар.
  *
- * Порядок фраз важен. Сначала «нам поможет ваше мнение», и только потом
- * подарок: если начать с подарка, отзыв читается как купленный — человек
- * либо не пишет вовсе, либо пишет дежурно. Подарок здесь благодарность,
- * а не условие.
+ * Подарок есть не везде. На Ozon его нет: площадка запрещает
+ * вознаграждать за отзывы, и обещание бесплатной доставки там вдвойне
+ * бессмысленно — доставку считает сама площадка.
  */
-export function buildSiteReviewRequestText(
+interface ReviewPlace {
+  url: string;
+  /** Чем заканчивается фраза «оставьте отзыв …». */
+  where: string;
+  /** Чем благодарим. Пусто — не обещаем ничего. */
+  gift: string | null;
+}
+
+export function reviewPlace(sourceOrder?: string): ReviewPlace {
+  if (sourceOrder === 'WEBSITE') {
+    return {
+      url: YANDEX_REVIEW_URL,
+      where: 'на Яндекс Картах',
+      gift: 'бесплатную доставку на следующий заказ 🎁',
+    };
+  }
+  if (sourceOrder === 'OZON' || sourceOrder === 'WB') {
+    return { url: OZON_REVIEW_URL, where: 'на Ozon', gift: null };
+  }
+  return {
+    url: AVITO_REVIEW_URL,
+    where: 'на Авито',
+    gift: 'бесплатную доставку на следующий заказ 🎁',
+  };
+}
+
+/**
+ * Просьба об отзыве.
+ *
+ * Текст один на все площадки, меняются только ссылка и подарок: три разных
+ * письма расходились бы при первой же правке, и клиенты получали бы разное
+ * в зависимости от того, где купили.
+ *
+ * Порядок фраз важен. Сначала «это поможет нам и другим покупателям», и
+ * только потом подарок: если начать с подарка, отзыв читается как
+ * купленный — человек либо не пишет вовсе, либо пишет дежурно. Подарок
+ * здесь благодарность, а не условие.
+ */
+export function buildReviewRequestText(
   productCategory: EnumProductCategory = EnumProductCategory.PHOTO,
+  sourceOrder?: string,
 ): string {
+  const place = reviewPlace(sourceOrder);
   return [
     'Здравствуйте! 😊',
     '',
     `Спасибо, что доверили нам ${whatWasOrdered(productCategory)}. Надеемся, всё получилось так, как хотелось.`,
     '',
-    'Нам очень поможет ваше мнение. Если найдётся пара минут, оставьте, пожалуйста, отзыв на Яндекс Картах: по отзывам нас находят новые люди, а мы понимаем, что сделали хорошо.',
+    'Можно попросить вас оставить небольшой отзыв о заказе? Это очень поможет нам и позволит другим покупателям легче определиться с выбором.',
+    ...(place.gift
+      ? ['', `А в благодарность за отзыв мы подарим вам ${place.gift}`]
+      : []),
     '',
-    `⭐ Оставить отзыв: ${YANDEX_REVIEW_URL}`,
+    `Оставить отзыв можно по ссылке ${place.where}:`,
+    place.url,
     '',
-    'Пяти звёзд и пары слов о том, что понравилось, будет достаточно — это правда занимает минуту.',
-    '',
-    'А в благодарность за отзыв к следующему заказу подарим на выбор:',
-    '🚚 бесплатную доставку',
-    '📸 10–15 фотографий в стиле Polaroid',
-    '',
-    'Спасибо, что выбрали нас! Будем рады помочь снова 🙌',
+    'Заранее большое спасибо за вашу поддержку!',
   ].join('\n');
 }
-
-export function buildReviewRequestText(
-  productCategory: EnumProductCategory = EnumProductCategory.PHOTO,
-  sourceOrder?: string,
-): string {
-  // Заявка с сайта — своя площадка и свой подарок.
-  if (sourceOrder === 'WEBSITE') {
-    return buildSiteReviewRequestText(productCategory);
-  }
-
-  if (productCategory === EnumProductCategory.TSHIRT) {
-    return [
-      'Добрый день! 😊',
-      '',
-      'Спасибо, что выбрали нас для печати футболки. Надеемся, вещь получилась именно такой, как хотелось, и уже радует вас!',
-      '',
-      'Если всё понравилось и у вас найдётся буквально 1–2 минуты, оставьте, пожалуйста, отзыв на Авито. Для нас это очень помогает: по отзывам нас находят новые клиенты, а мы понимаем, что всё сделали хорошо.',
-      '',
-      `Оставить отзыв можно здесь: ${AVITO_REVIEW_URL}`,
-      '',
-      'В благодарность за отзыв при следующем заказе мы подарим:',
-      '🎨 любой макет/дизайн — бесплатно',
-      '🚚 доставку следующего заказа — бесплатно',
-      '',
-      'Спасибо, что выбираете нас! Будем рады снова помочь с печатью 🙌',
-    ].join('\n');
-  }
-
-  if (productCategory === EnumProductCategory.CANVAS) {
-    return [
-      'Добрый день! 😊',
-      '',
-      'Спасибо, что выбрали нас для печати на холсте. Надеемся, работа получилась тёплой, яркой и уже нашла своё место!',
-      '',
-      'Если всё понравилось и у вас найдётся буквально 1–2 минуты, оставьте, пожалуйста, отзыв на Авито. Для нас это очень помогает: по отзывам нас находят новые клиенты, а мы понимаем, что всё сделали хорошо.',
-      '',
-      `Оставить отзыв можно здесь: ${AVITO_REVIEW_URL}`,
-      '',
-      'В благодарность за отзыв при следующем заказе мы подарим:',
-      '🎨 подготовку макета — бесплатно',
-      '🚚 доставку следующего заказа — бесплатно',
-      '',
-      'Спасибо, что выбираете нас! Будем рады снова помочь с печатью 🙌',
-    ].join('\n');
-  }
-
-  return [
-    'Добрый день! 😊',
-    '',
-    'Спасибо, что выбрали нас для печати фотографий. Надеемся, результат уже радует вас!',
-    '',
-    'Если всё понравилось и у вас найдётся буквально 1–2 минуты, оставьте, пожалуйста, отзыв на Авито. Для нас это очень помогает: по отзывам нас находят новые клиенты, а мы понимаем, что всё сделали хорошо.',
-    '',
-    `Оставить отзыв можно здесь: ${AVITO_REVIEW_URL}`,
-    '',
-    'В благодарность за отзыв мы подготовили подарок к следующему заказу:',
-    '✨ 20 фотографий в стиле Polaroid — бесплатно',
-    '🚚 доставка следующего заказа — бесплатно',
-    '',
-    'Спасибо, что выбираете нас! Будем рады снова помочь с печатью 🙌',
-  ].join('\n');
-}
-
 @Injectable()
 export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ReviewReminderService.name);
@@ -269,20 +260,41 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
       const pickupCutoff = new Date(
         Date.now() - REVIEW_REMINDER_PICKUP_DELAY_MS,
       );
+      const marketplaceCutoff = new Date(
+        Date.now() - MARKETPLACE_REVIEW_DELAY_MS,
+      );
       const orders = await this.prisma.orderPhoto.findMany({
         where: {
           productCategory: { in: REVIEW_REMINDER_CATEGORIES },
-          status: { in: REVIEW_REMINDER_STATUSES },
           clientReviewLeft: false,
           reviewReminderNotifiedAt: null,
           OR: [
+            // Свои заказы: отсчёт от отправки клиенту.
             {
+              NOT: { productCategory: 'TSHIRT', isMarketplacePrint: true },
+              status: { in: REVIEW_REMINDER_STATUSES },
               deliveryMethod: EnumDeliveryMethod.PICKUP,
               sentAt: { lte: pickupCutoff },
             },
             {
+              NOT: { productCategory: 'TSHIRT', isMarketplacePrint: true },
+              status: { in: REVIEW_REMINDER_STATUSES },
               deliveryMethod: { not: EnumDeliveryMethod.PICKUP },
               sentAt: { lte: cutoff },
+            },
+            /*
+             * Заказ с площадки: пять дней от «Отгружен».
+             *
+             * Отдельная ветка, потому что у него SENT означает «передан
+             * в производство». По общему правилу просьба уходила бы через
+             * 3,5 дня после передачи в печать — человеку, который ещё
+             * ничего не получил.
+             */
+            {
+              productCategory: 'TSHIRT',
+              isMarketplacePrint: true,
+              status: 'COMPLETED',
+              completedAt: { lte: marketplaceCutoff },
             },
           ],
         },
@@ -294,6 +306,8 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
           productCategory: true,
           sourceOrder: true,
           sentAt: true,
+          completedAt: true,
+          isMarketplacePrint: true,
           communicationPlatform: true,
           urlCommunication: true,
         },
