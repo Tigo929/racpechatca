@@ -14,6 +14,7 @@ import { isCalibrated } from './approval-geometry';
 import {
   filledSides,
   parseSides,
+  tenth,
   type ApprovalSideState,
   type ApprovalSides,
 } from './approval-state';
@@ -188,7 +189,7 @@ export class ApprovalService {
       printWidthPx: saved.sourceWidth,
       printHeightPx: saved.sourceHeight,
       widthMm,
-      heightMm: Math.round(widthMm * ratio),
+      heightMm: tenth(widthMm * ratio),
       viewWidth,
       // Высота в долях своей оси: доли по ширине и высоте считаются от разных
       // сторон зоны, поэтому пропорция исходника переводится через их отношение.

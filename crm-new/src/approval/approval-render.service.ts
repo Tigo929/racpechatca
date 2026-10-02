@@ -107,6 +107,28 @@ export interface RenderSheetInput {
   sides: RenderSideInput[];
 }
 
+/**
+ * Страница принта — вторая страница листа.
+ *
+ * Зачем она нужна. На первой странице принт показан на фотографии футболки:
+ * так его согласуют — видно, как вещь будет выглядеть. Но печатнику нужно
+ * другое: что именно печатать. На мокапе принт занимает ладонь, лежит на
+ * складках и под цветом ткани; мелкие надписи и тонкие линии на нём не
+ * разобрать, а ошибиться в принте дороже, чем в цвете футболки.
+ *
+ * Поэтому принт повторяется отдельной страницей — один, крупно, на сером
+ * поле (белый принт на белой бумаге иначе не виден) и с подписанным
+ * реальным размером печати. Первая страница при этом не меняется.
+ *
+ * Страниц столько, сколько сторон с принтом: у заказа с печатью на спине
+ * будет три страницы — согласование, перед, спина.
+ */
+const PRINT_PAGE_TOP = 320;
+const PRINT_PAGE_BOX_H = 1480;
+/** Серое поле под принтом: без него белый принт на листе не разглядеть. */
+const PRINT_BACKDROP = '#eef1f5';
+const PRINT_CAPTION_TOP = PRINT_PAGE_TOP + PRINT_PAGE_BOX_H + 120;
+
 const SIDE_LABELS: Record<EnumApprovalSide, string> = {
   FRONT: 'Лицевая сторона',
   BACK: 'Спина',
@@ -208,11 +230,30 @@ export class ApprovalRenderService {
       .toBuffer();
   }
 
-  /** Готовый лист согласования: мокапы плюс вся техническая информация. */
+  /**
+   * Готовый лист согласования: страница согласования плюс по странице на
+   * каждый принт.
+   *
+   * Высота холста кратна листу A4: страницы идут одна под другой в одном
+   * файле. Отдельными файлами было бы хуже — лист уходит в Telegram одним
+   * изображением и скачивается одной кнопкой, и разделять его значит
+   * заставить человека следить, что он взял оба.
+   */
   async renderSheet(input: RenderSheetInput): Promise<Buffer> {
     const slots = layoutSlots(input.sides.length);
     const composites: sharp.OverlayOptions[] = [];
     const placed: Placement[] = [];
+    const printPages = input.sides.filter((side) => side.state.printFile);
+    /*
+     * Страниц максимум три: согласование плюс перед и спина. Это не
+     * случайное ограничение, а предел Telegram: лист уходит туда как фото,
+     * а у фото сумма сторон не больше 10 000 точек. Три страницы дают
+     * 1654 + 7017 = 8671 — проходит; четвёртая дала бы 11 010, и Telegram
+     * молча откажется принимать файл. Если страниц когда-нибудь станет
+     * больше (ещё стороны, рукава), лист придётся отправлять документом,
+     * а не фото.
+     */
+    const sheetHeight = SHEET_H * (1 + printPages.length);
 
     for (const [index, side] of input.sides.entries()) {
       const slot = slots[index];
@@ -236,17 +277,52 @@ export class ApprovalRenderService {
       });
     }
 
+    // Страницы принта. Порядок слоёв важен: сначала серое поле, на него
+    // принт, и только потом подписи — иначе поле закрыло бы и то, и другое.
+    const pageLayers: sharp.OverlayOptions[] = [];
+    for (const [index, side] of printPages.entries()) {
+      const pageTop = SHEET_H * (index + 1);
+      composites.push({
+        input: Buffer.from(backdropLayer()),
+        left: 0,
+        top: pageTop,
+      });
+
+      const printBuf = await this.storage.readPrint(side.state.printFile!);
+      const fitted = await sharp(printBuf)
+        .resize(CONTENT_W, PRINT_PAGE_BOX_H, {
+          fit: 'inside',
+          withoutEnlargement: false,
+        })
+        .png()
+        .toBuffer({ resolveWithObject: true });
+      composites.push({
+        input: fitted.data,
+        left: Math.round(PADDING + (CONTENT_W - fitted.info.width) / 2),
+        top: Math.round(
+          PRINT_PAGE_TOP + (PRINT_PAGE_BOX_H - fitted.info.height) / 2,
+        ) + pageTop,
+      });
+
+      pageLayers.push({
+        input: Buffer.from(this.buildPrintPageLayer(input, side)),
+        left: 0,
+        top: pageTop,
+      });
+    }
+
     composites.push({
       input: Buffer.from(this.buildTextLayer(input, placed)),
       left: 0,
       top: 0,
     });
+    composites.push(...pageLayers);
 
     try {
       return await sharp({
         create: {
           width: SHEET_W,
-          height: SHEET_H,
+          height: sheetHeight,
           channels: 4,
           background: '#ffffff',
         },
@@ -260,6 +336,78 @@ export class ApprovalRenderService {
         'Не удалось сформировать файл согласования',
       );
     }
+  }
+
+  /**
+   * Подписи страницы принта: что печатаем, в каком размере и к какому заказу.
+   *
+   * Размер печати здесь — главное число страницы, поэтому он набран крупно
+   * и стоит сразу под принтом. Рядом — плотность: по ней печатник видит,
+   * хватает ли исходнику разрешения на этот размер, не открывая файл.
+   * Стикер и артикул повторены с первой страницы: страницы печатают и
+   * раскладывают по столу поодиночке, и вторая должна опознаваться сама.
+   */
+  private buildPrintPageLayer(
+    input: RenderSheetInput,
+    side: RenderSideInput,
+  ): string {
+    const parts: string[] = [];
+    const sizeLabel = formatSizeCm(side.state.widthMm, side.state.heightMm);
+
+    parts.push(
+      text('ПРИНТ ДЛЯ ПЕЧАТИ', PADDING, 130, {
+        size: 54,
+        weight: 700,
+        spacing: 2,
+      }),
+      text(
+        `${SIDE_LABELS[side.side]} · заказ № ${input.numberOrder}`,
+        PADDING,
+        195,
+        { size: 32, fill: MUTED },
+      ),
+      line(PADDING, 235, SHEET_W - PADDING, 235),
+      // Рамка поля: показывает границы листа принта, но сам принт не трогает.
+      `<rect x="${PADDING}" y="${PRINT_PAGE_TOP}" width="${CONTENT_W}" height="${PRINT_PAGE_BOX_H}" rx="12" fill="none" stroke="${LINE}" stroke-width="2"/>`,
+      text(`Размер печати: ${sizeLabel}`, SHEET_W / 2, PRINT_CAPTION_TOP, {
+        size: 56,
+        weight: 700,
+        anchor: 'middle',
+      }),
+    );
+
+    const dpi = printDpi(side.state.printWidthPx, side.state.widthMm);
+    const notes = [
+      dpi ? `Плотность: ${dpi} dpi` : null,
+      input.article ? `Артикул: ${input.article}` : null,
+      side.state.printOriginalName,
+    ].filter((v): v is string => Boolean(v));
+    if (notes.length) {
+      parts.push(
+        text(notes.join('  ·  '), SHEET_W / 2, PRINT_CAPTION_TOP + 62, {
+          size: 30,
+          fill: MUTED,
+          anchor: 'middle',
+        }),
+      );
+    }
+
+    if (input.sticker) {
+      // Та же плашка, что на первой странице: по ней готовую вещь кладут
+      // к нужной посылке, и искать её глазами должно быть одинаково легко.
+      const boxLeft = Math.round((SHEET_W - STICKER_BOX_W) / 2);
+      const boxTop = PRINT_CAPTION_TOP + 110;
+      parts.push(
+        rect(boxLeft, boxTop, STICKER_BOX_W, STICKER_BOX_H, STICKER_BG),
+        text(`${STICKER_LABEL} …${input.sticker}`, SHEET_W / 2, boxTop + 40, {
+          size: 36,
+          weight: 700,
+          anchor: 'middle',
+        }),
+      );
+    }
+
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${SHEET_W}" height="${SHEET_H}">${parts.join('')}</svg>`;
   }
 
   /** Текстовый слой листа: заголовок, подписи мокапов и блок данных заказа. */
@@ -449,6 +597,24 @@ function scaleCalibration(
     printAreaWidthMm: template.printAreaWidthMm,
     printAreaHeightMm: template.printAreaHeightMm,
   };
+}
+
+/** Серое поле под принт: отдельным слоем, потому что ложится ПОД изображение. */
+function backdropLayer(): string {
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${SHEET_W}" height="${SHEET_H}">` +
+    `<rect x="${PADDING}" y="${PRINT_PAGE_TOP}" width="${CONTENT_W}" height="${PRINT_PAGE_BOX_H}" rx="12" fill="${PRINT_BACKDROP}"/>` +
+    `</svg>`
+  );
+}
+
+/**
+ * Фактическая плотность печати. Ноль — размер или разрешение неизвестны;
+ * в этом случае строку не печатаем вовсе: «0 dpi» читается как поломка.
+ */
+function printDpi(pixels: number, widthMm: number): number {
+  if (pixels <= 0 || widthMm <= 0) return 0;
+  return Math.round(pixels / (widthMm / 25.4));
 }
 
 function text(
