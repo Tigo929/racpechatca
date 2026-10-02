@@ -293,6 +293,9 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
       if (!order) {
         return this.finishFailed(row, attempt, 'Заказ не найден', true);
       }
+      if (row.sourceStatusHistoryId && !source) {
+        return this.finishFailed(row, attempt, 'Исходный переход статуса не найден', true);
+      }
 
       // Право на отправку решается историей ДО этого перехода включительно:
       // то, что случилось с заказом позже, на смысл этого события не влияет.
@@ -301,7 +304,7 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
         : order.statusHistory;
 
       const snapshot = buildOrderSnapshot(
-        { ...order, statusHistory: historyUpTo },
+        { ...order, statusHistory: historyUpTo, eventOccurredAt: source?.createdAt },
         target,
         costSettingsFrom(settingsRow),
         timeZone,
@@ -345,7 +348,10 @@ export class MetrikaOrderOutboxProcessorService implements OnModuleInit {
       const durationMs = Date.now() - startedAt;
       const validation = uploading.api_validation_status ?? 'UNKNOWN';
 
-      if (validation !== 'PASSED') {
+      const accepted = snapshot.kind === 'yclid'
+        ? ['UPLOADED', 'EXPORTED', 'MATCHED', 'PROCESSED'].includes(validation)
+        : validation === 'PASSED';
+      if (!accepted) {
         await this.prisma.metrikaOrderOutbox.update({
           where: { id: row.id },
           data: {

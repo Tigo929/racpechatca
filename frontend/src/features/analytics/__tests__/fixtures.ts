@@ -60,6 +60,7 @@ export function baseOverview(): Overview {
       quality: { completeness: 'complete', notes: [] },
     },
     dataQuality: {
+      websiteAccepted: 10, websiteClientIdCoverage: 40, websiteYclidCoverage: 50, websiteUtmCoverage: 0, websiteWithoutIdentity: 5,
       freshness: { lastMetrikaSyncAt: '2026-09-12T18:11:57.000Z', metrikaDataAgeSeconds: 720, status: 'FRESH', thresholdSeconds: 7200 },
       clientIdCoverageAccepted: 9.52, clientIdCoveragePaid: 0, eligibleAccepted: 0, eligibleDeliveredToMetrika: 0, metrikaMatchCoverage: null, matchedAcceptedReaches: 1,
       paidWithoutDate: 0, siteLeadsLegacy: true, crmGoalsBeforeRollout: true, snapshotAvailable: true,
