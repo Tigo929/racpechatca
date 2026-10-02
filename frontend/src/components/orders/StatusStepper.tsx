@@ -20,6 +20,7 @@ import {
 } from '../../utils/marketplace-tshirt';
 import { useAuth } from '../../context/useAuth';
 import type { EnumStatus, OrderPhoto } from '../../types/index';
+import { statusStyle } from '../ui/StatusBadge';
 import { Check, ChevronRight } from 'lucide-react';
 import { getErrorMessage } from '../../utils/get-error-message';
 
@@ -151,6 +152,16 @@ export function StatusStepper({ order }: Props) {
       {flow.map((status, idx) => {
         const isDone = idx < currentIdx;
         const isCurrent = idx === currentIdx;
+        /*
+         * Цвет шага — цвет самого этапа, а не «пройдено/текущий».
+         *
+         * Раньше текущий шаг всегда был янтарным, а пройденные зелёными:
+         * по цепочке нельзя было понять, на каком именно этапе заказ, —
+         * приходилось читать подписи. Теперь «Новый» синий, «На согласовании»
+         * янтарный, «Передан в производство» оранжевый, и тот же цвет несёт
+         * значок статуса в списке. Источник один — statusStyle.
+         */
+        const tone = statusStyle(status);
         // Исполнитель может переключаться в любую сторону по рабочему потоку,
         // но PAID остаётся админским финансовым закрытием.
         const adminOnly = status === 'PAID' || status === 'CANCELLED';
@@ -196,10 +207,10 @@ export function StatusStepper({ order }: Props) {
               }
               className={`
                 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500
-                ${isCurrent ? 'bg-amber-600 text-white shadow-sm cursor-default' : ''}
-                ${isDone && !isPastClickable ? 'bg-green-100 text-green-700 cursor-default' : ''}
-                ${isPastClickable ? 'bg-green-100 text-green-700 hover:bg-orange-100 hover:text-orange-700 cursor-pointer border border-dashed border-green-300' : ''}
-                ${isFutureClickable ? 'bg-gray-100 text-gray-600 hover:bg-amber-100 hover:text-amber-700 cursor-pointer border border-dashed border-gray-300' : ''}
+                ${isCurrent ? `${tone.dot} text-white shadow-sm cursor-default` : ''}
+                ${isDone && !isPastClickable ? `${tone.bg} ${tone.text} cursor-default` : ''}
+                ${isPastClickable ? `${tone.bg} ${tone.text} hover:brightness-95 cursor-pointer border border-dashed border-current/30` : ''}
+                ${isFutureClickable ? 'bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer border border-dashed border-gray-300' : ''}
                 ${!isCurrent && !clickable ? 'bg-gray-50 text-gray-300 cursor-not-allowed' : ''}
               `}
             >

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Package, RefreshCw, Truck } from 'lucide-react';
+import { AlertTriangle, Package, RefreshCw } from 'lucide-react';
 import { ozonOrdersApi, type OzonOrder, type OzonOrderGroup } from '../../api/ozonOrders';
 import { FilterChip } from '../ui/FilterChip';
 import { OzonOrderModal } from './OzonOrderModal';
@@ -21,22 +21,50 @@ const GROUPS: { key: OzonOrderGroup | 'all'; label: string }[] = [
   { key: 'all', label: 'Все' },
 ];
 
-const money = (v: number) => `${Math.round(v).toLocaleString('ru-RU')} ₽`;
 
-function formatDateTime(iso: string | null): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString('ru-RU', {
-    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-  });
-}
+/**
+ * Цвет этапа отправления.
+ *
+ * Список нужен для одного: с одного взгляда понять, что с заказом. Поэтому
+ * этап несёт цвет, а не подпись мелким шрифтом, и цвет идёт по статусу
+ * площадки, а не по группе: внутри «нужно отгрузить» лежат и только что
+ * пришедший заказ, и уже собранный, а это разные дела.
+ *
+ * Сроки отгрузки отсюда убраны намеренно (решение владельца 02.10.2026):
+ * их видно в кабинете Ozon, а здесь они закрашивали половину списка
+ * красным, и за тревогой терялось главное — какой заказ печатать.
+ */
+const STAGE: Record<string, { chip: string; stripe: string }> = {
+  // Пришёл, ещё ничего не сделано — синий, как «новый» в заказах CRM.
+  awaiting_approve: { chip: 'bg-blue-50 text-blue-700', stripe: 'border-l-blue-500' },
+  awaiting_packaging: { chip: 'bg-blue-50 text-blue-700', stripe: 'border-l-blue-500' },
+  // Собран, ждёт отгрузки — янтарный: дело за нами, но печать уже позади.
+  awaiting_registration: { chip: 'bg-amber-50 text-amber-700', stripe: 'border-l-amber-500' },
+  awaiting_deliver: { chip: 'bg-amber-50 text-amber-700', stripe: 'border-l-amber-500' },
+  // Уехал — голубой: от нас уже ничего не требуется.
+  delivering: { chip: 'bg-sky-50 text-sky-700', stripe: 'border-l-sky-500' },
+  driver_pickup: { chip: 'bg-sky-50 text-sky-700', stripe: 'border-l-sky-500' },
+  delivered: { chip: 'bg-emerald-50 text-emerald-700', stripe: 'border-l-emerald-500' },
+  cancelled: { chip: 'bg-gray-100 text-gray-500', stripe: 'border-l-gray-300' },
+};
 
-/** «через 3 ч» / «просрочено на 5 ч» — оператору важен запас, а не дата. */
-function deadlineHint(iso: string | null): string {
-  if (!iso) return '';
-  const diffMs = new Date(iso).getTime() - Date.now();
-  const hours = Math.round(Math.abs(diffMs) / 3_600_000);
-  const text = hours >= 24 ? `${Math.round(hours / 24)} дн.` : `${hours} ч.`;
-  return diffMs >= 0 ? `осталось ${text}` : `просрочено на ${text}`;
+/** Группа — запасной цвет для статуса, которого ещё нет в наборе. */
+const GROUP_STAGE: Record<string, { chip: string; stripe: string }> = {
+  to_ship: { chip: 'bg-amber-50 text-amber-700', stripe: 'border-l-amber-500' },
+  in_transit: { chip: 'bg-sky-50 text-sky-700', stripe: 'border-l-sky-500' },
+  delivered: { chip: 'bg-emerald-50 text-emerald-700', stripe: 'border-l-emerald-500' },
+  cancelled: { chip: 'bg-gray-100 text-gray-500', stripe: 'border-l-gray-300' },
+  problem: { chip: 'bg-red-50 text-red-700', stripe: 'border-l-red-500' },
+};
+
+function stageOf(order: OzonOrder) {
+  return (
+    STAGE[order.status] ??
+    GROUP_STAGE[order.group] ?? {
+      chip: 'bg-gray-100 text-gray-500',
+      stripe: 'border-l-gray-300',
+    }
+  );
 }
 
 /**
@@ -44,85 +72,50 @@ function deadlineHint(iso: string | null): string {
  * и принт уже выведены из артикула, и по ним собирается макет.
  */
 function OrderCard({ order, onOpen }: { order: OzonOrder; onOpen: () => void }) {
-  const overdue = order.shipmentOverdue;
+  const stage = stageOf(order);
   return (
     <button
       type="button"
       onClick={onOpen}
-      className={`w-full text-left bg-white rounded-2xl border p-4 space-y-3 transition-colors hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-        overdue ? 'border-red-200 ring-1 ring-red-100' : 'border-gray-200'
-      }`}
+      className={`w-full text-left bg-white rounded-2xl border border-gray-200 border-l-[4px] ${stage.stripe} p-3.5 space-y-2 transition-colors hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-900 truncate">
-            {order.postingNumber}
-          </p>
-          <p className="mt-0.5 text-xs text-gray-500">
-            Оформлен {formatDateTime(order.createdAt)}
-          </p>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-semibold text-gray-900">
+          {order.postingNumber}
+        </p>
         <span
-          className={`px-2 py-0.5 rounded-md text-xs font-semibold flex-shrink-0 ${
-            order.group === 'to_ship' ? 'bg-amber-50 text-amber-700'
-              : order.group === 'in_transit' ? 'bg-blue-50 text-blue-700'
-              : order.group === 'delivered' ? 'bg-emerald-50 text-emerald-700'
-              : order.group === 'cancelled' ? 'bg-gray-100 text-gray-500'
-              : 'bg-red-50 text-red-700'
-          }`}
+          className={`flex-shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold ${stage.chip}`}
         >
           {order.statusLabel}
         </span>
       </div>
 
-      {order.group === 'to_ship' && order.shipmentDate && (
-        <div
-          className={`flex items-start gap-2 rounded-lg p-2.5 border ${
-            overdue
-              ? 'bg-red-50 border-red-100 text-red-700'
-              : 'bg-amber-50 border-amber-100 text-amber-800'
-          }`}
-        >
-          {overdue
-            ? <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
-            : <Truck size={14} className="mt-0.5 flex-shrink-0" aria-hidden="true" />}
-          <p className="text-xs">
-            <span className="font-medium">Отгрузить до {formatDateTime(order.shipmentDate)}</span>
-            {' — '}{deadlineHint(order.shipmentDate)}
-          </p>
-        </div>
-      )}
-
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {order.items.map((item) => {
-          // Цвет и размер видно прямо в списке: оператор замечает чужой
-          // артикул до того, как заказ заведён, а не после печати.
+          // Цвет, размер и принт — всё, что нужно, чтобы понять, что печатать.
+          // Цены и способ доставки убраны: они есть в кабинете Ozon.
           const article = parseOzonArticle(item.offerId);
           return (
-            <div key={item.offerId + item.sku} className="flex items-baseline justify-between gap-2 text-xs">
-              <span className="min-w-0 truncate text-gray-700">
-                {article ? (
-                  <span>
-                    {article.colorLabel} · {article.size}
-                    <span className="ml-1 font-mono text-gray-400">{article.printSlug}</span>
+            <p
+              key={item.offerId + item.sku}
+              className="truncate text-xs text-gray-600"
+            >
+              {article ? (
+                <>
+                  {article.colorLabel} · {article.size}
+                  <span className="ml-1.5 font-mono text-gray-400">
+                    {article.printSlug}
                   </span>
-                ) : (
-                  <span className="font-mono text-gray-500">{item.offerId}</span>
-                )}
-                {item.quantity > 1 && <span className="ml-1 text-gray-500">× {item.quantity}</span>}
-              </span>
-              <span className="flex-shrink-0 tabular-nums text-gray-600">{money(item.price * item.quantity)}</span>
-            </div>
+                </>
+              ) : (
+                <span className="font-mono text-gray-500">{item.offerId}</span>
+              )}
+              {item.quantity > 1 && (
+                <span className="ml-1 text-gray-500">× {item.quantity}</span>
+              )}
+            </p>
           );
         })}
-      </div>
-
-      <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 text-xs">
-        <span className="text-gray-500 truncate">
-          {order.deliveryMethod ?? '—'}
-          {order.warehouse ? ` · ${order.warehouse}` : ''}
-        </span>
-        <span className="flex-shrink-0 font-semibold tabular-nums text-gray-900">{money(order.total)}</span>
       </div>
 
       {order.cancelReason && (

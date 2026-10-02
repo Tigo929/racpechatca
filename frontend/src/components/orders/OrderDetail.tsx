@@ -886,8 +886,15 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       )}
 
       {isAdmin && order.productCategory === "TSHIRT" && (
+        /*
+          Блок передачи исполнителю занимал треть экрана: крупная зона
+          перетаскивания с длинной подсказкой, статус и подпись шли друг под
+          другом. Смотрят в него раз на заказ, а место он отнимал всегда —
+          поэтому отступы и подсказка сжаты, а кнопка с числом файлов стоят
+          в одну строку.
+        */
         <div
-          className={`rounded-xl border p-4 space-y-3 ${
+          className={`rounded-xl border p-3 space-y-2 ${
             order.partnerSyncStatus === "SENT"
               ? "bg-emerald-50 border-emerald-200"
               : order.partnerSyncStatus === "FAILED"
@@ -988,17 +995,19 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
               setTechDragOver(false);
               acceptTechFiles(e.dataTransfer.files);
             }}
-            className={`rounded-xl border-2 border-dashed p-3 transition-colors ${
+            className={`rounded-lg border border-dashed p-2 transition-colors ${
               techDragOver
                 ? 'border-indigo-500 bg-indigo-50'
                 : 'border-gray-200 bg-gray-50/40'
             }`}
           >
-          <p className="mb-2 text-xs text-gray-500">
-            {techDragOver
-              ? 'Отпустите — файл прикрепится'
-              : 'Перетащите сюда файл ТЗ или выберите кнопкой ниже (картинка или PDF)'}
-          </p>
+          {/* Подсказка про перетаскивание — только когда файл уже тащат:
+              в покое она занимала строку, объясняя очевидное. */}
+          {techDragOver && (
+            <p className="mb-1.5 text-xs text-indigo-600">
+              Отпустите — файл прикрепится
+            </p>
+          )}
           <div className="flex items-center gap-3 flex-wrap">
             <label className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 cursor-pointer transition-colors">
               <Paperclip size={13} aria-hidden="true" />
