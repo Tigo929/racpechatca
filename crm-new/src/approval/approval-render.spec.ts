@@ -178,7 +178,7 @@ describe('отрисовка согласования', () => {
     expect(meta.width).toBe(MOCKUP_W);
   });
 
-  it('лист согласования выходит листами A4 при 200 dpi: согласование плюс по странице на принт', async () => {
+  it('двусторонняя печать: страница на каждую сторону плюс страница с обоими принтами', async () => {
     const sheet = await render.renderSheet({
       numberOrder: '20260824-1',
       version: 1,
@@ -190,18 +190,27 @@ describe('отрисовка согласования', () => {
     });
 
     const meta = await sharp(sheet).metadata();
-    expect(meta.width).toBe(1654);
-    // Три страницы: согласование, принт переда, принт спины.
-    expect(meta.height).toBe(2339 * 3);
+    // Лист альбомный: широкий принт иначе занимал бы узкую полосу посередине.
+    expect(meta.width).toBe(2339);
+    // Три страницы: лицевая, спина, оба принта вместе.
+    expect(meta.height).toBe(1654 * 3);
 
-    // Оба мокапа на месте: слева и справа от середины листа принт красный.
-    const left = await pixelAt(sheet, 460, 800);
-    const right = await pixelAt(sheet, 1195, 800);
-    expect(left.r).toBeGreaterThan(180);
-    expect(right.r).toBeGreaterThan(180);
+    // Мокап стоит слева на своей странице — и на первой, и на второй.
+    const front = await pixelAt(sheet, 540, 860);
+    const back = await pixelAt(sheet, 540, 1654 + 860);
+    expect(front.r).toBeGreaterThan(180);
+    expect(back.r).toBeGreaterThan(180);
+
+    // На третьей странице два принта рядом: слева перед, справа спина.
+    const printLeft = await pixelAt(sheet, 620, 1654 * 2 + 790);
+    const printRight = await pixelAt(sheet, 1760, 1654 * 2 + 790);
+    expect(printLeft.r).toBeGreaterThan(180);
+    expect(printLeft.g).toBeLessThan(120);
+    expect(printRight.r).toBeGreaterThan(180);
+    expect(printRight.g).toBeLessThan(120);
   });
 
-  it('у заказа с одним принтом страниц две, и на второй сам принт', async () => {
+  it('односторонняя печать: страница изделия и страница принта', async () => {
     const sheet = await render.renderSheet({
       numberOrder: '20260824-2',
       version: 1,
@@ -213,15 +222,16 @@ describe('отрисовка согласования', () => {
     });
 
     const meta = await sharp(sheet).metadata();
-    expect(meta.height).toBe(2339 * 2);
+    expect(meta.width).toBe(2339);
+    expect(meta.height).toBe(1654 * 2);
 
-    // Середина второй страницы — сам принт, он красный и крупный.
-    const center = await pixelAt(sheet, 827, 2339 + 1060);
+    // Середина второй страницы — сам принт, он красный и во всю ширину.
+    const center = await pixelAt(sheet, 1169, 1654 + 790);
     expect(center.r).toBeGreaterThan(180);
     expect(center.g).toBeLessThan(120);
 
     // Поле вокруг принта серое: белый принт на белой бумаге был бы не виден.
-    const backdrop = await pixelAt(sheet, 120, 2339 + 400);
+    const backdrop = await pixelAt(sheet, 120, 1654 + 380);
     expect(backdrop.r).toBeGreaterThan(220);
     expect(backdrop.r).toBeLessThan(250);
     expect(Math.abs(backdrop.r - backdrop.b)).toBeLessThan(20);
@@ -241,7 +251,8 @@ describe('отрисовка согласования', () => {
     });
 
     const meta = await sharp(sheet).metadata();
-    expect(meta.height).toBe(2339);
+    // Одна страница: сторона есть, принта нет — печатать нечего.
+    expect(meta.height).toBe(1654);
   });
 
   it('размер печати со страницы принта виден в файле', async () => {
