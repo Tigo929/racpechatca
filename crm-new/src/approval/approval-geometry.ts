@@ -156,7 +156,17 @@ export function formatSizeCm(widthMm: number, heightMm: number): string {
   return `${formatCm(widthMm)} × ${formatCm(heightMm)} см`;
 }
 
+/**
+ * Сантиметры для листа и карточки.
+ *
+ * Два знака после запятой, а не один: размер в карточке площадки написан
+ * как «10,38 × 28,50 см», и исполнитель сверяет лист с ней дословно.
+ * Округление до десятых давало «10,4», и совпадения уже не было.
+ * У целого значения дробную часть не печатаем: «28 см» читается лучше,
+ * чем «28,00 см».
+ */
 function formatCm(mm: number): string {
   const cm = mm / 10;
-  return Number.isInteger(cm) ? String(cm) : cm.toFixed(1).replace('.', ',');
+  if (Number.isInteger(cm)) return String(cm);
+  return cm.toFixed(2).replace(/0$/, '').replace('.', ',');
 }

@@ -83,6 +83,20 @@ jobs:
           pip install -r requirements.txt
           python -m unittest test_approval_delivery test_draft_queue test_signing test_proxy_config test_greeting_text
 
+      # MCP-сервер над CRM. Тесты без базы: период, формат чисел и инварианты
+      # набора инструментов (уникальные имена, описанные аргументы, границы
+      # применимости в описании). Запросы к базе проверяются отдельно —
+      # `node dist/smoke.js` по живой базе, в CI её нет.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: crm-mcp/package-lock.json
+
+      - name: Тесты MCP-сервера
+        working-directory: crm-mcp
+        run: npm ci && npm run typecheck && npm test
+
   build:
     needs: test
     runs-on: ubuntu-latest

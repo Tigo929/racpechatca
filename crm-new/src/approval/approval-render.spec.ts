@@ -178,7 +178,7 @@ describe('отрисовка согласования', () => {
     expect(meta.width).toBe(MOCKUP_W);
   });
 
-  it('лист согласования выходит листом A4 при 200 dpi', async () => {
+  it('лист согласования выходит листами A4 при 200 dpi: согласование плюс по странице на принт', async () => {
     const sheet = await render.renderSheet({
       numberOrder: '20260824-1',
       version: 1,
@@ -191,13 +191,79 @@ describe('отрисовка согласования', () => {
 
     const meta = await sharp(sheet).metadata();
     expect(meta.width).toBe(1654);
-    expect(meta.height).toBe(2339);
+    // Три страницы: согласование, принт переда, принт спины.
+    expect(meta.height).toBe(2339 * 3);
 
     // Оба мокапа на месте: слева и справа от середины листа принт красный.
     const left = await pixelAt(sheet, 460, 800);
     const right = await pixelAt(sheet, 1195, 800);
     expect(left.r).toBeGreaterThan(180);
     expect(right.r).toBeGreaterThan(180);
+  });
+
+  it('у заказа с одним принтом страниц две, и на второй сам принт', async () => {
+    const sheet = await render.renderSheet({
+      numberOrder: '20260824-2',
+      version: 1,
+      shirtColor: 'Чёрный',
+      shirtSizeLabel: 'XL',
+      comment: null,
+      date: new Date('2026-08-24T10:00:00Z'),
+      sides: [side()],
+    });
+
+    const meta = await sharp(sheet).metadata();
+    expect(meta.height).toBe(2339 * 2);
+
+    // Середина второй страницы — сам принт, он красный и крупный.
+    const center = await pixelAt(sheet, 827, 2339 + 1060);
+    expect(center.r).toBeGreaterThan(180);
+    expect(center.g).toBeLessThan(120);
+
+    // Поле вокруг принта серое: белый принт на белой бумаге был бы не виден.
+    const backdrop = await pixelAt(sheet, 120, 2339 + 400);
+    expect(backdrop.r).toBeGreaterThan(220);
+    expect(backdrop.r).toBeLessThan(250);
+    expect(Math.abs(backdrop.r - backdrop.b)).toBeLessThan(20);
+  });
+
+  it('без принта второй страницы нет: печатать нечего', async () => {
+    const empty = side();
+    empty.state.printFile = null;
+    const sheet = await render.renderSheet({
+      numberOrder: '20260824-3',
+      version: 1,
+      shirtColor: 'Чёрный',
+      shirtSizeLabel: 'XL',
+      comment: null,
+      date: new Date('2026-08-24T10:00:00Z'),
+      sides: [empty],
+    });
+
+    const meta = await sharp(sheet).metadata();
+    expect(meta.height).toBe(2339);
+  });
+
+  it('размер печати со страницы принта виден в файле', async () => {
+    // Два листа, различающиеся только размером печати. Разные байты
+    // означают, что число действительно нарисовано, а не потерялось.
+    const base = {
+      numberOrder: '20260824-4',
+      version: 1,
+      shirtColor: 'Чёрный',
+      shirtSizeLabel: 'XL',
+      comment: null,
+      date: new Date('2026-08-24T10:00:00Z'),
+    };
+    const small = await render.renderSheet({
+      ...base,
+      sides: [side({ widthMm: 103.8, heightMm: 285 })],
+    });
+    const large = await render.renderSheet({
+      ...base,
+      sides: [side({ widthMm: 200, heightMm: 285 })],
+    });
+    expect(small.equals(large)).toBe(false);
   });
 
   it('стикер попадает на лист: заказ с площадки печатник находит по хвосту номера', async () => {
