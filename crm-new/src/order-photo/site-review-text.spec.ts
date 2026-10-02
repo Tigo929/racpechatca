@@ -35,6 +35,30 @@ describe('просьба об отзыве', () => {
     expect(ozon).not.toContain('yandex.ru/maps');
   });
 
+  it('на площадке зовём по ссылке из самого заказа, если она указана', () => {
+    // Владелец вводит её, заводя отправление: это адрес конкретного заказа
+    // покупателя, а не общий список. Общий список — запасной вариант.
+    const text = buildReviewRequestText(
+      EnumProductCategory.TSHIRT,
+      'OZON',
+      'https://www.ozon.ru/my/orderlist/12345',
+    );
+    expect(text).toContain('https://www.ozon.ru/my/orderlist/12345');
+    expect(reviewPlace('OZON', 'https://ozon.ru/t/abc').url).toBe(
+      'https://ozon.ru/t/abc',
+    );
+  });
+
+  it('мусор вместо ссылки не уходит клиенту: остаётся общий список', () => {
+    // В поле связи у заказа бывает не адрес, а номер отправления —
+    // отправлять такое ссылкой нельзя.
+    expect(reviewPlace('OZON', '61338075-0033-1').url).toContain(
+      'ozon.ru/my/orderlist',
+    );
+    expect(reviewPlace('OZON', '  ').url).toContain('ozon.ru/my/orderlist');
+    expect(reviewPlace('OZON').url).toContain('ozon.ru/my/orderlist');
+  });
+
   it('на Ozon подарка нет: площадка запрещает вознаграждать за отзывы', () => {
     expect(ozon).not.toContain('благодарность');
     expect(ozon).not.toContain('подарим');

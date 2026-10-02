@@ -101,7 +101,16 @@ interface ReviewPlace {
   gift: string | null;
 }
 
-export function reviewPlace(sourceOrder?: string): ReviewPlace {
+export function reviewPlace(
+  sourceOrder?: string,
+  /**
+   * Ссылка из самого заказа — та, что владелец указывает как чат
+   * с покупателем, заводя отправление в CRM. Для площадки она и есть
+   * нужный адрес: общий список заказов ведёт человека «куда-то туда»,
+   * а эта ссылка — в его собственный заказ. Пусто — остаётся общий список.
+   */
+  orderUrl?: string | null,
+): ReviewPlace {
   if (sourceOrder === 'WEBSITE') {
     return {
       url: YANDEX_REVIEW_URL,
@@ -110,7 +119,12 @@ export function reviewPlace(sourceOrder?: string): ReviewPlace {
     };
   }
   if (sourceOrder === 'OZON' || sourceOrder === 'WB') {
-    return { url: OZON_REVIEW_URL, where: 'на Ozon', gift: null };
+    const url = (orderUrl ?? '').trim();
+    return {
+      url: url.startsWith('http') ? url : OZON_REVIEW_URL,
+      where: 'на Ozon',
+      gift: null,
+    };
   }
   return {
     url: AVITO_REVIEW_URL,
@@ -134,8 +148,9 @@ export function reviewPlace(sourceOrder?: string): ReviewPlace {
 export function buildReviewRequestText(
   productCategory: EnumProductCategory = EnumProductCategory.PHOTO,
   sourceOrder?: string,
+  orderUrl?: string | null,
 ): string {
-  const place = reviewPlace(sourceOrder);
+  const place = reviewPlace(sourceOrder, orderUrl);
   return [
     'Здравствуйте! 😊',
     '',
@@ -365,7 +380,11 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
     const sentAt = order.sentAt ? formatRuDateTime(order.sentAt) : 'не указано';
     const dialogUrl = escapeHtml(order.urlCommunication);
     const customerText = escapeHtml(
-      buildReviewRequestText(order.productCategory, order.sourceOrder),
+      buildReviewRequestText(
+        order.productCategory,
+        order.sourceOrder,
+        order.urlCommunication,
+      ),
     );
 
     return [
