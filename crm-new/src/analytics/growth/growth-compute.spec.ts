@@ -86,7 +86,7 @@ function overview(period: ReturnType<typeof customPeriod>, f: Fx): Overview {
       matchedAccepted: f.matchedAccepted ?? 0,
       matchedPaid: f.matchedPaid ?? 0,
       siteLeadConversion: null,
-      siteAcceptedConversion: null,
+      siteAcceptedConversion: f.visits ? (f.matchedAccepted ?? 0) / f.visits * 100 : null,
       sitePaidConversion: null,
       siteLeadToAccepted: null,
       siteAcceptedToPaid: null,
@@ -136,6 +136,8 @@ function overview(period: ReturnType<typeof customPeriod>, f: Fx): Overview {
       freshness: FRESH,
       clientIdCoverageAccepted:
         f.clientIdCoverage === undefined ? 80 : f.clientIdCoverage,
+      websiteAccepted: f.cohorts?.accepted ?? 0,
+      websiteClientIdCoverage: f.clientIdCoverage === undefined ? 80 : f.clientIdCoverage,
       clientIdCoveragePaid: null,
       eligibleAccepted: 0,
       eligibleDeliveredToMetrika: 0,
@@ -160,6 +162,7 @@ function behavior(
     visits: f.visits,
     sumDailyUsers: 0,
     goalTotals: new Map([
+      ['lead_submitted', g(f.siteLeads)],
       ['form_started', g(f.formStarts ?? 0)],
       ['lead_submit_attempt', g(f.attempts ?? 0)],
       ['form_error', g(f.formErrors ?? 0)],
@@ -785,6 +788,26 @@ describe('созревание', () => {
 });
 
 describe('confounders и сегменты', () => {
+  it('aggregates all engines of a source rather than taking its first row', () => {
+    const data = inputs({ visits: 1000, siteLeads: 20 }, { visits: 1000, siteLeads: 30 },
+      { primaryMetric: 'visits', audienceDefinition: { dimension: 'source', values: ['organic'] } });
+    for (const window of [data.before, data.after]) {
+      const base = window.slices.sources.rows[0];
+      window.slices.sources.rows = [
+        { ...base, trafficSource: 'organic', sourceEngine: 'yandex', visits: 100 },
+        { ...base, trafficSource: 'organic', sourceEngine: 'google', visits: 250 },
+      ];
+    }
+    const segment = computeEvaluation(data).segments.find(s => s.role === 'audience')!;
+    expect(segment.before.value).toBe(350);
+    expect(segment.after.value).toBe(350);
+  });
+
+  it('growth conversion uses converting visits instead of repeated goal events', () => {
+    const data = inputs({ visits: 100, siteLeads: 30 }, { visits: 100, siteLeads: 30 });
+    data.after.behavior.goalTotals.set('lead_submitted', { reaches: 30, visits: 10 });
+    expect(computeEvaluation(data).primary.after.value).toBe(10);
+  });
   it('пересекающееся изменение — OVERLAPPING_CHANGE с идентификаторами; ни одному не приписывается разница', () => {
     const e = computeEvaluation(
       inputs(

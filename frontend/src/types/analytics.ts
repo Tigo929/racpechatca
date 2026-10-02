@@ -5,45 +5,45 @@
  */
 
 export type PeriodPreset =
-  | 'today'
-  | 'yesterday'
-  | 'last_7_days'
-  | 'previous_7_days'
-  | 'last_30_days'
-  | 'previous_30_days'
-  | 'current_month'
-  | 'previous_month';
+  | "today"
+  | "yesterday"
+  | "last_7_days"
+  | "previous_7_days"
+  | "last_30_days"
+  | "previous_30_days"
+  | "current_month"
+  | "previous_month";
 
 export interface AnalyticsPeriod {
   from: string;
   to: string;
-  kind: 'days' | 'month';
+  kind: "days" | "month";
   preset: PeriodPreset | null;
 }
 
-export type Completeness = 'complete' | 'partial' | 'unavailable';
+export type Completeness = "complete" | "partial" | "unavailable";
 
 export type QualityNote =
-  | 'INCOMPLETE_LEGACY_SITE_LEADS'
-  | 'CRM_GOALS_BEFORE_ROLLOUT'
-  | 'NO_PERIOD_SNAPSHOT'
-  | 'SNAPSHOT_SAMPLED'
-  | 'METRIKA_STALE'
-  | 'METRIKA_NO_DATA'
-  | 'PERIOD_BEFORE_COUNTER'
-  | 'PAID_WITHOUT_DATE'
-  | 'COGS_UNRELIABLE_ORDERS'
-  | 'PNL_UNAVAILABLE'
-  | 'UNAVAILABLE_NO_SPEND_DATA'
+  | "INCOMPLETE_LEGACY_SITE_LEADS"
+  | "CRM_GOALS_BEFORE_ROLLOUT"
+  | "NO_PERIOD_SNAPSHOT"
+  | "SNAPSHOT_SAMPLED"
+  | "METRIKA_STALE"
+  | "METRIKA_NO_DATA"
+  | "PERIOD_BEFORE_COUNTER"
+  | "PAID_WITHOUT_DATE"
+  | "COGS_UNRELIABLE_ORDERS"
+  | "PNL_UNAVAILABLE"
+  | "UNAVAILABLE_NO_SPEND_DATA"
   /** Есть заказы, чьё происхождение по истории не доказано (этап 17). */
-  | 'UNKNOWN_ORDER_ORIGIN';
+  | "UNKNOWN_ORDER_ORIGIN";
 
 export interface GroupQuality {
   completeness: Completeness;
   notes: QualityNote[];
 }
 
-export type ChangeKind = 'UP' | 'DOWN' | 'FLAT' | 'NEW' | 'GONE' | 'NA';
+export type ChangeKind = "UP" | "DOWN" | "FLAT" | "NEW" | "GONE" | "NA";
 
 export interface Comparison {
   current: number | null;
@@ -136,7 +136,13 @@ export interface RealizedFinancials {
 }
 
 export interface FinancialMetrics {
-  currency: 'RUB';
+  evidence?: {
+    accepted: CostEvidence;
+    paid: CostEvidence;
+    realized: CostEvidence;
+    recognition: { basis: string; orders: number; orderValue: number }[];
+  };
+  currency: "RUB";
   contract: {
     orders: number;
     contractValue: number;
@@ -151,11 +157,28 @@ export interface FinancialMetrics {
     grossContribution: number;
   };
   realized: RealizedFinancials | null;
-  spend: { status: 'UNAVAILABLE_NO_SPEND_DATA' };
+  spend: {
+    status:
+      | "UNAVAILABLE_NO_SPEND_DATA"
+      | "ATTRIBUTION_NOT_ESTABLISHED"
+      | "ATTRIBUTION_COVERAGE_TOO_LOW"
+      | "AVAILABLE";
+    spend?: number;
+    clicks?: number;
+    impressions?: number | null;
+    vatBasis?: string;
+  };
   quality: GroupQuality;
 }
 
-export type FreshnessStatus = 'FRESH' | 'STALE' | 'NO_DATA';
+export interface CostEvidence {
+  orders: number;
+  missingCostOrders: number;
+  affectedOrderValue: number;
+  byCategory: { category: string; missingCostOrders: number; affectedOrderValue: number }[];
+}
+
+export type FreshnessStatus = "FRESH" | "STALE" | "NO_DATA";
 
 export interface Freshness {
   lastMetrikaSyncAt: string | null;
@@ -168,8 +191,14 @@ export interface DataQualityMetrics {
   freshness: Freshness;
   clientIdCoverageAccepted: number | null;
   clientIdCoveragePaid: number | null;
+  websiteAccepted?: number;
+  websiteClientIdCoverage?: number | null;
+  websiteYclidCoverage?: number | null;
+  websiteWithoutIdentity?: number;
+  websiteUtmCoverage?: number | null;
   eligibleAccepted: number;
   eligibleDeliveredToMetrika: number;
+  metrikaDeliveryCoverage?: number | null;
   metrikaMatchCoverage: number | null;
   matchedAcceptedReaches: number;
   paidWithoutDate: number;
@@ -180,25 +209,25 @@ export interface DataQualityMetrics {
 }
 
 export type ComparisonKey =
-  | 'visits'
-  | 'periodUsers'
-  | 'pageviews'
-  | 'siteLeads'
-  | 'matchedAccepted'
-  | 'matchedPaid'
-  | 'crmLeads'
-  | 'acceptedOrders'
-  | 'paidOrders'
-  | 'cancelledOrders'
-  | 'realizedOrders'
-  | 'contractValue'
-  | 'paidOrderValue'
-  | 'realizedRevenue'
-  | 'netProfit'
-  | 'siteLeadConversion'
-  | 'crmLeadToAccepted'
-  | 'crmAcceptedToPaid'
-  | 'paidAov';
+  | "visits"
+  | "periodUsers"
+  | "pageviews"
+  | "siteLeads"
+  | "matchedAccepted"
+  | "matchedPaid"
+  | "crmLeads"
+  | "acceptedOrders"
+  | "paidOrders"
+  | "cancelledOrders"
+  | "realizedOrders"
+  | "contractValue"
+  | "paidOrderValue"
+  | "realizedRevenue"
+  | "netProfit"
+  | "siteLeadConversion"
+  | "crmLeadToAccepted"
+  | "crmAcceptedToPaid"
+  | "paidAov";
 
 export type ComparisonSet = Record<ComparisonKey, Comparison>;
 
@@ -341,8 +370,10 @@ export interface DashboardStatus {
   enabled: boolean;
   presets: PeriodPreset[];
   timezone: string;
-  cutovers: OverviewMetadata['cutovers'];
+  cutovers: OverviewMetadata["cutovers"];
 }
 
 /** Что панель шлёт в query: пресет или произвольные даты. */
-export type PeriodQuery = { preset: PeriodPreset } | { from: string; to: string };
+export type PeriodQuery =
+  | { preset: PeriodPreset }
+  | { from: string; to: string };
