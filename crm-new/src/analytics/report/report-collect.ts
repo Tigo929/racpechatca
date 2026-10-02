@@ -12,7 +12,11 @@ import {
   previousPeriod,
   type AnalyticsPeriod,
 } from '../metrics/analytics-period';
-import { addDays, calendarDateIn } from '../../metrika/analytics/metrika-dates';
+import {
+  addDays,
+  calendarDateIn,
+  isIsoDate,
+} from '../../metrika/analytics/metrika-dates';
 import type {
   AttributionInput,
   GrowthInput,
@@ -59,6 +63,27 @@ function periodEndingAt(to: string, days: number): AnalyticsPeriod {
   return customPeriod(addDays(to, -(days - 1)), to);
 }
 
+export function reportMonthPeriods(until: string) {
+  const [year, month, day] = until.split('-').map(Number);
+  const range = calendarMonth(year, month);
+  const prev = calendarMonth(
+    month === 1 ? year - 1 : year,
+    month === 1 ? 12 : month - 1,
+  );
+  return {
+    current: customPeriod(range.from, until),
+    previous: customPeriod(
+      prev.from,
+      `${prev.from.slice(0, 8)}${String(Math.min(day, Number(prev.to.slice(8)))).padStart(2, '0')}`,
+    ),
+    // The annual owner report contains full calendar months, so compare only a completed one.
+    reconciliation: customPeriod(
+      until === range.to ? range.from : prev.from,
+      until === range.to ? range.to : prev.to,
+    ),
+  };
+}
+
 async function snapshot(
   metrics: AnalyticsMetricsService,
   period: AnalyticsPeriod,
@@ -78,7 +103,12 @@ async function attribution(
     createdAt: { gte: start, lt: endExclusive },
     ...EXCLUDE_MARKETPLACE_TSHIRT,
   };
-  const notNull = (field: string) => ({ ...where, [field]: { not: null } });
+  // Пустая строка — это тоже «метки нет»: сайт иногда присылает '' вместо
+  // отсутствующего значения, и без notIn такие заявки считались бы размеченными.
+  const notNull = (field: string) => ({
+    ...where,
+    [field]: { not: null, notIn: [''] },
+  });
   const [
     totalOrders,
     withClientId,
@@ -118,10 +148,10 @@ async function attribution(
           ...where,
           sourceOrder: g.sourceOrder,
           OR: [
-            { yandexClientId: { not: null } },
-            { yclid: { not: null } },
-            { utmSource: { not: null } },
-            { conversionPageUrl: { not: null } },
+            { yandexClientId: { not: null, notIn: [''] } },
+            { yclid: { not: null, notIn: [''] } },
+            { utmSource: { not: null, notIn: [''] } },
+            { conversionPageUrl: { not: null, notIn: [''] } },
           ],
         },
       }),
@@ -315,17 +345,26 @@ export async function collectReport(
   const until = options.until ?? lastCompleteDay(now);
   const historyDays = options.historyDays ?? 84;
 
+  if (
+    !Number.isInteger(days) ||
+    days < 1 ||
+    days > 366 ||
+    !Number.isInteger(historyDays) ||
+    historyDays < 1 ||
+    historyDays > 366 ||
+    !isIsoDate(until) ||
+    until > lastCompleteDay(now)
+  )
+    throw new Error(
+      'Отчёт требует 1–366 дней и корректную конечную дату не позже последнего полного дня по Москве',
+    );
+
   const currentPeriod = periodEndingAt(until, days);
   const prevPeriod = previousPeriod(currentPeriod);
   const avgPeriod = periodEndingAt(until, 30);
-  const [y, m] = until.split('-').map(Number);
-  const monthRange = calendarMonth(y, m);
-  const monthPeriod = customPeriod(monthRange.from, monthRange.to);
-  const prevMonthRange = calendarMonth(
-    m === 1 ? y - 1 : y,
-    m === 1 ? 12 : m - 1,
-  );
-  const prevMonthPeriod = customPeriod(prevMonthRange.from, prevMonthRange.to);
+  const monthPeriods = reportMonthPeriods(until);
+  const monthPeriod = monthPeriods.current;
+  const prevMonthPeriod = monthPeriods.previous;
   const historyPeriod = periodEndingAt(until, historyDays);
 
   const [current, previous, average30, month, previousMonth] =
@@ -371,10 +410,20 @@ export async function collectReport(
         deps.reports,
         current,
         trendSum,
-        monthPeriod,
+        monthPeriods.reconciliation,
       ),
     ],
   );
+
+  const [firstOrder, undatedPayments] = await Promise.all([
+    deps.prisma.orderPhoto.findFirst({
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
+    }),
+    deps.prisma.orderPhoto.count({
+      where: { status: 'PAID', clientPaidAt: null },
+    }),
+  ]);
 
   return {
     generatedAt: now,
@@ -385,6 +434,10 @@ export async function collectReport(
     month,
     previousMonth,
     daily: history.points,
+    historyQuality: {
+      firstOrderDay: firstOrder ? calendarDateIn(firstOrder.createdAt) : null,
+      paidWithoutDate: undatedPayments,
+    },
     sources,
     utm,
     landings,

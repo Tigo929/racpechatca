@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, Check, X, ExternalLink } from 'lucide-react';
 import { ordersApi } from '../../api/orders';
 import { partnerSettingsApi } from '../../api/partnerSettings';
 import { computePositionSettlement } from '../../utils/settlement';
+import { isMarketplaceTshirt } from '../../utils/marketplace-tshirt';
 import { useAuth } from '../../context/useAuth';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import { CLIENT_ITEM_PRINT_NAME, FREE_PRICE_HINT } from './freePresets';
@@ -20,7 +21,6 @@ import type {
   EnumTshirtSize,
   EnumPrintLocation,
 } from '../../types/index';
-import { isMarketplaceTshirt } from '../../utils/marketplace-tshirt';
 
 interface Props { order: OrderPhoto }
 
