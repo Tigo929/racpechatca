@@ -19,7 +19,7 @@ const DASH = '—';
 
 function money(v: number | null | undefined): string {
   if (v === null || v === undefined) return DASH;
-  return `${Math.round(v).toLocaleString('ru-RU')} ₽`;
+  return `${v.toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ₽`;
 }
 
 function num(v: number | null | undefined): string {
@@ -79,7 +79,7 @@ function funnelTable(steps: FunnelStep[]): string {
       'Шаг',
       'Текущий период',
       'Конверсия с прошлого шага',
-      'Отвал',
+      'Ещё не достигли следующего шага',
       'Предыдущий период',
     ],
     steps.map((s) => [
@@ -105,7 +105,7 @@ function spendBlock(spend: SpendMetrics, site: FunnelSource): string {
       '```text',
       'UNAVAILABLE_NO_SPEND_DATA — рекламные расходы за период в систему не заводились.',
       'CPL, CPA, CPO, ROAS и ROMI не считаются. Как только расходы появятся',
-      '(npm run ads:import), раздел посчитает их сам.',
+      '(npm run ads:import), раздел покажет расход. Для окупаемости нужна атрибуция результатов.',
       '```',
     ].join('\n');
   }
@@ -114,9 +114,15 @@ function spendBlock(spend: SpendMetrics, site: FunnelSource): string {
       ['Показатель', 'Значение'],
       [
         ['Расход на рекламу', money(spend.spend)],
+        [
+          'НДС в расходе',
+          spend.vatBasis === 'EXCLUDED'
+            ? 'Без НДС (API Метрики)'
+            : 'Не подтверждён / смешанные источники',
+        ],
         ['Клики', num(spend.clicks)],
         ['Показы', num(spend.impressions)],
-        ['Заявок с сайта', num(site.siteLeads)],
+        ['Достижений цели заявки (все источники)', num(site.siteLeads)],
         ['CPL — цена заявки', money(spend.cpl)],
         ['CPA — цена принятого заказа сайта', money(spend.cpa)],
         ['CPO — цена оплаченного заказа сайта', money(spend.cpo)],
@@ -134,12 +140,18 @@ function spendBlock(spend: SpendMetrics, site: FunnelSource): string {
   if (spend.status === 'ATTRIBUTION_COVERAGE_TOO_LOW') {
     lines.push(
       '',
-      '_ОГРАНИЧЕНИЕ: связь «реклама → заказ» доказана меньше чем у половины заказов сайта, поэтому ROAS и ROMI не считаются. Цена заявки и заказа выше — честные: они делят известный расход на известное число заявок, а не приписывают рекламе чужую выручку._',
+      '_ОГРАНИЧЕНИЕ: связь «реклама → заказ» доказана меньше чем у половины заказов сайта. Показатели стоимости и окупаемости требуют отдельной проверки рекламной атрибуции._',
+    );
+  }
+  if (spend.status === 'ATTRIBUTION_NOT_ESTABLISHED') {
+    lines.push(
+      '',
+      '_ATTRIBUTION_NOT_ESTABLISHED: расходы известны, но заявки и оплаты не сопоставлены с рекламными кампаниями и окном атрибуции. CPL, CPA, CPO, ROAS и ROMI не рассчитываются. Даже 100% покрытия ClientID не доказывает рекламное происхождение заказов._',
     );
   }
   lines.push(
     '',
-    '_Рекламе приписываются только заказы происхождения WEBSITE. Ручные заказы Avito и маркетплейсов в этот расчёт не входят: сайт их не создавал._',
+    '_Кандидаты на рекламную атрибуцию — только заказы происхождения WEBSITE. Среди них есть органический поиск и прямые заходы; источник WEBSITE сам по себе не доказывает связь с рекламой._',
   );
   return lines.join('\n');
 }
@@ -154,11 +166,14 @@ function spendBlock(spend: SpendMetrics, site: FunnelSource): string {
 const SKIP_REASON_MEANING: Record<string, string> = {
   manual_order_no_web_identity:
     'ручной заказ (Avito, маркетплейсы) — идентификатора визита не бывает, это норма',
-  no_client_id: 'заказ САЙТА без ClientID и без метки клика — настоящий пробел',
+  no_client_id:
+    'событие очереди без ClientID и метки клика; происхождение заказа проверяется отдельно. Число событий не равно числу уникальных заказов',
   yclid_channel_disabled:
     'есть метка клика Директа, но канал офлайн-конверсий не настроен в кабинете',
   invalid_client_id:
     'ClientID не похож на идентификатор Метрики — разобрать вручную',
+  missing_event_time:
+    'нет подтверждённого времени перехода: дата создания заказа не подставляется вместо даты оплаты или отмены',
   not_eligible_rejected_lead:
     'отклонённая заявка — в Метрику не отправляется намеренно',
 };
@@ -188,12 +203,12 @@ export function renderMarkdown(model: ReportModel): string {
     'Валюта:                RUB',
     `Текущий период:        ${period(i.current.period)}`,
     `Предыдущий период:     ${period(i.previous.period)}`,
-    `Средний период (30 д): ${period(i.average30.period)}`,
+    `Суммарный период (30 д): ${period(i.average30.period)}`,
     i.month
-      ? `Календарный месяц:     ${period(i.month.period)}`
+      ? `Месяц до конца отчёта: ${period(i.month.period)}`
       : 'Календарный месяц:     нет данных',
     i.previousMonth
-      ? `Предыдущий месяц:      ${period(i.previousMonth.period)}`
+      ? `Сопоставимый отрезок прошлого месяца: ${period(i.previousMonth.period)}`
       : 'Предыдущий месяц:      нет данных',
     `Свежесть данных Метрики: ${iso(i.current.dataQuality.freshness.lastMetrikaSyncAt)} (${i.current.dataQuality.freshness.status})`,
     '',
@@ -243,6 +258,9 @@ export function renderMarkdown(model: ReportModel): string {
     '## Stable signals',
     ...(byKind('stable').length ? byKind('stable') : ['- нет']),
     '',
+    '## Changes requiring context',
+    ...(byKind('neutral').length ? byKind('neutral') : ['- нет']),
+    '',
     '## Insufficient evidence',
     ...(byKind('insufficient').length ? byKind('insufficient') : ['- нет']),
   );
@@ -270,10 +288,10 @@ export function renderMarkdown(model: ReportModel): string {
             'Канал',
             'Визиты',
             'Просмотры',
-            'Заявки',
-            'Принято (сопост.)',
-            'Оплачено (сопост.)',
-            'Визит → заявка',
+            'Достижения цели заявки',
+            'Достижения CRM-цели принят',
+            'Достижения CRM-цели оплачен',
+            'Достижения заявки на 100 визитов (не конверсия)',
           ],
           i.sources.rows.map((r) => [
             r.trafficSourceName || r.trafficSource,
@@ -292,7 +310,12 @@ export function renderMarkdown(model: ReportModel): string {
     '',
     i.utm.rows.length
       ? table(
-          ['utm_source / utm_medium', 'Кампания', 'Визиты', 'Заявки'],
+          [
+            'utm_source / utm_medium',
+            'Кампания',
+            'Визиты',
+            'Достижения цели заявки',
+          ],
           i.utm.rows.map((r) => [
             r.isNoUtm
               ? 'NO_UTM (метки отсутствуют)'
@@ -308,7 +331,7 @@ export function renderMarkdown(model: ReportModel): string {
     '',
     '```text',
     'NOT ATTRIBUTABLE — выручку и прибыль нельзя разложить по источникам трафика.',
-    'Причина: связь «визит → заказ» держится на ClientID, а он есть не у всех заказов сайта.',
+    'Причина: нет подтверждённого сопоставления каждого заказа с рекламным источником и окном атрибуции. Одного наличия ClientID или yclid недостаточно.',
     `Покрытие ClientID у принятых заказов САЙТА: ${pct(dq.websiteClientIdCoverage)} (${num(dq.websiteAccepted)} заказов);`,
     `yclid: ${pct(dq.websiteYclidCoverage)}; UTM: ${pct(dq.websiteUtmCoverage)};`,
     `совсем без связи с визитом: ${num(dq.websiteWithoutIdentity)}.`,
@@ -328,7 +351,12 @@ export function renderMarkdown(model: ReportModel): string {
     '',
     i.landings.rows.length
       ? table(
-          ['Страница входа', 'Визиты', 'Заявки', 'Визит → заявка'],
+          [
+            'Страница входа',
+            'Визиты',
+            'Достижения заявки',
+            'Достижения на 100 визитов (не конверсия)',
+          ],
           i.landings.rows
             .slice(0, 10)
             .map((r) => [
@@ -345,13 +373,13 @@ export function renderMarkdown(model: ReportModel): string {
   add(
     '# FUNNEL',
     '',
-    'Путь посетителя сайта. Шаги «принято» и «оплачено» считаются только по заказам, которые удалось сопоставить с визитом по ClientID, — это меньшинство заказов CRM (см. DATA QUALITY).',
+    'Счётчики Метрики за период: визиты и достижения целей. Достижения CRM-целей — не количество уникальных заказов и не одна когорта заявок. Даты и атрибуция Метрики могут отличаться от CRM. Между этими счётчиками конверсия и отвал не рассчитываются.',
     '',
     funnelTable(model.siteFunnel),
     '',
     model.biggestDropOff
       ? `**Самый большой отвал:** ${model.biggestDropOff.name} — потеряно ${num(model.biggestDropOff.dropOff)} (конверсия шага ${pct(model.biggestDropOff.conversionFromPrevious)}). Причина отвала отчётом не устанавливается.`
-      : '_Отвал посчитать не на чем: в периоде нет данных по шагам воронки._',
+      : '_Отвал не рассчитывается: независимые счётчики не доказывают последовательный путь одних и тех же людей._',
   );
 
   // ── crm funnel ───────────────────────────────────────────────────────────
@@ -359,11 +387,11 @@ export function renderMarkdown(model: ReportModel): string {
   add(
     '# CRM FUNNEL',
     '',
-    'Путь заказа внутри CRM. Считается по событиям периода: заявка (LEAD), принятие в работу, оплата, признание выручки, отмена.',
+    'Путь одной когорты: заявки с leadAt в выбранном периоде и их состояние на момент отчёта. Принятие и оплата могли произойти позже периода. Не достигшие шага ещё могут его пройти: это не доказанные потерянные клиенты. У предыдущей когорты больше времени на оплату, поэтому прямое сравнение зрелости не доказывает изменение эффективности. События разных заказов за период приведены отдельно в SALES; делить их друг на друга как конверсию нельзя.',
     '',
     funnelTable(model.crmFunnel),
     '',
-    '## Когорты (заказы, вошедшие в период, прослеженные до конца)',
+    '## Когорты (состояние на момент отчёта, ещё может измениться)',
     '',
     '```text',
     `Заявок в когорте:            ${num(cohorts.leadCohortSize)}  → принято ${num(cohorts.leadCohortAccepted)} → оплачено ${num(cohorts.leadCohortPaid)}`,
@@ -436,6 +464,8 @@ export function renderMarkdown(model: ReportModel): string {
     '',
     '## Прибыль по направлениям (за период признания выручки)',
     '',
+    'Сумма прибыли направлений минус общие операционные расходы равна прибыли бизнеса. В ORDER ORIGIN прибыль валовая и имеет другую методику.',
+    '',
     curRealized
       ? table(
           ['Направление', 'Заказы', 'Выручка', 'Прибыль'],
@@ -492,7 +522,7 @@ export function renderMarkdown(model: ReportModel): string {
             'Оплачено',
             'Выручка',
             'COGS',
-            'Прибыль',
+            'Валовая прибыль',
             'Маржа',
             'Средний чек',
           ],
@@ -545,7 +575,7 @@ export function renderMarkdown(model: ReportModel): string {
     'WEBSITE  = заявку создал сайт (серверный признак заявки), даже если рекламных меток нет.',
     'AVITO    = ручной заказ CRM: выбранный сотрудником Avito либо текущий канал по умолчанию.',
     'UNKNOWN  = историческое происхождение не доказано; такие заказы не приписываются ни сайту, ни Avito.',
-    'Конверсия сайта считается ТОЛЬКО по населённости WEBSITE.',
+    'Конверсия заявки сайта = целевые визиты / все визиты × 100; заказы WEBSITE не заменяют целевые визиты.',
     'Делить все заказы CRM на визиты сайта нельзя: ручные заказы сайт не создавал.',
     'Рост AVITO не является конверсией сайта и не доказывает работу сайта.',
     'Происхождение заказа и маркетинговая атрибуция — разные измерения; смешивать их нельзя.',
@@ -581,16 +611,85 @@ export function renderMarkdown(model: ReportModel): string {
       : '_P&L за период недоступен._',
     '',
     '```text',
-    'Что входит в себестоимость: заготовки и расходники позиции, печать, термоперенос,',
-    'упаковка, прочие прямые расходы позиции и стоимость доставки перевозчику.',
+    'Что входит в себестоимость: материалы фото по настройкам CRM, стоимость',
+    'партнёра по футболкам и подрядчика по холстам. Полнота этих затрат требует проверки.',
+    'Доставка перевозчику НЕ входит в COGS: она вычитается в прибыли доставки.',
     'Что НЕ входит в себестоимость: начисленная зарплата и операционные расходы —',
     'они вычитаются отдельно, после валовой маржи.',
     '',
     'ВАЖНО о названии: «прибыль» здесь — показатель netProfit по методике отчёта владельца',
     '(валовая маржа − зарплата − операционные расходы + прибыль доставки). Это не',
-    'бухгалтерская чистая прибыль: в ней нет налогов, аренды, амортизации и прочих',
-    'расходов, которые в CRM не заводятся.',
+    'бухгалтерская чистая прибыль: учтены только затраты, заведённые в CRM.',
+    'Налоги, аренда и прочие затраты учитываются лишь если внесены в расходы.',
+    'Расходы Директа показаны отдельно: полноту их отражения в расходах CRM нужно сверить.',
+    'Повторно вычитать рекламу из прибыли без этой сверки нельзя.',
     '```',
+  );
+
+  const evidence = cur.financials.evidence;
+  add(
+    '# FINANCIAL DATA EVIDENCE',
+    '',
+    'Ниже — полнота входных данных расчёта, не процент вероятности правильной прибыли. Сумма затронутых заказов не является оценкой недостающих расходов. Принятые, оплаченные и реализованные группы пересекаются; складывать их нельзя.',
+    '',
+    evidence
+      ? table(
+          [
+            'Группа заказов',
+            'Всего',
+            'Без расчётной себестоимости',
+            'Стоимость затронутых заказов',
+          ],
+          (
+            [
+              ['Принятые', evidence.accepted],
+              ['С датой оплаты', evidence.paid],
+              ['Реализованные', evidence.realized],
+            ] as const
+          ).map(([name, row]) => [
+            name,
+            num(row.orders),
+            num(row.missingCostOrders),
+            money(row.affectedOrderValue),
+          ]),
+        )
+      : 'Нет детализации полноты себестоимости.',
+    '',
+    evidence?.realized.byCategory.length
+      ? table(
+          [
+            'Направление в реализации',
+            'Без расчётной себестоимости',
+            'Стоимость затронутых заказов',
+          ],
+          evidence.realized.byCategory.map((row) => [
+            row.category,
+            num(row.missingCostOrders),
+            money(row.affectedOrderValue),
+          ]),
+        )
+      : '',
+    '',
+    '## Основание даты признания выручки',
+    '',
+    evidence
+      ? table(
+          ['Дата', 'Заказов', 'Выручка'],
+          evidence.recognition.map((row) => [
+            {
+              clientPaidAt: 'Оплата клиента',
+              completedAt: 'Завершение',
+              statusChangedAt: 'Смена статуса',
+              sentAt: 'Отгрузка',
+              createdAt: 'Создание',
+            }[row.basis],
+            num(row.orders),
+            money(row.orderValue),
+          ]),
+        )
+      : 'Нет детализации дат признания.',
+    '',
+    'Выручка по резервным датам не подтверждает поступление денег. Даже наличие clientPaidAt и всех позиций не заменяет сверку с платежами и закупками. Не превращай расчётную прибыль в подтверждённую фактическую прибыль. Недостающую себестоимость не подставляй нулём в выводах и не оценивай из оборота.',
   );
 
   // ── attribution ──────────────────────────────────────────────────────────
@@ -601,6 +700,7 @@ export function renderMarkdown(model: ReportModel): string {
     '# ATTRIBUTION',
     '',
     `Заказы, созданные в текущем периоде: ${num(a.totalOrders)}.`,
+    'Следующая таблица описывает ВСЕ созданные заказы CRM, включая ручные. Это не оценка полноты атрибуции сайта; покрытие принятых заказов сайта указано отдельно в TRAFFIC и DATA QUALITY. Наличие метки не равно подтверждённой атрибуции.',
     '',
     table(
       ['Признак', 'Заказов', 'Доля'],
@@ -659,10 +759,12 @@ export function renderMarkdown(model: ReportModel): string {
   add(
     '# METRIKA / CRM SYNC',
     '',
+    'Состояние очереди за всю историю на момент формирования отчёта, не только за выбранный период. Строки — события, а не уникальные заказы.',
+    '',
     table(
       ['Состояние очереди', 'Строк'],
       [
-        ['delivered (доставлено)', num(s.delivered)],
+        ['delivered (принято API)', num(s.delivered)],
         ['skipped (пропущено)', num(s.skipped)],
         ['pending (ожидает)', num(s.pending)],
         ['processing (в работе)', num(s.processing)],
@@ -672,11 +774,12 @@ export function renderMarkdown(model: ReportModel): string {
     '',
     '```text',
     `Доставлено с идентификатором загрузки: ${s.deliveredWithUploadingId} из ${s.delivered}`,
-    `Прошло валидацию на стороне Метрики:    ${s.validationPassed}`,
+    `CDP: прошло валидацию PASSED:           ${s.validationPassed}`,
     `Дубли ключа дедупликации:               ${s.duplicateDedupeKeys} (норма 0)`,
     `Повторные покупки по одному заказу:     ${s.duplicatePurchasesPerOrder} (норма 0)`,
     `Последняя доставка:                     ${iso(s.lastDeliveredAt)}`,
     '```',
+    'Приём файла API (delivered, PASSED или UPLOADED) не подтверждает привязку к визиту. Офлайн-конверсии проверяются в отчёте Метрики «Офлайн-конверсии», заказы CDP — в отчётах заказов. События без привязки нельзя считать подтверждёнными рекламными продажами.',
     '',
     s.skipReasons.length
       ? table(
@@ -693,10 +796,13 @@ export function renderMarkdown(model: ReportModel): string {
     '',
     '```text',
     `Сумма выручки по дням = итог периода: ${num(i.reconciliation.trendSumRealizedRevenue)} против ${num(i.reconciliation.overviewRealizedRevenue)} → ${
-      i.reconciliation.trendSumRealizedRevenue ===
-      i.reconciliation.overviewRealizedRevenue
-        ? 'СОВПАДАЕТ'
-        : 'РАСХОЖДЕНИЕ'
+      i.reconciliation.trendSumRealizedRevenue === null ||
+      i.reconciliation.overviewRealizedRevenue === null
+        ? 'НЕТ ДАННЫХ'
+        : i.reconciliation.trendSumRealizedRevenue ===
+            i.reconciliation.overviewRealizedRevenue
+          ? 'СОВПАДАЕТ'
+          : 'РАСХОЖДЕНИЕ'
     }`,
     i.reconciliation.monthlyPnl
       ? `P&L месяца ${i.reconciliation.monthlyPnl.month}: выручка ${num(i.reconciliation.monthlyPnl.serviceRevenue)} против отчёта владельца ${num(i.reconciliation.monthlyPnl.reportRevenue)} → ${
@@ -729,7 +835,7 @@ export function renderMarkdown(model: ReportModel): string {
       ]),
     ),
     '',
-    `Для справки, средние значения за 30 дней (${period(i.average30.period)}): визиты ${num(i.average30.overview.traffic.visits)}, заявки CRM ${num(i.average30.overview.crmFunnel.events.crmLeads)}, оплачено ${num(i.average30.overview.orders.paidOrders)}, выручка ${money(i.average30.overview.financials.realized?.realizedRevenue ?? null)}, прибыль ${money(i.average30.overview.financials.realized?.netProfit ?? null)}.`,
+    `Для справки, СУММЫ за 30 дней (${period(i.average30.period)}), не средние за день: визиты ${num(i.average30.overview.traffic.visits)}, заявки CRM ${num(i.average30.overview.crmFunnel.events.crmLeads)}, оплачено ${num(i.average30.overview.orders.paidOrders)}, выручка ${money(i.average30.overview.financials.realized?.realizedRevenue ?? null)}, прибыль ${money(i.average30.overview.financials.realized?.netProfit ?? null)}.`,
   );
 
   // ── trends ───────────────────────────────────────────────────────────────
@@ -790,6 +896,8 @@ export function renderMarkdown(model: ReportModel): string {
   add(
     '# GROWTH',
     '',
+    'Оценки и карточки ниже — сохранённые результаты на дату их расчёта. Они не пересчитаны для периода этого отчёта и могли быть получены прежней версией методики.',
+    '',
     i.growth.changes.length
       ? i.growth.changes
           .map((c) =>
@@ -840,6 +948,7 @@ export function renderMarkdown(model: ReportModel): string {
       ? table(
           [
             'Неделя (с понедельника)',
+            'Дней наблюдения / полная',
             'Визиты',
             'Заявки',
             'Принято',
@@ -850,6 +959,7 @@ export function renderMarkdown(model: ReportModel): string {
           ],
           model.weekly.map((w) => [
             w.week,
+            `${w.observedDays} / ${w.complete ? 'да' : 'нет'}`,
             num(w.visits),
             num(w.leads),
             num(w.accepted),
@@ -924,35 +1034,35 @@ export function renderMarkdown(model: ReportModel): string {
     'Заявка с сайта (siteLead): достижение цели «заявка» на сайте.',
     'Заявка CRM (crmLead): заказ, заведённый в статусе LEAD (обращение без подтверждения).',
     'Принят в работу (accepted): заказ перешёл в рабочий статус (NEW и далее по потоку).',
-    'Оплачен (paid): заказ переведён в статус «Оплачен» — деньги от клиента получены.',
+    'Оплачен за период (paid): clientPaidAt попадает в период, независимо от текущего статуса. PAID без даты не доказывает дату поступления денег.',
     'Дата оплаты (clientPaidAt): фактическая дата получения денег. Ставится при ручном',
     '  переводе в «Оплачен» или указывается администратором отдельно. Перевод заказа в',
     '  «Оплачен» при выплате зарплаты исполнителю дату НЕ проставляет — расчёт с',
     '  сотрудником не является оплатой клиента.',
-    'paidWithoutDate: оплаченные заказы без даты оплаты. Выручка таких заказов признаётся',
-    '  по дате отгрузки (правило признания ниже). Суммы верны, смещаются только когорты.',
+    'paidWithoutDate: среди принятых в периоде заказов — текущий статус PAID без clientPaidAt.',
+    '  Это не количество неопределённых платежей за выбранный период. Дата оплаты неизвестна.',
     'Реализованная выручка (realizedRevenue): выручка заказов, признанных в периоде.',
     '  Дата признания = дата оплаты, иначе дата завершения, иначе смена статуса, иначе',
     '  отгрузка, иначе создание заказа.',
-    'Себестоимость (COGS): прямые расходы заказа — заготовки, печать, термоперенос,',
-    '  упаковка, прочие прямые расходы, доставка перевозчику.',
-    'Валовая маржа (grossContribution): выручка − себестоимость.',
+    'Себестоимость (COGS): себестоимость фото, стоимость партнёра по футболкам',
+    '  и подрядчика по холстам. Доставка перевозчику учитывается отдельно в прибыли доставки.',
+    'Валовая маржа (grossContribution): товарная выручка без доставки − себестоимость.',
     'Прибыль (netProfit): валовая маржа − начисленная зарплата − операционные расходы',
     '  + прибыль доставки. Методика отчёта владельца, не бухгалтерская чистая прибыль.',
     'Маржа (marginPct): прибыль / выручка × 100.',
     'Средний чек (AOV): сумма заказов / количество заказов; отдельно для принятых и',
     '  для оплаченных.',
-    'ClientID: идентификатор браузера в Метрике. Единственный ключ связи «визит → заказ».',
-    'Покрытие ClientID: доля принятых заказов, у которых ClientID известен.',
+    'ClientID: идентификатор браузера в Метрике; также возможна связь по yclid.',
+    'Покрытие ClientID: доля принятых заказов сайта, у которых ClientID известен.',
     'yclid: метка клика Яндекс.Директа, сохраняется у заявки с сайта.',
-    'Сопоставленные метрики (matchedAccepted / matchedPaid): считаются только по заказам',
-    '  с известным ClientID — это подмножество заказов CRM.',
+    'matchedAccepted / matchedPaid: достижения соответствующих CRM-целей в Метрике,',
+    '  не число уникальных заказов и не поштучное подтверждение рекламной атрибуции.',
     'Происхождение заказа (order origin): откуда заказ взялся — WEBSITE (заявку создал',
     '  сайт), AVITO / OZON / WB / LOCAL (заказ заведён в CRM вручную), UNKNOWN (по истории',
     '  не доказано). Это не источник рекламы: маркетинговая атрибуция (визиты, UTM, yclid,',
     '  ClientID) — отдельное измерение, и смешивать их нельзя.',
     'orderOriginCoveragePct: доля заказов периода, чьё происхождение известно (не UNKNOWN).',
-    'Отвал (drop-off): разница между соседними шагами воронки.',
+    'Разница между шагами когорты: ещё не достигли следующего шага; это не доказанный отвал.',
     'INCOMPARABLE: вердикт оценки изменения — периоды «до» и «после» несопоставимы.',
     'NOT_ESTABLISHED: причинная связь не доказана (наблюдательное сравнение).',
     '```',
@@ -968,7 +1078,12 @@ export function renderMarkdown(model: ReportModel): string {
     'Не придумывай отсутствующие данные и не делай причинных выводов без доказательств.',
     '',
     'Обязательные правила при разборе каналов (раздел ORDER ORIGIN):',
-    '- конверсию сайта считай только по заказам WEBSITE;',
+    '- конверсия заявки сайта = визиты с целью / все визиты × 100; используй готовый siteLeadConversion;',
+    '- не подменяй целевые визиты достижениями целей или заказами WEBSITE;',
+    '- стоимость рекламы сопоставляй только с доказанной рекламной когортой, а не всем сайтом;',
+    '- рост себестоимости сам по себе не ухудшение: учитывай объём и структуру продаж;',
+    '- null и «—» означают отсутствие данных, а не ноль; неполные периоды не сравнивай как полные;',
+    '- если SYSTEM-GENERATED FORECAST недоступен из-за истории или качества, не выдавай численный прогноз как надёжный;',
     '- все заказы CRM на визиты сайта не дели: ручные заказы сайт не создавал;',
     '- рост Avito не считай ростом эффективности сайта;',
     '- заказы UNKNOWN не приписывай ни сайту, ни Avito;',

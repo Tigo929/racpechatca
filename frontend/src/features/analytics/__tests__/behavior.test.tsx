@@ -36,8 +36,8 @@ describe('FunnelCard', () => {
     expect(started).toHaveTextContent('13 визиты');
     expect(started).toHaveTextContent('25 события');
     expect(started).toHaveTextContent('3 посетители');
-    expect(started).toHaveTextContent('8,97 % от пред. шага');
-    expect(started).toHaveTextContent('отвал 91,03 %');
+    expect(started).not.toHaveTextContent('8,97 %');
+    expect(started).not.toHaveTextContent('отвал 91,03 %');
     // FIX_01: «визиты с 08.09 → начали форму с 10.09» — окна не совпадают, доля подписана как несравнимая;
     // переход между целями с одной даты — без пометки
     expect(screen.getByTestId('partial-transition-form_started')).toHaveTextContent('окна измерения не совпадают');
