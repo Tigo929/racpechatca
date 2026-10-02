@@ -176,13 +176,46 @@ export function deliveryLine(
   return '🏠 Самовывоз — бесплатно';
 }
 
+/**
+ * Как текст попадёт к клиенту.
+ *
+ * `telegram` — сообщение отправит живой аккаунт через Telethon, и тот
+ * разбирает markdown. Номер заказа в этом режиме набирается моноширинным:
+ * в Telegram такой текст копируется одним нажатием, а человеку как раз
+ * номер и нужен — чтобы назвать его в переписке или найти заказ.
+ *
+ * `plain` — текст копирует менеджер и вставляет руками (клиент на MAX,
+ * почте или только с телефоном). Там разметка не сработает и останется
+ * голыми значками на экране у клиента, поэтому её нет.
+ */
+export type GreetingFormat = 'telegram' | 'plain';
+
+/**
+ * Экранирование markdown в подставляемых значениях.
+ *
+ * Разметку разбирает Telethon по всему сообщению, а в значения попадает
+ * то, что ввёл человек: имя клиента, название позиции. Звёздочка или
+ * подчёркивание в них съели бы кусок текста или склеили две строки в одну
+ * жирную — молча, без ошибки. Шаблон трогать не нужно: в нём специальных
+ * знаков нет, и это проверяется тестом.
+ */
+function escapeMarkdown(value: string): string {
+  return value.replace(/([*_`[\]()~])/g, '\\$1');
+}
+
 /** Готовый текст сообщения. Неизвестные метки остаются как есть. */
-export function renderGreeting(data: GreetingData): string {
+export function renderGreeting(
+  data: GreetingData,
+  format: GreetingFormat = 'plain',
+): string {
   const template = TEMPLATES[data.category] ?? TEMPLATES[''];
+  const telegram = format === 'telegram';
+  const safe = (value: string) => (telegram ? escapeMarkdown(value) : value);
+  const number = telegram ? `\`${data.numberOrder}\`` : data.numberOrder;
   return template
-    .replace('{greeting}', greetingFor(data.name))
-    .replace('{{СПИСОК_ТОВАРОВ}}', itemsList(data.items))
+    .replace('{greeting}', safe(greetingFor(data.name)))
+    .replace('{{СПИСОК_ТОВАРОВ}}', safe(itemsList(data.items)))
     .replace('{{ДОСТАВКА}}', deliveryLine(data.deliveryMethod, data.deliveryCost))
     .replace('{{СУММА}}', money(data.total))
-    .replace('{{НОМЕР}}', data.numberOrder);
+    .replace('{{НОМЕР}}', number);
 }

@@ -147,7 +147,9 @@ export class ClientGreetingService {
         id: row.id,
         username,
         createdAt: row.createdAt,
-        text: renderGreeting(data),
+        // Это сообщение отправит живой аккаунт, а он разбирает markdown:
+        // номер заказа уходит моноширинным, и клиент копирует его нажатием.
+        text: renderGreeting(data, 'telegram'),
         ...data,
       });
     }

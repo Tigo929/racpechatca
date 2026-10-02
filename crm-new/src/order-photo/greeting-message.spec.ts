@@ -89,3 +89,59 @@ describe('первое сообщение клиенту', () => {
     expect(text).not.toMatch(/\{\{/u);
   });
 });
+
+/**
+ * Разметка для Telegram.
+ *
+ * Сообщение бота разбирает Telethon, и это единственное место, где разметка
+ * вообще работает. Ошибка в ней видна не нам, а клиенту: он получит текст
+ * с голыми значками или с проглоченным куском. Поэтому проверяется и то,
+ * что разметка появляется где нужно, и то, что её нет там, где текст
+ * копируют руками.
+ */
+describe('первое сообщение: разметка', () => {
+  const base = {
+    name: 'Эрик',
+    numberOrder: '20261002-027',
+    category: 'PHOTO',
+    items: [{ title: 'Печать фото в стиле Polaroid', quantity: 25 }],
+    total: 700,
+    deliveryMethod: 'YANDEX_PVZ',
+    deliveryCost: 300,
+  };
+
+  it('для бота номер заказа моноширинный: в Telegram он копируется нажатием', () => {
+    const text = renderGreeting(base, 'telegram');
+    expect(text).toContain('№`20261002-027`');
+  });
+
+  it('для копирования руками разметки нет: значки видел бы клиент', () => {
+    const text = renderGreeting(base, 'plain');
+    expect(text).toContain('№20261002-027');
+    expect(text).not.toContain('`');
+  });
+
+  it('по умолчанию разметки нет', () => {
+    expect(renderGreeting(base)).not.toContain('`');
+  });
+
+  it('звёздочка в имени не съедает текст: значения экранируются', () => {
+    const text = renderGreeting({ ...base, name: '*Эрик*' }, 'telegram');
+    expect(text).toContain('\\*Эрик\\*');
+  });
+
+  it('подчёркивание в названии позиции тоже экранируется', () => {
+    const text = renderGreeting(
+      { ...base, items: [{ title: 'фото_10х15', quantity: 2 }] },
+      'telegram',
+    );
+    expect(text).toContain('фото\\_10х15');
+  });
+
+  it('в самих шаблонах специальных знаков нет — иначе экранировать пришлось бы и их', () => {
+    for (const category of ['PHOTO', 'CANVAS', 'TSHIRT', 'ЧТО-ТО']) {
+      const plain = renderGreeting({ ...base, category }, 'plain');
+      expect(plain).not.toMatch(/[*_`~[\]]/u);
+    }
+  });
+});
