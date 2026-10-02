@@ -39,6 +39,8 @@ export interface OzonOrder {
 export interface OzonOrdersPage {
   orders: OzonOrder[];
   hasNext: boolean;
+  /** Сколько отправлений скрыто фильтром «только наши принты». */
+  hiddenByCatalog: number;
 }
 
 /** Заказ CRM, заведённый по отправлению; null — ещё не заводили. */
@@ -51,7 +53,13 @@ export interface OzonCrmOrderLink {
 export const ozonOrdersApi = {
   list: async (
     accountId: string,
-    params: { sinceDays?: number; limit?: number; offset?: number } = {},
+    params: {
+      sinceDays?: number;
+      limit?: number;
+      offset?: number;
+      /** 1 — показать и чужие товары кабинета, не только наши принты. */
+      all?: 1;
+    } = {},
   ): Promise<OzonOrdersPage> => {
     const { data } = await api.get<OzonOrdersPage>(
       `/marketplace/ozon/${accountId}/orders`,

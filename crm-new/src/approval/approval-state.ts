@@ -63,6 +63,20 @@ function num(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
+/**
+ * Десятая миллиметра — предел точности размера печати.
+ *
+ * Раньше миллиметры округлялись до целых, и размер карточки площадки
+ * «10,38 × 28,50 см» превращался в «10,4 × 28,5 см». На печати разница
+ * ничтожна, но лист согласования читает исполнитель и сверяет с карточкой
+ * товара: там написано одно, у нас другое, и это повод остановиться и
+ * переспросить. Десятой доли хватает, чтобы совпадало дословно, и при этом
+ * размер остаётся числом, а не бесконечной дробью от пересчёта пропорций.
+ */
+export function tenth(mm: number): number {
+  return Math.round(mm * 10) / 10;
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
@@ -96,16 +110,8 @@ export function parseSides(value: unknown): ApprovalSides {
       printOriginalName: str(s.printOriginalName),
       printWidthPx: Math.max(0, Math.round(num(s.printWidthPx, 0))),
       printHeightPx: Math.max(0, Math.round(num(s.printHeightPx, 0))),
-      widthMm: clamp(
-        Math.round(num(s.widthMm, 280)),
-        MIN_PRINT_MM,
-        MAX_PRINT_MM,
-      ),
-      heightMm: clamp(
-        Math.round(num(s.heightMm, 350)),
-        MIN_PRINT_MM,
-        MAX_PRINT_MM,
-      ),
+      widthMm: clamp(tenth(num(s.widthMm, 280)), MIN_PRINT_MM, MAX_PRINT_MM),
+      heightMm: clamp(tenth(num(s.heightMm, 350)), MIN_PRINT_MM, MAX_PRINT_MM),
       // Ноль означает «размер ещё не задан мышкой» — см. printRect.
       viewWidth: Math.max(0, num(s.viewWidth, 0)),
       viewHeight: Math.max(0, num(s.viewHeight, 0)),

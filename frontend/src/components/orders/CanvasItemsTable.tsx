@@ -3,8 +3,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
   Check,
-  ExternalLink,
-  MessageCircle,
   Pencil,
   Plus,
   Trash2,
@@ -296,18 +294,10 @@ export function CanvasItemsTable({ order }: Props) {
 
   return (
     <div>
-      {order.urlCommunication && (
-        <a
-          href={order.urlCommunication}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-3 py-2 mb-4 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors text-sm font-medium border border-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-        >
-          <MessageCircle size={15} aria-hidden="true" />
-          Написать клиенту
-          <ExternalLink size={12} className="opacity-60" aria-hidden="true" />
-        </a>
-      )}
+      {/* Ссылки на переписку здесь нет намеренно: она уже есть выше, в блоке
+          «Связь с клиентом», под своей подписью и с нужным действием для
+          каждой площадки. Вторая такая же кнопка над позициями заставляла
+          человека выбирать между двумя одинаковыми — а выбирать не из чего. */}
 
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-700">
