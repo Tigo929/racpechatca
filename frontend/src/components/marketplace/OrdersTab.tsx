@@ -135,10 +135,21 @@ function OrderCard({ order, onOpen }: { order: OzonOrder; onOpen: () => void }) 
 export function OrdersTab({ accountId }: { accountId: string }) {
   const [group, setGroup] = useState<OzonOrderGroup | 'all'>('to_ship');
   const [openPosting, setOpenPosting] = useState<string | null>(null);
+  /*
+   * По умолчанию показываем только наши принты: в кабинете лежат и другие
+   * товары, и вперемешку свои заказы искать неудобно. Скрытые не пропадают —
+   * переключатель ниже возвращает их целиком.
+   */
+  const [showAll, setShowAll] = useState(false);
 
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['ozon-orders', accountId],
-    queryFn: () => ozonOrdersApi.list(accountId, { sinceDays: 90, limit: 200 }),
+    queryKey: ['ozon-orders', accountId, showAll],
+    queryFn: () =>
+      ozonOrdersApi.list(accountId, {
+        sinceDays: 90,
+        limit: 200,
+        ...(showAll ? { all: 1 as const } : {}),
+      }),
     // Заказы приходят в течение дня; минута свежести — разумный компромисс
     // между актуальностью и лимитами API Ozon.
     staleTime: 60_000,
@@ -160,9 +171,26 @@ export function OrdersTab({ accountId }: { accountId: string }) {
     });
 
   const overdueCount = all.filter((o) => o.shipmentOverdue).length;
+  const hidden = data?.hiddenByCatalog ?? 0;
 
   return (
     <div className="space-y-4">
+      {(hidden > 0 || showAll) && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-700">
+          <span>
+            {showAll
+              ? 'Показаны все товары кабинета, включая не наши принты.'
+              : `Скрыто отправлений не по нашим принтам: ${hidden}.`}
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowAll((v) => !v)}
+            className="font-medium text-indigo-700 underline underline-offset-2 hover:text-indigo-900"
+          >
+            {showAll ? 'Показывать только наши принты' : 'Показать все'}
+          </button>
+        </div>
+      )}
       {overdueCount > 0 && (
         <div className="flex items-start gap-2 rounded-xl bg-red-50 border border-red-200 p-3.5">
           <AlertTriangle size={16} className="text-red-500 mt-0.5 flex-shrink-0" aria-hidden="true" />

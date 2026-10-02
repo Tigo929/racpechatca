@@ -82,6 +82,13 @@ export interface OzonOrderView {
 export interface OzonOrdersPage {
   orders: OzonOrderView[];
   hasNext: boolean;
+  /**
+   * Сколько отправлений скрыто фильтром «только наши принты».
+   *
+   * Отдаём числом, а не молча: скрытый заказ — это заказ, которого человек
+   * не увидит, и он должен знать, что они есть. Ноль — скрывать было нечего.
+   */
+  hiddenByCatalog: number;
 }
 
 @Injectable()
@@ -95,7 +102,16 @@ export class OzonOrdersService {
    */
   async list(
     creds: OzonCredentials,
-    options: { sinceDays?: number; limit?: number; offset?: number } = {},
+    options: {
+      sinceDays?: number;
+      limit?: number;
+      offset?: number;
+      /**
+       * Артикулы нашего каталога. Пусто — не фильтруем вовсе: пустой список
+       * значит «каталог ещё не завели», и прятать по нему всё подряд нельзя.
+       */
+      knownOfferIds?: ReadonlySet<string>;
+    } = {},
   ): Promise<OzonOrdersPage> {
     const sinceDays = options.sinceDays ?? 90;
     const limit = Math.min(options.limit ?? 100, OZON_MAX_LIMIT);
@@ -114,9 +130,30 @@ export class OzonOrdersService {
     );
 
     const postings = res.result?.postings ?? [];
+    const all = postings.map((p) => this.toView(p));
+
+    /*
+     * Фильтр «только наши принты».
+     *
+     * В кабинете лежат не только футболки с нашей печатью, и в списке
+     * отправлений они перемешаны. Печатнику и менеджеру нужны свои —
+     * остальные только мешают искать. Узнаём своё по артикулу: он есть
+     * в каталоге CRM, из которого мы эти товары и завели.
+     *
+     * Отправление считается нашим, если наш артикул есть хотя бы у одной
+     * позиции: в сборном заказе рядом с нашей футболкой может лежать чужой
+     * товар, и терять такое отправление нельзя — печатать-то надо.
+     */
+    const known = options.knownOfferIds;
+    const orders =
+      known && known.size > 0
+        ? all.filter((o) => o.items.some((i) => known.has(i.offerId)))
+        : all;
+
     return {
-      orders: postings.map((p) => this.toView(p)),
+      orders,
       hasNext: Boolean(res.result?.has_next),
+      hiddenByCatalog: all.length - orders.length,
     };
   }
 
