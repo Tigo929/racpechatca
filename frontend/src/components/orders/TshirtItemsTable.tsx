@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, Check, X, ExternalLink } from 'lucide-react';
 import { ordersApi } from '../../api/orders';
 import { partnerSettingsApi } from '../../api/partnerSettings';
 import { computePositionSettlement } from '../../utils/settlement';
+import { isMarketplaceTshirt } from '../../utils/marketplace-tshirt';
 import { useAuth } from '../../context/useAuth';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import { CLIENT_ITEM_PRINT_NAME, FREE_PRICE_HINT } from './freePresets';
@@ -435,7 +436,8 @@ export function TshirtItemsTable({ order }: Props) {
               </table>
             )}
 
-            {isAdmin && partnerSettings && editingId !== item.id && (
+            {/* У футболки с маркетплейса разбора денег нет: их считает площадка. */}
+            {isAdmin && partnerSettings && !isMarketplaceTshirt(order) && editingId !== item.id && (
               <PositionMoney
                 item={item}
                 rateBasisPoints={partnerSettings.partnerRateBasisPoints}
