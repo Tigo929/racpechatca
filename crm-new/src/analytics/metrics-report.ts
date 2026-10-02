@@ -366,6 +366,8 @@ async function reconcileCrm(
     'COMPLETED',
   ]);
   const acceptedList = [...accepted];
+  // Футболки с маркетплейса исключены так же, как в сервисе метрик
+  // (order-photo/marketplace-tshirt.ts): иначе сверка покажет ложное расхождение.
   // Независимо от сервиса: момент принятия = createdAt, если первый переход начинался
   // из рабочего статуса (или переходов нет и статус рабочий); иначе — первый переход в рабочий статус.
   const acc = await prisma.$queryRaw<Row[]>`
@@ -380,6 +382,7 @@ async function reconcileCrm(
              THEN o."createdAt" ELSE fa.at END AS accepted_at,
         o."clientPaidAt", o.status::text AS status
       FROM "OrderPhoto" o LEFT JOIN first_h f ON f."orderId" = o.id LEFT JOIN first_acc fa ON fa."orderId" = o.id
+      WHERE NOT (o."productCategory" = 'TSHIRT' AND o."isMarketplacePrint")
     )
     SELECT
       count(*) FILTER (WHERE accepted_at >= ${start} AND accepted_at < ${endExclusive})::int AS accepted,
@@ -395,11 +398,12 @@ async function reconcileCrm(
         coalesce((SELECT min(h."createdAt") FROM "StatusHistory" h WHERE h."orderId" = o.id AND h."toStatus" = 'CANCELLED'),
                  CASE WHEN o.status = 'CANCELLED' THEN coalesce(o."statusChangedAt", o."createdAt") END) AS at
       FROM "OrderPhoto" o
+      WHERE NOT (o."productCategory" = 'TSHIRT' AND o."isMarketplacePrint")
     )
     SELECT
       count(*) FILTER (WHERE at >= ${start} AND at < ${endExclusive})::int AS cancelled,
       count(*) FILTER (WHERE at >= ${start} AND at < ${endExclusive} AND status = 'CANCELLED')::int AS currently_cancelled,
-      (SELECT count(*) FROM "StatusHistory" h WHERE h."toStatus" = 'CANCELLED' AND h."createdAt" >= ${start} AND h."createdAt" < ${endExclusive})::int AS events
+      (SELECT count(*) FROM "StatusHistory" h JOIN "OrderPhoto" o ON o.id = h."orderId" WHERE NOT (o."productCategory" = 'TSHIRT' AND o."isMarketplacePrint") AND h."toStatus" = 'CANCELLED' AND h."createdAt" >= ${start} AND h."createdAt" < ${endExclusive})::int AS events
     FROM first_cancel`;
   const leads = await prisma.$queryRaw<Row[]>`
     WITH first_h AS (
@@ -408,6 +412,7 @@ async function reconcileCrm(
       SELECT o.id, CASE WHEN coalesce(f."fromStatus", o.status::text) = 'LEAD' THEN o."createdAt"
                         ELSE (SELECT min(h."createdAt") FROM "StatusHistory" h WHERE h."orderId" = o.id AND h."toStatus" = 'LEAD') END AS at
       FROM "OrderPhoto" o LEFT JOIN first_h f ON f."orderId" = o.id
+      WHERE NOT (o."productCategory" = 'TSHIRT' AND o."isMarketplacePrint")
     )
     SELECT count(*) FILTER (WHERE at >= ${start} AND at < ${endExclusive})::int AS leads FROM lead_at`;
   const rows: [string, number, number][] = [

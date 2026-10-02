@@ -11,7 +11,13 @@ import {
   TSHIRT_STATUS_FLOW,
   TSHIRT_STATUS_LABELS,
   TERMINAL_STATUSES,
+  MARKETPLACE_TSHIRT_STATUS_LABELS,
 } from '../../constants';
+import {
+  MARKETPLACE_TSHIRT_FLOW,
+  isMarketplaceTshirt,
+  marketplaceFlowStatus,
+} from '../../utils/marketplace-tshirt';
 import { useAuth } from '../../context/useAuth';
 import type { EnumStatus, OrderPhoto } from '../../types/index';
 import { Check, ChevronRight } from 'lucide-react';
@@ -26,10 +32,14 @@ export function StatusStepper({ order }: Props) {
   const isOrderManager = user?.role === 'ORDER_MANAGER';
   const canManageShipment = isAdmin || isOrderManager;
   const isTshirt = order.productCategory === 'TSHIRT';
+  // Футболка с площадки: свой путь без оплаты и прибыли (utils/marketplace-tshirt).
+  const isMarketplace = isMarketplaceTshirt(order);
   const isCanvas = order.productCategory === 'CANVAS';
   const isExternalProduction = isTshirt || isCanvas;
   const needsShipment = order.deliveryMethod !== 'PICKUP';
-  const baseFlow = isTshirt
+  const baseFlow = isMarketplace
+    ? MARKETPLACE_TSHIRT_FLOW
+    : isTshirt
     ? TSHIRT_STATUS_FLOW
     : isCanvas
       ? CANVAS_STATUS_FLOW
@@ -37,7 +47,9 @@ export function StatusStepper({ order }: Props) {
   const flow = baseFlow.filter(
     (status) => status !== 'SHIPMENT_CREATED' || needsShipment,
   );
-  const baseLabels = isTshirt
+  const baseLabels = isMarketplace
+    ? MARKETPLACE_TSHIRT_STATUS_LABELS
+    : isTshirt
     ? TSHIRT_STATUS_LABELS
     : isCanvas
       ? CANVAS_STATUS_LABELS
@@ -46,7 +58,9 @@ export function StatusStepper({ order }: Props) {
     READY: needsShipment ? baseLabels.READY : 'Готов к выдаче',
     SENT: !isExternalProduction && !needsShipment ? 'Выдан клиенту' : baseLabels.SENT,
   };
-  const currentIdx = flow.indexOf(order.status);
+  const currentIdx = flow.indexOf(
+    isMarketplace ? marketplaceFlowStatus(order.status) : order.status,
+  );
 
   const isTerminal = TERMINAL_STATUSES.includes(order.status);
 

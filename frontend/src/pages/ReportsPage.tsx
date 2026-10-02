@@ -190,7 +190,7 @@ function StatCard({ label, value, hint, tone }: { label: string; value: string; 
 }
 
 /** Краткое «в плюсе / в минусе» + ключевые цифры месяца. */
-function MonthSummary({ m, monthLabel }: { m: PnlMetrics; monthLabel: string }) {
+function MonthSummary({ m, monthLabel }: { m: MonthData; monthLabel: string }) {
   const positive = m.netProfit >= 0;
   return (
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -204,6 +204,13 @@ function MonthSummary({ m, monthLabel }: { m: PnlMetrics; monthLabel: string }) 
       <StatCard label="Выручка" value={fmt(m.totalRevenue)} hint="оборот за месяц" />
       <StatCard label="Себестоимость" value={fmt(cost(m))} hint="подрядчики + материалы" />
       <StatCard label="Расходы" value={fmt(spent(m))} hint="ваши: зарплата, реклама" tone="neg" />
+      {/* Футболки с площадок — отдельный проект: здесь только число заказов,
+          в цифры слева они не входят (деньги считает маркетплейс). */}
+      <StatCard
+        label="Футболки с маркетплейса"
+        value={`${m.marketplaceTshirtOrders ?? 0} шт.`}
+        hint="отдельный проект, в прибыль не входят"
+      />
     </div>
   );
 }

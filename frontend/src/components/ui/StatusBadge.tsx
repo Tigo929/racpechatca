@@ -1,5 +1,6 @@
 import {
   CANVAS_STATUS_LABELS,
+  MARKETPLACE_TSHIRT_STATUS_LABELS,
   STATUS_LABELS,
   TSHIRT_STATUS_LABELS,
 } from '../../constants';
@@ -10,6 +11,8 @@ interface Props {
   productCategory?: EnumProductCategory;
   size?: 'sm' | 'md';
   deliveryMethod?: string;
+  /** Футболка с маркетплейса: у неё свои подписи («Отгружен»). */
+  marketplacePrint?: boolean;
 }
 
 const STATUS_STYLES: Record<EnumStatus, { bg: string; text: string; dot: string }> = {
@@ -31,9 +34,11 @@ const STATUS_STYLES: Record<EnumStatus, { bg: string; text: string; dot: string 
   PROBLEM:                  { bg: 'bg-rose-50',    text: 'text-rose-700',    dot: 'bg-rose-500' },
 };
 
-export function StatusBadge({ status, productCategory, deliveryMethod, size = 'md' }: Props) {
+export function StatusBadge({ status, productCategory, deliveryMethod, marketplacePrint = false, size = 'md' }: Props) {
   const labels =
-    productCategory === 'TSHIRT'
+    productCategory === 'TSHIRT' && marketplacePrint
+      ? MARKETPLACE_TSHIRT_STATUS_LABELS
+      : productCategory === 'TSHIRT'
       ? TSHIRT_STATUS_LABELS
       : productCategory === 'CANVAS'
         ? CANVAS_STATUS_LABELS

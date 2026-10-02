@@ -1,8 +1,12 @@
+import { marketplaceTshirtStatusError } from './marketplace-tshirt';
+
 /** Client delivery and outsourced production are separate stages. */
 export interface FulfillmentOrder {
   status: string;
   deliveryMethod: string;
   productCategory: string;
+  /** Футболка с площадки ходит своим путём — см. marketplace-tshirt.ts. */
+  isMarketplacePrint?: boolean | null;
 }
 
 export function needsShipmentStatus(order: {
@@ -19,6 +23,8 @@ export function fulfillmentError(
   if (order.status === 'PAID' || order.status === 'COMPLETED') {
     return 'Заказ закрыт. Изменение рабочего статуса после расчётов недоступно.';
   }
+  const marketplaceError = marketplaceTshirtStatusError(order, next);
+  if (marketplaceError) return marketplaceError;
   const external =
     order.productCategory === 'CANVAS' || order.productCategory === 'TSHIRT';
   const shipment = needsShipmentStatus(order);

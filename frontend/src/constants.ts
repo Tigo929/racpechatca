@@ -73,6 +73,14 @@ export const TSHIRT_STATUS_LABELS: Record<EnumStatus, string> = {
   PROBLEM: 'Проблема',
 };
 
+// Футболка с маркетплейса: оплаты нет (деньги у площадки), и заказ, отданный
+// площадке, называется «Отгружен» — это последний шаг его пути
+// (utils/marketplace-tshirt.ts).
+export const MARKETPLACE_TSHIRT_STATUS_LABELS: Record<EnumStatus, string> = {
+  ...TSHIRT_STATUS_LABELS,
+  COMPLETED: 'Отгружен',
+};
+
 // Поток для холстов: SENT означает «передан подрядчику», клиентская отгрузка
 // создаётся уже после READY.
 export const CANVAS_STATUS_FLOW: EnumStatus[] = [

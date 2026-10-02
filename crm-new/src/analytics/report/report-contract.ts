@@ -39,6 +39,12 @@ export interface AttributionInput {
   withConversionPage: number;
   withFirstTouch: number;
   bySource: { source: string; orders: number; withAnyAttribution: number }[];
+  /**
+   * Футболки с маркетплейса за период. В остальные цифры отчёта они не
+   * входят (отдельный проект, экономику считает площадка) — здесь только
+   * счётчик, чтобы владелец видел, сколько заказов пришло с площадок.
+   */
+  marketplaceTshirtOrders?: number;
 }
 
 /** Состояние очереди CRM → Метрика. */

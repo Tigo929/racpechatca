@@ -7,6 +7,10 @@ import {
   type CostSettings,
 } from './order-cogs';
 import { originOf, type OrderOrigin } from '../order-photo/order-origin';
+import {
+  EXCLUDE_MARKETPLACE_TSHIRT,
+  ONLY_MARKETPLACE_TSHIRT,
+} from '../order-photo/marketplace-tshirt';
 
 export type { CostSettings } from './order-cogs';
 
@@ -423,6 +427,9 @@ export class ReportsService {
               ],
             },
             { OR: periodWhere },
+            // Футболки с маркетплейса — отдельный проект: деньги считает
+            // площадка, и в P&L владельца они не входят (marketplace-tshirt.ts).
+            EXCLUDE_MARKETPLACE_TSHIRT,
           ],
         },
         select: {
@@ -468,7 +475,15 @@ export class ReportsService {
         },
       }),
       this.prisma.expenseOrder.findMany({
-        where: { createdAt: { gte: start, lt: endExclusive } },
+        where: {
+          createdAt: { gte: start, lt: endExclusive },
+          // Расход, привязанный к футболке с площадки (вознаграждение
+          // партнёру по старым заказам), уходит вместе с самим заказом.
+          OR: [
+            { orderId: null },
+            { order: { is: EXCLUDE_MARKETPLACE_TSHIRT } },
+          ],
+        },
         select: { createdAt: true, amount: true, category: true },
       }),
       this.prisma.salaryPayment.findMany({
@@ -589,12 +604,31 @@ export class ReportsService {
     for (const p of salaryPayments)
       buckets[p.createdAt.getMonth()].salaryPaid += p.amount;
 
+    // Счётчик футболок с маркетплейса: экономики по ним нет, но сколько
+    // заказов пришло с площадки, владелец видеть хочет. Месяц — по дате
+    // поступления заказа: оплаты у такого заказа не бывает.
+    const marketplaceTshirts = await this.prisma.orderPhoto.findMany({
+      where: {
+        ...ONLY_MARKETPLACE_TSHIRT,
+        createdAt: { gte: start, lt: endExclusive },
+        status: { not: EnumStatus.CANCELLED },
+      },
+      select: { createdAt: true },
+    });
+    const marketplaceByMonth = Array.from({ length: 12 }, () => 0);
+    for (const o of marketplaceTshirts)
+      marketplaceByMonth[o.createdAt.getMonth()] += 1;
+
     const months = buckets.map((b, i) => ({
       month: i + 1,
       label: MONTH_LABELS[i],
       ...finalize(b),
+      marketplaceTshirtOrders: marketplaceByMonth[i],
     }));
-    const totals = finalize(sumBuckets(buckets));
+    const totals = {
+      ...finalize(sumBuckets(buckets)),
+      marketplaceTshirtOrders: marketplaceTshirts.length,
+    };
 
     // Имена подрядчиков — для подписи в отчёте «кто печатает».
     const settingsRow = await this.prisma.partnerSettings.findUnique({

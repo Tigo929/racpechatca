@@ -1,3 +1,4 @@
+import { EXCLUDE_MARKETPLACE_TSHIRT } from '../../order-photo/marketplace-tshirt';
 import { Injectable } from '@nestjs/common';
 import type { PrismaService } from 'src/prisma/prisma.service';
 import { EXPECTED_GOAL_IDS } from '../../metrika/analytics/metrika-goal-registry';
@@ -410,7 +411,12 @@ export class AnalyticsMetricsService {
    */
   async loadOrders(createdBefore: Date): Promise<CrmOrderInput[]> {
     const rows = await this.prisma.orderPhoto.findMany({
-      where: { createdAt: { lt: createdBefore } },
+      // Футболки с маркетплейса — отдельный проект без своей экономики:
+      // в аналитику не входят вовсе (order-photo/marketplace-tshirt.ts).
+      where: {
+        createdAt: { lt: createdBefore },
+        ...EXCLUDE_MARKETPLACE_TSHIRT,
+      },
       select: ORDER_SELECT,
     });
     return rows.map((r) => ({

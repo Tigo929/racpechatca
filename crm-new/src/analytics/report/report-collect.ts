@@ -1,3 +1,7 @@
+import {
+  EXCLUDE_MARKETPLACE_TSHIRT,
+  ONLY_MARKETPLACE_TSHIRT,
+} from '../../order-photo/marketplace-tshirt';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { ReportsService } from '../../reports/reports.service';
 import type { AnalyticsMetricsService } from '../metrics/analytics-metrics.service';
@@ -68,7 +72,12 @@ async function attribution(
   period: AnalyticsPeriod,
 ): Promise<AttributionInput> {
   const { start, endExclusive } = periodBoundsUtc(period);
-  const where = { createdAt: { gte: start, lt: endExclusive } };
+  // Футболки с маркетплейса в отчёт не входят: их ведёт площадка, и признаков
+  // визита у них не бывает по природе (order-photo/marketplace-tshirt.ts).
+  const where = {
+    createdAt: { gte: start, lt: endExclusive },
+    ...EXCLUDE_MARKETPLACE_TSHIRT,
+  };
   const notNull = (field: string) => ({ ...where, [field]: { not: null } });
   const [
     totalOrders,
@@ -78,6 +87,7 @@ async function attribution(
     withConversionPage,
     withFirstTouch,
     grouped,
+    marketplaceTshirtOrders,
   ] = await Promise.all([
     prisma.orderPhoto.count({ where }),
     prisma.orderPhoto.count({ where: notNull('yandexClientId') }),
@@ -89,6 +99,13 @@ async function attribution(
       by: ['sourceOrder'],
       where,
       _count: { _all: true },
+    }),
+    prisma.orderPhoto.count({
+      where: {
+        ...ONLY_MARKETPLACE_TSHIRT,
+        createdAt: { gte: start, lt: endExclusive },
+        status: { not: 'CANCELLED' },
+      },
     }),
   ]);
 
@@ -119,6 +136,7 @@ async function attribution(
     withConversionPage,
     withFirstTouch,
     bySource: bySource.sort((a, b) => b.orders - a.orders),
+    marketplaceTshirtOrders,
   };
 }
 

@@ -532,6 +532,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             <StatusBadge
               status={order.status}
               productCategory={order.productCategory} deliveryMethod={order.deliveryMethod}
+              marketplacePrint={order.isMarketplacePrint ?? false}
             />
             {/* Дедлайн — для фото, срочность — для любого незакрытого заказа */}
             {(() => {
