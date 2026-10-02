@@ -41,7 +41,10 @@ class DeliveryTests(unittest.IsolatedAsyncioTestCase):
         await self.queue.process_one(self.client)
         self.client.send_file.assert_awaited_once()
         self.assertEqual(self.client.send_file.call_args.kwargs["caption"], self.item["caption"])
-        self.assertIsNone(self.client.send_file.call_args.kwargs["parse_mode"])
+        # Разметка включена намеренно: в подписи номер заказа моноширинный,
+        # и в Telegram он копируется нажатием. Выключить её обратно значит
+        # показать клиенту апострофы вместо номера.
+        self.assertEqual(self.client.send_file.call_args.kwargs["parse_mode"], "md")
         self.assertEqual(self.calls[-1][1]["status"], "SENT")
         self.assertEqual(self.calls[-1][1]["messageId"], 123)
 

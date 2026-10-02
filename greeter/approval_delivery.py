@@ -69,8 +69,14 @@ class ApprovalQueue:
                     file = io.BytesIO(photo)
                     file.name = "approval.jpg"
                     send_started = True
+                    # parse_mode="md": в подписи номер заказа набран
+                    # моноширинным, и в Telegram он копируется одним
+                    # нажатием. Подпись целиком наша (approval-delivery-state.ts),
+                    # чужого текста в неё не попадает, поэтому разметка
+                    # безопасна. Раньше здесь стоял None, и клиент видел
+                    # бы кавычки-апострофы вместо копируемого номера.
                     message = await asyncio.wait_for(client.send_file(
-                        entity, file, caption=item["caption"], parse_mode=None,
+                        entity, file, caption=item["caption"], parse_mode="md",
                         force_document=False,
                     ), 120)
                     if not message or not message.id:
