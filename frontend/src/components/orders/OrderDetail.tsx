@@ -97,7 +97,7 @@ import { computePaperUsage } from "../../utils/photo-material";
 import { StatusStepper } from "./StatusStepper";
 import { PaidAtBlock } from "./PaidAtBlock";
 import { ItemsTable } from "./ItemsTable";
-import { StatusBadge } from "../ui/StatusBadge";
+import { StatusBadge, statusStripe } from '../ui/StatusBadge';
 import { InfoRow } from "../ui/InfoRow";
 import { OrderEditForm } from "./OrderEditForm";
 import { TshirtItemsTable } from "./TshirtItemsTable";
@@ -509,7 +509,13 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
         не помещаются. Один и тот же порядок на телефоне и на ПК читается
         привычнее, чем два разных.
       */}
-      <div className="flex flex-col gap-3">
+      {/*
+        Цвет этапа заходит в карточку той же полосой, что и в списке:
+        человек открывает заказ после списка, и если снаружи он был
+        янтарным, а внутри никаким, связь теряется. Источник цвета общий —
+        statusStripe, та же функция, что красит строку.
+      */}
+      <div className={`flex flex-col gap-3 border-l-[3px] pl-3 ${statusStripe(order.status)}`}>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             {/* Заказ с площадки называется её номером: именно он открыт

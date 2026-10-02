@@ -136,7 +136,7 @@ export function OrdersTab({ accountId }: { accountId: string }) {
   const [group, setGroup] = useState<OzonOrderGroup | 'all'>('to_ship');
   const [openPosting, setOpenPosting] = useState<string | null>(null);
   /*
-   * По умолчанию показываем только наши принты: в кабинете лежат и другие
+   * По умолчанию показываем только линейку papa: в кабинете лежат и другие
    * товары, и вперемешку свои заказы искать неудобно. Скрытые не пропадают —
    * переключатель ниже возвращает их целиком.
    */
@@ -179,15 +179,15 @@ export function OrdersTab({ accountId }: { accountId: string }) {
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-700">
           <span>
             {showAll
-              ? 'Показаны все товары кабинета, включая не наши принты.'
-              : `Скрыто отправлений не по нашим принтам: ${hidden}.`}
+              ? 'Показаны все товары кабинета, включая другие линейки.'
+              : `Скрыто отправлений других линеек: ${hidden}.`}
           </span>
           <button
             type="button"
             onClick={() => setShowAll((v) => !v)}
             className="font-medium text-indigo-700 underline underline-offset-2 hover:text-indigo-900"
           >
-            {showAll ? 'Показывать только наши принты' : 'Показать все'}
+            {showAll ? 'Показывать только papa' : 'Показать все'}
           </button>
         </div>
       )}

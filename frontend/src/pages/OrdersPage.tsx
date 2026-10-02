@@ -6,7 +6,7 @@ import { Search, ChevronLeft, ChevronRight, Flame, Clock, Camera, Shirt, Image, 
 import { getDeadlineInfo } from '../utils/deadline';
 import { getStalledDays } from '../utils/stalled';
 import { ordersApi } from '../api/orders';
-import { StatusBadge } from '../components/ui/StatusBadge';
+import { StatusBadge, statusStripe } from '../components/ui/StatusBadge';
 import { Modal } from '../components/ui/Modal';
 import { CreateOrderForm } from '../components/orders/CreateOrderForm';
 import { OrderDetail } from '../components/orders/OrderDetail';
@@ -330,8 +330,14 @@ export function OrdersPage({ section }: Props) {
                   <button
                     key={order.id}
                     onClick={() => setSelectedId(order.id)}
-                    className={`w-full text-left px-4 py-3.5 active:bg-indigo-50 transition-colors ${
-                      isPaid ? 'opacity-50' : showUrgent ? 'bg-red-50 border-l-[3px] border-l-red-500' : ''
+                    /*
+                      Полоса слева — цвет этапа: по ней видно, где заказ,
+                      не читая подписи. Срочность осталась красной подложкой,
+                      а не полосой: иначе два разных смысла дрались бы за
+                      одно место, и этап у срочного заказа пропадал бы.
+                    */
+                    className={`w-full text-left px-4 py-3.5 active:bg-indigo-50 transition-colors border-l-[3px] ${statusStripe(order.status)} ${
+                      isPaid ? 'opacity-50' : showUrgent ? 'bg-red-50' : ''
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -442,7 +448,7 @@ export function OrdersPage({ section }: Props) {
                     <tr
                       key={order.id}
                       onClick={() => setSelectedId(order.id)}
-                      className={`cursor-pointer group ${rowBg} ${showUrgent ? 'border-l-[3px] border-l-red-500' : ''}`}
+                      className={`cursor-pointer group border-l-[3px] ${statusStripe(order.status)} ${rowBg} ${showUrgent ? 'bg-red-50' : ''}`}
                       style={{ borderBottom: '1px solid #F8FAFC' }}
                     >
                       <td className="px-4 py-3.5 text-right text-sm text-gray-400 tabular-nums">
