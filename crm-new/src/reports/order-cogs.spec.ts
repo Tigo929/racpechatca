@@ -60,6 +60,19 @@ const CANVAS = row({
 });
 
 describe('паритет с P&L-отчётом', () => {
+  it('daily, category and whole-period profit agree for several fractional-cost photo orders', () => {
+    const all = emptyBucket();
+    let dailyProfit = 0;
+    for (let i = 0; i < 3; i++) {
+      const one = emptyBucket();
+      addOrder(one, PHOTO, SETTINGS);
+      addOrder(all, PHOTO, SETTINGS);
+      dailyProfit += finalize(one).netProfit;
+    }
+    expect(finalize(all).netProfit).toBe(dailyProfit);
+    expect(finalize(all).netProfit).toBe(all.photoProfit);
+    expect(finalize(all).cogs).toBe(3 * orderCostOfGoods(PHOTO, SETTINGS).rub);
+  });
   it('фото: бумага в копейках и рубли совпадают с тем, что копит отчёт', () => {
     const b = emptyBucket();
     addOrder(b, PHOTO, SETTINGS);
@@ -103,8 +116,7 @@ describe('паритет с P&L-отчётом', () => {
       (s, o) => s + orderCostOfGoods(o, SETTINGS).rub,
       0,
     );
-    // Отчёт округляет копейки бумаги один раз за период; у одного фотозаказа
-    // это то же самое, что округлить по заказу.
+    // Каждая группировка суммирует одинаковую себестоимость заказов.
     expect(finalize(b).cogs).toBe(sum);
   });
 });
