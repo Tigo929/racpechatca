@@ -75,7 +75,7 @@ export class TelegramService {
    * перенастраивают чат.
    */
   private readonly executorChatId: string;
-  private readonly executorLekhaThreadId: string;
+  private readonly executorAlexeyThreadId: string;
   private readonly executorMaximThreadId: string;
   private readonly dailyPlanChatId: string;
   private readonly dailyPlanThreadId: string;
@@ -86,8 +86,8 @@ export class TelegramService {
     this.reviewChatId = config.get<string>('TELEGRAM_REVIEW_CHAT_ID') ?? '';
     this.reviewThreadId = config.get<string>('TELEGRAM_REVIEW_THREAD_ID') ?? '';
     this.executorChatId = config.get<string>('TELEGRAM_EXECUTOR_CHAT_ID') ?? '';
-    this.executorLekhaThreadId =
-      config.get<string>('TELEGRAM_EXECUTOR_LEKHA_THREAD_ID') ?? '';
+    this.executorAlexeyThreadId =
+      config.get<string>('TELEGRAM_EXECUTOR_ALEXEY_THREAD_ID') ?? '';
     this.executorMaximThreadId =
       config.get<string>('TELEGRAM_EXECUTOR_MAXIM_THREAD_ID') ?? '';
     this.dailyPlanChatId =
@@ -255,7 +255,7 @@ export class TelegramService {
           /^(?:leha|lekha|lyoha|lesha|lyosha|alex|alek|lex)/.test(part),
       )
     ) {
-      return this.executorLekhaThreadId || undefined;
+      return this.executorAlexeyThreadId || undefined;
     }
     if (
       parts.some(

@@ -43,17 +43,17 @@ describe('TelegramService routing', () => {
   });
 
   it.each([
-    ['Лёха', '10813'],
-    ['alexey', '10813'],
-    ['Максим Кузьмин', '10815'],
-    ['samogov', '10815'],
+    ['Алексей Сменов', '10815'],
+    ['alexey', '10815'],
+    ['Максим Кузьмин', '10813'],
+    ['samogov', '10813'],
   ])(
     'uses the configured topic for %s when the user topic is empty',
     async (name, topic) => {
       const service = createService({
         TELEGRAM_EXECUTOR_CHAT_ID: '-1003723576278',
-        TELEGRAM_EXECUTOR_LEKHA_THREAD_ID: '10813',
-        TELEGRAM_EXECUTOR_MAXIM_THREAD_ID: '10815',
+        TELEGRAM_EXECUTOR_ALEXEY_THREAD_ID: '10815',
+        TELEGRAM_EXECUTOR_MAXIM_THREAD_ID: '10813',
       });
       jest.spyOn(service, 'sendMessage').mockResolvedValue(true);
 
@@ -70,7 +70,7 @@ describe('TelegramService routing', () => {
   it('keeps the known executor route ahead of a stale user topic', async () => {
     const service = createService({
       TELEGRAM_EXECUTOR_CHAT_ID: '-1003723576278',
-      TELEGRAM_EXECUTOR_LEKHA_THREAD_ID: '10813',
+      TELEGRAM_EXECUTOR_ALEXEY_THREAD_ID: '10815',
     });
     jest.spyOn(service, 'sendMessage').mockResolvedValue(true);
 
@@ -79,14 +79,14 @@ describe('TelegramService routing', () => {
     expect(service.sendMessage).toHaveBeenCalledWith(
       '-1003723576278',
       'Заказ',
-      '10813',
+      '10815',
     );
   });
 
   it('recognizes the executor by Telegram username too', async () => {
     const service = createService({
       TELEGRAM_EXECUTOR_CHAT_ID: '-1003723576278',
-      TELEGRAM_EXECUTOR_LEKHA_THREAD_ID: '10813',
+      TELEGRAM_EXECUTOR_ALEXEY_THREAD_ID: '10815',
     });
     jest.spyOn(service, 'sendMessage').mockResolvedValue(true);
 
@@ -100,7 +100,7 @@ describe('TelegramService routing', () => {
     expect(service.sendMessage).toHaveBeenCalledWith(
       '-1003723576278',
       'Заказ',
-      '10813',
+      '10815',
     );
   });
 
