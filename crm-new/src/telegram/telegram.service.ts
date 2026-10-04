@@ -75,6 +75,8 @@ export class TelegramService {
    * перенастраивают чат.
    */
   private readonly executorChatId: string;
+  private readonly executorLekhaThreadId: string;
+  private readonly executorMaximThreadId: string;
   private readonly dailyPlanChatId: string;
   private readonly dailyPlanThreadId: string;
 
@@ -84,6 +86,10 @@ export class TelegramService {
     this.reviewChatId = config.get<string>('TELEGRAM_REVIEW_CHAT_ID') ?? '';
     this.reviewThreadId = config.get<string>('TELEGRAM_REVIEW_THREAD_ID') ?? '';
     this.executorChatId = config.get<string>('TELEGRAM_EXECUTOR_CHAT_ID') ?? '';
+    this.executorLekhaThreadId =
+      config.get<string>('TELEGRAM_EXECUTOR_LEKHA_THREAD_ID') ?? '';
+    this.executorMaximThreadId =
+      config.get<string>('TELEGRAM_EXECUTOR_MAXIM_THREAD_ID') ?? '';
     this.dailyPlanChatId =
       config.get<string>('TELEGRAM_DAILY_PLAN_CHAT_ID') ?? '';
     this.dailyPlanThreadId =
@@ -210,7 +216,11 @@ export class TelegramService {
    * тему. Чат не задан — уходит в общую рабочую группу, как было раньше:
    * отсутствие настройки не должно съедать уведомление.
    */
-  async sendToExecutor(text: string, threadId?: string): Promise<boolean> {
+  async sendToExecutor(
+    text: string,
+    threadId?: string,
+    executorName?: string,
+  ): Promise<boolean> {
     const chatId = this.executorChatId || this.groupChatId;
     if (!chatId) {
       this.logger.warn(
@@ -218,7 +228,39 @@ export class TelegramService {
       );
       return false;
     }
-    return this.sendMessage(chatId, text, threadId);
+    return this.sendMessage(
+      chatId,
+      text,
+      threadId || this.executorThreadIdFor(executorName),
+    );
+  }
+
+  private executorThreadIdFor(executorName?: string): string | undefined {
+    const name = (executorName ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/ё/g, 'е')
+      .replace(/[\s_.-]+/g, ' ');
+    if (!name) return undefined;
+
+    const parts = name.split(' ');
+    if (
+      parts.some((part) =>
+        ['леха', 'алексей', 'alexey', 'aleksey', 'aleksei', 'lexa'].includes(
+          part,
+        ),
+      )
+    ) {
+      return this.executorLekhaThreadId || undefined;
+    }
+    if (
+      parts.some((part) =>
+        ['максим', 'maxim', 'maksim', 'самогов', 'samogov'].includes(part),
+      )
+    ) {
+      return this.executorMaximThreadId || undefined;
+    }
+    return undefined;
   }
 
   /** Ежедневный план отправляем в его тему, а без настройки — в общую группу. */

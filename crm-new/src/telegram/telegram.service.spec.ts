@@ -42,6 +42,47 @@ describe('TelegramService routing', () => {
     );
   });
 
+  it.each([
+    ['Лёха', '10813'],
+    ['alexey', '10813'],
+    ['Максим Кузьмин', '10815'],
+    ['samogov', '10815'],
+  ])(
+    'uses the configured topic for %s when the user topic is empty',
+    async (name, topic) => {
+      const service = createService({
+        TELEGRAM_EXECUTOR_CHAT_ID: '-1003723576278',
+        TELEGRAM_EXECUTOR_LEKHA_THREAD_ID: '10813',
+        TELEGRAM_EXECUTOR_MAXIM_THREAD_ID: '10815',
+      });
+      jest.spyOn(service, 'sendMessage').mockResolvedValue(true);
+
+      await service.sendToExecutor('Заказ', undefined, name);
+
+      expect(service.sendMessage).toHaveBeenCalledWith(
+        '-1003723576278',
+        'Заказ',
+        topic,
+      );
+    },
+  );
+
+  it('keeps the user topic ahead of the name fallback', async () => {
+    const service = createService({
+      TELEGRAM_EXECUTOR_CHAT_ID: '-1003723576278',
+      TELEGRAM_EXECUTOR_LEKHA_THREAD_ID: '10813',
+    });
+    jest.spyOn(service, 'sendMessage').mockResolvedValue(true);
+
+    await service.sendToExecutor('Заказ', '777', 'Лёха');
+
+    expect(service.sendMessage).toHaveBeenCalledWith(
+      '-1003723576278',
+      'Заказ',
+      '777',
+    );
+  });
+
   it('keeps the old group fallback when dedicated routes are not configured', async () => {
     const service = createService({ TELEGRAM_GROUP_CHAT_ID: '-1001' });
     jest.spyOn(service, 'sendMessage').mockResolvedValue(true);
