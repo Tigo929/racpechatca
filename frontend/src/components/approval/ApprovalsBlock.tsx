@@ -177,6 +177,16 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
             const sides = Object.entries(approval.sides).filter(
               ([, state]) => state?.printFile,
             );
+            /*
+             * Сторона, которую требует заказ, но принта на ней нет. Видно
+             * прямо в списке: иначе незаполненную спину замечали уже на
+             * готовой футболке.
+             */
+            const missing = approval.strictSides
+              ? (approval.requiredSides ?? []).filter(
+                  (side) => !approval.sides[side]?.printFile,
+                )
+              : [];
             return (
               <li
                 key={approval.id}
@@ -208,6 +218,14 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
                     {state ? formatSizeCm(state.widthMm, state.heightMm) : '—'}
                   </span>
                 ))}
+                {missing.length > 0 && (
+                  <span className="text-[11px] font-medium text-red-700">
+                    нет принта:{' '}
+                    {missing
+                      .map((side) => (side === 'FRONT' ? 'перед' : 'спина'))
+                      .join(', ')}
+                  </span>
+                )}
                 {approval.fileOutdated && (
                   <span className="text-[11px] text-amber-700">
                     файл устарел — нажмите «Готово» заново

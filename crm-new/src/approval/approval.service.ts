@@ -12,6 +12,10 @@ import type {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { isCalibrated } from './approval-geometry';
 import {
+  missingSides,
+  requiredApprovalSides,
+} from './approval-sides';
+import {
   filledSides,
   parseSides,
   tenth,
@@ -51,7 +55,13 @@ const DEFAULT_WIDTH_MM = 280;
 const approvalInclude = {
   createdBy: { select: { id: true, username: true } },
   telegramDelivery: { select: deliverySelect },
-  order: { select: { items: { select: { printOnClientItem: true } }, tshirtItems: { select: { clientItem: true } } } },
+  order: {
+    select: {
+      items: { select: { printOnClientItem: true } },
+      // printLocation: по нему интерфейс показывает только нужные стороны.
+      tshirtItems: { select: { clientItem: true, printLocation: true } },
+    },
+  },
 } satisfies Prisma.PrintApprovalInclude;
 
 import { displayOrderNumber } from '../order-photo/order-number';
@@ -390,8 +400,8 @@ export class ApprovalService {
     sides: unknown;
   }) {
     const sides = parseSides(approval.sides);
-    const filled = filledSides(sides);
-    if (filled.length === 0) {
+    const allFilled = filledSides(sides);
+    if (allFilled.length === 0) {
       throw new BadRequestException(
         'Принт отсутствует — загрузите файл хотя бы на одну сторону',
       );
@@ -412,6 +422,8 @@ export class ApprovalService {
             color: true,
             size: true,
             marketplaceArticle: true,
+            // Сторона печати из заказа: по ней собирается лист.
+            printLocation: true,
           },
         },
       },
@@ -419,6 +431,35 @@ export class ApprovalService {
     if (!order) throw new NotFoundException('Заказ не найден');
     const clientItem = order.items.some((i) => i.printOnClientItem) ||
       order.tshirtItems.some((i) => i.clientItem);
+
+    /*
+     * Лист собирается строго по заказу.
+     *
+     * Сторону печати выбирают при оформлении, и она там единственная правда.
+     * Раньше лист про неё не знал: оператор раскладывал макет по памяти, и
+     * забытая спина у двусторонней печати уходила в производство — ошибка
+     * всплывала на готовой футболке, когда переделывать уже дорого.
+     *
+     * Поэтому: незаполненная обязательная сторона не даёт сформировать лист,
+     * а сторона, которой в заказе нет, на лист не попадает — даже если её
+     * успели загрузить. Иначе печатник увидел бы лишний принт и напечатал
+     * его.
+     */
+    const required = requiredApprovalSides(
+      order.tshirtItems.map((item) => item.printLocation),
+    );
+    const missing = missingSides(
+      required,
+      allFilled.map((f) => f.side),
+    );
+    if (missing.length > 0) {
+      throw new BadRequestException(
+        `По заказу печать здесь: ${missing.join(', ')} — принт не загружен. Загрузите его, иначе лист уйдёт неполным.`,
+      );
+    }
+    const filled = required.strict
+      ? allFilled.filter((f) => required.sides.includes(f.side))
+      : allFilled;
 
     const templates = await this.prisma.mockupTemplate.findMany({
       where: { key: { in: filled.map((f) => f.state.templateKey) } },
@@ -482,12 +523,20 @@ export class ApprovalService {
    * updatedAt, и этого достаточно, чтобы понять — картинка уже не та.
    */
   private toView<
-    T extends { sides: unknown; updatedAt: Date; finalizedAt: Date | null; order: { items: { printOnClientItem: boolean }[]; tshirtItems: { clientItem: boolean }[] } },
+    T extends { sides: unknown; updatedAt: Date; finalizedAt: Date | null; order: { items: { printOnClientItem: boolean }[]; tshirtItems: { clientItem: boolean; printLocation: string }[] } },
   >(approval: T) {
     const { order, ...view } = approval;
+    const required = requiredApprovalSides(
+      order.tshirtItems.map((item) => item.printLocation),
+    );
     return {
       ...view,
       clientItem: order.items.some((item) => item.printOnClientItem) || order.tshirtItems.some((item) => item.clientItem),
+      // Стороны из заказа: интерфейс показывает их и не даёт отправить лист,
+      // пока обязательная сторона пустая. Правило одно и то же здесь и на
+      // отправке — считается в approval-sides.ts.
+      requiredSides: required.sides,
+      strictSides: required.strict,
       sides: parseSides(approval.sides),
       fileOutdated: Boolean(
         approval.finalizedAt &&

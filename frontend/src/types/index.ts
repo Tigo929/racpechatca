@@ -881,6 +881,14 @@ export interface PrintApproval {
   createdBy?: { id: string; username: string } | null;
   /** Согласование правили после того, как файл был сформирован. */
   fileOutdated: boolean;
+  /**
+   * Стороны, которые требует сам заказ: их выбирали при оформлении.
+   * Интерфейс показывает только их и не даёт сформировать лист, пока
+   * обязательная сторона пустая.
+   */
+  requiredSides?: EnumApprovalSide[];
+  /** Задаёт ли заказ стороны однозначно. Нет (печать по ТЗ) — ограничений нет. */
+  strictSides?: boolean;
   telegramDelivery?: ApprovalTelegramDelivery | null;
 }
 

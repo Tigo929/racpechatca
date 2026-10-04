@@ -50,6 +50,9 @@ interface Draft {
   sides: Sides;
 }
 
+/** Стороны, для которых есть мокапы. Порядок тот же, что на листе. */
+const ALL_SIDES: EnumApprovalSide[] = ['FRONT', 'BACK'];
+
 const SIDE_LABELS: Record<EnumApprovalSide, string> = {
   FRONT: 'Лицевая сторона',
   BACK: 'Спина',
@@ -318,6 +321,33 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
     [editDraft, activeSide],
   );
 
+  /*
+   * Стороны берутся из заказа, а не из головы оператора.
+   *
+   * Сторону печати выбирают при оформлении заявки. Раньше лист про неё не
+   * знал: обе кнопки были всегда, и забытая спина у двусторонней печати
+   * уходила в производство — ошибку находили на готовой футболке. Теперь
+   * лишней стороны тут нет, а пока обязательная пустая, лист не собрать.
+   */
+  const strictSides = approval?.strictSides === true;
+  const requiredSides =
+    strictSides && approval?.requiredSides?.length
+      ? approval.requiredSides
+      : ALL_SIDES;
+  const missingSides = strictSides
+    ? requiredSides.filter((value) => !draft?.sides[value]?.printFile)
+    : [];
+  const blocked = missingSides.length > 0;
+
+  /*
+   * Если заказ стороны задаёт, открытая сторона всегда одна из них. Иначе у
+   * заказа «только спина» редактор открывался на лицевой: оператор видел
+   * пустой холст и грузил принт не туда.
+   */
+  useEffect(() => {
+    if (!requiredSides.includes(activeSide)) setActiveSide(requiredSides[0]);
+  }, [requiredSides, activeSide]);
+
   const handlePreview = async () => {
     setPreviewLoading(true);
     try {
@@ -332,6 +362,7 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
   };
 
   const filled = Object.values(draft?.sides ?? {}).filter((s) => s?.printFile);
+
   const dpi = side ? estimateDpi(side) : 0;
   const quality = printQuality(dpi);
   const outside = side && template ? isOutsidePrintArea(side, template) : false;
@@ -628,7 +659,7 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
           {/* ── Холст ─────────────────────────────────────── */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              {(['FRONT', 'BACK'] as EnumApprovalSide[]).map((value) => (
+              {requiredSides.map((value) => (
                 <button
                   key={value}
                   onClick={() => setActiveSide(value)}
@@ -684,13 +715,21 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
       </div>
 
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 sm:px-6">
-        <p className="text-xs text-gray-500">
-          Сторон с принтом: {filled.length} из 2
-        </p>
+        {blocked ? (
+          <p className="text-xs font-medium text-red-700">
+            По заказу печать здесь:{' '}
+            {missingSides.map((value) => SIDE_LABELS[value].toLowerCase()).join(', ')}.
+            Загрузите принт — без него лист уйдёт неполным.
+          </p>
+        ) : (
+          <p className="text-xs text-gray-500">
+            Сторон с принтом: {filled.length} из {requiredSides.length}
+          </p>
+        )}
         <div className="flex items-center gap-2">
           <button
             onClick={handlePreview}
-            disabled={previewLoading || filled.length === 0}
+            disabled={previewLoading || filled.length === 0 || blocked}
             className={btn}
           >
             <Eye size={15} aria-hidden="true" />
@@ -698,7 +737,7 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
           </button>
           <button
             onClick={() => finalizeMutation.mutate()}
-            disabled={finalizeMutation.isPending || filled.length === 0}
+            disabled={finalizeMutation.isPending || filled.length === 0 || blocked}
             className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-700 disabled:opacity-60"
           >
             <Check size={16} aria-hidden="true" />
