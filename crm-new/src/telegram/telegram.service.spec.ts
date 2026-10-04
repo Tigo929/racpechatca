@@ -67,7 +67,7 @@ describe('TelegramService routing', () => {
     },
   );
 
-  it('keeps the user topic ahead of the name fallback', async () => {
+  it('keeps the known executor route ahead of a stale user topic', async () => {
     const service = createService({
       TELEGRAM_EXECUTOR_CHAT_ID: '-1003723576278',
       TELEGRAM_EXECUTOR_LEKHA_THREAD_ID: '10813',
@@ -79,7 +79,28 @@ describe('TelegramService routing', () => {
     expect(service.sendMessage).toHaveBeenCalledWith(
       '-1003723576278',
       'Заказ',
-      '777',
+      '10813',
+    );
+  });
+
+  it('recognizes the executor by Telegram username too', async () => {
+    const service = createService({
+      TELEGRAM_EXECUTOR_CHAT_ID: '-1003723576278',
+      TELEGRAM_EXECUTOR_LEKHA_THREAD_ID: '10813',
+    });
+    jest.spyOn(service, 'sendMessage').mockResolvedValue(true);
+
+    await service.sendToExecutor(
+      'Заказ',
+      undefined,
+      'worker-1',
+      '@lyosha_print',
+    );
+
+    expect(service.sendMessage).toHaveBeenCalledWith(
+      '-1003723576278',
+      'Заказ',
+      '10813',
     );
   });
 

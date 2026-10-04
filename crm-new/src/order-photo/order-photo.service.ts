@@ -514,7 +514,12 @@ export class OrderPhotoService {
           ? String(result.executor.telegramTopicId)
           : undefined;
       this.telegram
-        .sendToExecutor(text, threadId, result.executor.username)
+        .sendToExecutor(
+          text,
+          threadId,
+          result.executor.username,
+          result.executor.telegramUsername ?? undefined,
+        )
         .catch(() => {});
     }
 
@@ -1324,7 +1329,12 @@ export class OrderPhotoService {
             ? String(executor.telegramTopicId)
             : undefined;
         this.telegram
-          .sendToExecutor(text, threadId, executor.username)
+          .sendToExecutor(
+            text,
+            threadId,
+            executor.username,
+            executor.telegramUsername ?? undefined,
+          )
           .catch(() => {});
       } else {
         this.logger.warn(

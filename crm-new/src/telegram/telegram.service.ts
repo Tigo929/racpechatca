@@ -220,6 +220,7 @@ export class TelegramService {
     text: string,
     threadId?: string,
     executorName?: string,
+    telegramUsername?: string,
   ): Promise<boolean> {
     const chatId = this.executorChatId || this.groupChatId;
     if (!chatId) {
@@ -228,34 +229,39 @@ export class TelegramService {
       );
       return false;
     }
-    return this.sendMessage(
-      chatId,
-      text,
-      threadId || this.executorThreadIdFor(executorName),
+    const knownExecutorThreadId = this.executorThreadIdFor(
+      executorName,
+      telegramUsername,
     );
+    return this.sendMessage(chatId, text, knownExecutorThreadId || threadId);
   }
 
-  private executorThreadIdFor(executorName?: string): string | undefined {
-    const name = (executorName ?? '')
-      .trim()
-      .toLowerCase()
-      .replace(/ё/g, 'е')
-      .replace(/[\s_.-]+/g, ' ');
-    if (!name) return undefined;
+  private executorThreadIdFor(...names: (string | undefined)[]) {
+    const parts = names
+      .flatMap((value) =>
+        (value ?? '')
+          .replace(/^@/, '')
+          .trim()
+          .toLowerCase()
+          .replace(/ё/g, 'е')
+          .split(/[\s_.-]+/),
+      )
+      .filter(Boolean);
 
-    const parts = name.split(' ');
     if (
-      parts.some((part) =>
-        ['леха', 'алексей', 'alexey', 'aleksey', 'aleksei', 'lexa'].includes(
-          part,
-        ),
+      parts.some(
+        (part) =>
+          /^(?:лех|леш|алекс)/.test(part) ||
+          /^(?:leha|lekha|lyoha|lesha|lyosha|alex|alek|lex)/.test(part),
       )
     ) {
       return this.executorLekhaThreadId || undefined;
     }
     if (
-      parts.some((part) =>
-        ['максим', 'maxim', 'maksim', 'самогов', 'samogov'].includes(part),
+      parts.some(
+        (part) =>
+          /^(?:макс|самогов)/.test(part) ||
+          /^(?:maxim|maksim|samogov)/.test(part),
       )
     ) {
       return this.executorMaximThreadId || undefined;
