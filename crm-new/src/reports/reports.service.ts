@@ -79,6 +79,7 @@ export interface PnlRaw {
 
   // --- Себестоимость, посчитанная по самим заказам ---
   photoMaterialKopecks: number; // бумага, в копейках: лист стоит 1,6 ₽
+  photoMaterialRounded: number; // сумма себестоимости заказов, округлённых по единому правилу orderCostOfGoods
   tshirtContractorCost: number; // вознаграждение партнёру по футболкам
   salaryAccrued: number; // зарплата начисленная — она и вычитается
   deliveryPaid: number; // сколько отдали перевозчику
@@ -204,6 +205,7 @@ export function emptyBucket(): PnlRaw {
     other: 0,
     salaryPaid: 0,
     photoMaterialKopecks: 0,
+    photoMaterialRounded: 0,
     tshirtContractorCost: 0,
     salaryAccrued: 0,
     deliveryPaid: 0,
@@ -237,6 +239,7 @@ export function addOrder(b: PnlRaw, order: OrderRow, s: CostSettings): void {
     b.photoCount += 1;
     b.photoRevenue += total;
     b.photoMaterialKopecks += cogs.photoMaterialKopecks;
+    b.photoMaterialRounded += cogs.rub;
     b.photoProfit += goodsRevenue - cogs.rub - salary + deliveryProfit;
   } else if (order.productCategory === 'TSHIRT') {
     b.tshirtCount += 1;
@@ -330,7 +333,10 @@ export function finalize(b: PnlRaw) {
   // Выручка за товар: доставка вынесена, на ней зарабатываем отдельно.
   const netRevenue = b.totalRevenue - b.deliveryCost;
   // Себестоимость — по заказам, а не по закупкам (см. addExpense).
-  const photoMaterialCost = Math.ceil(b.photoMaterialKopecks / 100);
+  // The same per-order amount is used in category profit, daily charts,
+  // channel totals and Metrica. Rounding each arbitrary bucket separately
+  // made those totals disagree.
+  const photoMaterialCost = b.photoMaterialRounded;
   const cogs =
     photoMaterialCost + b.tshirtContractorCost + b.canvasContractorCost;
   const grossProfit = netRevenue - cogs;
