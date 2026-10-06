@@ -790,6 +790,30 @@ export class OrderPhotoService {
           tshirtItems: true,
           canvasItems: true,
           executor: { select: { id: true, username: true } },
+          /*
+           * Последняя версия листа согласования — в список.
+           *
+           * Статус заказа меняется только после того, как Telegram
+           * подтвердит доставку листа. До этого момента заказ с готовым,
+           * но не отправленным листом выглядит в списке как любой новый,
+           * а неудачная доставка не видна вообще — и то и другое
+           * обнаруживалось, только если открыть заказ.
+           *
+           * Берём одну, самую свежую версию: в списке важно состояние
+           * макета сейчас, а история версий живёт в карточке.
+           */
+          approvals: {
+            orderBy: { version: 'desc' },
+            take: 1,
+            select: {
+              version: true,
+              status: true,
+              finalizedAt: true,
+              telegramDelivery: {
+                select: { status: true, sentAt: true, errorCode: true },
+              },
+            },
+          },
         },
       }),
       this.prisma.orderPhoto.count({

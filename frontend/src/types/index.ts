@@ -165,6 +165,23 @@ export interface OrderPhoto {
   tshirtItems: ItemTshirt[];
   canvasItems: ItemCanvas[];
   accruals?: OrderAccrualBrief[];
+  /**
+   * Самая свежая версия листа согласования — для подписи в списке. Пусто,
+   * если листа у заказа нет. История версий живёт в карточке.
+   */
+  approvals?: ApprovalBrief[];
+}
+
+/** Состояние листа согласования в списке заказов (order-approval-state.ts). */
+export interface ApprovalBrief {
+  version: number;
+  status: EnumApprovalStatus;
+  finalizedAt?: string | null;
+  telegramDelivery?: {
+    status: 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'UNKNOWN';
+    sentAt?: string | null;
+    errorCode?: string | null;
+  } | null;
 }
 
 export interface OrdersResponse {

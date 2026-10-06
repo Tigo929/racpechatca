@@ -16,6 +16,8 @@ import {
   useOrderNavigation,
 } from '../components/orders/useOrderNavigation';
 import { useOrderAutoAdvance } from '../components/orders/useOrderAutoAdvance';
+import { MarketplaceBadge } from '../components/ui/MarketplaceBadge';
+import { approvalChip } from '../components/orders/order-approval-state';
 import { ExecutorFilter } from '../components/orders/ExecutorFilter';
 import { FilterChip } from '../components/ui/FilterChip';
 import { DeliveryBadge } from '../components/ui/DeliveryBadge';
@@ -346,6 +348,8 @@ export function OrdersPage({ section }: Props) {
                 const isPaid = order.status === 'PAID';
                 const showUrgent = order.isUrgent && !isClosed;
                 const stalledDays = getStalledDays(order);
+                // Что с макетом: вопрос отдельный от статуса заказа.
+                const approval = approvalChip(order.approvals);
                 return (
                   <button
                     key={order.id}
@@ -377,6 +381,10 @@ export function OrdersPage({ section }: Props) {
                     </div>
                     <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500">
                       <ProductBadge productCategory={order.productCategory} />
+                      <MarketplaceBadge
+                        source={order.sourceOrder}
+                        postingNumber={order.marketplacePostingNumber}
+                      />
                       <DeliveryBadge method={order.deliveryMethod} />
                       <span className="tabular-nums">
                         {new Date(order.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
@@ -392,6 +400,14 @@ export function OrdersPage({ section }: Props) {
                         {stalledDays !== null && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-medium bg-red-50 text-red-700 border border-red-200">
                             <AlarmClock size={9} aria-hidden="true" /> завис {stalledDays} дн.
+                          </span>
+                        )}
+                        {approval && (
+                          <span
+                            className={`inline-flex items-center rounded-md px-2 py-0.5 font-medium ${approval.className}`}
+                            title={approval.title}
+                          >
+                            {approval.label}
                           </span>
                         )}
                         <span className="text-gray-400 tabular-nums">
@@ -459,6 +475,7 @@ export function OrdersPage({ section }: Props) {
                     const isPaid = order.status === 'PAID';
                     const showUrgent = order.isUrgent && !isClosed;
                     const stalledDays = getStalledDays(order);
+                    const approval = approvalChip(order.approvals);
                     const rowBg = isPaid
                       ? 'opacity-50'
                       : showUrgent
@@ -485,7 +502,13 @@ export function OrdersPage({ section }: Props) {
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
-                        <ProductBadge productCategory={order.productCategory} />
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <ProductBadge productCategory={order.productCategory} />
+                          <MarketplaceBadge
+                            source={order.sourceOrder}
+                            postingNumber={order.marketplacePostingNumber}
+                          />
+                        </div>
                       </td>
                       <td className="px-5 py-3.5 text-sm text-gray-500 tabular-nums">
                         {new Date(order.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
@@ -509,7 +532,19 @@ export function OrdersPage({ section }: Props) {
                           )}
                         </div>
                       </td>
-                      <td className="px-5 py-3.5"><StatusBadge status={order.status} productCategory={order.productCategory} deliveryMethod={order.deliveryMethod} marketplacePrint={order.isMarketplacePrint ?? false} size="sm" /></td>
+                      <td className="px-5 py-3.5">
+                        <StatusBadge status={order.status} productCategory={order.productCategory} deliveryMethod={order.deliveryMethod} marketplacePrint={order.isMarketplacePrint ?? false} size="sm" />
+                        {/* Вторая строка — про макет: статус заказа про него
+                            молчит, пока Telegram не подтвердит доставку. */}
+                        {approval && (
+                          <div
+                            className={`mt-1 inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${approval.className}`}
+                            title={approval.title}
+                          >
+                            {approval.label}
+                          </div>
+                        )}
+                      </td>
                       <td className="px-5 py-3.5"><DeliveryBadge method={order.deliveryMethod} /></td>
                       <td className="px-5 py-3.5">
                         <span className="text-sm font-medium text-gray-700 tabular-nums">
