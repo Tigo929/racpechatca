@@ -31,8 +31,8 @@ export interface PlanResult {
 
 /**
  * Раз в день (10:00 по Москве) шлёт в рабочий чат «план дня»: по каждому
- * исполнителю — его заказы в работе, сначала срочные/горящие. Уходит в общую
- * группу (тема General), рядом с уведомлениями о назначении заказов.
+ * исполнителю — его заказы в работе, сначала срочные/горящие. Уходит в
+ * отдельную тему плана дня, если она настроена.
  *
  * Проверка ежечасная и догоняет пропуск (перезагрузка в 10:00 не съедает день),
  * а отметка о дне последней отправки лежит в AppState — рестарт не даёт
@@ -117,13 +117,13 @@ export class DailyPlanService implements OnModuleInit, OnModuleDestroy {
     return this.buildAndSend(now, true);
   }
 
-  /** Собирает план из заказов в работе и шлёт в группу (тема General). */
+  /** Собирает план из заказов в работе и шлёт в выделенную тему. */
   private async buildAndSend(now: Date, manual = false): Promise<PlanResult> {
     const built = await this.buildPlan(now, manual);
     if (built.empty || built.message === null) {
       return { ...built, sent: false };
     }
-    const sent = await this.telegram.sendToGroup(built.message);
+    const sent = await this.telegram.sendDailyPlan(built.message);
     return { ...built, sent };
   }
 

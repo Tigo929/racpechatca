@@ -240,15 +240,26 @@ export class OrderPhotoService {
           now,
         });
       }
-      if (dto.deliveryMethod === EnumDeliveryMethod.PRODUCTION_MSK && productCategory !== EnumProductCategory.CANVAS) {
-        throw new BadRequestException('Доставка производства доступна только для холстов.');
+      if (
+        dto.deliveryMethod === EnumDeliveryMethod.PRODUCTION_MSK &&
+        productCategory !== EnumProductCategory.CANVAS
+      ) {
+        throw new BadRequestException(
+          'Доставка производства доступна только для холстов.',
+        );
       }
-      const deliveryCost = dto.deliveryMethod === EnumDeliveryMethod.PICKUP ? 0 : dto.deliveryCost;
-      if ((dto.tshirtItems?.length && productCategory !== EnumProductCategory.TSHIRT) ||
-          (dto.canvasItems?.length && productCategory !== EnumProductCategory.CANVAS)) {
-        throw new BadRequestException('Позиции не соответствуют категории заказа.');
+      const deliveryCost =
+        dto.deliveryMethod === EnumDeliveryMethod.PICKUP ? 0 : dto.deliveryCost;
+      if (
+        (dto.tshirtItems?.length &&
+          productCategory !== EnumProductCategory.TSHIRT) ||
+        (dto.canvasItems?.length &&
+          productCategory !== EnumProductCategory.CANVAS)
+      ) {
+        throw new BadRequestException(
+          'Позиции не соответствуют категории заказа.',
+        );
       }
-
 
       // Внешние продукты делает подрядчик, а не наш исполнитель — назначать некого.
       if (dto.executorId && isExternalProductionCategory(productCategory)) {
@@ -381,7 +392,9 @@ export class OrderPhotoService {
       // потолком (товар + дизайн), чтобы не съесть доставку и срочность.
       const discountParts = {
         positionsTotal:
-          dto.customTotal != null ? dto.customTotal - deliveryCost : positionsTotal,
+          dto.customTotal != null
+            ? dto.customTotal - deliveryCost
+            : positionsTotal,
         designDevelopmentCost,
       };
       const discountAmount = clampOrderDiscount(
@@ -487,7 +500,10 @@ export class OrderPhotoService {
       return created;
     });
 
-    if (result.executor?.telegramUsername || result.executor?.telegramTopicId != null) {
+    if (
+      result.executor?.telegramUsername ||
+      result.executor?.telegramTopicId != null
+    ) {
       const text = this.buildAssignmentMessage(
         result,
         result.executor.telegramUsername ?? '',
@@ -497,7 +513,14 @@ export class OrderPhotoService {
         result.executor.telegramTopicId != null
           ? String(result.executor.telegramTopicId)
           : undefined;
-      this.telegram.sendToExecutor(text, threadId).catch(() => {});
+      this.telegram
+        .sendToExecutor(
+          text,
+          threadId,
+          result.executor.username,
+          result.executor.telegramUsername ?? undefined,
+        )
+        .catch(() => {});
     }
 
     return result;
@@ -604,7 +627,10 @@ export class OrderPhotoService {
       const lastSeq = Number(seqResult[0]?.max ?? 0);
       const lengthOrder = String(lastSeq + 1).padStart(3, '0');
 
-      const tgRaw = ((dto.telegram ?? '') || (dto.contactMethod === 'telegram' ? dto.contactValue ?? '' : ''))
+      const tgRaw = (
+        (dto.telegram ?? '') ||
+        (dto.contactMethod === 'telegram' ? (dto.contactValue ?? '') : '')
+      )
         .trim()
         .replace(/^@/, '');
       const contactMethod = dto.contactMethod ?? (tgRaw ? 'telegram' : 'max');
@@ -621,7 +647,9 @@ export class OrderPhotoService {
       const remoteContact = dto.contactValue?.trim() ?? '';
       const communicationValue =
         contactMethod === 'telegram'
-          ? (/^https?:\/\//i.test(tgRaw) ? tgRaw : `@${tgRaw}`)
+          ? /^https?:\/\//i.test(tgRaw)
+            ? tgRaw
+            : `@${tgRaw}`
           : contactMethod === 'max'
             ? remoteContact || phone
             : phone || remoteContact;
@@ -666,23 +694,34 @@ export class OrderPhotoService {
       });
       // Пожелания клиента — вверху: их читают в первую очередь, а не ищут
       // среди технических строк вроде yclid и ссылок на архив.
-      const clientComment = dto.comment?.trim() || dto.description?.trim() || '';
+      const clientComment =
+        dto.comment?.trim() || dto.description?.trim() || '';
       const noteLines = [
         `🆕 Заявка с сайта`,
         clientComment ? `💬 Клиент просит: ${clientComment}` : null,
         dto.leadId ? `ID заявки: ${dto.leadId}` : null,
         `Имя: ${dto.name}`,
         phone ? `Телефон: ${phone}` : null,
-        contactMethod === 'telegram' && tgRaw ? `Telegram: ${communicationValue}` : null,
-        contactMethod === 'max' && dto.contactValue ? `MAX: ${dto.contactValue}` : null,
-        contactMethod === 'email' && dto.contactValue ? `Email: ${dto.contactValue}` : null,
+        contactMethod === 'telegram' && tgRaw
+          ? `Telegram: ${communicationValue}`
+          : null,
+        contactMethod === 'max' && dto.contactValue
+          ? `MAX: ${dto.contactValue}`
+          : null,
+        contactMethod === 'email' && dto.contactValue
+          ? `Email: ${dto.contactValue}`
+          : null,
         dto.productName ? `Товар: ${dto.productName}` : null,
         dto.productSlug ? `Slug: ${dto.productSlug}` : null,
         dto.quantity ? `Тираж: ${dto.quantity} шт` : null,
         dto.unitPrice ? `Цена за шт: ${dto.unitPrice} ₽` : null,
         money.pricePosition ? `Итого: ${money.pricePosition} ₽` : null,
-        dto.delivery ? `Получение: ${dto.delivery === 'yandex_pvz' ? 'Яндекс ПВЗ' : 'Самовывоз'}` : null,
-        dto.paperType ? `Бумага: ${dto.paperType === 'MATTE' ? 'матовая' : 'глянцевая'}` : null,
+        dto.delivery
+          ? `Получение: ${dto.delivery === 'yandex_pvz' ? 'Яндекс ПВЗ' : 'Самовывоз'}`
+          : null,
+        dto.paperType
+          ? `Бумага: ${dto.paperType === 'MATTE' ? 'матовая' : 'глянцевая'}`
+          : null,
         dto.photosArchiveUrl ? `Архив фото: ${dto.photosArchiveUrl}` : null,
         dto.photosCount != null ? `Фото: ${dto.photosCount} шт` : null,
         dto.photosFailed ? 'Фото загружались, но архив не сохранился' : null,
@@ -717,7 +756,9 @@ export class OrderPhotoService {
         dto.yclid ? `yclid: ${dto.yclid}` : null,
         dto.yandexClientId ? `Yandex ClientID: ${dto.yandexClientId}` : null,
         dto.pageUrl ? `Страница: ${dto.pageUrl}` : null,
-        dto.firstTouchUrl ? `Первая страница визита: ${dto.firstTouchUrl}` : null,
+        dto.firstTouchUrl
+          ? `Первая страница визита: ${dto.firstTouchUrl}`
+          : null,
         dto.submittedAt ? `Отправлено на сайте: ${dto.submittedAt}` : null,
       ].filter(Boolean);
 
@@ -909,10 +950,7 @@ export class OrderPhotoService {
           order.productCategory === EnumProductCategory.CANVAS &&
           order.status === EnumStatus.SENT
         );
-      if (
-        waitsForReview &&
-        !order.clientReviewLeft
-      ) {
+      if (waitsForReview && !order.clientReviewLeft) {
         reviewPendingCount += 1;
         // Уже напомнили в TG, отзыв ещё не отмечен — по этим стоит пройтись.
         if (order.reviewReminderNotifiedAt) reviewRemindedCount += 1;
@@ -1314,7 +1352,14 @@ export class OrderPhotoService {
           executor.telegramTopicId != null
             ? String(executor.telegramTopicId)
             : undefined;
-        this.telegram.sendToExecutor(text, threadId).catch(() => {});
+        this.telegram
+          .sendToExecutor(
+            text,
+            threadId,
+            executor.username,
+            executor.telegramUsername ?? undefined,
+          )
+          .catch(() => {});
       } else {
         this.logger.warn(
           `Заказ ${result.numberOrder}: у исполнителя нет ни Telegram-ника, ни темы — уведомление пропущено`,
@@ -1370,9 +1415,7 @@ export class OrderPhotoService {
       );
     }
     for (const i of order.canvasItems ?? []) {
-      lines.push(
-        `• Холст ${escapeHtml(i.formatCanvas)} × ${i.quantity} шт`,
-      );
+      lines.push(`• Холст ${escapeHtml(i.formatCanvas)} × ${i.quantity} шт`);
     }
     if (lines.length === 0) lines.push('• (позиции не добавлены)');
 
@@ -1573,17 +1616,27 @@ export class OrderPhotoService {
       const lockedError = fulfillmentError(lockedOrder, newStatus);
       if (lockedError) throw new BadRequestException(lockedError);
       if (!isAdmin && !isManager && lockedOrder.executorId !== userId) {
-        throw new ForbiddenException('Вы не назначены исполнителем этого заказа.');
+        throw new ForbiddenException(
+          'Вы не назначены исполнителем этого заказа.',
+        );
       }
-      if (newStatus === EnumStatus.SENT && earnsStaffSalary(lockedOrder.productCategory) && !lockedOrder.executorId) {
+      if (
+        newStatus === EnumStatus.SENT &&
+        earnsStaffSalary(lockedOrder.productCategory) &&
+        !lockedOrder.executorId
+      ) {
         throw new BadRequestException('Сначала назначьте исполнителя.');
       }
-      if (newStatus === EnumStatus.SENT && lockedOrder.productCategory === EnumProductCategory.TSHIRT &&
-        (!hasTechSpecFiles(lockedOrder) || !hasProductionItems(lockedOrder))) {
-        throw new BadRequestException('Для передачи в производство нужны позиции и ТЗ-фото.');
+      if (
+        newStatus === EnumStatus.SENT &&
+        lockedOrder.productCategory === EnumProductCategory.TSHIRT &&
+        (!hasTechSpecFiles(lockedOrder) || !hasProductionItems(lockedOrder))
+      ) {
+        throw new BadRequestException(
+          'Для передачи в производство нужны позиции и ТЗ-фото.',
+        );
       }
       if (lockedOrder.status === newStatus) return lockedOrder;
-
 
       // Записываем историю изменения статуса
       const history = await tx.statusHistory.create({
@@ -1878,7 +1931,8 @@ export class OrderPhotoService {
     );
 
     if (contractorCost <= 0) {
-      if (existing) await tx.expenseOrder.delete({ where: { id: existing.id } });
+      if (existing)
+        await tx.expenseOrder.delete({ where: { id: existing.id } });
       return;
     }
 
@@ -1949,18 +2003,23 @@ export class OrderPhotoService {
     if (dispatchedOrder) {
       try {
         const settings = await this.partnerSettings.get();
-        await this.gulianOutbox.enqueue(this.prisma, {
-          id: dispatchedOrder.id,
-          numberOrder: dispatchedOrder.numberOrder,
-          status: dispatchedOrder.status as any,
-          createdAt: dispatchedOrder.createdAt,
-          updatedAt: dispatchedOrder.updatedAt,
-          executorSentAt: dispatchedOrder.executorSentAt as Date | null,
-          sourceRevision: (dispatchedOrder as any).sourceRevision ?? 1,
-          partnerTgChatId: (dispatchedOrder as any).partnerTgChatId ?? null,
-          partnerTgMessageId: (dispatchedOrder as any).partnerTgMessageId ?? null,
-          tshirtItems: dispatchedOrder.tshirtItems,
-        }, settings.partnerRateBasisPoints);
+        await this.gulianOutbox.enqueue(
+          this.prisma,
+          {
+            id: dispatchedOrder.id,
+            numberOrder: dispatchedOrder.numberOrder,
+            status: dispatchedOrder.status as any,
+            createdAt: dispatchedOrder.createdAt,
+            updatedAt: dispatchedOrder.updatedAt,
+            executorSentAt: dispatchedOrder.executorSentAt as Date | null,
+            sourceRevision: (dispatchedOrder as any).sourceRevision ?? 1,
+            partnerTgChatId: (dispatchedOrder as any).partnerTgChatId ?? null,
+            partnerTgMessageId:
+              (dispatchedOrder as any).partnerTgMessageId ?? null,
+            tshirtItems: dispatchedOrder.tshirtItems,
+          },
+          settings.partnerRateBasisPoints,
+        );
       } catch (gulErr) {
         this.logger.warn(`Gulian enqueue failed after dispatch: ${gulErr}`);
       }
@@ -2259,7 +2318,9 @@ function buildLeadPosition(
     // Себестоимость берём из прайса — того же, из которого сайт взял цену.
     // Ноль означает, что прайс подрядчика ещё не согласован: тогда маржа
     // по позиции будет завышена, и это видно в отчёте.
-    const size = dto.canvasSizeKey ? findCanvasSize(dto.canvasSizeKey) : undefined;
+    const size = dto.canvasSizeKey
+      ? findCanvasSize(dto.canvasSizeKey)
+      : undefined;
     const contractorPrice = size?.contractorCost ?? 0;
     const contractorCostPosition = contractorPrice * money.quantity;
     return {
@@ -2297,7 +2358,8 @@ function buildLeadPosition(
             color: TSHIRT_COLOR_LABELS[dto.tshirtColor ?? 'black'],
             size: (dto.tshirtSize ?? 'L') as EnumTshirtSize,
             gender: TSHIRT_GENDER_BY_FIT[dto.tshirtFit ?? 'male'],
-            printLocation: PRINT_LOCATION_BY_PLACEMENT[dto.tshirtPlacement ?? 'front'],
+            printLocation:
+              PRINT_LOCATION_BY_PLACEMENT[dto.tshirtPlacement ?? 'front'],
             quantity: money.quantity,
             price: money.unitPrice,
             pricePosition: money.pricePosition,
@@ -2316,7 +2378,9 @@ function buildLeadPosition(
       create: [
         {
           formatPaper:
-            dto.productName?.trim() || dto.productSlug?.trim() || 'Заявка с сайта',
+            dto.productName?.trim() ||
+            dto.productSlug?.trim() ||
+            'Заявка с сайта',
           // Бумага из заявки. Раньше здесь стоял жёсткий GLOSS: клиент
           // выбирал матовую, а в позиции заказа неизменно оказывался
           // глянец, и печатали не то, что заказывали.

@@ -24,12 +24,30 @@ export function describeTelegramError(status: number, body: string): string {
   })();
 
   const known: [RegExp, string][] = [
-    [/there is no (document|photo) in the request/i, 'файл не доехал до Telegram — тело запроса ушло пустым'],
-    [/file is too big|too large/i, 'файл больше того, что принимает Telegram (50 МБ)'],
-    [/chat not found/i, 'чат не найден: проверьте TSHIRT_PARTNER_TELEGRAM_CHAT_ID'],
-    [/bot was kicked|bot is not a member|not enough rights/i, 'бота нет в чате или не хватает прав'],
-    [/message thread not found/i, 'тема в чате не найдена: проверьте TSHIRT_PARTNER_TELEGRAM_THREAD_ID'],
-    [/caption is too long/i, 'подпись длиннее 1024 символов — Telegram столько не принимает'],
+    [
+      /there is no (document|photo) in the request/i,
+      'файл не доехал до Telegram — тело запроса ушло пустым',
+    ],
+    [
+      /file is too big|too large/i,
+      'файл больше того, что принимает Telegram (50 МБ)',
+    ],
+    [
+      /chat not found/i,
+      'чат не найден: проверьте TSHIRT_PARTNER_TELEGRAM_CHAT_ID',
+    ],
+    [
+      /bot was kicked|bot is not a member|not enough rights/i,
+      'бота нет в чате или не хватает прав',
+    ],
+    [
+      /message thread not found/i,
+      'тема в чате не найдена: проверьте TSHIRT_PARTNER_TELEGRAM_THREAD_ID',
+    ],
+    [
+      /caption is too long/i,
+      'подпись длиннее 1024 символов — Telegram столько не принимает',
+    ],
     [/can't parse entities/i, 'Telegram не разобрал разметку подписи'],
   ];
   for (const [pattern, explanation] of known) {
@@ -57,6 +75,10 @@ export class TelegramService {
    * перенастраивают чат.
    */
   private readonly executorChatId: string;
+  private readonly executorAlexeyThreadId: string;
+  private readonly executorMaximThreadId: string;
+  private readonly dailyPlanChatId: string;
+  private readonly dailyPlanThreadId: string;
 
   constructor(private config: ConfigService) {
     this.token = config.get<string>('TELEGRAM_BOT_TOKEN') ?? '';
@@ -64,6 +86,14 @@ export class TelegramService {
     this.reviewChatId = config.get<string>('TELEGRAM_REVIEW_CHAT_ID') ?? '';
     this.reviewThreadId = config.get<string>('TELEGRAM_REVIEW_THREAD_ID') ?? '';
     this.executorChatId = config.get<string>('TELEGRAM_EXECUTOR_CHAT_ID') ?? '';
+    this.executorAlexeyThreadId =
+      config.get<string>('TELEGRAM_EXECUTOR_ALEXEY_THREAD_ID') ?? '';
+    this.executorMaximThreadId =
+      config.get<string>('TELEGRAM_EXECUTOR_MAXIM_THREAD_ID') ?? '';
+    this.dailyPlanChatId =
+      config.get<string>('TELEGRAM_DAILY_PLAN_CHAT_ID') ?? '';
+    this.dailyPlanThreadId =
+      config.get<string>('TELEGRAM_DAILY_PLAN_THREAD_ID') ?? '';
   }
 
   /**
@@ -186,7 +216,12 @@ export class TelegramService {
    * тему. Чат не задан — уходит в общую рабочую группу, как было раньше:
    * отсутствие настройки не должно съедать уведомление.
    */
-  async sendToExecutor(text: string, threadId?: string): Promise<boolean> {
+  async sendToExecutor(
+    text: string,
+    threadId?: string,
+    executorName?: string,
+    telegramUsername?: string,
+  ): Promise<boolean> {
     const chatId = this.executorChatId || this.groupChatId;
     if (!chatId) {
       this.logger.warn(
@@ -194,7 +229,60 @@ export class TelegramService {
       );
       return false;
     }
-    return this.sendMessage(chatId, text, threadId);
+    const knownExecutorThreadId = this.executorThreadIdFor(
+      executorName,
+      telegramUsername,
+    );
+    return this.sendMessage(chatId, text, knownExecutorThreadId || threadId);
+  }
+
+  private executorThreadIdFor(...names: (string | undefined)[]) {
+    const parts = names
+      .flatMap((value) =>
+        (value ?? '')
+          .replace(/^@/, '')
+          .trim()
+          .toLowerCase()
+          .replace(/ё/g, 'е')
+          .split(/[\s_.-]+/),
+      )
+      .filter(Boolean);
+
+    if (
+      parts.some(
+        (part) =>
+          /^(?:лех|леш|алекс)/.test(part) ||
+          /^(?:leha|lekha|lyoha|lesha|lyosha|alex|alek|lex)/.test(part),
+      )
+    ) {
+      return this.executorAlexeyThreadId || undefined;
+    }
+    if (
+      parts.some(
+        (part) =>
+          /^(?:макс|самогов)/.test(part) ||
+          /^(?:maxim|maksim|samogov)/.test(part),
+      )
+    ) {
+      return this.executorMaximThreadId || undefined;
+    }
+    return undefined;
+  }
+
+  /** Ежедневный план отправляем в его тему, а без настройки — в общую группу. */
+  async sendDailyPlan(text: string): Promise<boolean> {
+    const chatId = this.dailyPlanChatId || this.groupChatId;
+    if (!chatId) {
+      this.logger.warn(
+        'Ни TELEGRAM_DAILY_PLAN_CHAT_ID, ни TELEGRAM_GROUP_CHAT_ID не заданы — план дня не отправлен',
+      );
+      return false;
+    }
+    return this.sendMessage(
+      chatId,
+      text,
+      this.dailyPlanChatId ? this.dailyPlanThreadId || undefined : undefined,
+    );
   }
 
   /**
@@ -296,7 +384,10 @@ export class TelegramService {
         this.logger.error(`Telegram ${method} failed [${res.status}]: ${body}`);
         return { error: describeTelegramError(res.status, body) };
       }
-      const json = (await res.clone().json().catch(() => ({}))) as { result?: { message_id?: number } };
+      const json = (await res
+        .clone()
+        .json()
+        .catch(() => ({}))) as { result?: { message_id?: number } };
       const messageId = json.result?.message_id;
       return messageId
         ? { messageId }
@@ -340,5 +431,4 @@ export class TelegramService {
       return false;
     }
   }
-
 }
