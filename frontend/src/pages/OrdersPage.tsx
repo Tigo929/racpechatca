@@ -15,6 +15,7 @@ import {
   useArrowNavigation,
   useOrderNavigation,
 } from '../components/orders/useOrderNavigation';
+import { useOrderAutoAdvance } from '../components/orders/useOrderAutoAdvance';
 import { ExecutorFilter } from '../components/orders/ExecutorFilter';
 import { FilterChip } from '../components/ui/FilterChip';
 import { DeliveryBadge } from '../components/ui/DeliveryBadge';
@@ -152,6 +153,25 @@ export function OrdersPage({ section }: Props) {
   });
   // Стрелки на клавиатуре — пока карточка открыта и человек не печатает.
   useArrowNavigation(!!selectedId, nav);
+
+  /*
+   * Заказ ушёл из списка — карточка идёт на следующий, а не закрывается.
+   *
+   * Сменил статус в «Готово» — заказ выпал из отбора; удалил — исчез совсем.
+   * Раньше в обоих случаях окно закрывалось, и человек заново искал в списке
+   * место, на котором остановился.
+   *
+   * Подпись выборки включает раздел: фильтры у разделов свои, и смена
+   * раздела — это другой список, а не ушедший заказ.
+   */
+  const autoAdvance = useOrderAutoAdvance({
+    orders,
+    selectedId,
+    onSelect: setSelectedId,
+    listKey: `${section}:${JSON.stringify(query)}`,
+    isFetching,
+    busy: nav.busy,
+  });
 
   const setStatus = (status: EnumStatus | undefined) =>
     setQuery(q => ({ ...q, status, page: 1 }));
@@ -586,7 +606,10 @@ export function OrdersPage({ section }: Props) {
         }
       >
         {selectedId && (
-          <OrderDetail orderId={selectedId} onDeleted={() => setSelectedId(null)} />
+          <OrderDetail
+            orderId={selectedId}
+            onDeleted={() => autoAdvance.advanceFrom(selectedId)}
+          />
         )}
       </Modal>
     </AppShell>
