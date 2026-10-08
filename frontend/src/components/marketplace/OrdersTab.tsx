@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Package, RefreshCw } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, Package, RefreshCw } from 'lucide-react';
 import { ozonOrdersApi, type OzonOrder, type OzonOrderGroup } from '../../api/ozonOrders';
 import { FilterChip } from '../ui/FilterChip';
 import { OzonOrderModal } from './OzonOrderModal';
@@ -19,6 +19,10 @@ import {
  * ранние: макеты делают в том же порядке, в каком заказы пришли, и список
  * идёт строка в строку с кабинетом Ozon.
  */
+
+/** Шапка столбца — в одном месте, чтобы столбцы не разъезжались. */
+const TH =
+  'px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-400';
 
 const GROUPS: { key: OzonOrderGroup | 'all'; label: string }[] = [
   { key: 'to_ship', label: 'Нужно отгрузить' },
@@ -76,11 +80,82 @@ function stageOf(order: OzonOrder) {
 }
 
 /**
- * Строка отправления. Нажатие открывает её как заказ CRM: цвет, размер
- * и принт уже выведены из артикула, и по ним собирается макет.
+ * Что печатать: цвет, размер и принт из артикула. Цены и способ доставки
+ * не выводим — они есть в кабинете Ozon, а здесь только мешали бы.
+ */
+function ItemLines({ items }: { items: OzonOrder['items'] }) {
+  return (
+    <>
+      {items.map((item) => {
+        const article = parseOzonArticle(item.offerId);
+        return (
+          <p
+            key={item.offerId + item.sku}
+            className="truncate text-xs text-gray-600"
+          >
+            {article ? (
+              <>
+                {article.colorLabel} · {article.size}
+                <span className="ml-1.5 font-mono text-gray-400">
+                  {article.printSlug}
+                </span>
+              </>
+            ) : (
+              <span className="font-mono text-gray-500">{item.offerId}</span>
+            )}
+            {item.quantity > 1 && (
+              <span className="ml-1 text-gray-500">× {item.quantity}</span>
+            )}
+          </p>
+        );
+      })}
+    </>
+  );
+}
+
+/**
+ * Строка таблицы — тот же набор столбцов, что в кабинете Ozon: номер
+ * отправления, статус, когда принят, что в нём.
  *
- * Список в одну колонку, а не плитка в две: очередь читают сверху вниз,
- * и в два столбца «следующий по времени» оказывается то справа, то слева.
+ * Столбцы те же и в том же порядке намеренно: два окна читаются строка
+ * в строку, и не приходится вспоминать, где что лежит.
+ */
+function OrderTableRow({ order, onOpen }: { order: OzonOrder; onOpen: () => void }) {
+  const stage = stageOf(order);
+  return (
+    <tr
+      onClick={onOpen}
+      className={`cursor-pointer border-l-[4px] ${stage.stripe} hover:bg-indigo-50/40`}
+      style={{ borderBottom: '1px solid #F1F5F9' }}
+    >
+      <td className="px-4 py-3 align-top">
+        <span className="text-sm font-semibold text-gray-900">
+          {order.postingNumber}
+        </span>
+      </td>
+      <td className="px-4 py-3 align-top">
+        <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${stage.chip}`}>
+          {order.statusLabel}
+        </span>
+      </td>
+      <td className="px-4 py-3 align-top whitespace-nowrap text-sm tabular-nums text-gray-500">
+        {formatAccepted(order.createdAt)}
+      </td>
+      <td className="px-4 py-3 align-top">
+        <ItemLines items={order.items} />
+        {order.cancelReason && (
+          <p className="mt-1 text-xs text-gray-500">
+            Причина отмены: {order.cancelReason}
+          </p>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * То же самое для телефона: таблица в 375 пикселей не помещается, и вместо
+ * столбцов строка складывается в карточку. Порядок строк — тот же.
  */
 function OrderRow({ order, onOpen }: { order: OzonOrder; onOpen: () => void }) {
   const stage = stageOf(order);
@@ -108,31 +183,7 @@ function OrderRow({ order, onOpen }: { order: OzonOrder; onOpen: () => void }) {
       </div>
 
       <div className="mt-1 space-y-0.5">
-        {order.items.map((item) => {
-          // Цвет, размер и принт — всё, что нужно, чтобы понять, что печатать.
-          // Цены и способ доставки убраны: они есть в кабинете Ozon.
-          const article = parseOzonArticle(item.offerId);
-          return (
-            <p
-              key={item.offerId + item.sku}
-              className="truncate text-xs text-gray-600"
-            >
-              {article ? (
-                <>
-                  {article.colorLabel} · {article.size}
-                  <span className="ml-1.5 font-mono text-gray-400">
-                    {article.printSlug}
-                  </span>
-                </>
-              ) : (
-                <span className="font-mono text-gray-500">{item.offerId}</span>
-              )}
-              {item.quantity > 1 && (
-                <span className="ml-1 text-gray-500">× {item.quantity}</span>
-              )}
-            </p>
-          );
-        })}
+        <ItemLines items={order.items} />
       </div>
 
       {order.cancelReason && (
@@ -234,7 +285,8 @@ export function OrdersTab({ accountId }: { accountId: string }) {
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5">
+          {/* На телефоне шапки таблицы нет — порядок переключается здесь. */}
+          <div className="flex items-center gap-1.5 md:hidden">
             <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
               Принят
             </span>
@@ -275,13 +327,60 @@ export function OrdersTab({ accountId }: { accountId: string }) {
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
-          {visible.map((o) => (
-            <OrderRow
-              key={o.postingNumber}
-              order={o}
-              onOpen={() => setOpenPosting(o.postingNumber)}
-            />
-          ))}
+          {/* Десктоп: столбцы как в кабинете Ozon. */}
+          <table className="hidden w-full md:table">
+            <thead>
+              <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                <th scope="col" className={TH}>Номер отправления</th>
+                <th scope="col" className={TH}>Статус</th>
+                <th scope="col" className="px-4 py-2.5 text-left">
+                  {/*
+                    Сортировка живёт в заголовке столбца, как в кабинете:
+                    там очередь переключают именно так, и искать отдельный
+                    переключатель не приходится.
+                  */}
+                  <button
+                    type="button"
+                    onClick={() => setSort((v) => (v === 'earliest' ? 'latest' : 'earliest'))}
+                    className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-gray-400 transition-colors hover:text-indigo-700"
+                    aria-label={
+                      sort === 'earliest'
+                        ? 'Принят: сначала ранние. Нажмите, чтобы показать сначала поздние'
+                        : 'Принят: сначала поздние. Нажмите, чтобы показать сначала ранние'
+                    }
+                  >
+                    Принят
+                    {sort === 'earliest' ? (
+                      <ArrowUp size={12} aria-hidden="true" />
+                    ) : (
+                      <ArrowDown size={12} aria-hidden="true" />
+                    )}
+                  </button>
+                </th>
+                <th scope="col" className={TH}>Количество, артикул</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((o) => (
+                <OrderTableRow
+                  key={o.postingNumber}
+                  order={o}
+                  onOpen={() => setOpenPosting(o.postingNumber)}
+                />
+              ))}
+            </tbody>
+          </table>
+
+          {/* Телефон: те же строки, сложенные в карточку. */}
+          <div className="md:hidden">
+            {visible.map((o) => (
+              <OrderRow
+                key={o.postingNumber}
+                order={o}
+                onOpen={() => setOpenPosting(o.postingNumber)}
+              />
+            ))}
+          </div>
         </div>
       )}
 
