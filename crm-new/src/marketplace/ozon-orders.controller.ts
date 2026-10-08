@@ -18,6 +18,7 @@ import { EnumRole } from 'src/generated/prisma/enums';
 import { MarketplaceAccountService } from './marketplace-account.service';
 import { OzonOrdersService } from './ozon/ozon-orders.service';
 import { OzonCrmOrderService } from './ozon-crm-order.service';
+import { OzonChatService } from './ozon-chat.service';
 import type { Response } from 'express';
 import { DtoCreateOzonCrmOrder } from './dto/create-ozon-crm-order.dto';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
@@ -57,6 +58,7 @@ export class OzonOrdersController {
     private readonly accounts: MarketplaceAccountService,
     private readonly orders: OzonOrdersService,
     private readonly crmOrders: OzonCrmOrderService,
+    private readonly chats: OzonChatService,
   ) {}
 
   /**
@@ -136,6 +138,24 @@ export class OzonOrdersController {
       me.id,
       dto.chatUrl,
     );
+  }
+
+  /**
+   * Чат с покупателем по отправлению: ссылка приходит из Ozon и сразу
+   * ложится в заказ CRM.
+   *
+   * Метод площадки отдаёт адрес чата только вместе с его созданием,
+   * поэтому вызывается он по нажатию, а не при заведении заказа: иначе
+   * пустой чат открылся бы у каждого покупателя. Повторное нажатие
+   * возвращает тот же чат — Ozon заводит по отправлению один.
+   */
+  @Post(':accountId/orders/:postingNumber/chat')
+  async openChat(
+    @Param('accountId', ParseUUIDPipe) accountId: string,
+    @Param('postingNumber') postingNumber: string,
+  ) {
+    const creds = await this.accounts.credentials(accountId);
+    return this.chats.openForPosting(creds, postingNumber);
   }
 
   /**

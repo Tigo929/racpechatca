@@ -25,6 +25,7 @@ import { OzonStockService } from './ozon/ozon-stock.service';
 import { OzonBulkStockService } from './ozon/ozon-bulk-stock.service';
 import { OzonBulkStockProcessorService } from './ozon/ozon-bulk-stock-processor.service';
 import { OzonCrmOrderService } from './ozon-crm-order.service';
+import { OzonChatService } from './ozon-chat.service';
 import { OrderPhotoModule } from 'src/order-photo/order-photo.module';
 import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
 
@@ -65,6 +66,7 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
     OzonBulkStockService,
     OzonBulkStockProcessorService,
     OzonCrmOrderService,
+    OzonChatService,
   ],
   exports: [
     MarketplaceAccountService,

@@ -27,6 +27,7 @@ import { DispatchToExecutorModal } from './DispatchToExecutorModal';
 import { DeleteOrderModal } from './DeleteOrderModal';
 import { GreetingCopyButton } from './GreetingCopyButton';
 import { OrderContact } from './OrderContact';
+import { OzonChatButton } from './OzonChatButton';
 import { ApprovalsBlock } from '../approval/ApprovalsBlock';
 
 /**
@@ -1150,6 +1151,20 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
             platform={order.communicationPlatform}
             url={order.urlCommunication}
           />
+          {/* Переписка с покупателем площадки: ссылку даёт сам Ozon,
+              вставлять её руками больше не нужно. */}
+          {order.sourceOrder === 'OZON' &&
+            order.marketplaceAccountId &&
+            order.marketplacePostingNumber && (
+              <div className="flex items-start">
+                <OzonChatButton
+                  orderId={order.id}
+                  accountId={order.marketplaceAccountId}
+                  postingNumber={order.marketplacePostingNumber}
+                  existingUrl={order.urlCommunication}
+                />
+              </div>
+            )}
           {/* Приветственное сообщение. Бот шлёт его сам в Telegram; здесь
               менеджер копирует ровно тот же текст и отправляет руками — так
               клиент на MAX получает то же, что клиент на Telegram. */}

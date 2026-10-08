@@ -104,6 +104,11 @@ services:
       # Пусто — шифруем на JWT_SECRET; отдельный секрет лучше, но его смена
       # требует пересохранить ключи кабинетов (старые перестанут читаться).
       MARKETPLACE_SECRET: ${MARKETPLACE_SECRET:-}
+      # Адрес чата с покупателем в кабинете Ozon. Документация его не
+      # описывает, поэтому держим настройкой: если кабинет сменит адрес,
+      # это правка .env и перезапуск, а не релиз. Пусто — берётся
+      # значение по умолчанию из кода (ozon/ozon-chat.ts).
+      OZON_CHAT_URL_TEMPLATE: ${OZON_CHAT_URL_TEMPLATE:-}
       AVITO_MESSENGER_POLLING_ENABLED: ${AVITO_MESSENGER_POLLING_ENABLED:-true}
       AVITO_MESSENGER_POLLING_INTERVAL_MS: ${AVITO_MESSENGER_POLLING_INTERVAL_MS:-60000}
       UPLOAD_DIR: /app/uploads
