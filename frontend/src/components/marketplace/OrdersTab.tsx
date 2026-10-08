@@ -5,11 +5,19 @@ import { ozonOrdersApi, type OzonOrder, type OzonOrderGroup } from '../../api/oz
 import { FilterChip } from '../ui/FilterChip';
 import { OzonOrderModal } from './OzonOrderModal';
 import { parseOzonArticle } from '../../utils/ozon-article';
+import {
+  formatAccepted,
+  sortByAccepted,
+  type SortDirection,
+} from './ozon-order-sort';
 
 /**
  * Заказы Ozon. Главный вопрос оператора — «что горит по отгрузке», поэтому
- * по умолчанию открывается группа «нужно отгрузить», внутри неё сортировка
- * по сроку, а просроченные подняты наверх и выделены.
+ * по умолчанию открывается группа «нужно отгрузить».
+ *
+ * Внутри группы — очередь по времени приёма заказа площадкой, сначала
+ * ранние: макеты делают в том же порядке, в каком заказы пришли, и список
+ * идёт строка в строку с кабинетом Ozon.
  */
 
 const GROUPS: { key: OzonOrderGroup | 'all'; label: string }[] = [
@@ -68,17 +76,26 @@ function stageOf(order: OzonOrder) {
 }
 
 /**
- * Карточка отправления. Нажатие открывает её как заказ CRM: цвет, размер
+ * Строка отправления. Нажатие открывает её как заказ CRM: цвет, размер
  * и принт уже выведены из артикула, и по ним собирается макет.
+ *
+ * Список в одну колонку, а не плитка в две: очередь читают сверху вниз,
+ * и в два столбца «следующий по времени» оказывается то справа, то слева.
  */
-function OrderCard({ order, onOpen }: { order: OzonOrder; onOpen: () => void }) {
+function OrderRow({ order, onOpen }: { order: OzonOrder; onOpen: () => void }) {
   const stage = stageOf(order);
   return (
     <button
       type="button"
       onClick={onOpen}
-      className={`w-full text-left bg-white rounded-2xl border border-gray-200 border-l-[4px] ${stage.stripe} p-3.5 space-y-2 transition-colors hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500`}
+      className={`w-full text-left bg-white border-b border-gray-100 border-l-[4px] ${stage.stripe} px-3.5 py-3 transition-colors hover:bg-indigo-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 sm:flex sm:items-start sm:gap-4`}
     >
+      {/* Время приёма — первым, как в кабинете: по нему и выстроена очередь. */}
+      <span className="block shrink-0 text-xs font-medium tabular-nums text-gray-500 sm:w-28 sm:pt-0.5">
+        {formatAccepted(order.createdAt)}
+      </span>
+
+      <div className="min-w-0 flex-1">
       <div className="flex items-center justify-between gap-3">
         <p className="min-w-0 truncate text-sm font-semibold text-gray-900">
           {order.postingNumber}
@@ -90,7 +107,7 @@ function OrderCard({ order, onOpen }: { order: OzonOrder; onOpen: () => void }) 
         </span>
       </div>
 
-      <div className="space-y-0.5">
+      <div className="mt-1 space-y-0.5">
         {order.items.map((item) => {
           // Цвет, размер и принт — всё, что нужно, чтобы понять, что печатать.
           // Цены и способ доставки убраны: они есть в кабинете Ozon.
@@ -119,8 +136,9 @@ function OrderCard({ order, onOpen }: { order: OzonOrder; onOpen: () => void }) 
       </div>
 
       {order.cancelReason && (
-        <p className="text-xs text-gray-500">Причина отмены: {order.cancelReason}</p>
+        <p className="mt-1 text-xs text-gray-500">Причина отмены: {order.cancelReason}</p>
       )}
+      </div>
     </button>
   );
 }
@@ -134,6 +152,12 @@ export function OrdersTab({ accountId }: { accountId: string }) {
    * переключатель ниже возвращает их целиком.
    */
   const [showAll, setShowAll] = useState(false);
+  /*
+   * Порядок очереди. По умолчанию сначала ранние: заказ, пришедший первым,
+   * и печатать нужно первым. Обратный порядок оставлен для вопроса «что
+   * пришло только что».
+   */
+  const [sort, setSort] = useState<SortDirection>('earliest');
 
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['ozon-orders', accountId, showAll],
@@ -154,14 +178,10 @@ export function OrdersTab({ accountId }: { accountId: string }) {
     return acc;
   }, {});
 
-  const visible = (group === 'all' ? all : all.filter((o) => o.group === group))
-    // Просроченные — наверх, дальше по ближайшему сроку отгрузки.
-    .sort((a, b) => {
-      if (a.shipmentOverdue !== b.shipmentOverdue) return a.shipmentOverdue ? -1 : 1;
-      const at = a.shipmentDate ? new Date(a.shipmentDate).getTime() : Infinity;
-      const bt = b.shipmentDate ? new Date(b.shipmentDate).getTime() : Infinity;
-      return at - bt;
-    });
+  const visible = sortByAccepted(
+    group === 'all' ? all : all.filter((o) => o.group === group),
+    sort,
+  );
 
   const overdueCount = all.filter((o) => o.shipmentOverdue).length;
   const hidden = data?.hiddenByCatalog ?? 0;
@@ -213,6 +233,24 @@ export function OrdersTab({ accountId }: { accountId: string }) {
             </FilterChip>
           ))}
         </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+              Принят
+            </span>
+            <FilterChip
+              active={sort === 'earliest'}
+              onClick={() => setSort('earliest')}
+            >
+              Сначала ранние
+            </FilterChip>
+            <FilterChip
+              active={sort === 'latest'}
+              onClick={() => setSort('latest')}
+            >
+              Сначала поздние
+            </FilterChip>
+          </div>
         <button
           onClick={() => void refetch()}
           disabled={isFetching}
@@ -221,6 +259,7 @@ export function OrdersTab({ accountId }: { accountId: string }) {
         >
           <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} aria-hidden="true" />
         </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -235,9 +274,9 @@ export function OrdersTab({ accountId }: { accountId: string }) {
           </p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
           {visible.map((o) => (
-            <OrderCard
+            <OrderRow
               key={o.postingNumber}
               order={o}
               onOpen={() => setOpenPosting(o.postingNumber)}
