@@ -10,6 +10,7 @@ import {
   sortByAccepted,
   type SortDirection,
 } from './ozon-order-sort';
+import { marketplaceStage } from './marketplace-stage';
 
 /**
  * Заказы Ozon. Главный вопрос оператора — «что горит по отгрузке», поэтому
@@ -35,47 +36,23 @@ const GROUPS: { key: OzonOrderGroup | 'all'; label: string }[] = [
 
 
 /**
- * Цвет этапа отправления.
+ * Этап заказа в нашем процессе плюс статус площадки мелким.
  *
- * Список нужен для одного: с одного взгляда понять, что с заказом. Поэтому
- * этап несёт цвет, а не подпись мелким шрифтом, и цвет идёт по статусу
- * площадки, а не по группе: внутри «нужно отгрузить» лежат и только что
- * пришедший заказ, и уже собранный, а это разные дела.
- *
- * Сроки отгрузки отсюда убраны намеренно (решение владельца 02.10.2026):
- * их видно в кабинете Ozon, а здесь они закрашивали половину списка
- * красным, и за тревогой терялось главное — какой заказ печатать.
+ * Главным стоит наш этап: по нему решают, что делать дальше. Статус Ozon
+ * остаётся второй строкой — сроки отгрузки ведёт площадка, и совсем убирать
+ * его нельзя.
  */
-const STAGE: Record<string, { chip: string; stripe: string }> = {
-  // Пришёл, ещё ничего не сделано — синий, как «новый» в заказах CRM.
-  awaiting_approve: { chip: 'bg-blue-50 text-blue-700', stripe: 'border-l-blue-500' },
-  awaiting_packaging: { chip: 'bg-blue-50 text-blue-700', stripe: 'border-l-blue-500' },
-  // Собран, ждёт отгрузки — янтарный: дело за нами, но печать уже позади.
-  awaiting_registration: { chip: 'bg-amber-50 text-amber-700', stripe: 'border-l-amber-500' },
-  awaiting_deliver: { chip: 'bg-amber-50 text-amber-700', stripe: 'border-l-amber-500' },
-  // Уехал — голубой: от нас уже ничего не требуется.
-  delivering: { chip: 'bg-sky-50 text-sky-700', stripe: 'border-l-sky-500' },
-  driver_pickup: { chip: 'bg-sky-50 text-sky-700', stripe: 'border-l-sky-500' },
-  delivered: { chip: 'bg-emerald-50 text-emerald-700', stripe: 'border-l-emerald-500' },
-  cancelled: { chip: 'bg-gray-100 text-gray-500', stripe: 'border-l-gray-300' },
-};
-
-/** Группа — запасной цвет для статуса, которого ещё нет в наборе. */
-const GROUP_STAGE: Record<string, { chip: string; stripe: string }> = {
-  to_ship: { chip: 'bg-amber-50 text-amber-700', stripe: 'border-l-amber-500' },
-  in_transit: { chip: 'bg-sky-50 text-sky-700', stripe: 'border-l-sky-500' },
-  delivered: { chip: 'bg-emerald-50 text-emerald-700', stripe: 'border-l-emerald-500' },
-  cancelled: { chip: 'bg-gray-100 text-gray-500', stripe: 'border-l-gray-300' },
-  problem: { chip: 'bg-red-50 text-red-700', stripe: 'border-l-red-500' },
-};
-
-function stageOf(order: OzonOrder) {
+function StageCell({ order }: { order: OzonOrder }) {
+  const stage = marketplaceStage(order.crm);
   return (
-    STAGE[order.status] ??
-    GROUP_STAGE[order.group] ?? {
-      chip: 'bg-gray-100 text-gray-500',
-      stripe: 'border-l-gray-300',
-    }
+    <>
+      <span
+        className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${stage.chip}`}
+      >
+        {stage.label}
+      </span>
+      <p className="mt-1 text-[11px] text-gray-400">Ozon: {order.statusLabel}</p>
+    </>
   );
 }
 
@@ -121,7 +98,8 @@ function ItemLines({ items }: { items: OzonOrder['items'] }) {
  * в строку, и не приходится вспоминать, где что лежит.
  */
 function OrderTableRow({ order, onOpen }: { order: OzonOrder; onOpen: () => void }) {
-  const stage = stageOf(order);
+  // Полоса слева — тоже наш этап: в списке глазами ищут именно его.
+  const stage = marketplaceStage(order.crm);
   return (
     <tr
       onClick={onOpen}
@@ -134,9 +112,7 @@ function OrderTableRow({ order, onOpen }: { order: OzonOrder; onOpen: () => void
         </span>
       </td>
       <td className="px-4 py-3 align-top">
-        <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${stage.chip}`}>
-          {order.statusLabel}
-        </span>
+        <StageCell order={order} />
       </td>
       <td className="px-4 py-3 align-top whitespace-nowrap text-sm tabular-nums text-gray-500">
         {formatAccepted(order.createdAt)}
@@ -158,7 +134,7 @@ function OrderTableRow({ order, onOpen }: { order: OzonOrder; onOpen: () => void
  * столбцов строка складывается в карточку. Порядок строк — тот же.
  */
 function OrderRow({ order, onOpen }: { order: OzonOrder; onOpen: () => void }) {
-  const stage = stageOf(order);
+  const stage = marketplaceStage(order.crm);
   return (
     <button
       type="button"
@@ -171,15 +147,13 @@ function OrderRow({ order, onOpen }: { order: OzonOrder; onOpen: () => void }) {
       </span>
 
       <div className="min-w-0 flex-1">
-      <div className="flex items-center justify-between gap-3">
-        <p className="min-w-0 truncate text-sm font-semibold text-gray-900">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 truncate pt-0.5 text-sm font-semibold text-gray-900">
           {order.postingNumber}
         </p>
-        <span
-          className={`flex-shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold ${stage.chip}`}
-        >
-          {order.statusLabel}
-        </span>
+        <div className="flex-shrink-0 text-right">
+          <StageCell order={order} />
+        </div>
       </div>
 
       <div className="mt-1 space-y-0.5">

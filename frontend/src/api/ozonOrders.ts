@@ -1,4 +1,5 @@
 import { api } from './client';
+import type { EnumApprovalStatus, EnumStatus } from '../types/index';
 
 /** Заказы Ozon (FBS-отправления) в нормализованном виде — сырьё приводит бэкенд. */
 
@@ -34,6 +35,16 @@ export interface OzonOrder {
   items: OzonOrderItem[];
   total: number;
   payout: number;
+  /**
+   * Заказ CRM, заведённый по этому отправлению; null — ещё не заводили.
+   * По нему в списке показывается наш этап, а не статус площадки.
+   */
+  crm?: {
+    id: string;
+    numberOrder: string;
+    status: EnumStatus;
+    approvalStatus: EnumApprovalStatus | null;
+  } | null;
 }
 
 export interface OzonOrdersPage {

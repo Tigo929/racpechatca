@@ -76,12 +76,31 @@ export class OzonOrdersController {
     @Query('all') all?: string,
   ) {
     const creds = await this.accounts.credentials(accountId);
-    return this.orders.list(creds, {
+    const page = await this.orders.list(creds, {
       sinceDays: sinceDays ? Number(sinceDays) : undefined,
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,
       articlePrefixes: all === '1' ? [] : MARKETPLACE_ARTICLE_PREFIXES,
     });
+
+    /*
+     * К каждому отправлению — его заказ CRM.
+     *
+     * Статус площадки у всех собранных заказов один и тот же, и по списку
+     * не понять главного: где заказ в нашем процессе. Заказ CRM это и
+     * отвечает — вплоть до «не заведён», то есть отправление есть, а
+     * работать по нему ещё не начинали.
+     */
+    const crm = await this.crmOrders.findByPostings(
+      page.orders.map((order) => order.postingNumber),
+    );
+    return {
+      ...page,
+      orders: page.orders.map((order) => ({
+        ...order,
+        crm: crm.get(order.postingNumber) ?? null,
+      })),
+    };
   }
 
   /**

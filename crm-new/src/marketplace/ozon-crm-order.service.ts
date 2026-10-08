@@ -50,6 +50,59 @@ export class OzonCrmOrderService {
     });
   }
 
+  /**
+   * Заказы CRM по пачке номеров отправлений — для списка.
+   *
+   * В списке отправлений стоит статус площадки, и у всех собранных заказов
+   * он один: «ждёт отгрузки». По нему не видно того, что нужно на самом
+   * деле, — где заказ в нашем процессе: макет ещё не делали, лист ушёл
+   * клиенту, согласован, передан в производство. Поэтому к каждому
+   * отправлению добавляется его заказ CRM.
+   *
+   * Одним запросом, а не по заказу на строку: строк на экране до двухсот.
+   *
+   * Берём и последнюю версию листа согласования: «согласован» — это не
+   * статус заказа, а ответ клиента по макету, и иначе этот шаг в списке
+   * не показать.
+   */
+  async findByPostings(postingNumbers: readonly string[]) {
+    const found = new Map<
+      string,
+      {
+        id: string;
+        numberOrder: string;
+        status: string;
+        approvalStatus: string | null;
+      }
+    >();
+    if (postingNumbers.length === 0) return found;
+
+    const rows = await this.prisma.orderPhoto.findMany({
+      where: { marketplacePostingNumber: { in: [...postingNumbers] } },
+      select: {
+        id: true,
+        numberOrder: true,
+        status: true,
+        marketplacePostingNumber: true,
+        approvals: {
+          orderBy: { version: 'desc' },
+          take: 1,
+          select: { status: true },
+        },
+      },
+    });
+    for (const row of rows) {
+      if (!row.marketplacePostingNumber) continue;
+      found.set(row.marketplacePostingNumber, {
+        id: row.id,
+        numberOrder: row.numberOrder,
+        status: row.status,
+        approvalStatus: row.approvals[0]?.status ?? null,
+      });
+    }
+    return found;
+  }
+
   async createFromPosting(
     creds: OzonCredentials,
     accountId: string,
