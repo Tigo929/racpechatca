@@ -61,29 +61,7 @@ export interface OzonCrmOrderLink {
   marketplaceOrderNumber: string | null;
 }
 
-export interface OzonChatLink {
-  chatId: string;
-  /** Адрес чата в кабинете продавца. */
-  url: string;
-  /** Нашёлся ли заказ CRM, в который ссылку сохранили. */
-  savedToOrder: boolean;
-}
-
 export const ozonOrdersApi = {
-  /**
-   * Открыть чат с покупателем по отправлению и сохранить ссылку в заказе.
-   * Ozon отдаёт адрес только вместе с созданием чата, поэтому запрос идёт
-   * по нажатию, а не при заведении заказа.
-   */
-  openChat: async (
-    accountId: string,
-    postingNumber: string,
-  ): Promise<OzonChatLink> => {
-    const { data } = await api.post<OzonChatLink>(
-      `/marketplace/ozon/${accountId}/orders/${encodeURIComponent(postingNumber)}/chat`,
-    );
-    return data;
-  },
   list: async (
     accountId: string,
     params: {
