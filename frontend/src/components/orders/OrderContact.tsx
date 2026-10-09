@@ -1,7 +1,8 @@
 import { Copy, ExternalLink, Phone, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { COMMUNICATION_LABELS } from '../../constants';
 import { copyToClipboard } from '../../utils/clipboard';
+import { PlatformBadge, platformStyle } from '../ui/PlatformBadge';
+import type { EnumCommunication } from '../../types/index';
 
 /**
  * Контакт клиента в карточке заказа — с действием под способ связи.
@@ -32,10 +33,9 @@ export function OrderContact({
   platform,
   url,
 }: {
-  platform: keyof typeof COMMUNICATION_LABELS;
+  platform: EnumCommunication;
   url: string | null | undefined;
 }) {
-  const label = COMMUNICATION_LABELS[platform] ?? platform;
   const value = (url ?? '').trim();
 
   const linkBtn =
@@ -56,7 +56,8 @@ export function OrderContact({
         href={value.startsWith('http') ? value : `https://t.me/${username}`}
         target="_blank"
         rel="noopener noreferrer"
-        className={`${linkBtn} text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100`}
+        // Цвет Telegram: кнопка узнаётся раньше, чем прочитана подпись.
+        className={`${linkBtn} text-sky-800 bg-sky-100 ring-1 ring-sky-300/70 hover:bg-sky-200`}
       >
         <Send size={13} aria-hidden="true" />@{username}
         <ExternalLink size={12} aria-hidden="true" />
@@ -68,7 +69,7 @@ export function OrderContact({
     const phone = formatRuPhone(digits);
     action = (
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-800">
+        <span className="inline-flex items-center gap-1.5 rounded-lg bg-violet-100 px-2.5 py-1 text-sm font-semibold text-violet-800 ring-1 ring-violet-300/70">
           <Phone size={13} aria-hidden="true" />
           {phone}
         </span>
@@ -84,7 +85,7 @@ export function OrderContact({
             href={value}
             target="_blank"
             rel="noopener noreferrer"
-            className={`${linkBtn} text-gray-600 bg-gray-50 border border-gray-200 hover:bg-gray-100`}
+            className={`${linkBtn} text-violet-800 bg-violet-100 ring-1 ring-violet-300/70 hover:bg-violet-200`}
           >
             Открыть в MAX <ExternalLink size={12} aria-hidden="true" />
           </a>
@@ -108,12 +109,14 @@ export function OrderContact({
       </div>
     );
   } else if (value.startsWith('http')) {
+    // Прочие площадки (Авито, Ozon): ссылка красится цветом своей площадки.
+    const style = platformStyle(platform);
     action = (
       <a
         href={value}
         target="_blank"
         rel="noopener noreferrer"
-        className={`${linkBtn} text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100`}
+        className={`${linkBtn} ${style.chip} hover:brightness-95`}
       >
         Открыть переписку <ExternalLink size={12} aria-hidden="true" />
       </a>
@@ -122,7 +125,10 @@ export function OrderContact({
 
   return (
     <div className="sm:col-span-2 lg:col-span-3">
-      <p className="text-xs text-gray-500 mb-1">Связь с клиентом · {label}</p>
+      <div className="mb-1 flex items-center gap-2">
+        <span className="text-xs text-gray-500">Связь с клиентом</span>
+        <PlatformBadge platform={platform} />
+      </div>
       {action}
     </div>
   );

@@ -966,6 +966,21 @@ model ItemCanvas {
   // Маржа строки до доставки и прочих расходов.
   profitPosition         Int
 
+  // Допы к холсту. У каждого своя цена подрядчика и своя цена клиенту:
+  // лак и багет берут у поставщика по одной цене, а клиенту называют
+  // другую, и разница — такой же заработок, как на самом холсте.
+  //
+  // Флаг отдельно от цены: доп бывает и бесплатным (подарок, компенсация),
+  // а «ноль» в цене не значит «допа нет» — значит «денег не взяли».
+  /// Покрытие лаком.
+  varnish                Boolean @default(false)
+  varnishClientPrice     Int     @default(0)
+  varnishContractorPrice Int     @default(0)
+  /// Багет (рама).
+  frame                  Boolean @default(false)
+  frameClientPrice       Int     @default(0)
+  frameContractorPrice   Int     @default(0)
+
   @@index([orderId])
 }
 

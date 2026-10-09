@@ -14,6 +14,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/useAuth';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import type { EnumCanvasMaterial, ItemCanvas, OrderPhoto } from '../../types/index';
+import {
+  addonsClientPrice,
+  addonsContractorPrice,
+  addonsSummary,
+} from '../../utils/canvas-addons';
 
 interface Props {
   order: OrderPhoto;
@@ -33,6 +38,17 @@ type EditState = {
   quantity: string;
   clientPrice: string;
   contractorPrice: string;
+  /*
+   * Допы. У каждого две цены: сколько берёт поставщик и сколько называем
+   * клиенту. Разница — такой же заработок, как на самом холсте, поэтому
+   * обе цены вводятся здесь, а не считаются «на глаз».
+   */
+  varnish: boolean;
+  varnishClientPrice: string;
+  varnishContractorPrice: string;
+  frame: boolean;
+  frameClientPrice: string;
+  frameContractorPrice: string;
 };
 
 const CUSTOM_SIZE = '';
@@ -44,6 +60,12 @@ const EMPTY: EditState = {
   quantity: '1',
   clientPrice: '1500',
   contractorPrice: '0',
+  varnish: false,
+  varnishClientPrice: '0',
+  varnishContractorPrice: '0',
+  frame: false,
+  frameClientPrice: '0',
+  frameContractorPrice: '0',
 };
 
 const inputCls =
@@ -51,10 +73,22 @@ const inputCls =
 
 const money = (value: number) => `${value.toLocaleString('ru-RU')} ₽`;
 
+const num = (value: string) => Math.max(0, Number(value) || 0);
+
 function toDto(state: EditState) {
   const base = {
     quantity: Math.max(1, Number(state.quantity) || 1),
     clientPrice: Math.max(0, Number(state.clientPrice) || 0),
+    // Выключенный доп уезжает с нулями: сервер их тоже обнулит, но пусть
+    // запрос и база говорят одно и то же.
+    varnish: state.varnish,
+    varnishClientPrice: state.varnish ? num(state.varnishClientPrice) : 0,
+    varnishContractorPrice: state.varnish
+      ? num(state.varnishContractorPrice)
+      : 0,
+    frame: state.frame,
+    frameClientPrice: state.frame ? num(state.frameClientPrice) : 0,
+    frameContractorPrice: state.frame ? num(state.frameContractorPrice) : 0,
   };
   if (state.sizeKey) {
     // Размер из прайса: подпись и цену производства поставит сервер.
@@ -173,6 +207,12 @@ export function CanvasItemsTable({ order }: Props) {
       sizeKey: item.sizeKey ?? CUSTOM_SIZE,
       material: item.material ?? 'SYNTHETIC',
       formatCanvas: item.formatCanvas,
+      varnish: item.varnish ?? false,
+      varnishClientPrice: String(item.varnishClientPrice ?? 0),
+      varnishContractorPrice: String(item.varnishContractorPrice ?? 0),
+      frame: item.frame ?? false,
+      frameClientPrice: String(item.frameClientPrice ?? 0),
+      frameContractorPrice: String(item.frameContractorPrice ?? 0),
       quantity: String(item.quantity),
       clientPrice: String(item.clientPrice),
       contractorPrice: String(item.contractorPrice),
@@ -245,6 +285,59 @@ export function CanvasItemsTable({ order }: Props) {
               placeholder="Модульный, нестандарт…"
             />
           )}
+
+          {/* Допы: лак и багет. Каждый со своей парой цен — поставщику
+              и клиенту; без второй цены маржа по заказу не считается. */}
+          <div className="space-y-1 rounded-lg border border-cyan-100 bg-cyan-50/40 p-2">
+            {([
+              ['varnish', 'Лак'],
+              ['frame', 'Багет'],
+            ] as const).map(([kind, label]) => {
+              const on = state[kind];
+              const clientKey = `${kind}ClientPrice` as const;
+              const costKey = `${kind}ContractorPrice` as const;
+              return (
+                <div key={kind} className="space-y-1">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={(e) =>
+                        onChange({ ...state, [kind]: e.target.checked })
+                      }
+                    />
+                    {label}
+                  </label>
+                  {on && (
+                    <div className="grid grid-cols-2 gap-1">
+                      <input
+                        type="number"
+                        min={0}
+                        className={inputCls}
+                        value={state[clientKey]}
+                        onChange={(e) =>
+                          onChange({ ...state, [clientKey]: e.target.value })
+                        }
+                        aria-label={`${label}: цена клиенту`}
+                        placeholder="клиенту ₽"
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        className={inputCls}
+                        value={state[costKey]}
+                        onChange={(e) =>
+                          onChange({ ...state, [costKey]: e.target.value })
+                        }
+                        aria-label={`${label}: цена поставщика`}
+                        placeholder="поставщик ₽"
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </td>
       <td className="px-4 py-2">
@@ -276,6 +369,13 @@ export function CanvasItemsTable({ order }: Props) {
             <span className="block text-[11px] text-gray-400">
               {priceHint(state)}
             </span>
+            {/* Допы покупаются отдельно от полотна: их цену поставщика
+                видно рядом, иначе себестоимость строки кажется меньше. */}
+            {addonsContractorPrice(toDto(state)) > 0 && (
+              <span className="block text-[11px] text-cyan-700">
+                + допы {money(addonsContractorPrice(toDto(state)))}
+              </span>
+            )}
           </div>
         ) : (
           <input
@@ -385,6 +485,19 @@ export function CanvasItemsTable({ order }: Props) {
                     <>
                       <td className="px-4 py-2.5 font-medium text-gray-800">
                         {item.formatCanvas}
+                        {/* Допы видно в строке: иначе непонятно, за что
+                            у двух одинаковых холстов разные суммы. */}
+                        {addonsSummary(item) && (
+                          <span className="ml-1.5 text-xs font-normal text-cyan-700">
+                            + {addonsSummary(item)}
+                            {addonsClientPrice(item) > 0 && (
+                              <span className="text-gray-400">
+                                {' '}
+                                {money(addonsClientPrice(item))}/шт
+                              </span>
+                            )}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-2.5 text-right">{item.quantity}</td>
                       <td className="px-4 py-2.5 text-right">

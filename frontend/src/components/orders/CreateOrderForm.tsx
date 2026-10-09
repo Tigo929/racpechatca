@@ -1,4 +1,9 @@
 import { getErrorMessage } from '../../utils/get-error-message';
+import { platformStyle } from '../ui/PlatformBadge';
+import {
+  addonsClientPrice,
+  addonsContractorPrice,
+} from '../../utils/canvas-addons';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,6 +15,7 @@ import { ordersApi } from '../../api/orders';
 import { canvasProductionApi } from '../../api/canvasProduction';
 import { PHOTO_FORMATS, sheetHint } from '../../config/photo-formats';
 import {
+  COMMUNICATION_LABELS,
   MARKETPLACE_DEFAULT_SOURCE_ORDER,
   marketplaceSourceOrder,
   SOURCE_ORDER_LABELS,
@@ -65,6 +71,13 @@ const canvasItemSchema = z.object({
   quantity: z.coerce.number().int().positive(),
   clientPrice: z.coerce.number().int().min(0),
   contractorPrice: z.coerce.number().int().min(0).optional(),
+  // Допы: у каждого цена поставщика и цена клиенту, обе за штуку.
+  varnish: z.boolean().optional(),
+  varnishClientPrice: z.coerce.number().int().min(0).optional(),
+  varnishContractorPrice: z.coerce.number().int().min(0).optional(),
+  frame: z.boolean().optional(),
+  frameClientPrice: z.coerce.number().int().min(0).optional(),
+  frameContractorPrice: z.coerce.number().int().min(0).optional(),
 }).superRefine((row, ctx) => {
   if (!row.sizeKey && !(row.formatCanvas ?? '').trim()) {
     ctx.addIssue({
@@ -824,12 +837,36 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelCls}>Платформа общения</label>
-          <select className={selectCls} {...register('communicationPlatform')}>
-            <option value="AVITO">Авито</option>
-            <option value="TELEGRAM">Telegram</option>
-            <option value="MAX">MAX</option>
-            <option value="OZON">Ozon</option>
-          </select>
+          {/*
+            Кнопки, а не выпадающий список: платформу выбирают в каждой
+            заявке, и в списке её приходилось сначала открыть, потом
+            прочитать. Цвета фирменные — выбранная площадка узнаётся
+            по цвету, не вчитываясь в подпись.
+          */}
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Платформа общения">
+            {(['AVITO', 'TELEGRAM', 'MAX', 'OZON'] as const).map((value) => {
+              const active = communicationPlatform === value;
+              const style = platformStyle(value);
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() =>
+                    setValue('communicationPlatform', value, { shouldDirty: true, shouldValidate: true })
+                  }
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                    active
+                      ? `${style.chip} ring-2`
+                      : 'bg-gray-50 text-gray-500 ring-1 ring-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  <span aria-hidden="true" className="font-bold leading-none">{style.mark}</span>
+                  {COMMUNICATION_LABELS[value]}
+                </button>
+              );
+            })}
+          </div>
         </div>
         {/* Откуда заказ: по умолчанию Авито — основной ручной канал, поэтому
             выбирать каждый раз не нужно. Заявки сайта сюда не попадают: их
@@ -1014,7 +1051,7 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
             {/* Своя доставка производства — только у холста: везёт подрядчик,
                 который его и печатает. */}
             {productCategory === 'CANVAS' && (
-              <option value="PRODUCTION_MSK">Доставка производства (Москва)</option>
+              <option value="PRODUCTION_MSK">Доставка в пределах МКАД</option>
             )}
           </select>
         </div>
@@ -1379,8 +1416,12 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
                   ] ?? 0)
                 : 0;
               const discountPct = Math.round((canvasPricing?.discountBasisPoints ?? 0) / 100);
-              const revenue = client * qty;
-              const cost = contractor * qty;
+              // Допы входят и в чек клиента, и в себестоимость: лак
+              // и багет покупаются у поставщика, как и само полотно.
+              const addonClient = addonsClientPrice(row ?? {});
+              const addonCost = addonsContractorPrice(row ?? {});
+              const revenue = (client + addonClient) * qty;
+              const cost = (contractor + addonCost) * qty;
               const profit = revenue - cost;
               return (
                 <div key={field.id} className="border border-cyan-100 rounded-xl p-4 space-y-3 bg-cyan-50/30">
@@ -1431,6 +1472,56 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
                       <label className={labelCls}>Клиент ₽/шт</label>
                       <input type="number" min={0} className={inputCls} {...register(`canvasItems.${idx}.clientPrice`)} />
                     </div>
+                  </div>
+
+                  {/* Допы к холсту. Холст бывает только с лаком, только
+                      в багете, с тем и другим — или без них вовсе, поэтому
+                      это две независимые галочки, а не выбор из списка.
+                      У каждого допа две цены: поставщику и клиенту —
+                      разница такой же заработок, как на самом полотне. */}
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {([
+                      ['varnish', 'Лак'],
+                      ['frame', 'Багет'],
+                    ] as const).map(([kind, label]) => {
+                      const on = Boolean(row?.[kind]);
+                      return (
+                        <div
+                          key={kind}
+                          className="rounded-lg border border-cyan-100 bg-white px-3 py-2"
+                        >
+                          <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <input
+                              type="checkbox"
+                              {...register(`canvasItems.${idx}.${kind}`)}
+                            />
+                            {label}
+                          </label>
+                          {on && (
+                            <div className="mt-2 grid grid-cols-2 gap-2">
+                              <div>
+                                <label className={labelCls}>Клиенту ₽/шт</label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  className={inputCls}
+                                  {...register(`canvasItems.${idx}.${kind}ClientPrice`)}
+                                />
+                              </div>
+                              <div>
+                                <label className={labelCls}>Поставщик ₽/шт</label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  className={inputCls}
+                                  {...register(`canvasItems.${idx}.${kind}ContractorPrice`)}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div className="rounded-lg bg-white border border-cyan-100 px-3 py-2">

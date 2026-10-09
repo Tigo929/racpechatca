@@ -1,5 +1,13 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class DtoUpdateCanvasItem {
   @IsOptional()
@@ -39,4 +47,40 @@ export class DtoUpdateCanvasItem {
   @IsOptional()
   @IsIn(['SYNTHETIC', 'COTTON'])
   material?: 'SYNTHETIC' | 'COTTON';
+
+  /*
+   * Допы. Приходят по одному: прислали только цену лака — багет у позиции
+   * остаётся прежним. Выключенный доп свои цены обнуляет.
+   */
+  @IsOptional()
+  @IsBoolean()
+  varnish?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(0)
+  varnishClientPrice?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(0)
+  varnishContractorPrice?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  frame?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(0)
+  frameClientPrice?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(0)
+  frameContractorPrice?: number;
 }

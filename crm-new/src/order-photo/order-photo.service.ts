@@ -11,6 +11,11 @@ import { leadDeliveryCost as deliveryCostForLead } from './free-delivery';
 import { attributionFromLead } from './lead-attribution';
 import { clientPaidAtPatch, parseClientPaidAt } from './paid-at';
 import { clampOrderDiscount, orderTotal } from './order-total';
+import {
+  canvasPositionMoney,
+  normalizeAddons,
+  type CanvasAddons,
+} from './canvas-addons';
 import { MANUAL_DEFAULT_ORIGIN } from './order-origin';
 import { MetrikaOrderOutboxService } from 'src/metrika/orders/metrika-order-outbox.service';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -166,14 +171,9 @@ function calcCanvasMoney(
   quantity: number,
   clientPrice: number,
   contractorPrice: number,
+  addons: CanvasAddons,
 ) {
-  const pricePosition = clientPrice * quantity;
-  const contractorCostPosition = contractorPrice * quantity;
-  return {
-    pricePosition,
-    contractorCostPosition,
-    profitPosition: pricePosition - contractorCostPosition,
-  };
+  return canvasPositionMoney({ quantity, clientPrice, contractorPrice, addons });
 }
 
 /**
@@ -357,6 +357,8 @@ export class OrderPhotoService {
       const canvasTerms = canvasTermsFrom(await this.partnerSettings.get(tx));
       const canvasCreate = (dto.canvasItems ?? []).map((e) => {
         const priced = resolveCanvasPosition(e, canvasTerms);
+        // Лак и багет: своя цена поставщика и своя цена клиенту, за штуку.
+        const addons = normalizeAddons(e);
         return {
           formatCanvas: priced.formatCanvas,
           sizeKey: priced.sizeKey,
@@ -364,7 +366,13 @@ export class OrderPhotoService {
           quantity: e.quantity,
           clientPrice: e.clientPrice,
           contractorPrice: priced.contractorPrice,
-          ...calcCanvasMoney(e.quantity, e.clientPrice, priced.contractorPrice),
+          ...addons,
+          ...calcCanvasMoney(
+            e.quantity,
+            e.clientPrice,
+            priced.contractorPrice,
+            addons,
+          ),
         };
       });
 

@@ -58,6 +58,16 @@ export interface ItemCanvas {
   pricePosition: number;
   contractorCostPosition: number;
   profitPosition: number;
+  /**
+   * Допы к холсту: лак и багет. У каждого своя цена поставщика и своя цена
+   * клиенту, обе за штуку. Флаг отдельно от цены: доп бывает бесплатным.
+   */
+  varnish?: boolean;
+  varnishClientPrice?: number;
+  varnishContractorPrice?: number;
+  frame?: boolean;
+  frameClientPrice?: number;
+  frameContractorPrice?: number;
 }
 
 export interface ItemPhoto {

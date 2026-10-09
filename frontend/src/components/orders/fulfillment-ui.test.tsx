@@ -37,7 +37,7 @@ it('editing a canvas preserves the production courier option and clears pickup c
   // по названию, а не по порядку: в форме появляются новые поля (этап 17)
   const delivery = screen.getByRole('combobox', { name: 'Способ доставки' });
   expect(delivery).toHaveValue('PRODUCTION_MSK');
-  expect(screen.getByRole('option', { name: 'Доставка производства (Москва)' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'Доставка в пределах МКАД' })).toBeInTheDocument();
   fireEvent.change(delivery, { target: { value: 'PICKUP' } });
   expect(screen.getAllByRole('spinbutton')[0]).toHaveValue(0);
   expect(screen.getAllByRole('spinbutton')[0]).toHaveAttribute('readonly');

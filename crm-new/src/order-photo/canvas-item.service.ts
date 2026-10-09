@@ -16,19 +16,24 @@ import {
   canvasTermsFrom,
   resolveCanvasPosition,
 } from 'src/canvas/canvas-production-price';
+import {
+  canvasPositionMoney,
+  normalizeAddons,
+  type CanvasAddons,
+} from './canvas-addons';
 
 function canvasMoney(
   quantity: number,
   clientPrice: number,
   contractorPrice: number,
+  addons: CanvasAddons,
 ) {
-  const pricePosition = clientPrice * quantity;
-  const contractorCostPosition = contractorPrice * quantity;
-  return {
-    pricePosition,
-    contractorCostPosition,
-    profitPosition: pricePosition - contractorCostPosition,
-  };
+  return canvasPositionMoney({
+    quantity,
+    clientPrice,
+    contractorPrice,
+    addons,
+  });
 }
 
 @Injectable()
@@ -62,6 +67,9 @@ export class CanvasItemService {
        */
       const settings = await this.partnerSettings.get();
       const priced = resolveCanvasPosition(dto, canvasTermsFrom(settings));
+      // Допы считаются поверх цены полотна и за ту же штуку: два холста
+      // в багете — два багета.
+      const addons = normalizeAddons(dto);
 
       await tx.itemCanvas.create({
         data: {
@@ -72,7 +80,13 @@ export class CanvasItemService {
           quantity: dto.quantity,
           clientPrice: dto.clientPrice,
           contractorPrice: priced.contractorPrice,
-          ...canvasMoney(dto.quantity, dto.clientPrice, priced.contractorPrice),
+          ...addons,
+          ...canvasMoney(
+            dto.quantity,
+            dto.clientPrice,
+            priced.contractorPrice,
+            addons,
+          ),
         },
       });
 
@@ -125,6 +139,21 @@ export class CanvasItemService {
         contractorPrice = priced.contractorPrice;
       }
 
+      /*
+       * Допы правятся по одному: пришло только поле лака — багет остаётся
+       * прежним. Иначе правка цены лака молча снимала бы багет.
+       */
+      const addons = normalizeAddons({
+        varnish: dto.varnish ?? item.varnish,
+        varnishClientPrice: dto.varnishClientPrice ?? item.varnishClientPrice,
+        varnishContractorPrice:
+          dto.varnishContractorPrice ?? item.varnishContractorPrice,
+        frame: dto.frame ?? item.frame,
+        frameClientPrice: dto.frameClientPrice ?? item.frameClientPrice,
+        frameContractorPrice:
+          dto.frameContractorPrice ?? item.frameContractorPrice,
+      });
+
       await tx.itemCanvas.update({
         where: { id: itemId },
         data: {
@@ -134,7 +163,8 @@ export class CanvasItemService {
           quantity,
           clientPrice,
           contractorPrice,
-          ...canvasMoney(quantity, clientPrice, contractorPrice),
+          ...addons,
+          ...canvasMoney(quantity, clientPrice, contractorPrice, addons),
         },
       });
 

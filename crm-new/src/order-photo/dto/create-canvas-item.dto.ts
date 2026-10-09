@@ -1,5 +1,13 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class DtoCreateCanvasItem {
   /** Подпись позиции. При выборе размера из прайса заполняется сервером. */
@@ -40,4 +48,41 @@ export class DtoCreateCanvasItem {
   @Type(() => Number)
   @Min(0)
   contractorPrice?: number;
+
+  /**
+   * Покрытие лаком. Цены — за штуку: сколько берёт поставщик и сколько
+   * назвали клиенту. Выключенный доп свои цены обнуляет.
+   */
+  @IsOptional()
+  @IsBoolean()
+  varnish?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(0)
+  varnishClientPrice?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(0)
+  varnishContractorPrice?: number;
+
+  /** Багет (рама). Цены — за штуку, как у лака. */
+  @IsOptional()
+  @IsBoolean()
+  frame?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(0)
+  frameClientPrice?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(0)
+  frameContractorPrice?: number;
 }

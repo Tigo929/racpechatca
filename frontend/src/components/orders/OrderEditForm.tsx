@@ -113,7 +113,7 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, pro
           <select className={inputCls} value={form.deliveryMethod} aria-label="Способ доставки"
             onChange={e => changeDelivery(e.target.value as UpdateOrderDto['deliveryMethod'])}>
             <option value="PICKUP">Самовывоз</option>
-            {productCategory === 'CANVAS' && <option value="PRODUCTION_MSK">Доставка производства (Москва)</option>}
+            {productCategory === 'CANVAS' && <option value="PRODUCTION_MSK">Доставка в пределах МКАД</option>}
             <option value="YANDEX_PVZ">Яндекс ПВЗ</option>
             <option value="OZON_PVZ">Ozon ПВЗ</option>
             <option value="OZON_SELLER">Ozon Продавец</option>
