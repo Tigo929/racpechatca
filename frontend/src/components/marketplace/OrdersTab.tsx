@@ -10,7 +10,11 @@ import {
   sortByAccepted,
   type SortDirection,
 } from './ozon-order-sort';
-import { marketplaceStage } from './marketplace-stage';
+import {
+  marketplaceStage,
+  stageCounts,
+  type MarketplaceStageKey,
+} from './marketplace-stage';
 
 /**
  * Заказы Ozon. Главный вопрос оператора — «что горит по отгрузке», поэтому
@@ -183,6 +187,15 @@ export function OrdersTab({ accountId }: { accountId: string }) {
    * пришло только что».
    */
   const [sort, setSort] = useState<SortDirection>('earliest');
+  /*
+   * Этап нашего процесса — отдельный фильтр от групп площадки.
+   *
+   * Группы Ozon отвечают на вопрос «что с доставкой», а работа идёт по
+   * нашим этапам: сначала завести заказ, потом макет, потом согласование,
+   * потом производство. Одним списком это не читалось — приходилось
+   * глазами перебирать строки, выискивая, где какой этап.
+   */
+  const [stage, setStage] = useState<MarketplaceStageKey | 'all'>('all');
 
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['ozon-orders', accountId, showAll],
@@ -203,8 +216,14 @@ export function OrdersTab({ accountId }: { accountId: string }) {
     return acc;
   }, {});
 
+  const byGroup = group === 'all' ? all : all.filter((o) => o.group === group);
+  // Кнопки этапов считаются по выбранной группе: иначе «Готов — 3» рядом
+  // с пустым списком означало бы, что эти три где-то в другой группе.
+  const stages = stageCounts(byGroup);
   const visible = sortByAccepted(
-    group === 'all' ? all : all.filter((o) => o.group === group),
+    stage === 'all'
+      ? byGroup
+      : byGroup.filter((o) => marketplaceStage(o.crm).key === stage),
     sort,
   );
 
@@ -249,7 +268,12 @@ export function OrdersTab({ accountId }: { accountId: string }) {
             <FilterChip
               key={g.key}
               active={group === g.key}
-              onClick={() => setGroup(g.key)}
+              onClick={() => {
+                setGroup(g.key);
+                // Этап мог быть выбран в другой группе: там он есть,
+                // здесь — нет, и человек увидел бы пустой экран.
+                setStage('all');
+              }}
             >
               {g.label}
               <span className={group === g.key ? 'ml-1.5 opacity-80' : 'ml-1.5 text-gray-400'}>
@@ -288,15 +312,45 @@ export function OrdersTab({ accountId }: { accountId: string }) {
         </div>
       </div>
 
+      {/* Этапы нашего процесса. Показываем только те, что в выборке есть:
+          кнопка «Готов — 0» занимает место и ничего не говорит. */}
+      {stages.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+            Этап
+          </span>
+          <FilterChip active={stage === 'all'} onClick={() => setStage('all')}>
+            Все
+            <span className={stage === 'all' ? 'ml-1.5 opacity-80' : 'ml-1.5 text-gray-400'}>
+              {byGroup.length}
+            </span>
+          </FilterChip>
+          {stages.map((s) => (
+            <FilterChip
+              key={s.key}
+              active={stage === s.key}
+              onClick={() => setStage(s.key)}
+            >
+              {s.label}
+              <span className={stage === s.key ? 'ml-1.5 opacity-80' : 'ml-1.5 text-gray-400'}>
+                {s.count}
+              </span>
+            </FilterChip>
+          ))}
+        </div>
+      )}
+
       {isLoading ? (
         <p className="text-sm text-gray-500">Загрузка…</p>
       ) : visible.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-8 text-center">
           <Package size={28} className="mx-auto text-gray-300" aria-hidden="true" />
           <p className="mt-3 text-sm text-gray-500">
-            {group === 'to_ship'
-              ? 'Ничего не ждёт отгрузки — всё передано в доставку.'
-              : 'В этой группе заказов нет.'}
+            {stage !== 'all'
+              ? 'На этом этапе сейчас пусто.'
+              : group === 'to_ship'
+                ? 'Ничего не ждёт отгрузки — всё передано в доставку.'
+                : 'В этой группе заказов нет.'}
           </p>
         </div>
       ) : (

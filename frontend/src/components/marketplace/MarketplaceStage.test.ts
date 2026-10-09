@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { marketplaceStage, type MarketplaceCrmOrder } from './marketplace-stage';
+import {
+  marketplaceStage,
+  stageCounts,
+  STAGE_ORDER,
+  type MarketplaceCrmOrder,
+} from './marketplace-stage';
 
 /**
  * Этап отправления в нашем процессе.
@@ -86,5 +91,62 @@ describe('этап отправления', () => {
     const stage = marketplaceStage(crm({ status: 'APPROVAL_SENT' }));
     expect(stage.chip).toContain('amber');
     expect(stage.stripe).toContain('amber');
+  });
+});
+
+describe('фильтры по этапам', () => {
+  const posting = (over: Partial<MarketplaceCrmOrder> | null) => ({
+    crm: over === null ? null : crm(over),
+  });
+
+  it('считает отправления по этапам', () => {
+    const counts = stageCounts([
+      posting(null),
+      posting(null),
+      posting({ status: 'NEW' }),
+      posting({ status: 'APPROVAL_SENT' }),
+      posting({ status: 'APPROVAL_SENT', approvalStatus: 'APPROVED' }),
+      posting({ status: 'COMPLETED' }),
+    ]);
+    expect(counts).toEqual([
+      { key: 'NOT_CREATED', label: 'Не заведён', count: 2 },
+      { key: 'NEW', label: 'Новый', count: 1 },
+      { key: 'APPROVAL_SENT', label: 'На согласовании', count: 1 },
+      { key: 'APPROVED', label: 'Согласован', count: 1 },
+      { key: 'COMPLETED', label: 'Отгружен', count: 1 },
+    ]);
+  });
+
+  it('порядок кнопок — рабочий, а не алфавитный', () => {
+    // Сверху вниз по нему заказ и движется: видно, где начало очереди.
+    const counts = stageCounts([
+      posting({ status: 'COMPLETED' }),
+      posting({ status: 'NEW' }),
+      posting(null),
+    ]);
+    expect(counts.map((c) => c.key)).toEqual(['NOT_CREATED', 'NEW', 'COMPLETED']);
+  });
+
+  it('пустых кнопок не делаем: этап без заказов не показывается', () => {
+    const counts = stageCounts([posting({ status: 'NEW' })]);
+    expect(counts).toHaveLength(1);
+    expect(counts[0].key).toBe('NEW');
+  });
+
+  it('список пуст — кнопок нет вовсе', () => {
+    expect(stageCounts([])).toEqual([]);
+  });
+
+  it('унаследованные статусы не теряются: уходят в общий этап', () => {
+    // Заказ со старым статусом должен остаться видимым хоть под какой-то
+    // кнопкой, иначе он пропадёт из работы совсем.
+    const counts = stageCounts([posting({ status: 'FOLDER_STRUCTURE_CREATED' })]);
+    expect(counts).toHaveLength(1);
+    expect(counts[0].key).toBe('OTHER');
+    expect(counts[0].count).toBe(1);
+  });
+
+  it('у каждого этапа из порядка есть место в фильтрах', () => {
+    expect(new Set(STAGE_ORDER).size).toBe(STAGE_ORDER.length);
   });
 });
