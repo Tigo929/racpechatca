@@ -117,8 +117,29 @@ describe('buildDailyPlanMessage', () => {
       ready: [{ numberOrder: 'R-ONLY', deliveryMethod: 'PICKUP', items: [] }],
     };
     const msg = buildDailyPlanMessage([readyOnly], NOW, 0);
-    expect(msg).toContain('ready_guy');
+    expect(msg).toContain('Готовы к выдаче (1)');
     expect(msg).toContain('R-ONLY');
+    // Исполнитель в плане один и упоминать его не нужно — имя не ставим:
+    // отделять не от кого, а в собственном отчёте своё имя только мешает.
+    expect(msg).not.toContain('ready_guy');
+  });
+
+  it('один исполнитель без упоминания — плана без имени, заказы на месте', () => {
+    const msg = buildDailyPlanMessage([lesha], NOW, 0);
+    expect(msg).toContain('В работе (1)');
+    expect(msg).not.toContain('lesha');
+  });
+
+  it('исполнителей двое — имена возвращаются: иначе не понять, чьи заказы', () => {
+    const msg = buildDailyPlanMessage([lesha, maksim], NOW, 0);
+    expect(msg).toContain('lesha');
+    expect(msg).toContain('@maksim_tg');
+  });
+
+  it('упоминание остаётся, даже когда исполнитель в плане один', () => {
+    // Иначе человек не получит уведомление о своих заказах.
+    const msg = buildDailyPlanMessage([maksim], NOW, 0);
+    expect(msg).toContain('@maksim_tg');
   });
 
   it('исполнителя, у которого только отгрузки, в плане нет вовсе', () => {

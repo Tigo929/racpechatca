@@ -188,23 +188,44 @@ export function buildDailyPlanMessage(
   unassignedCount = 0,
   options: { manual?: boolean } = {},
 ): string {
-  const blocks = groups
+  const filled = groups
     .slice()
     .sort((a, b) => executorKey(a, now) - executorKey(b, now))
-    .map((group) => {
+    .map((group) => ({
+      group,
       // Готовые к выдаче = только самовывоз; отгрузки в план не входят.
-      const readyForPickup = group.ready.filter(
+      readyForPickup: group.ready.filter(
         (o) => !needsShipping(o.deliveryMethod),
-      );
-      // Показывать нечего — исполнителя в плане не упоминаем.
-      if (group.inWork.length === 0 && readyForPickup.length === 0) return '';
+      ),
+    }))
+    // Показывать нечего — исполнителя в плане не упоминаем.
+    .filter(
+      ({ group, readyForPickup }) =>
+        group.inWork.length > 0 || readyForPickup.length > 0,
+    );
 
+  const blocks = filled
+    .map(({ group, readyForPickup }) => {
+      /*
+       * Имя исполнителя в блоке нужно для двух вещей: упомянуть человека,
+       * чтобы пришло уведомление, и отделить его заказы от чужих.
+       *
+       * Когда в плане один исполнитель и упоминать его не нужно (Telegram
+       * у него не задан), имя не делает ни того, ни другого: отделять не
+       * от кого, а в собственном отчёте своё же имя — лишний шум (решение
+       * владельца 10.10.2026). Тогда блок начинается сразу с подсекции.
+       */
+      const named =
+        filled.length > 1 || Boolean(group.executor.telegramUsername?.trim());
       // Пустая строка после имени и между подсекциями — иначе блок исполнителя
       // читается сплошной простынёй.
-      const lines: string[] = [`👤 <b>${mentionFor(group.executor)}</b>`];
+      const lines: string[] = named
+        ? [`👤 <b>${mentionFor(group.executor)}</b>`]
+        : [];
 
       if (group.inWork.length > 0) {
-        lines.push('', `🔧 <b>В работе (${group.inWork.length})</b>`);
+        if (lines.length > 0) lines.push('');
+        lines.push(`🔧 <b>В работе (${group.inWork.length})</b>`);
         for (const order of group.inWork
           .slice()
           .sort((a, b) => priorityKey(a, now) - priorityKey(b, now))) {
@@ -215,7 +236,8 @@ export function buildDailyPlanMessage(
       }
 
       if (readyForPickup.length > 0) {
-        lines.push('', `✅ <b>Готовы к выдаче (${readyForPickup.length})</b>`);
+        if (lines.length > 0) lines.push('');
+        lines.push(`✅ <b>Готовы к выдаче (${readyForPickup.length})</b>`);
         for (const order of readyForPickup) {
           lines.push(readyLine(order));
         }
