@@ -74,3 +74,24 @@ export function formatAccepted(iso: string | null): string {
   const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   return `${d.getDate()} ${RU_MONTHS[d.getMonth()]} ${time}`;
 }
+
+/**
+ * Соседнее отправление в списке — для стрелок в открытой карточке.
+ *
+ * Шаг считается по тому списку, который сейчас на экране: с выбранной
+ * группой, этапом и порядком. Иначе «следующий» означал бы не то, что
+ * видит человек.
+ *
+ * `null` — идти некуда: мы на краю списка либо открытого отправления
+ * в нём нет вовсе (например, оно ушло из фильтра, пока карточка открыта).
+ */
+export function neighbourPosting<T extends { postingNumber: string }>(
+  list: readonly T[],
+  current: string | null,
+  shift: number,
+): T | null {
+  if (!current) return null;
+  const index = list.findIndex((o) => o.postingNumber === current);
+  if (index < 0) return null;
+  return list[index + shift] ?? null;
+}

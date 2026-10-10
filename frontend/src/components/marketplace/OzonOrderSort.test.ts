@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { formatAccepted, sortByAccepted } from './ozon-order-sort';
+import {
+  formatAccepted,
+  neighbourPosting,
+  sortByAccepted,
+} from './ozon-order-sort';
 
 /**
  * Очередь отправлений.
@@ -101,5 +105,28 @@ describe('подпись времени', () => {
   it('времени нет — прочерк, а не «Invalid Date»', () => {
     expect(formatAccepted(null)).toBe('—');
     expect(formatAccepted('не дата')).toBe('—');
+  });
+});
+
+describe('ход по списку из открытой карточки', () => {
+  const list = [
+    { postingNumber: 'a' },
+    { postingNumber: 'b' },
+    { postingNumber: 'c' },
+  ];
+
+  it('следующий и предыдущий — соседи по списку на экране', () => {
+    expect(neighbourPosting(list, 'b', 1)?.postingNumber).toBe('c');
+    expect(neighbourPosting(list, 'b', -1)?.postingNumber).toBe('a');
+  });
+
+  it('на краях идти некуда', () => {
+    expect(neighbourPosting(list, 'a', -1)).toBeNull();
+    expect(neighbourPosting(list, 'c', 1)).toBeNull();
+  });
+
+  it('отправление ушло из фильтра — стрелки молчат, а не прыгают наугад', () => {
+    expect(neighbourPosting(list, 'чужое', 1)).toBeNull();
+    expect(neighbourPosting(list, null, 1)).toBeNull();
   });
 });

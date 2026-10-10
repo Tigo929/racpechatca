@@ -268,6 +268,10 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
     onSuccess: (updated) => {
       qc.setQueryData(["order", orderId], updated);
       qc.invalidateQueries({ queryKey: ["orders"] });
+      // Тот же заказ виден и в списке отправлений маркетплейса:
+      // этап там считается по заказу CRM, и без этой строки список
+      // показывал старый этап до перезагрузки страницы.
+      qc.invalidateQueries({ queryKey: ["ozon-orders"] });
       setEditing(false);
       toast.success("Заявка обновлена");
     },
@@ -285,6 +289,10 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
     onSuccess: (updated) => {
       qc.setQueryData(["order", orderId], updated);
       qc.invalidateQueries({ queryKey: ["orders"] });
+      // Тот же заказ виден и в списке отправлений маркетплейса:
+      // этап там считается по заказу CRM, и без этой строки список
+      // показывал старый этап до перезагрузки страницы.
+      qc.invalidateQueries({ queryKey: ["ozon-orders"] });
       toast.success("ТЗ-файлы прикреплены");
     },
     onError: (error: unknown) =>
@@ -296,6 +304,10 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
     onSuccess: (updated) => {
       qc.setQueryData(["order", orderId], updated);
       qc.invalidateQueries({ queryKey: ["orders"] });
+      // Тот же заказ виден и в списке отправлений маркетплейса:
+      // этап там считается по заказу CRM, и без этой строки список
+      // показывал старый этап до перезагрузки страницы.
+      qc.invalidateQueries({ queryKey: ["ozon-orders"] });
       if (updated.partnerSyncStatus === "SENT") {
         toast.success("ТЗ отправлено в Telegram");
       } else {
@@ -427,6 +439,10 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
     mutationFn: (reason: string) => ordersApi.delete(orderId, reason),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["orders"] });
+      // Тот же заказ виден и в списке отправлений маркетплейса:
+      // этап там считается по заказу CRM, и без этой строки список
+      // показывал старый этап до перезагрузки страницы.
+      qc.invalidateQueries({ queryKey: ["ozon-orders"] });
       toast.success("Заявка удалена");
       setDeleteOpen(false);
       onDeleted();

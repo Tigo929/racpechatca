@@ -4,9 +4,11 @@ import { AlertTriangle, ArrowDown, ArrowUp, Package, RefreshCw } from 'lucide-re
 import { ozonOrdersApi, type OzonOrder, type OzonOrderGroup } from '../../api/ozonOrders';
 import { FilterChip } from '../ui/FilterChip';
 import { OzonOrderModal } from './OzonOrderModal';
+import { OrderNavigator } from '../orders/OrderNavigator';
 import { parseOzonArticle } from '../../utils/ozon-article';
 import {
   formatAccepted,
+  neighbourPosting,
   sortByAccepted,
   type SortDirection,
 } from './ozon-order-sort';
@@ -101,7 +103,15 @@ function ItemLines({ items }: { items: OzonOrder['items'] }) {
  * Столбцы те же и в том же порядке намеренно: два окна читаются строка
  * в строку, и не приходится вспоминать, где что лежит.
  */
-function OrderTableRow({ order, onOpen }: { order: OzonOrder; onOpen: () => void }) {
+function OrderTableRow({
+  order,
+  index,
+  onOpen,
+}: {
+  order: OzonOrder;
+  index: number;
+  onOpen: () => void;
+}) {
   // Полоса слева — тоже наш этап: в списке глазами ищут именно его.
   const stage = marketplaceStage(order.crm);
   return (
@@ -110,6 +120,11 @@ function OrderTableRow({ order, onOpen }: { order: OzonOrder; onOpen: () => void
       className={`cursor-pointer border-l-[4px] ${stage.stripe} hover:bg-indigo-50/40`}
       style={{ borderBottom: '1px solid #F1F5F9' }}
     >
+      {/* Номер строки — по текущему фильтру, а не по всей выборке: им
+          считают «сколько осталось» в том списке, который перед глазами. */}
+      <td className="px-3 py-3 align-top text-right text-sm tabular-nums text-gray-400">
+        {index + 1}
+      </td>
       <td className="px-4 py-3 align-top">
         <span className="text-sm font-semibold text-gray-900">
           {order.postingNumber}
@@ -137,7 +152,15 @@ function OrderTableRow({ order, onOpen }: { order: OzonOrder; onOpen: () => void
  * То же самое для телефона: таблица в 375 пикселей не помещается, и вместо
  * столбцов строка складывается в карточку. Порядок строк — тот же.
  */
-function OrderRow({ order, onOpen }: { order: OzonOrder; onOpen: () => void }) {
+function OrderRow({
+  order,
+  index,
+  onOpen,
+}: {
+  order: OzonOrder;
+  index: number;
+  onOpen: () => void;
+}) {
   const stage = marketplaceStage(order.crm);
   return (
     <button
@@ -147,6 +170,7 @@ function OrderRow({ order, onOpen }: { order: OzonOrder; onOpen: () => void }) {
     >
       {/* Время приёма — первым, как в кабинете: по нему и выстроена очередь. */}
       <span className="block shrink-0 text-xs font-medium tabular-nums text-gray-500 sm:w-28 sm:pt-0.5">
+        <span className="mr-1.5 text-gray-400">{index + 1}.</span>
         {formatAccepted(order.createdAt)}
       </span>
 
@@ -359,6 +383,7 @@ export function OrdersTab({ accountId }: { accountId: string }) {
           <table className="hidden w-full md:table">
             <thead>
               <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                <th scope="col" className={`${TH} text-right`}>№</th>
                 <th scope="col" className={TH}>Номер отправления</th>
                 <th scope="col" className={TH}>Статус</th>
                 <th scope="col" className="px-4 py-2.5 text-left">
@@ -389,10 +414,11 @@ export function OrdersTab({ accountId }: { accountId: string }) {
               </tr>
             </thead>
             <tbody>
-              {visible.map((o) => (
+              {visible.map((o, index) => (
                 <OrderTableRow
                   key={o.postingNumber}
                   order={o}
+                  index={index}
                   onOpen={() => setOpenPosting(o.postingNumber)}
                 />
               ))}
@@ -401,10 +427,11 @@ export function OrdersTab({ accountId }: { accountId: string }) {
 
           {/* Телефон: те же строки, сложенные в карточку. */}
           <div className="md:hidden">
-            {visible.map((o) => (
+            {visible.map((o, index) => (
               <OrderRow
                 key={o.postingNumber}
                 order={o}
+                index={index}
                 onOpen={() => setOpenPosting(o.postingNumber)}
               />
             ))}
@@ -414,13 +441,41 @@ export function OrdersTab({ accountId }: { accountId: string }) {
 
       {openPosting && (() => {
         const posting = all.find((o) => o.postingNumber === openPosting);
-        return posting ? (
+        if (!posting) return null;
+        /*
+         * Ход по отправлениям из открытой карточки — как в заказах.
+         *
+         * Идём по тому же списку, который на экране: с выбранной группой,
+         * этапом и порядком. Иначе «следующий» означал бы не то, что видит
+         * человек. Отправление открыто из другого фильтра — стрелки прячутся
+         * сами: место в списке не определено.
+         */
+        const index = visible.findIndex(
+          (o) => o.postingNumber === openPosting,
+        );
+        const goTo = (shift: number) => {
+          const next = neighbourPosting(visible, openPosting, shift);
+          if (next) setOpenPosting(next.postingNumber);
+        };
+        return (
           <OzonOrderModal
             accountId={accountId}
             order={posting}
             onClose={() => setOpenPosting(null)}
+            navigator={
+              index >= 0 ? (
+                <OrderNavigator
+                  position={index + 1}
+                  total={visible.length}
+                  canPrev={index > 0}
+                  canNext={index < visible.length - 1}
+                  onPrev={() => goTo(-1)}
+                  onNext={() => goTo(1)}
+                />
+              ) : null
+            }
           />
-        ) : null;
+        );
       })()}
 
       {data?.hasNext && (

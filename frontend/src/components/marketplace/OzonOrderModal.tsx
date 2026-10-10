@@ -27,9 +27,16 @@ interface Props {
   accountId: string;
   order: OzonOrder;
   onClose: () => void;
+  /** Стрелки «предыдущее — следующее» по тому же списку, что на экране. */
+  navigator?: React.ReactNode;
 }
 
-export function OzonOrderModal({ accountId, order, onClose }: Props) {
+export function OzonOrderModal({
+  accountId,
+  order,
+  onClose,
+  navigator,
+}: Props) {
   const qc = useQueryClient();
   /*
    * Ссылка на переписку. Единственное, чего в отправлении нет: чат
@@ -52,6 +59,9 @@ export function OzonOrderModal({ accountId, order, onClose }: Props) {
         queryKey: ['ozon-crm-order', accountId, order.postingNumber],
       });
       void qc.invalidateQueries({ queryKey: ['orders'] });
+      // Список отправлений показывает этап по заказу CRM: без обновления
+      // строка осталась бы «Не заведён» до перезагрузки страницы.
+      void qc.invalidateQueries({ queryKey: ['ozon-orders'] });
       toast.success(res.created ? 'Заказ заведён в CRM' : 'Заказ уже был заведён');
     },
     onError: (error) =>
@@ -71,6 +81,7 @@ export function OzonOrderModal({ accountId, order, onClose }: Props) {
       onClose={onClose}
       title={`Заказ Ozon ${order.orderNumber || order.postingNumber}`}
       size="xl"
+      headerExtra={navigator}
       bodyKey={link?.id ?? order.postingNumber}
     >
       {isLoading ? (
