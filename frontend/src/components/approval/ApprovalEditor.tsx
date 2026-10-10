@@ -34,6 +34,7 @@ import type {
   PrintApproval,
 } from '../../types/index';
 import { MAX_MM, MIN_MM, PrintStage } from './PrintStage';
+import { isPdfFile, pdfFirstPageToImage } from '../../utils/pdf-to-image';
 
 interface Props {
   approvalId: string;
@@ -75,7 +76,7 @@ const btn =
  */
 export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
   const qc = useQueryClient();
-  const [activeSide, setActiveSide] = useState<EnumApprovalSide>('FRONT');
+  const [chosenSide, setChosenSide] = useState<EnumApprovalSide>('FRONT');
   const [localDraft, setLocalDraft] = useState<Draft | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -220,6 +221,36 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
     return [...seen.values()];
   }, [templates]);
 
+  /*
+   * Стороны берутся из заказа, а не из головы оператора.
+   *
+   * Сторону печати выбирают при оформлении заявки. Раньше лист про неё не
+   * знал: обе кнопки были всегда, и забытая спина у двусторонней печати
+   * уходила в производство — ошибку находили на готовой футболке. Теперь
+   * лишней стороны тут нет, а пока обязательная пустая, лист не собрать.
+   */
+  const strictSides = approval?.strictSides === true;
+  const requiredSides =
+    strictSides && approval?.requiredSides?.length
+      ? approval.requiredSides
+      : ALL_SIDES;
+  const missingSides = strictSides
+    ? requiredSides.filter((value) => !draft?.sides[value]?.printFile)
+    : [];
+  const blocked = missingSides.length > 0;
+
+  /*
+   * Открытая сторона всегда одна из тех, что требует заказ. Иначе у заказа
+   * «только спина» редактор открывался на лицевой: оператор видел пустой
+   * холст и грузил принт не туда.
+   *
+   * Считается при отрисовке, а не правкой состояния в эффекте: состояние
+   * хранит выбор человека, а показываем мы его же, приведённого к заказу.
+   */
+  const activeSide = requiredSides.includes(chosenSide)
+    ? chosenSide
+    : requiredSides[0];
+
   const template = useMemo<MockupTemplate | null>(() => {
     if (!draft) return null;
     const wanted = draft.shirtColor.trim().toLowerCase();
@@ -263,6 +294,20 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
     });
   }, [approvalId, draft]);
 
+  /*
+   * PDF превращается в картинку здесь, в браузере, и на сервер уходит уже
+   * она.
+   *
+   * Макеты со слоями весят сотни мегабайт, и ждать их отправку по обычному
+   * интернету — минуты. При этом на сервере PDF всё равно становится
+   * растром: слои, шрифты и история правок в лист согласования не попадают
+   * никогда. Гнать их по сети незачем.
+   *
+   * Не справился браузер — отправляем файл как есть: разбор PDF на сервере
+   * никуда не делся и отработает, если файл пролезет по размеру.
+   */
+  const [preparing, setPreparing] = useState(false);
+
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       await flushDraft();
@@ -272,6 +317,23 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
     onError: (error) =>
       toast.error(getErrorMessage(error, 'Не удалось загрузить принт')),
   });
+
+  const uploadPrintFile = async (file: File) => {
+    if (!isPdfFile(file)) {
+      uploadMutation.mutate(file);
+      return;
+    }
+    setPreparing(true);
+    try {
+      const image = await pdfFirstPageToImage(file);
+      uploadMutation.mutate(image);
+    } catch (error) {
+      console.warn('PDF не разобрался в браузере, отправляем как есть', error);
+      uploadMutation.mutate(file);
+    } finally {
+      setPreparing(false);
+    }
+  };
 
   const removePrintMutation = useMutation({
     mutationFn: async () => {
@@ -320,33 +382,6 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
     },
     [editDraft, activeSide],
   );
-
-  /*
-   * Стороны берутся из заказа, а не из головы оператора.
-   *
-   * Сторону печати выбирают при оформлении заявки. Раньше лист про неё не
-   * знал: обе кнопки были всегда, и забытая спина у двусторонней печати
-   * уходила в производство — ошибку находили на готовой футболке. Теперь
-   * лишней стороны тут нет, а пока обязательная пустая, лист не собрать.
-   */
-  const strictSides = approval?.strictSides === true;
-  const requiredSides =
-    strictSides && approval?.requiredSides?.length
-      ? approval.requiredSides
-      : ALL_SIDES;
-  const missingSides = strictSides
-    ? requiredSides.filter((value) => !draft?.sides[value]?.printFile)
-    : [];
-  const blocked = missingSides.length > 0;
-
-  /*
-   * Если заказ стороны задаёт, открытая сторона всегда одна из них. Иначе у
-   * заказа «только спина» редактор открывался на лицевой: оператор видел
-   * пустой холст и грузил принт не туда.
-   */
-  useEffect(() => {
-    if (!requiredSides.includes(activeSide)) setActiveSide(requiredSides[0]);
-  }, [requiredSides, activeSide]);
 
   const handlePreview = async () => {
     setPreviewLoading(true);
@@ -466,7 +501,13 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
               <div className="flex flex-wrap items-center gap-2">
                 <label className={`${btn} cursor-pointer`}>
                   <Upload size={14} aria-hidden="true" />
-                  {side?.printFile ? 'Заменить файл' : 'Загрузить принт'}
+                  {preparing
+                    ? 'Готовим макет…'
+                    : uploadMutation.isPending
+                      ? 'Загружаем…'
+                      : side?.printFile
+                        ? 'Заменить файл'
+                        : 'Загрузить принт'}
                   <input
                     type="file"
                     /* PDF принимаем наравне с картинками: макеты приходят
@@ -474,13 +515,14 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
                        ради загрузки больше не нужно. Сервер рисует из
                        первой страницы картинку с прозрачным фоном. */
                     accept="image/png,image/jpeg,image/webp,application/pdf,.pdf"
+                    title="PNG, JPEG, WEBP или PDF. Из PDF берётся первая страница"
                     className="hidden"
-                    disabled={uploadMutation.isPending || !template}
+                    disabled={preparing || uploadMutation.isPending || !template}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
                         pushHistory();
-                        uploadMutation.mutate(file);
+                        void uploadPrintFile(file);
                       }
                       e.target.value = '';
                     }}
@@ -666,7 +708,7 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
               {requiredSides.map((value) => (
                 <button
                   key={value}
-                  onClick={() => setActiveSide(value)}
+                  onClick={() => setChosenSide(value)}
                   className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                     activeSide === value
                       ? 'bg-amber-500 text-white'
