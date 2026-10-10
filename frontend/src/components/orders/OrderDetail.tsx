@@ -86,7 +86,7 @@ function LeadNoteBlock({ note, isAdmin }: { note: string; isAdmin: boolean }) {
   );
 }
 
-import { getDeadlineInfo } from "../../utils/deadline";
+import { getDeadlineInfo, tracksDeadline } from "../../utils/deadline";
 import { getStalledDays } from "../../utils/stalled";
 import { ordersApi } from "../../api/orders";
 import { ozonOrdersApi } from "../../api/ozonOrders";
@@ -566,8 +566,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 "CANCELLED",
               ].includes(order.status);
               if (isClosed) return null;
-              const tracksDeadline = order.productCategory !== "TSHIRT";
-              const dl = tracksDeadline
+              const tracked = tracksDeadline(order);
+              const dl = tracked
                 ? getDeadlineInfo(order.deadline, order.createdAt)
                 : null;
               return (

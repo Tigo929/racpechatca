@@ -12,6 +12,10 @@ import { attributionFromLead } from './lead-attribution';
 import { clientPaidAtPatch, parseClientPaidAt } from './paid-at';
 import { clampOrderDiscount, orderTotal } from './order-total';
 import {
+  deadlineOnAccept,
+  DEFAULT_DEADLINE_MS,
+} from './deadline-start';
+import {
   canvasPositionMoney,
   normalizeAddons,
   type CanvasAddons,
@@ -426,7 +430,7 @@ export class OrderPhotoService {
           deadline:
             productCategory === EnumProductCategory.TSHIRT
               ? null
-              : new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+              : new Date(Date.now() + DEFAULT_DEADLINE_MS),
 
           ...(dto.status ? { status: dto.status } : {}),
           // Заказ, заводимый уже оплаченным, может принести фактическую дату
@@ -1843,6 +1847,9 @@ export class OrderPhotoService {
           status: dto.status,
           // Отсчёт «зависания» начинается заново с каждой сменой статуса.
           statusChangedAt: new Date(),
+          // Срок начинает идти, когда обращение стало заказом
+          // (правило и почему — в deadline-start.ts).
+          ...deadlineOnAccept(lockedOrder, newStatus),
           // Новая отгрузка — новый отсчёт 48 часов. Без сброса повторная
           // поставка осталась бы вообще без напоминаний: счётчик уже полон.
           ...(newStatus === EnumStatus.SHIPMENT_CREATED

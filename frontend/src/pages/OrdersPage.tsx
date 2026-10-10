@@ -3,7 +3,7 @@ import { usePersistentState } from '../hooks/usePersistentState';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Search, ChevronLeft, ChevronRight, Flame, Clock, Camera, Shirt, Image, Star, AlarmClock, Plus } from 'lucide-react';
-import { getDeadlineInfo } from '../utils/deadline';
+import { getDeadlineInfo, tracksDeadline } from '../utils/deadline';
 import { getStalledDays } from '../utils/stalled';
 import { ordersApi } from '../api/orders';
 import { StatusBadge, statusStripe } from '../components/ui/StatusBadge';
@@ -334,8 +334,8 @@ export function OrdersPage({ section }: Props) {
             {/* Мобильный вид — карточки вместо широкой таблицы */}
             <div className="md:hidden divide-y divide-gray-100">
               {orders.map((order, idx) => {
-                const tracksDeadline = order.productCategory !== 'TSHIRT';
-                const dl = tracksDeadline
+                const tracked = tracksDeadline(order);
+                const dl = tracked
                   ? getDeadlineInfo(order.deadline, order.createdAt)
                   : { rowClass: '', badgeClass: '', label: '' };
                 const isClosed = (
@@ -392,7 +392,7 @@ export function OrdersPage({ section }: Props) {
                     </div>
                     <div className="flex items-center justify-between gap-2 mt-1.5">
                       <div className="flex items-center gap-2 text-xs">
-                        {tracksDeadline && !isClosed && dl.label ? (
+                        {tracked && !isClosed && dl.label ? (
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-medium ${dl.badgeClass}`}>
                             <Clock size={9} aria-hidden="true" /> {dl.label}
                           </span>
@@ -459,8 +459,8 @@ export function OrdersPage({ section }: Props) {
                 </thead>
                 <tbody>
                   {orders.map((order, idx) => {
-                    const tracksDeadline = order.productCategory !== 'TSHIRT';
-                    const dl = tracksDeadline
+                    const tracked = tracksDeadline(order);
+                    const dl = tracked
                       ? getDeadlineInfo(order.deadline, order.createdAt)
                       : { rowClass: '', badgeClass: '', label: '' };
                     // Статусы, при которых заказ уже закрыт/выполнен —
@@ -480,7 +480,7 @@ export function OrdersPage({ section }: Props) {
                       ? 'opacity-50'
                       : showUrgent
                         ? 'bg-red-50 hover:bg-red-100'
-                        : (tracksDeadline && !isClosed && dl.rowClass) || (idx % 2 === 0 ? 'hover:bg-indigo-50/40' : 'bg-slate-50/60 hover:bg-indigo-50/40');
+                        : (tracked && !isClosed && dl.rowClass) || (idx % 2 === 0 ? 'hover:bg-indigo-50/40' : 'bg-slate-50/60 hover:bg-indigo-50/40');
                     return (
                     <tr
                       key={order.id}
@@ -515,7 +515,7 @@ export function OrdersPage({ section }: Props) {
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          {tracksDeadline && !isClosed && dl.label ? (
+                          {tracked && !isClosed && dl.label ? (
                             <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-medium ${dl.badgeClass}`}>
                               <Clock size={10} aria-hidden="true" /> {dl.label}
                             </span>
