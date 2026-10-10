@@ -41,9 +41,11 @@ describe('отрисовка согласования', () => {
 
   beforeAll(async () => {
     dir = await fs.mkdtemp(path.join(os.tmpdir(), 'approval-render-'));
-    storage = new ApprovalStorageService({
-      get: () => dir,
-    } as never);
+    storage = new ApprovalStorageService(
+      { get: () => dir } as never,
+      // Растеризатор PDF здесь не нужен: в тесте грузятся готовые картинки.
+      { rasterizeFirstPage: async () => undefined } as never,
+    );
     render = new ApprovalRenderService(storage);
 
     // Серая «футболка» и красный «принт» — контрастная пара, по которой

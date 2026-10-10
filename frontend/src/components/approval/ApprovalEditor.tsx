@@ -469,7 +469,11 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
                   {side?.printFile ? 'Заменить файл' : 'Загрузить принт'}
                   <input
                     type="file"
-                    accept="image/png,image/jpeg,image/webp"
+                    /* PDF принимаем наравне с картинками: макеты приходят
+                       от дизайнеров вектором, и пересохранять их в PNG
+                       ради загрузки больше не нужно. Сервер рисует из
+                       первой страницы картинку с прозрачным фоном. */
+                    accept="image/png,image/jpeg,image/webp,application/pdf,.pdf"
                     className="hidden"
                     disabled={uploadMutation.isPending || !template}
                     onChange={(e) => {

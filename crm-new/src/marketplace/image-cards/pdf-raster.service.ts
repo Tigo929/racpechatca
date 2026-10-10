@@ -71,8 +71,15 @@ export class PdfRasterService {
    * Прозрачность сохраняется (`-transp`): у макетов принтов она есть почти
    * всегда, и белая подложка вместо неё легла бы на футболку прямоугольником.
    * Страница ровно одна: multi-page в MVP не поддерживается намеренно.
+   *
+   * Длинная сторона растра задаётся вызывающим: карточкам Ozon хватает 2400,
+   * принту в листе согласования нужно больше — он идёт в печать.
    */
-  async rasterizeFirstPage(pdfPath: string, outputPath: string): Promise<void> {
+  async rasterizeFirstPage(
+    pdfPath: string,
+    outputPath: string,
+    longSide: number = RASTER_LONG_SIDE,
+  ): Promise<void> {
     if (!(await this.isAvailable())) {
       throw new PdfRasterUnavailableError();
     }
@@ -93,7 +100,7 @@ export class PdfRasterService {
           '-l',
           '1',
           '-scale-to',
-          String(RASTER_LONG_SIDE),
+          String(Math.max(1, Math.round(longSide))),
           pdfPath,
           prefix,
         ],

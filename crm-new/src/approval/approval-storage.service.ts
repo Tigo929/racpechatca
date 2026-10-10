@@ -5,9 +5,14 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
 import sharp from 'sharp';
+import {
+  PdfRasterService,
+  PdfRasterUnavailableError,
+} from 'src/marketplace/image-cards/pdf-raster.service';
 
 /**
  * Файлы раздела «Согласование» на диске сервера.
@@ -26,6 +31,22 @@ const ALLOWED_IMAGE: Record<string, true> = {
   'image/png': true,
   'image/jpeg': true,
   'image/webp': true,
+};
+
+/**
+ * Принт можно принести и вектором.
+ *
+ * Макеты приходят от дизайнеров в PDF, и до сих пор их приходилось вручную
+ * пересохранять в PNG ради загрузки — лишний шаг на каждом заказе, да ещё
+ * и с потерей качества, если экспорт сделан на глаз.
+ *
+ * Принимаем PDF и сразу рисуем из него картинку: дальше по системе идёт
+ * обычный растр, поэтому редактор, лист согласования и отправка клиенту
+ * работают без изменений.
+ */
+const ALLOWED_PRINT: Record<string, true> = {
+  ...ALLOWED_IMAGE,
+  'application/pdf': true,
 };
 
 /** Приёмный лимит: столько же пропускает nginx фронтенда (client_max_body_size 30m). */
@@ -71,7 +92,10 @@ export class ApprovalStorageService {
   private readonly mockupDir: string;
   private readonly approvalDir: string;
 
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    private readonly pdf: PdfRasterService,
+  ) {
     const base =
       config.get<string>('UPLOAD_DIR') || path.join(process.cwd(), 'uploads');
     this.mockupDir = path.join(base, 'mockups');
@@ -83,16 +107,56 @@ export class ApprovalStorageService {
    * принт лёг бы на футболку белым прямоугольником) и весит заметно меньше PNG.
    */
   async savePrint(file: UploadedImage): Promise<SavedImage> {
-    this.validate(file);
+    this.validate(file, ALLOWED_PRINT, 'PNG, JPEG, WEBP или PDF');
+    const source = await this.rasterIfPdf(file);
     const filename = `print-${randomUUID()}.webp`;
     const saved = await this.convert(
-      file,
+      source,
       path.join(this.approvalDir, filename),
       PRINT_MAX_DIMENSION,
       PRINT_WEBP_QUALITY,
       true,
     );
     return { filename, ...saved };
+  }
+
+  /**
+   * PDF → картинка. Всё остальное отдаём как есть.
+   *
+   * Рисуем первую страницу с прозрачным фоном и длинной стороной под наш
+   * же потолок хранения: у вектора «своего» разрешения нет, и качество
+   * ограничивает не файл, а то, в каком размере мы его растрируем.
+   *
+   * Временные файлы живут в системной папке и удаляются в любом случае:
+   * Poppler работает с путями, а не с потоком, и оставлять за собой мусор
+   * на диске сервера нельзя.
+   */
+  private async rasterIfPdf(file: UploadedImage): Promise<UploadedImage> {
+    if (file.mimetype !== 'application/pdf') return file;
+
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'approval-pdf-'));
+    const pdfPath = path.join(dir, 'source.pdf');
+    const pngPath = path.join(dir, 'page.png');
+    try {
+      await fs.writeFile(pdfPath, file.buffer);
+      await this.pdf.rasterizeFirstPage(pdfPath, pngPath, PRINT_MAX_DIMENSION);
+      const buffer = await fs.readFile(pngPath);
+      return {
+        buffer,
+        mimetype: 'image/png',
+        size: buffer.length,
+        originalname: file.originalname,
+      };
+    } catch (error) {
+      if (error instanceof PdfRasterUnavailableError) {
+        throw new BadRequestException(error.message);
+      }
+      throw new BadRequestException(
+        `Не удалось прочитать PDF: ${(error as Error).message}`,
+      );
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true }).catch(() => undefined);
+    }
   }
 
   /** Сохраняет фотографию мокапа под конкретный шаблон, заменяя прошлую. */
@@ -195,10 +259,14 @@ export class ApprovalStorageService {
       .catch(() => undefined);
   }
 
-  private validate(file: UploadedImage): void {
-    if (!ALLOWED_IMAGE[file.mimetype]) {
+  private validate(
+    file: UploadedImage,
+    allowed: Record<string, true> = ALLOWED_IMAGE,
+    formats = 'PNG, JPEG или WEBP',
+  ): void {
+    if (!allowed[file.mimetype]) {
       throw new BadRequestException(
-        'Формат файла не поддерживается — нужен PNG, JPEG или WEBP',
+        `Формат файла не поддерживается — нужен ${formats}`,
       );
     }
     if (file.size > APPROVAL_MAX_BYTES) {

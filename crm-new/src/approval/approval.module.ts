@@ -7,6 +7,7 @@ import { ApprovalRenderService } from './approval-render.service';
 import { ApprovalStorageService } from './approval-storage.service';
 import { MockupController } from './mockup.controller';
 import { MockupService } from './mockup.service';
+import { PdfRasterService } from 'src/marketplace/image-cards/pdf-raster.service';
 
 /**
  * Согласование печати: подготовка макета футболки для клиента.
@@ -27,6 +28,9 @@ import { MockupService } from './mockup.service';
     ApprovalRenderService,
     ApprovalStorageService,
     MockupService,
+    // Растеризация PDF-макетов: тот же сервис, что у карточек Ozon.
+    // Он без состояния, поэтому второй экземпляр ничего не стоит.
+    PdfRasterService,
   ],
 })
 export class ApprovalModule {}
