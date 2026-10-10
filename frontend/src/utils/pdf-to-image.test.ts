@@ -3,7 +3,7 @@ import {
   isPdfFile,
   pickUploadFormat,
   PDF_RASTER_LONG_SIDE,
-  PNG_LIMIT_BYTES,
+  PNG_LIMIT_PIXELS,
   rasterScale,
   rasterizedName,
 } from './pdf-to-image';
@@ -79,15 +79,21 @@ describe('имя готовой картинки', () => {
 });
 
 describe('в каком формате отправлять', () => {
-  it('лёгкая страница уходит без потерь', () => {
-    expect(pickUploadFormat(2 * 1024 * 1024)).toBe('png');
+  it('небольшая страница уходит без потерь', () => {
+    expect(pickUploadFormat(1200 * 1600)).toBe('png');
   });
 
-  it('тяжёлая — сжатой: ради этого всё и затевалось', () => {
-    expect(pickUploadFormat(PNG_LIMIT_BYTES + 1)).toBe('webp');
+  it('крупная — сжатой: PNG такого холста кодируется секундами', () => {
+    expect(pickUploadFormat(PNG_LIMIT_PIXELS + 1)).toBe('webp');
   });
 
   it('ровно на границе остаёмся без потерь', () => {
-    expect(pickUploadFormat(PNG_LIMIT_BYTES)).toBe('png');
+    expect(pickUploadFormat(PNG_LIMIT_PIXELS)).toBe('png');
+  });
+
+  it('решение принимается по пикселям, а не по готовому файлу', () => {
+    // Иначе PNG пришлось бы закодировать только ради того, чтобы узнать
+    // его вес и выбросить — это и был самый долгий шаг подготовки.
+    expect(pickUploadFormat(4000 * 5657)).toBe('webp');
   });
 });

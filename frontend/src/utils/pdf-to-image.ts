@@ -17,13 +17,18 @@
 export const PDF_RASTER_LONG_SIDE = 4000;
 
 /**
- * Потолок PNG, после которого переходим на WebP.
+ * До какого размера страницы отдаём PNG.
  *
- * PNG без потерь, и для принта это правильный выбор — но страница с
- * фотографией в PNG легко весит 20 МБ, а ради неё всё и затевалось.
- * WebP с качеством 95 для печати неотличим, а весит в разы меньше.
+ * PNG без потерь, и для маленького принта это правильный выбор. Но
+ * кодирование большого холста в PNG занимает секунды и даёт файл на
+ * десятки мегабайт — ровно то, от чего уходили. WebP с качеством 95
+ * для печати неотличим, а кодируется быстрее и весит в разы меньше.
+ *
+ * Считаем по пикселям, а не по готовому файлу: иначе пришлось бы сначала
+ * закодировать PNG, чтобы узнать его вес, и выбросить результат. Именно
+ * это и было самым долгим шагом подготовки.
  */
-export const PNG_LIMIT_BYTES = 8 * 1024 * 1024;
+export const PNG_LIMIT_PIXELS = 4_000_000;
 export const WEBP_QUALITY = 0.95;
 
 export function isPdfFile(file: File): boolean {
@@ -57,12 +62,20 @@ export function rasterizedName(name: string, extension: 'png' | 'webp'): string 
 }
 
 /**
- * Какой формат отправлять: без потерь, пока он не стал тяжелее картинки,
- * ради которой всё затевалось.
+ * Какой формат отправлять. Решается до кодирования — по размеру холста.
  */
-export function pickUploadFormat(pngBytes: number): 'png' | 'webp' {
-  return pngBytes <= PNG_LIMIT_BYTES ? 'png' : 'webp';
+export function pickUploadFormat(pixels: number): 'png' | 'webp' {
+  return pixels <= PNG_LIMIT_PIXELS ? 'png' : 'webp';
 }
+
+/** Шаги подготовки — их видно на кнопке, пока идёт работа. */
+export type PdfStage = 'read' | 'render' | 'encode';
+
+export const PDF_STAGE_LABELS: Record<PdfStage, string> = {
+  read: 'Читаем PDF…',
+  render: 'Рисуем страницу…',
+  encode: 'Готовим картинку…',
+};
 
 async function canvasToBlob(
   canvas: HTMLCanvasElement,
@@ -87,8 +100,10 @@ async function canvasToBlob(
  */
 export async function pdfFirstPageToImage(
   file: File,
-  longSide: number = PDF_RASTER_LONG_SIDE,
+  options: { longSide?: number; onStage?: (stage: PdfStage) => void } = {},
 ): Promise<File> {
+  const longSide = options.longSide ?? PDF_RASTER_LONG_SIDE;
+  const stage = (next: PdfStage) => options.onStage?.(next);
   // Грузим библиотеку только когда она понадобилась: в обычной работе
   // с CRM она не нужна, а весит заметно.
   const pdfjs = await import('pdfjs-dist');
@@ -97,10 +112,12 @@ export async function pdfFirstPageToImage(
     import.meta.url,
   ).toString();
 
+  stage('read');
   const data = await file.arrayBuffer();
   const doc = await pdfjs.getDocument({ data }).promise;
   try {
     const page = await doc.getPage(1);
+    stage('render');
     const base = page.getViewport({ scale: 1 });
     const viewport = page.getViewport({
       scale: rasterScale(base.width, base.height, longSide),
@@ -120,11 +137,17 @@ export async function pdfFirstPageToImage(
       background: 'rgba(0,0,0,0)',
     }).promise;
 
-    const png = await canvasToBlob(canvas, 'image/png');
-    const format = pickUploadFormat(png.size);
+    stage('encode');
+    /*
+     * Кодируем один раз. Раньше сначала получался PNG, и уже по его весу
+     * решалось, не пережать ли в WebP — то есть большой холст кодировался
+     * дважды, а первый результат выбрасывался. На странице в двадцать
+     * мегапикселей это стоило нескольких секунд ожидания на ровном месте.
+     */
+    const format = pickUploadFormat(canvas.width * canvas.height);
     const blob =
       format === 'png'
-        ? png
+        ? await canvasToBlob(canvas, 'image/png')
         : await canvasToBlob(canvas, 'image/webp', WEBP_QUALITY);
 
     // Освобождаем холст сразу: страница 4000 px — это десятки мегабайт

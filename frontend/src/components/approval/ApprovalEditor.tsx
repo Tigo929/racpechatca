@@ -34,7 +34,12 @@ import type {
   PrintApproval,
 } from '../../types/index';
 import { MAX_MM, MIN_MM, PrintStage } from './PrintStage';
-import { isPdfFile, pdfFirstPageToImage } from '../../utils/pdf-to-image';
+import {
+  isPdfFile,
+  pdfFirstPageToImage,
+  PDF_STAGE_LABELS,
+  type PdfStage,
+} from '../../utils/pdf-to-image';
 
 interface Props {
   approvalId: string;
@@ -306,7 +311,7 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
    * Не справился браузер — отправляем файл как есть: разбор PDF на сервере
    * никуда не делся и отработает, если файл пролезет по размеру.
    */
-  const [preparing, setPreparing] = useState(false);
+  const [preparing, setPreparing] = useState<PdfStage | null>(null);
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -323,15 +328,19 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
       uploadMutation.mutate(file);
       return;
     }
-    setPreparing(true);
+    setPreparing('read');
     try {
-      const image = await pdfFirstPageToImage(file);
+      // Шаг видно на кнопке: подготовка тяжёлого макета занимает секунды,
+      // и молчащая кнопка в это время выглядит как зависшая.
+      const image = await pdfFirstPageToImage(file, {
+        onStage: (stage) => setPreparing(stage),
+      });
       uploadMutation.mutate(image);
     } catch (error) {
       console.warn('PDF не разобрался в браузере, отправляем как есть', error);
       uploadMutation.mutate(file);
     } finally {
-      setPreparing(false);
+      setPreparing(null);
     }
   };
 
@@ -502,7 +511,7 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
                 <label className={`${btn} cursor-pointer`}>
                   <Upload size={14} aria-hidden="true" />
                   {preparing
-                    ? 'Готовим макет…'
+                    ? PDF_STAGE_LABELS[preparing]
                     : uploadMutation.isPending
                       ? 'Загружаем…'
                       : side?.printFile
@@ -517,7 +526,9 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
                     accept="image/png,image/jpeg,image/webp,application/pdf,.pdf"
                     title="PNG, JPEG, WEBP или PDF. Из PDF берётся первая страница"
                     className="hidden"
-                    disabled={preparing || uploadMutation.isPending || !template}
+                    disabled={
+                      preparing !== null || uploadMutation.isPending || !template
+                    }
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
