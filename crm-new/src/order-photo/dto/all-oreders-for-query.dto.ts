@@ -58,10 +58,14 @@ export default class DtoAllOrdersforQuery {
    *
    * Строкой, а не булевым: implicit-conversion превратил бы 'false'
    * в true, и фильтр «скрыть» означал бы «показать».
+   *
+   * Не задан — в списке футболок заказы с площадок скрыты: это другое
+   * направление с другим трафиком, и в общем списке оно только путает.
+   * Чтобы увидеть всё вместе, нужно сказать это прямо — `all`.
    */
-  @IsIn(['only', 'exclude'])
+  @IsIn(['only', 'exclude', 'all'])
   @IsOptional()
-  marketplace?: 'only' | 'exclude';
+  marketplace?: 'only' | 'exclude' | 'all';
 
   // Полнотекстовый поиск по номеру заказа и контакту клиента.
   @IsString()

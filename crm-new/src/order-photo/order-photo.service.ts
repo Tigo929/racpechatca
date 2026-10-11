@@ -171,6 +171,27 @@ function isExternalProductionCategory(
   );
 }
 
+/**
+ * Показывать ли заказы с маркетплейсов.
+ *
+ * Пусто в списке футболок означает «скрыть»: это отдельное направление,
+ * и в общем списке оно путает. Везде ещё пусто означает «не фильтровать»:
+ * в обращениях и поиске по всем продуктам прятать нечего.
+ */
+function marketplaceWhere(
+  marketplace: 'only' | 'exclude' | 'all' | undefined,
+  productCategory: EnumProductCategory | undefined,
+  options: { applyListStatusDefaults: boolean },
+): { isMarketplacePrint?: boolean } {
+  if (marketplace === 'only') return { isMarketplacePrint: true };
+  if (marketplace === 'exclude') return { isMarketplacePrint: false };
+  if (marketplace === 'all') return {};
+  const tshirtList =
+    options.applyListStatusDefaults &&
+    productCategory === EnumProductCategory.TSHIRT;
+  return tshirtList ? { isMarketplacePrint: false } : {};
+}
+
 function calcCanvasMoney(
   quantity: number,
   clientPrice: number,
@@ -1159,17 +1180,17 @@ export class OrderPhotoService {
       /*
        * Заказы с площадок. У них свой раздел, и в общем списке футболок
        * они только мешают: номер отправления вместо номера заказа, чужие
-       * сроки, нет оплаты. Поэтому раздел «Футболки» их прячет, а
-       * «Маркетплейсы» показывает.
+       * сроки, нет оплаты, другой трафик и другая экономика.
+       *
+       * В списке футболок они скрыты по умолчанию — решает сервер, а не
+       * интерфейс. Так правило работает и в браузере со старой страницей
+       * в кэше, и в любом другом клиенте: показать их можно, только
+       * попросив явно.
        *
        * Прячем по признаку заказа, а не по источнику: признак ставит
        * сервер при заведении с площадки, и подменить его нельзя.
        */
-      ...(query.marketplace === 'only'
-        ? { isMarketplacePrint: true }
-        : query.marketplace === 'exclude'
-          ? { isMarketplacePrint: false }
-          : {}),
+      ...marketplaceWhere(query.marketplace, query.productCategory, options),
       // Отбор по исполнителю. Стоит ДО блока роли EXECUTOR намеренно: тот
       // перезаписывает executorId своим идентификатором, и подставить сюда
       // чужого сотрудника через параметр запроса нельзя.

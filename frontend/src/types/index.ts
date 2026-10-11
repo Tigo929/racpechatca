@@ -424,8 +424,11 @@ export interface ShipmentLead {
 }
 
 export interface OrdersQuery {
-  /** Заказы с маркетплейсов: только они, без них или все подряд. */
-  marketplace?: 'only' | 'exclude';
+  /**
+   * Заказы с маркетплейсов: только они, без них или все подряд.
+   * Не задан — сервер сам прячет их в списке футболок.
+   */
+  marketplace?: 'only' | 'exclude' | 'all';
   page?: number;
   limit?: number;
   status?: EnumStatus;

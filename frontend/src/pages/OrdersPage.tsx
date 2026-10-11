@@ -295,8 +295,8 @@ export function OrdersPage({ section }: Props) {
                   С маркетплейса
                 </FilterChip>
                 <FilterChip
-                  active={query.marketplace === undefined}
-                  onClick={() => setQuery((q) => ({ ...q, marketplace: undefined, page: 1 }))}
+                  active={query.marketplace === 'all'}
+                  onClick={() => setQuery((q) => ({ ...q, marketplace: 'all', page: 1 }))}
                 >
                   Все
                 </FilterChip>

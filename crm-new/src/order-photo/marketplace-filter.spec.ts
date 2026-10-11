@@ -17,6 +17,7 @@ describe('отбор заказов по происхождению', () => {
   const where = (
     query: Record<string, unknown>,
     role = 'ADMIN',
+    applyListStatusDefaults = false,
   ): Record<string, unknown> =>
     (
       OrderPhotoService.prototype as unknown as {
@@ -28,7 +29,7 @@ describe('отбор заказов по происхождению', () => {
         ) => Record<string, unknown>;
       }
     ).buildOrdersWhere.call({}, query, 'user-1', role, {
-      applyListStatusDefaults: false,
+      applyListStatusDefaults,
     });
 
   it('«По заявкам» прячет заказы с площадок', () => {
@@ -39,10 +40,28 @@ describe('отбор заказов по происхождению', () => {
     expect(where({ marketplace: 'only' }).isMarketplacePrint).toBe(true);
   });
 
-  it('без параметра не фильтруем вовсе', () => {
-    // Иначе «Все» показывало бы не все: фильтр по умолчанию не должен
-    // прятать заказы молча.
-    expect(where({})).not.toHaveProperty('isMarketplacePrint');
+  it('в списке футболок без параметра площадки скрыты', () => {
+    // Решает сервер, а не интерфейс: правило должно работать и в браузере
+    // со старой страницей в кэше.
+    expect(
+      where({ productCategory: 'TSHIRT' }, 'ADMIN', true).isMarketplacePrint,
+    ).toBe(false);
+  });
+
+  it('«Все» нужно попросить прямо', () => {
+    expect(
+      where({ productCategory: 'TSHIRT', marketplace: 'all' }, 'ADMIN', true),
+    ).not.toHaveProperty('isMarketplacePrint');
+  });
+
+  it('у фото и холстов прятать нечего', () => {
+    expect(
+      where({ productCategory: 'PHOTO' }, 'ADMIN', true),
+    ).not.toHaveProperty('isMarketplacePrint');
+  });
+
+  it('в обращениях и поиске по всем продуктам тоже не фильтруем', () => {
+    expect(where({}, 'ADMIN', true)).not.toHaveProperty('isMarketplacePrint');
   });
 
   it('отбор не мешает остальным условиям', () => {
