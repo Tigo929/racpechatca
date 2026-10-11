@@ -39,6 +39,11 @@ export interface ItemTshirt {
   thermalCost: number;
   blankCost: number;
   designUrl?: string | null;
+  /**
+   * Артикул площадки у позиции с маркетплейса («ПАПА-black-M»). Из него
+   * выведены цвет, размер и принт, и по нему же позицию находят в кабинете.
+   */
+  marketplaceArticle?: string | null;
   designNote?: string | null;
   clientItem: boolean;
 }

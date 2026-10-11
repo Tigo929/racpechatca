@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { matchesLineup } from './article-lineup';
 import { OzonApiClient, type OzonCredentials } from './ozon-api.client';
 import {
   groupForStatus,
@@ -140,20 +141,20 @@ export class OzonOrdersService {
      * перемешаны. Владелец ведёт в CRM одну и просил показывать только её:
      * остальные мешают искать нужное.
      *
-     * Сравнение без учёта регистра: артикулы заводят и «papa-», и «PAPA-»,
-     * а прятать заказ из-за регистра буквы нельзя — его просто не напечатают.
+     * Сравнение не по буквам, а по тому, как артикул читается: «papa-»,
+     * «PAPA-» и «ПАПА-» — одна линейка (правило в article-lineup.ts).
+     * Прятать заказ из-за раскладки клавиатуры нельзя: его просто
+     * не напечатают.
      *
      * Отправление остаётся, если подходит хотя бы одна позиция: в сборном
      * заказе рядом с нашей футболкой может лежать другой товар, и терять
      * такое отправление нельзя.
      */
-    const prefixes = (options.articlePrefixes ?? []).map((p) => p.toLowerCase());
+    const prefixes = options.articlePrefixes ?? [];
     const orders =
       prefixes.length > 0
         ? all.filter((o) =>
-            o.items.some((i) =>
-              prefixes.some((p) => i.offerId.toLowerCase().startsWith(p)),
-            ),
+            o.items.some((i) => matchesLineup(i.offerId, prefixes)),
           )
         : all;
 

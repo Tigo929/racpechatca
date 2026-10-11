@@ -419,6 +419,16 @@ export function TshirtItemsTable({ order }: Props) {
             ) : (
               <table className="w-full text-sm">
                 <tbody>
+                  {/* Артикул площадки: по нему позицию находят в кабинете
+                      Ozon, и из него же выведены цвет, размер и принт.
+                      Показываем как есть — его сверяют глазами. */}
+                  {item.marketplaceArticle && (
+                    <Row label="Артикул">
+                      <span className="font-mono text-sm text-gray-800">
+                        {item.marketplaceArticle}
+                      </span>
+                    </Row>
+                  )}
                   <Row label="Место печати">{PRINT_LOCATION_LABELS[item.printLocation]}</Row>
                   <Row label="Количество">{item.quantity} шт.</Row>
                   {item.designUrl && (
