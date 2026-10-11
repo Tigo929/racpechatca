@@ -274,6 +274,35 @@ export function OrdersPage({ section }: Props) {
               </div>
             </div>
           )}
+          {/* Откуда заказ: по заявке или с площадки. Только у футболок —
+              у фото и холстов маркетплейсных заказов не бывает. */}
+          {section === 'TSHIRT' && (
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">
+                Откуда
+              </span>
+              <div className="flex gap-1.5 flex-wrap">
+                <FilterChip
+                  active={query.marketplace === 'exclude'}
+                  onClick={() => setQuery((q) => ({ ...q, marketplace: 'exclude', page: 1 }))}
+                >
+                  По заявкам
+                </FilterChip>
+                <FilterChip
+                  active={query.marketplace === 'only'}
+                  onClick={() => setQuery((q) => ({ ...q, marketplace: 'only', page: 1 }))}
+                >
+                  С маркетплейса
+                </FilterChip>
+                <FilterChip
+                  active={query.marketplace === undefined}
+                  onClick={() => setQuery((q) => ({ ...q, marketplace: undefined, page: 1 }))}
+                >
+                  Все
+                </FilterChip>
+              </div>
+            </div>
+          )}
           {/* Статусы только своего продукта: у футболок свой путь заказа */}
           {!isLeads && (
             <div className="flex items-center gap-3 flex-wrap">

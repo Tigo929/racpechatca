@@ -424,6 +424,8 @@ export interface ShipmentLead {
 }
 
 export interface OrdersQuery {
+  /** Заказы с маркетплейсов: только они, без них или все подряд. */
+  marketplace?: 'only' | 'exclude';
   page?: number;
   limit?: number;
   status?: EnumStatus;
