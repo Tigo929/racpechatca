@@ -158,12 +158,14 @@ function TelegramEditor({ user, onClose }: TelegramEditorProps) {
   const [topicId, setTopicId] = useState(
     user.telegramTopicId != null ? String(user.telegramTopicId) : '',
   );
+  const [chatId, setChatId] = useState(user.telegramChatId ?? '');
 
   const mutation = useMutation({
     mutationFn: () =>
       usersApi.update(user.id, {
         telegramUsername: username.trim() || null,
         telegramTopicId: topicId.trim() ? Number(topicId.trim()) : null,
+        telegramChatId: chatId.trim() || null,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] });
@@ -194,6 +196,23 @@ function TelegramEditor({ user, onClose }: TelegramEditorProps) {
         («заказы {user.username}»). Открой тему в Telegram: последнее число в
         ссылке t.me/c/…/<b>число</b> — это и есть ID. Пусто — писать в общую группу.
       </p>
+      {/* Личка важнее темы: личное сообщение видно сразу, а в теме
+          его всё равно нужно найти. */}
+      <p className="text-xs text-gray-500 mt-1">
+        Личка сотрудника — задачи и напоминания по его заказам будут приходить
+        ему в личные сообщения, а не в общий чат. Чтобы узнать число, он пишет
+        боту <b>/id</b> и присылает ответ. Пусто — задачи уходят в тему
+        или в общий чат.
+      </p>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={chatId}
+        onChange={(e) => setChatId(e.target.value)}
+        className="w-full rounded-lg border border-emerald-300 px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+        placeholder="ID лички, напр. 543304870"
+      />
+
       <div className="flex items-center gap-2">
         <input
           type="number"

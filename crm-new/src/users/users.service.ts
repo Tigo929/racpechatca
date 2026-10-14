@@ -115,6 +115,7 @@ export class UsersService {
       designRateBasisPoints?: number;
       telegramUsername?: string | null;
       telegramTopicId?: number | null;
+      telegramChatId?: string | null;
     } = {};
 
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
@@ -131,6 +132,11 @@ export class UsersService {
         dto.telegramTopicId && dto.telegramTopicId > 0
           ? dto.telegramTopicId
           : null;
+    if ('telegramChatId' in dto)
+      // Оставляем только цифры и минус: идентификатор чата — число, а из
+      // переписки его копируют вместе с пробелами и подписью.
+      data.telegramChatId =
+        (dto.telegramChatId ?? '').replace(/[^\d-]/g, '') || null;
 
     const updated = await this.prisma.$transaction(async (tx) => {
       if (dto.rateBasisPoints !== undefined) {

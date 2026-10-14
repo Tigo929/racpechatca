@@ -403,6 +403,12 @@ export interface AppUser {
   telegramUsername: string | null;
   /** id темы исполнителя в рабочей группе Telegram (message_thread_id). */
   telegramTopicId: number | null;
+  /**
+   * Личка сотрудника в Telegram: числовой идентификатор его переписки
+   * с ботом. Задачи и напоминания уходят туда — личное сообщение видно
+   * сразу. Пусто — работает прежний путь: тема, затем общий чат.
+   */
+  telegramChatId?: string | null;
   createdAt: string;
   /** Заказов в работе — считаются до статуса «Готов» (текущая загрузка). */
   activeOrdersCount?: number;

@@ -86,6 +86,33 @@ describe('адреса сообщений бота', () => {
     expect(sent[0].threadId).toBe('777');
   });
 
+  it('у исполнителя есть личка — пишем туда, а не в тему', async () => {
+    // Личное сообщение видно сразу; в теме его всё равно нужно найти.
+    const { instance, sent } = service({
+      ...BASE,
+      TELEGRAM_EXECUTOR_CHAT_ID: '-100222',
+      TELEGRAM_EXECUTOR_MAXIM_THREAD_ID: '10813',
+    });
+    await instance.sendToExecutor(
+      'Задача',
+      '10813',
+      'Maxim_Kuzmin',
+      'm_k_a_202',
+      '543304870',
+    );
+    expect(sent[0]).toMatchObject({ chatId: '543304870', threadId: undefined });
+  });
+
+  it('личка пустая — остаётся прежний путь через тему', async () => {
+    const { instance, sent } = service({
+      ...BASE,
+      TELEGRAM_EXECUTOR_CHAT_ID: '-100222',
+      TELEGRAM_EXECUTOR_MAXIM_THREAD_ID: '10813',
+    });
+    await instance.sendToExecutor('Задача', undefined, 'Maxim_Kuzmin', undefined, '');
+    expect(sent[0]).toMatchObject({ chatId: '-100222', threadId: '10813' });
+  });
+
   it('исполнитель неизвестен — пишем в чат исполнителей без темы', async () => {
     const { instance, sent } = service({
       ...BASE,

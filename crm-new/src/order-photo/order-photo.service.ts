@@ -514,6 +514,7 @@ export class OrderPhotoService {
               username: true,
               telegramUsername: true,
               telegramTopicId: true,
+              telegramChatId: true,
             },
           },
         },
@@ -535,7 +536,8 @@ export class OrderPhotoService {
 
     if (
       result.executor?.telegramUsername ||
-      result.executor?.telegramTopicId != null
+      result.executor?.telegramTopicId != null ||
+      result.executor?.telegramChatId
     ) {
       const text = this.buildAssignmentMessage(
         result,
@@ -552,6 +554,7 @@ export class OrderPhotoService {
           threadId,
           result.executor.username,
           result.executor.telegramUsername ?? undefined,
+          result.executor.telegramChatId,
         )
         .catch(() => {});
     }
@@ -1307,6 +1310,7 @@ export class OrderPhotoService {
       isActive: boolean;
       telegramUsername: string | null;
       telegramTopicId: number | null;
+      telegramChatId: string | null;
     } | null = null;
     if (!isUnassign) {
       executor = await this.prisma.user.findUnique({
@@ -1390,7 +1394,11 @@ export class OrderPhotoService {
     });
 
     if (!isUnassign && result) {
-      if (executor?.telegramUsername || executor?.telegramTopicId != null) {
+      if (
+        executor?.telegramUsername ||
+        executor?.telegramTopicId != null ||
+        executor?.telegramChatId
+      ) {
         const text = this.buildAssignmentMessage(
           result,
           executor.telegramUsername ?? '',
@@ -1407,6 +1415,7 @@ export class OrderPhotoService {
             threadId,
             executor.username,
             executor.telegramUsername ?? undefined,
+            executor.telegramChatId,
           )
           .catch(() => {});
       } else {

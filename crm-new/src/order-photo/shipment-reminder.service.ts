@@ -79,6 +79,7 @@ export class ShipmentReminderService implements OnModuleInit, OnModuleDestroy {
             username: true,
             telegramUsername: true,
             telegramTopicId: true,
+            telegramChatId: true,
           },
         },
       },
@@ -117,6 +118,7 @@ export class ShipmentReminderService implements OnModuleInit, OnModuleDestroy {
             : undefined,
           order.executor?.username,
           order.executor?.telegramUsername ?? undefined,
+          order.executor?.telegramChatId,
         );
         // Счётчик двигаем только после успешной отправки: иначе молчание
         // бота из-за сети превратилось бы в «напоминание уже было».

@@ -21,6 +21,7 @@ export const usersApi = {
       designRateBasisPoints?: number;
       telegramUsername?: string | null;
       telegramTopicId?: number | null;
+      telegramChatId?: string | null;
     },
   ): Promise<AppUser> => {
     const { data } = await api.patch<AppUser>(`/users/${id}`, patch);

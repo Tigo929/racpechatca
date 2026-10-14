@@ -236,16 +236,28 @@ export class TelegramService {
   }
 
   /**
-   * Задача исполнителю: в чат исполнителей (TELEGRAM_EXECUTOR_CHAT_ID), в его
-   * тему. Чат не задан — уходит в общую рабочую группу, как было раньше:
-   * отсутствие настройки не должно съедать уведомление.
+   * Сообщение исполнителю: задача, напоминание об отгрузке, срок.
+   *
+   * Адрес выбирается по убыванию личности:
+   *   1. личка исполнителя (`directChatId`) — её видно сразу и искать
+   *      ничего не нужно;
+   *   2. его тема в чате исполнителей — туда же, но на виду у остальных;
+   *   3. общая рабочая группа — последний рубеж, чтобы сообщение
+   *      не пропало вовсе.
+   *
+   * Личка пустая у тех, кто не писал боту: Telegram не позволяет написать
+   * человеку первым, пока он сам не начал переписку.
    */
   async sendToExecutor(
     text: string,
     threadId?: string,
     executorName?: string,
     telegramUsername?: string,
+    directChatId?: string | null,
   ): Promise<boolean> {
+    const direct = (directChatId ?? '').trim();
+    if (direct) return this.sendMessage(direct, text);
+
     const chatId = this.executorChatId || this.groupChatId;
     if (!chatId) {
       this.logger.warn(
