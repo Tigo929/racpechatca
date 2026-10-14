@@ -57,6 +57,11 @@ services:
       TELEGRAM_EXECUTOR_CHAT_ID: ${TELEGRAM_EXECUTOR_CHAT_ID:--1003723576278}
       TELEGRAM_EXECUTOR_ALEXEY_THREAD_ID: ${TELEGRAM_EXECUTOR_ALEXEY_THREAD_ID:-10815}
       TELEGRAM_EXECUTOR_MAXIM_THREAD_ID: ${TELEGRAM_EXECUTOR_MAXIM_THREAD_ID:-10813}
+      # Личка владельца: туда уходят заявки с сайта — разбирает их он,
+      # а исполнителям в общем чате они только шумят. Узнаётся командой
+      # /id в переписке с ботом: по @нику Telegram писать не умеет.
+      # Пусто — заявка идёт в общую группу: молчание хуже лишнего адресата.
+      TELEGRAM_OWNER_CHAT_ID: ${TELEGRAM_OWNER_CHAT_ID:-}
       TELEGRAM_DAILY_PLAN_CHAT_ID: ${TELEGRAM_DAILY_PLAN_CHAT_ID:--1003723576278}
       TELEGRAM_DAILY_PLAN_THREAD_ID: ${TELEGRAM_DAILY_PLAN_THREAD_ID:-10870}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
