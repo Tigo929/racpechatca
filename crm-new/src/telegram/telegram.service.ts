@@ -75,6 +75,11 @@ export class TelegramService {
    * перенастраивают чат.
    */
   private readonly executorChatId: string;
+  /**
+   * Личка владельца. Заявку с сайта он разбирает сам, и общая группа для
+   * этого — лишние глаза и лишний шум: там работают исполнители.
+   */
+  private readonly ownerChatId: string;
   private readonly executorAlexeyThreadId: string;
   private readonly executorMaximThreadId: string;
   private readonly dailyPlanChatId: string;
@@ -86,6 +91,7 @@ export class TelegramService {
     this.reviewChatId = config.get<string>('TELEGRAM_REVIEW_CHAT_ID') ?? '';
     this.reviewThreadId = config.get<string>('TELEGRAM_REVIEW_THREAD_ID') ?? '';
     this.executorChatId = config.get<string>('TELEGRAM_EXECUTOR_CHAT_ID') ?? '';
+    this.ownerChatId = config.get<string>('TELEGRAM_OWNER_CHAT_ID') ?? '';
     this.executorAlexeyThreadId =
       config.get<string>('TELEGRAM_EXECUTOR_ALEXEY_THREAD_ID') ?? '';
     this.executorMaximThreadId =
@@ -209,6 +215,24 @@ export class TelegramService {
       return false;
     }
     return this.sendMessage(this.groupChatId, text, threadId);
+  }
+
+  /**
+   * Сообщение лично владельцу (TELEGRAM_OWNER_CHAT_ID).
+   *
+   * Личку бот знает только по числовому идентификатору: по @нику Telegram
+   * писать не умеет вовсе. Идентификатор узнаётся командой /id — бот
+   * отвечает им в ответ на сообщение в личке.
+   *
+   * Не задан — уходит в общую группу, как раньше. Заявка дороже тишины:
+   * отсутствие настройки не должно съедать уведомление о деньгах.
+   */
+  async sendToOwner(text: string): Promise<boolean> {
+    if (this.ownerChatId) return this.sendMessage(this.ownerChatId, text);
+    this.logger.warn(
+      'TELEGRAM_OWNER_CHAT_ID не задан — уведомление ушло в общую группу',
+    );
+    return this.sendToGroup(text);
   }
 
   /**

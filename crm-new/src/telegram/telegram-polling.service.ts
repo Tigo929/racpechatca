@@ -75,7 +75,10 @@ export class TelegramPollingService implements OnModuleInit, OnModuleDestroy {
         const res = await this.call<TgUpdateWithId[]>('getUpdates', {
           offset: this.offset || undefined,
           timeout: LONG_POLL_SECONDS,
-          allowed_updates: ['callback_query'],
+          // Сообщения нужны одной команде — /id: по ней бот отвечает,
+          // в какой чат и тему он пишет. Без неё настроить личку владельца
+          // или тему исполнителя можно только угадыванием.
+          allowed_updates: ['callback_query', 'message'],
         });
         failuresInARow = 0;
 

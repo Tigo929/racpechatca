@@ -74,7 +74,13 @@ export class ShipmentReminderService implements OnModuleInit, OnModuleDestroy {
         productCategory: true,
         statusChangedAt: true,
         shipmentRemindersSent: true,
-        executor: { select: { username: true, telegramUsername: true } },
+        executor: {
+          select: {
+            username: true,
+            telegramUsername: true,
+            telegramTopicId: true,
+          },
+        },
       },
       orderBy: { statusChangedAt: 'asc' },
     });
@@ -96,7 +102,22 @@ export class ShipmentReminderService implements OnModuleInit, OnModuleDestroy {
       const text = buildShipmentReminder(order, stage, mention, now);
 
       try {
-        await this.telegram.sendToGroup(text);
+        /*
+         * Напоминание адресовано конкретному исполнителю, поэтому уходит
+         * в его тему, а не в общую группу: там оно тонет среди чужих
+         * сообщений, и человек узнаёт о просрочке последним.
+         *
+         * У заказа без исполнителя темы нет — такое напоминание по-прежнему
+         * идёт в общий чат: оно как раз про то, что заказ ничей.
+         */
+        await this.telegram.sendToExecutor(
+          text,
+          order.executor?.telegramTopicId != null
+            ? String(order.executor.telegramTopicId)
+            : undefined,
+          order.executor?.username,
+          order.executor?.telegramUsername ?? undefined,
+        );
         // Счётчик двигаем только после успешной отправки: иначе молчание
         // бота из-за сети превратилось бы в «напоминание уже было».
         await this.prisma.orderPhoto.update({

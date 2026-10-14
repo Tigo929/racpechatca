@@ -16,8 +16,17 @@ type TelegramCallback = {
   message?: { message_id: number; chat: { id: number } };
 };
 
+/** Обычное сообщение боту. Нужно одной команде — /id. */
+type TelegramMessage = {
+  message_id: number;
+  text?: string;
+  chat: { id: number; type: string; title?: string };
+  message_thread_id?: number;
+};
+
 export type TgUpdate = {
   callback_query?: TelegramCallback;
+  message?: TelegramMessage;
 };
 
 // v1:orderId:action
@@ -53,6 +62,11 @@ export class TelegramUpdateService {
    * логика кнопок живёт в одном месте.
    */
   async handleUpdate(update: TgUpdate): Promise<void> {
+    if (update.message) {
+      await this.handleMessage(update.message);
+      return;
+    }
+
     const cb = update.callback_query;
     const data = cb?.data ?? '';
     if (!cb) return;
@@ -192,6 +206,38 @@ export class TelegramUpdateService {
    * Оператор нажал «Отправил клиенту» под напоминанием об отзыве: ставим отметку
    * «запрос отзыва отправлен» (дата + кто) и меняем кнопку на «✅ Отправлено».
    */
+  /**
+   * Команда /id: бот отвечает, куда он сейчас пишет.
+   *
+   * Личку Telegram знает только по числовому идентификатору — по @нику бот
+   * писать не умеет вовсе. Чтобы настроить уведомления о заявках с сайта,
+   * владельцу нужно узнать свой идентификатор, а в группе с темами —
+   * ещё и номер темы, чтобы задачи шли в неё, а не в общий поток.
+   *
+   * Поэтому бот отвечает тем и другим прямо в том месте, где его спросили.
+   */
+  private async handleMessage(message: TelegramMessage): Promise<void> {
+    const text = (message.text ?? '').trim().toLowerCase();
+    if (!text.startsWith('/id') && !text.startsWith('/start')) return;
+
+    const lines = [`Чат: <code>${message.chat.id}</code>`];
+    if (message.message_thread_id != null) {
+      lines.push(`Тема: <code>${message.message_thread_id}</code>`);
+    }
+    lines.push(
+      '',
+      'Эти числа ставятся в настройки бота: по ним он знает, куда писать.',
+    );
+
+    await this.telegram.sendMessage(
+      String(message.chat.id),
+      lines.join('\n'),
+      message.message_thread_id != null
+        ? String(message.message_thread_id)
+        : undefined,
+    );
+  }
+
   private async handleReviewSent(
     callback: TelegramCallback,
     data: string,
