@@ -1,34 +1,34 @@
-# Graph Report - racpechatca  (2026-10-04)
+# Graph Report - racpechatca  (2026-10-14)
 
 ## Corpus Check
-- 898 files · ~1,446,714 words
+- 924 files · ~1,462,665 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 9115 nodes · 18176 edges · 415 communities (384 shown, 31 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 508 edges (avg confidence: 0.79)
+- 9231 nodes · 18453 edges · 417 communities (389 shown, 28 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 511 edges (avg confidence: 0.79)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `2eb96474`
+- Built from commit: `5d78bde2`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- AnalyticsPeriod
+- analytics-metrics.service.ts
 - TasksService
 - dependencies
-- DtoUpdateUser
+- users.controller.ts
 - sticker.service.ts
 - crm-new/package.json
 - DtoOzonArchive
-- OzonImportService
+- ozon-import.service.ts
 - 09_DASHBOARD_V1.md
 - Roles
 - System Map
-- DtoCreateExpense
+- expenses.controller.ts
 - reports.service.ts
-- OrdersPage.tsx
+- OrderNavigation.test.tsx
 - task-reminder-rules.ts
 - AvitoService
 - Брендбук — Распечатка PRO
@@ -49,12 +49,12 @@
 - review-reminder.service.ts
 - order-cogs.ts
 - devDependencies
-- getErrorMessage
+- get-error-message.ts
 - DtoCreateLead
 - order-photo.service.ts
 - report-delivery.spec.ts
 - Интеграция с исполнителем-партнёром (печать футболок)
-- ReportsPage.tsx
+- types/index.ts
 - CRM «Распечатка» — как всё устроено
 - PushService
 - insights-engine.ts
@@ -63,13 +63,13 @@
 - ozon-product-catalog.service.ts
 - analytics-period.ts
 - analytics-insights.service.ts
-- salary-integrity.spec.ts
-- AppShell.tsx
-- metrika-goal-registry.ts
+- OrderPhotoService
+- App.tsx
+- Body
 - Исправленные проблемы
 - crm-new/README.md
 - daily-plan-rules.ts
-- analytics-growth.service.ts
+- growth-contract.ts
 - scripts
 - frontend/package.json
 - Architecture
@@ -77,13 +77,13 @@
 - marketplace.module.ts
 - package.json
 - approval-render.service.ts
-- metrika-analytics-sync.service.ts
+- metrika-api.client.ts
 - exclude
 - Аудит финансов, кода и продакшена — 2026-07-09
 - devDependencies
 - metrika-query-catalog.ts
 - nest-cli.json
-- App.tsx
+- MarketplacePage.tsx
 - ozonProductCatalog.ts
 - 12_PRODUCTION_ROLLOUT.md
 - retention.spec.ts
@@ -95,14 +95,14 @@
 - 08_ANALYTICS_METRICS.md
 - frontend/tsconfig.json
 - ImageCardBatchController
-- order-photo.controller.ts
+- roles.decorator.ts
 - 06_PRODUCTION_ROLLOUT_PHASE_I_J.md
-- AvitoController
+- report-collect.ts
 - ozon-attributes.ts
 - 04_EVENT_MODEL_FIX_01.md
 - growth-statistics.ts
-- ozon-warehouse.service.ts
-- approval.service.ts
+- OzonApiClient
+- ApprovalService
 - insights-sections.tsx
 - DASHBOARD_CONTRACT.md
 - ImageCardStorageService
@@ -112,23 +112,23 @@
 - 11_PRODUCTION_ROLLOUT.md
 - behavior-compute.ts
 - 12_AUTOMATED_INSIGHTS — автоматические выводы и приоритизация сигналов
-- AnalyticsReportController
-- metrika-api.client.ts
+- client-message.ts
+- YandexMetrikaClient
 - behavior-sections.tsx
 - tshirt-partner-telegram.service.ts
-- image-card-processor.service.ts
+- approval-storage.service.ts
 - .credentials
 - approval.module.ts
 - 8. EXECUTOR_REPORT_FIX_01 — 11.09.2026
 - OrdersTab.tsx
 - 07_METRIKA_TO_ANALYTICS.md
-- vite
+- salary-integrity.spec.ts
 - dispatcher.mjs
 - render
 - crm-mcp/package.json
 - 13 — RELIABILITY & SECURITY
 - 06_PRODUCTION_ROLLOUT.md
-- ozon-crm-order.service.ts
+- ozon-orders.service.ts
 - tools/orders.ts
 - AnalyticsPage.tsx
 - 08_PRODUCTION_ROLLOUT.md
@@ -144,9 +144,9 @@
 - ApprovalController
 - tg_greeter.py
 - 35. EXECUTOR_REPORT_STAGE12_PRODUCTION_ROLLOUT — 17.09.2026
-- ProductsTab.tsx
+- printDraft.ts
 - 32. EXECUTOR_REPORT_STAGE13_RELIABILITY_SECURITY — 17.09.2026
-- report-build.ts
+- metrics-contract.ts
 - DtoUpdatePartnerSettings
 - Выкатка: репозиторий → сервер
 - metrics-compute.ts
@@ -155,8 +155,8 @@
 - parse_proxy
 - 26. EXECUTOR_REPORT_PRODUCTION_ROLLOUT — 12.09.2026
 - nginx-routes.spec.ts
-- image-card-batch.service.ts
-- metrika-order-outbox-processor.service.ts
+- image-card-batch.controller.ts
+- approval.service.ts
 - ТЗ: раздел «Печать на холсте» на raspechatkaa.ru
 - 56. EXECUTOR_REPORT
 - auto-update.sh
@@ -165,7 +165,7 @@
 - OpsStatusService
 - auth.controller.ts
 - 35. EXECUTOR_REPORT_STAGE11_PRODUCTION_ROLLOUT — 15–16.09.2026
-- order-photo.module.ts
+- OrderFinancialIntegrityService
 - canvas-production-price.ts
 - 04_EVENT_MODEL.md
 - plan.ts
@@ -177,18 +177,18 @@
 - quality.ts
 - PeriodQuery
 - 59. EXECUTOR_REPORT — 12.09.2026
-- order-origin-metrics.spec.ts
+- order-origin.ts
 - 05_YANDEX_METRIKA_OAUTH_REAL_APP.md
 - Повторная проверка аналитики и отчёта для ИИ — 27.09.2026
 - Словарь канонических метрик (этап 08)
 - AnalyticsGrowthService
-- DtoCreateOrder
+- order-photo.controller.ts
 - 06_CRM_TO_METRIKA_LIVE_WRITE.md
 - api/analytics.ts
-- metrika-analytics.module.ts
+- ozonCatalog.ts
 - registry.ts
 - 10_BEHAVIOR_AND_FUNNELS.md
-- ozon-orders.service.ts
+- ozon-shipped-close.service.ts
 - 16_REPORT_DELIVERY.md
 - 49. EXECUTOR_REPORT_STAGE12_AUTOMATED_INSIGHTS — 16.09.2026
 - 14_FINAL_ACCEPTANCE.md
@@ -197,26 +197,26 @@
 - 29. EXECUTOR REPORT FORMAT
 - D1 — аудит `clientPaidAt` (EXECUTOR_REPORT_D1_CLIENT_PAID_AT_AUDIT)
 - 32. EXECUTOR_REPORT — 14.09.2026
-- gulian-outbox.service.ts
-- SalaryService
+- GulianService
+- PlatformBadge.tsx
 - 21. EXECUTOR_REPORT_PRODUCTION_ROLLOUT — 15.09.2026
 - 31. EXECUTOR_REPORT — 15.09.2026
 - 13_PRODUCTION_ROLLOUT.md
 - 34. FIX_01 — PARTIAL PERIOD FUNNEL DROPOFF (15.09.2026)
-- metrika-period-snapshot.service.ts
+- CatalogTab.tsx
 - lead.controller.ts
 - sql.ts
 - Этап 08 — Production rollout canonical analytics metrics
 - Этап 09 — Dashboard V1 для руководителя
-- MarketplaceController
-- jsdom
+- DtoCreateMarketplaceAccount
+- metrika-analytics-scheduler.service.ts
 - OzonOrdersController
-- @testing-library/jest-dom
-- metrika-report-fetcher.ts
-- CreateChangeDto
-- typescript
-- analytics-report.worker.ts
-- @vitejs/plugin-react
+- OzonCatalogController
+- insights-event-gap.spec.ts
+- DtoUpdateImageCardTemplate
+- ProductsTab.tsx
+- ApprovalStorageService
+- utils/marketplace-tshirt.ts
 - metrika-sync.ts
 - 28. Required executor report
 - analytics-dashboard.controller.ts
@@ -251,7 +251,7 @@
 - 22. PREFLIGHT перед live write — 12.09.2026 (POST не выполнялся)
 - 21. EXECUTOR_REPORT — 11.09.2026
 - Каталог событий сайта raspechatkaa.ru
-- image-card-template.controller.ts
+- ImageCardTemplateService
 - 14. EXECUTOR_REPORT_STAGE13_PRODUCTION_ROLLOUT — 22.09.2026
 - 34. EXECUTOR_REPORT_LIVE_SMOKE — 11.09.2026
 - BEHAVIOR_EVENT_CONTRACT.md
@@ -304,7 +304,7 @@
 - Этап 06 — CRM → Яндекс Метрика: реальные заказы, оплаты, отмены и надёжная доставка
 - Этап 06 — Production rollout CRM → Яндекс Метрика
 - Этап 07 — Яндекс Метрика → локальная аналитика
-- ImageCardBatchService
+- TshirtPartnerTelegramService
 - 50. EXECUTOR_REPORT_STAGE12_FIX01 — 16.09.2026
 - 10_BEHAVIOR_AND_FUNNELS.md
 - 10. ISSUE DETECTION
@@ -316,11 +316,11 @@
 - 23. TESTS
 - 39. TEST MATRIX — ОБЯЗАТЕЛЬНО
 - Статистика оценки «до / после» (этап 11): формулы, допущения, MDE, вердикты
-- types/index.ts
+- getErrorMessage
 - BACKUP_RESTORE_RUNBOOK — резервные копии и восстановление CRM (этап 13, раздел 14)
 - Этап 08 — Канонические метрики, воронки, деньги и сравнение периодов
-- metrika-order-outbox.service.ts
-- scenario-draft.service.ts
+- metrika-order-outbox-processor.spec.ts
+- PartnerApiController
 - tools/marketplace.ts
 - § 16. EXECUTOR_REPORT — MINI-ROLLOUT FIX + GATES D–H (22.09.2026, 20:34–21:48 MSK)
 - Реестр изменений и оценка «до / после» (этап 11) — контракт данных
@@ -335,8 +335,8 @@
 - DEPLOYMENT_SAFETY — CI/CD, образы, auto-update, идентификатор сборки (этап 13, разделы 18–20; R2, R4)
 - HARDENING_BACKLOG — отложенные работы по надёжности и безопасности
 - MIGRATION_SAFETY — миграции Prisma и drift (этап 13, раздел 17; R3)
-- scenario.types.ts
-- scenario.mapping.ts
+- order-approval-state.ts
+- ReportsController
 - 22. FIX_01 ROLLOUT (правило 11.1 — окна измерения шагов)
 - 30. UI — «Инсайты»
 - 35. DATA QUALITY INSIGHTS
@@ -363,7 +363,7 @@
 - 5. Change types and evidence strength
 - 18. MONEY INSIGHTS
 - 29. API
-- salary.service.ts
+- salary.controller.ts
 - Оформление и получение заказов
 - TelegramPollingService
 - INCIDENT_RUNBOOK — операционные условия аналитики и действия оператора (этап 13, разделы 5–6, 21–22)
@@ -375,23 +375,23 @@
 - 4. GATE B — deployment / compose hardening (сервер)
 - 5. GATE C — web-photo CI safety (кандидат 441d795)
 - 4. ИЗВЕСТНЫЕ РИСКИ, КОТОРЫЕ НУЖНО ПРОВЕРИТЬ
-- metrika-order-csv.ts
+- useOrderAutoAdvance.ts
 - Отправление Ozon → заказ CRM → макет
-- greeting-message.ts
+- DtoOzonUpdateCardText
 - deploy-safety.spec.ts
 - DailyPlanService
-- scenario.engine.ts
+- CardAnalytics.tsx
 - 15. ОТДЕЛЬНЫЕ PRODUCTION-ПРОВЕРКИ
 - § 15. FIX STAGE 13 (22.09.2026) — два подтверждённых дефекта Gate C
 - IDEMPOTENCY_MATRIX — повторные запуски операций аналитики (этап 13, разделы 11–12)
 - ИИ-агент над CRM, сайтом и рекламой — архитектура
-- AnalyticsReportService
+- CreateReportDto
 - crm-mcp — CRM «Распечатка» как MCP-сервер
 - 12_PRODUCTION_ROLLOUT.md
 - tools/salary.ts
-- report-storage.ts
-- MetrikaOrderOutboxProcessorService
-- ScenarioController
+- DtoSendAvitoMessage
+- DtoCreateOzonCrmOrder
+- UnitEconomicsPanel.tsx
 - Push-уведомления о заявках с сайта
 - Analytics integrity and Direct costs
 - ops-status.service.spec.ts
@@ -399,8 +399,8 @@
 - ad-spend-import.ts
 - DtoUpdateOrder
 - insights-fixture.spec-helper.spec.ts
-- DtoUpdateItemOrder
-- scenario.registry.ts
+- canvas-item.service.ts
+- DispatchToExecutorModal.tsx
 - PrismaService
 - task-reminder.service.spec.ts
 - ImageCardRenderService
@@ -411,9 +411,9 @@
 - Скидка клиенту в рублях
 - Номер заказа с маркетплейса
 - DtoBulkCards
-- ozon-default-warehouses.ts
-- DtoDeleteOrder
-- HealthController
+- @eslint/js
+- @testing-library/dom
+- @testing-library/react
 - Достоверность значений аналитики — 28.09.2026
 - @nestjs/common
 - sharp
@@ -422,6 +422,7 @@
 - tailwindcss
 - @tailwindcss/vite
 - typescript-eslint
+- @types/react-dom
 
 ## God Nodes (most connected - your core abstractions)
 1. `PrismaService` - 167 edges
@@ -442,34 +443,34 @@
   crm-new/src/analytics/growth/growth-windows.ts → crm-new/src/metrika/analytics/metrika-dates.ts
 - `build()` --indirect_call--> `text()`  [INFERRED]
   crm-new/src/analytics/insights/insights-engine.ts → crm-new/src/approval/approval-render.service.ts
-- `originPnl()` --calls--> `buildPnl()`  [EXTRACTED]
-  crm-new/src/analytics/metrics/order-origin-metrics.spec.ts → crm-new/src/reports/reports.service.ts
+- `ctxWith()` --calls--> `makeContext()`  [EXTRACTED]
+  crm-new/src/analytics/insights/insights-event-gap.spec.ts → crm-new/src/analytics/insights/insights-fixture.spec-helper.spec.ts
 - `evaluateScenario()` --indirect_call--> `step()`  [INFERRED]
   crm-new/src/scenarios/scenario.engine.ts → crm-new/src/analytics/report/report-build.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (415 total, 31 thin omitted)
+## Communities (417 total, 28 thin omitted)
 
-### Community 0 - "AnalyticsPeriod"
-Cohesion: 0.13
-Nodes (31): stub(), AnalyticsMetricsService, Injectable, AnalyticsPeriod, describePeriod(), periodBoundsUtc(), compareComputations(), computeOverview() (+23 more)
+### Community 0 - "analytics-metrics.service.ts"
+Cohesion: 0.08
+Nodes (35): AdSpendRow, cohortsFor(), INPUT, NOW, ORDERS, Row, AnalyticsMetricsService, DEFAULT_GOAL_IDS (+27 more)
 
 ### Community 1 - "TasksService"
-Cohesion: 0.06
-Nodes (32): DtoCreateTask, IsEnum, IsInt, IsOptional, IsString, IsUUID, MaxLength, Min (+24 more)
+Cohesion: 0.05
+Nodes (35): DtoCreateTask, IsEnum, IsInt, IsOptional, IsString, IsUUID, MaxLength, Min (+27 more)
 
 ### Community 2 - "dependencies"
 Cohesion: 0.04
 Nodes (55): archiver, bcryptjs, bwip-js, class-transformer, class-validator, dependencies, archiver, bcryptjs (+47 more)
 
-### Community 3 - "DtoUpdateUser"
+### Community 3 - "users.controller.ts"
 Cohesion: 0.07
-Nodes (26): DtoCreateUser, IsEnum, IsString, MinLength, DtoUpdateUser, IsBoolean, IsInt, IsOptional (+18 more)
+Nodes (27): DtoCreateUser, IsEnum, IsString, MinLength, DtoUpdateUser, IsBoolean, IsInt, IsOptional (+19 more)
 
 ### Community 4 - "sticker.service.ts"
-Cohesion: 0.14
+Cohesion: 0.13
 Nodes (17): actualBalanceDue(), computePrepayment(), DEFAULT_PREPAY_RATE, Prepayment, buildPhotoItemLines(), buildTshirtItemLines(), drawInstagramIcon(), drawTelegramIcon() (+9 more)
 
 ### Community 5 - "crm-new/package.json"
@@ -480,41 +481,41 @@ Nodes (22): author, description, jest, collectCoverageFrom, coverageDirectory, m
 Cohesion: 0.27
 Nodes (14): DtoOzonArchive, DtoOzonPriceItem, DtoOzonStockItem, DtoOzonUpdatePrices, DtoOzonUpdateStocks, ArrayNotEmpty, IsArray, IsBoolean (+6 more)
 
-### Community 7 - "OzonImportService"
-Cohesion: 0.09
-Nodes (11): Get, Query, OzonCatalogTemplateService, toTemplateView(), Injectable, OzonImportPollService, Injectable, OzonImportService (+3 more)
+### Community 7 - "ozon-import.service.ts"
+Cohesion: 0.10
+Nodes (17): DEFAULT_SIZE_DIMENSIONS, OzonCatalogTemplateService, Injectable, UpdateOzonCatalogTemplateInput, IMPORT_BATCH_SIZE, OzonImportItem, VariantDimensions, OzonAttributeValueOption (+9 more)
 
 ### Community 8 - "09_DASHBOARD_V1.md"
 Cohesion: 0.03
 Nodes (62): 10. Site funnel, 11. CRM funnel, 12. Coverage warning, 13. First natural leads without ClientID, 14. Trend chart, 15. Traffic sources, 16. UTM, 17. Sales channels (+54 more)
 
 ### Community 9 - "Roles"
-Cohesion: 0.07
-Nodes (28): Body, Patch, Post, CurrentUser, Roles(), OrderPhotoController, Controller, Delete (+20 more)
+Cohesion: 0.10
+Nodes (19): CurrentUser, Roles(), OrderPhotoController, Controller, Delete, Get, HttpCode, Param (+11 more)
 
 ### Community 10 - "System Map"
 Cohesion: 0.05
 Nodes (36): 2026-07-08, 2026-07-09, 2026-07-11, 2026-08-24, 2026-08-24 (later), 2026-08-25, Access Rules, App Modules (+28 more)
 
-### Community 11 - "DtoCreateExpense"
+### Community 11 - "expenses.controller.ts"
 Cohesion: 0.09
-Nodes (19): DtoCreateExpense, IsEnum, IsInt, IsOptional, IsString, Min, ExpensesController, Controller (+11 more)
+Nodes (20): DtoCreateExpense, IsEnum, IsInt, IsOptional, IsString, Min, ExpensesController, RequestUser (+12 more)
 
 ### Community 12 - "reports.service.ts"
-Cohesion: 0.07
-Nodes (34): ACCEPTED_STATUSES, deriveOrderLifecycle(), LifecycleOrder, h(), order(), T(), CostSettings, orderCostOfGoods() (+26 more)
+Cohesion: 0.09
+Nodes (36): CrmOrderInput, ACCEPTED_STATUSES, deriveOrderLifecycle(), LifecycleOrder, LifecycleTransition, OrderLifecycle, h(), order() (+28 more)
 
-### Community 13 - "OrdersPage.tsx"
-Cohesion: 0.06
-Nodes (48): ExecutorFilter(), Props, Harness(), pages, OrderNavigator(), Props, StatusStepper(), Args (+40 more)
+### Community 13 - "OrderNavigation.test.tsx"
+Cohesion: 0.20
+Nodes (8): Harness(), pages, OrderNavigator(), Props, Args, OrderNavigation, useArrowNavigation(), useOrderNavigation()
 
 ### Community 14 - "task-reminder-rules.ts"
-Cohesion: 0.16
-Nodes (22): buildDigestMessage(), daysUntilDeadline(), deadlineMarker(), DIGEST_HOUR, DIGEST_LAST_HOUR, DigestGroup, DigestTask, formatDeadlineLabel() (+14 more)
+Cohesion: 0.15
+Nodes (23): buildPersonalDigestMessage(), daysUntilDeadline(), deadlineMarker(), DIGEST_HOUR, DIGEST_LAST_HOUR, DigestAssignee, DigestGroup, DigestTask (+15 more)
 
 ### Community 15 - "AvitoService"
-Cohesion: 0.07
-Nodes (17): AvitoMessengerService, Injectable, AvitoModule, Module, AvitoAccount, AvitoChat, AvitoChatUser, AvitoMessage (+9 more)
+Cohesion: 0.05
+Nodes (32): AvitoController, Controller, Get, Param, Post, Query, UseGuards, AvitoMessengerService (+24 more)
 
 ### Community 16 - "Брендбук — Распечатка PRO"
 Cohesion: 0.08
@@ -529,8 +530,8 @@ Cohesion: 0.09
 Nodes (22): compilerOptions, allowSyntheticDefaultImports, baseUrl, declaration, emitDecoratorMetadata, esModuleInterop, experimentalDecorators, forceConsistentCasingInFileNames (+14 more)
 
 ### Community 19 - "PrintDesignerEngine"
-Cohesion: 0.22
-Nodes (3): PrintDesignerEngine, Slot, PrintDesignerPage()
+Cohesion: 0.14
+Nodes (8): PrintDesignerPage, PrintDesignerEngine, Slot, COLORS, EXPORT_SCALES, PrintDesignerPage(), PRINT_TEMPLATES, PrintTemplate
 
 ### Community 20 - "compilerOptions"
 Cohesion: 0.08
@@ -541,12 +542,12 @@ Cohesion: 0.09
 Nodes (21): 10.1 Почему PDF «не формировался» и долго генерировался, 10.2 Декомпозиция API-слоя (был god-файл), 10.3 Группировка компонентов, 10.4 Автоматические бэкапы БД (рекомендация №1), 10.5 Итоговая структура фронта, 10.6 Деплой раунда 2, 10. Раунд 2 — PDF, декомпозиция API/компонентов, бэкапы (тот же день), 1. Резюме и метрики (+13 more)
 
 ### Community 22 - "AnalyticsInsightsService"
-Cohesion: 0.10
-Nodes (19): AnalyticsInsightsService, Injectable, ResolveInsightDto, IsString, MaxLength, MinLength, InsightRecord, InsightRunKind (+11 more)
+Cohesion: 0.11
+Nodes (16): AnalyticsInsightsService, summarize(), Injectable, InsightRecord, InsightRunKind, InsightRunRecord, InsightsQuality, InsightsDashboardController (+8 more)
 
 ### Community 23 - "dependencies"
-Cohesion: 0.10
-Nodes (21): axios, dependencies, axios, @hookform/resolvers, lucide-react, react, react-dom, react-hook-form (+13 more)
+Cohesion: 0.09
+Nodes (23): axios, dependencies, axios, @hookform/resolvers, lucide-react, pdfjs-dist, react, react-dom (+15 more)
 
 ### Community 24 - "ozon-bulk-stock.service.ts"
 Cohesion: 0.07
@@ -558,59 +559,59 @@ Nodes (23): 10. ISSUE RULES PRODUCTION CHECK, 11. PRIVACY CHECK, 12. PERFORMANCE
 
 ### Community 26 - "ApprovalEditor.tsx"
 Cohesion: 0.06
-Nodes (56): approvalsApi, mockupsApi, ALL_SIDES, ApprovalEditor(), CmField(), downloadBlob(), Draft, Props (+48 more)
+Nodes (62): approvalsApi, mockupsApi, ALL_SIDES, ApprovalEditor(), CmField(), downloadBlob(), Props, SIDE_LABELS (+54 more)
 
 ### Community 27 - "compilerOptions"
 Cohesion: 0.09
 Nodes (21): compilerOptions, allowImportingTsExtensions, erasableSyntaxOnly, lib, module, moduleDetection, moduleResolution, noEmit (+13 more)
 
 ### Community 28 - "MarketplaceAccountService"
-Cohesion: 0.11
-Nodes (14): ACCOUNT_INCLUDE, AccountRow, CreateAccountInput, MarketplaceAccountService, MarketplaceAccountView, Injectable, UpdateAccountInput, OzonService (+6 more)
+Cohesion: 0.07
+Nodes (23): ACCOUNT_INCLUDE, AccountRow, CreateAccountInput, MarketplaceAccountService, MarketplaceAccountView, Injectable, UpdateAccountInput, MarketplaceController (+15 more)
 
 ### Community 29 - "OrderDetail.tsx"
 Cohesion: 0.04
-Nodes (78): ordersApi, Props, DispatchToExecutorModal(), PayoutInfo, Props, rub(), GreetingCopyButton(), GulianSyncBlock() (+70 more)
+Nodes (73): ordersApi, Props, ExecutorFilter(), Props, GulianSyncBlock(), Props, STATUS_LABELS, EditState (+65 more)
 
 ### Community 30 - "partner-api.controller.ts"
-Cohesion: 0.05
-Nodes (40): CanvasModule, Module, hasProductionItems(), NO_PRODUCTION_ITEMS_MESSAGE, OrderWithProductionItems, DtoPartnerStatus, IsString, PartnerModule (+32 more)
+Cohesion: 0.07
+Nodes (28): hasProductionItems(), NO_PRODUCTION_ITEMS_MESSAGE, OrderWithProductionItems, DtoPartnerStatus, IsString, PartnerOutboundService, Injectable, buildPartnerOrderPayload() (+20 more)
 
 ### Community 31 - "review-reminder.service.ts"
 Cohesion: 0.14
 Nodes (15): isReviewReminderEligible(), MARKETPLACE_REVIEW_DELAY_MS, REVIEW_REMINDER_CATEGORIES, REVIEW_REMINDER_DELAY_MS, REVIEW_REMINDER_PICKUP_DELAY_MS, REVIEW_REMINDER_STATUSES, reviewReminderDelayMs(), buildReviewRequestText() (+7 more)
 
 ### Community 32 - "order-cogs.ts"
-Cohesion: 0.16
-Nodes (17): calcOrderProfit(), forecastSalary(), kopecksToRub(), OrderProfit, OrderProfitInput, SHEET, DECLARED_PRINTS_PER_SHEET, HALF_SHEET_WORDS (+9 more)
+Cohesion: 0.12
+Nodes (20): OrderForMetrika, SETTINGS, calcOrderProfit(), forecastSalary(), kopecksToRub(), OrderProfit, OrderProfitInput, SHEET (+12 more)
 
 ### Community 33 - "devDependencies"
-Cohesion: 0.11
-Nodes (19): eslint-plugin-react-hooks, eslint-plugin-react-refresh, devDependencies, eslint, @eslint/js, eslint-plugin-react-hooks, eslint-plugin-react-refresh, @testing-library/dom (+11 more)
+Cohesion: 0.10
+Nodes (21): eslint-plugin-react-hooks, eslint-plugin-react-refresh, devDependencies, eslint, eslint-plugin-react-hooks, eslint-plugin-react-refresh, jsdom, @testing-library/jest-dom (+13 more)
 
-### Community 34 - "getErrorMessage"
-Cohesion: 0.06
-Nodes (60): ozonBatchesApi, ozonCardsApi, CardBatchReport(), CardEditorModal(), CardFinalizePanel(), BatchList(), CardGeneratorTab(), MODE_LABELS (+52 more)
+### Community 34 - "get-error-message.ts"
+Cohesion: 0.05
+Nodes (58): ozonBatchesApi, ozonCardsApi, CardBatchReport(), CardEditorModal(), CardFinalizePanel(), BatchList(), BatchView(), CardGeneratorTab() (+50 more)
 
 ### Community 35 - "DtoCreateLead"
-Cohesion: 0.09
-Nodes (18): DtoCreateLead, base, meta, pipe, IsBoolean, IsEnum, IsIn, IsInt (+10 more)
+Cohesion: 0.07
+Nodes (20): DtoCreateLead, base, meta, pipe, IsBoolean, IsEnum, IsIn, IsInt (+12 more)
 
 ### Community 36 - "order-photo.service.ts"
 Cohesion: 0.05
-Nodes (52): buildCommunicationUrl(), buildMaxUrl(), DEFAULT_MAX_LINK_TEMPLATE, formatPhoneForDisplay(), normalizePhone(), validateCommunicationValue(), DtoAssignExecutor, IsOptional (+44 more)
+Nodes (43): deadlineOnAccept(), DeadlineStartOrder, DEFAULT_DEADLINE_MS, DtoAssignExecutor, IsOptional, IsString, IsUUID, IsEnum (+35 more)
 
 ### Community 37 - "report-delivery.spec.ts"
-Cohesion: 0.15
-Nodes (16): REPORT_RETENTION_DAYS, REPORT_RETENTION_KEEP, ReportRow, ReportStatus, STALE_GENERATING_MS, makeService(), makeWorker(), NOW (+8 more)
+Cohesion: 0.06
+Nodes (39): AnalyticsReportController, Controller, Get, Header, Param, Query, Res, UseGuards (+31 more)
 
 ### Community 38 - "Интеграция с исполнителем-партнёром (печать футболок)"
 Cohesion: 0.12
 Nodes (15): 1. Модель взаимодействия, 2. Аутентификация, 3. Webhook, который мы отправляем партнёру, 4.1 Данные заказа, 4.2 ТЗ-фото (макет), 4.3 Стикер (PDF, 58×40 мм), 4.4 Смена статуса заказа (партнёр → нам), 4. Эндпоинты, откуда партнёр забирает данные (pull) (+7 more)
 
-### Community 39 - "ReportsPage.tsx"
-Cohesion: 0.09
-Nodes (34): expensesApi, ReportsPage, SalaryPage, buildReceiptHtml(), buildReceiptTitle(), escapeHtml(), formatFilenameDate(), printReceipt() (+26 more)
+### Community 39 - "types/index.ts"
+Cohesion: 0.04
+Nodes (83): expensesApi, reportsApi, MySalaryBalance, salaryApi, MySalaryPage, ReportsPage, SalaryPage, PaidAtBlock() (+75 more)
 
 ### Community 40 - "CRM «Распечатка» — как всё устроено"
 Cohesion: 0.11
@@ -618,11 +619,11 @@ Nodes (18): 10. Слабые места, 11. Что дальше, 1. Что эт
 
 ### Community 41 - "PushService"
 Cohesion: 0.07
-Nodes (25): PushController, Controller, Get, Post, Res, Throttle, UseGuards, PushEndpointDto (+17 more)
+Nodes (26): AuthenticatedUser, PushController, Controller, Get, Post, Res, Throttle, UseGuards (+18 more)
 
 ### Community 42 - "insights-engine.ts"
 Cohesion: 0.04
-Nodes (83): build(), changeEvaluationDetector, clientIdCoverageDetector, cogsDetector, conversionHypothesis(), crmLeadToAcceptedDetector, crmLeadToPaidDetector, dirCount() (+75 more)
+Nodes (88): DetectorRunResult, build(), canonicalPayload(), changeEvaluationDetector, clientIdCoverageDetector, cogsDetector, conversionHypothesis(), crmLeadToAcceptedDetector (+80 more)
 
 ### Community 43 - "06_CRM_TO_METRIKA.md"
 Cohesion: 0.03
@@ -630,31 +631,31 @@ Nodes (65): 10. Стабильный order ID, 11. create_date_time, 12. Фор�
 
 ### Community 44 - "types/analytics.ts"
 Cohesion: 0.06
-Nodes (41): SourcesTable(), baseOverview(), comparison(), DeepPartial, DeepPartialValue, flat(), KEYS, makeOverview() (+33 more)
+Nodes (35): SourcesTable(), baseOverview(), comparison(), DeepPartial, DeepPartialValue, flat(), KEYS, makeOverview() (+27 more)
 
 ### Community 45 - "ozon-product-catalog.service.ts"
 Cohesion: 0.09
 Nodes (21): OzonActionView, OzonCatalogProduct, OzonContentRating, OzonDemand, OzonImportAttributeBody, OzonProductCard, RawActionsResponse, RawAnalyticsResponse (+13 more)
 
 ### Community 46 - "analytics-period.ts"
-Cohesion: 0.16
-Nodes (17): MAX_CUSTOM_DAYS, periodFromQuery(), INPUT, NOW, ORDERS, Row, calendarMonth(), customPeriod() (+9 more)
+Cohesion: 0.18
+Nodes (27): calendarMonth(), customPeriod(), describePeriod(), inPeriod(), isCalendarMonth(), isPeriodPreset(), monthOf(), pad() (+19 more)
 
 ### Community 47 - "analytics-insights.service.ts"
-Cohesion: 0.05
-Nodes (65): Confounder, DataQualityFlag, MetricEvaluation, Verdict, ACTIVE, compareForFeed(), FeedFilter, InsightRow (+57 more)
-
-### Community 48 - "salary-integrity.spec.ts"
-Cohesion: 0.04
-Nodes (37): GulianOutboxService, Injectable, DtoAllOrdersforQuery, IsEnum, IsIn, IsInt, IsOptional, IsString (+29 more)
-
-### Community 49 - "AppShell.tsx"
 Cohesion: 0.07
-Nodes (28): salaryApi, MySalaryPage, PrintDesignerPage, AppShell(), NavProps, Props, AD_MGR, ADMIN (+20 more)
+Nodes (45): Confounder, DataQualityFlag, MetricEvaluation, Verdict, ACTIVE, FeedFilter, InsightRow, RUN_LOCK_MINUTES (+37 more)
 
-### Community 50 - "metrika-goal-registry.ts"
-Cohesion: 0.08
-Nodes (27): ctx, GOALS, registry, BEHAVIOR_EVENTS, BEHAVIOR_GOALS_PER_REQUEST, BehaviorEvent, behaviorGoalChunks(), behaviorGoals() (+19 more)
+### Community 48 - "OrderPhotoService"
+Cohesion: 0.09
+Nodes (17): DtoAllOrdersforQuery, IsEnum, IsIn, IsInt, IsOptional, IsString, Matches, Max (+9 more)
+
+### Community 49 - "App.tsx"
+Cohesion: 0.04
+Nodes (63): authApi, tasksApi, TasksQuery, AdminRoute(), AnalyticsPage, App(), AppRoutes(), CrmGate() (+55 more)
+
+### Community 50 - "Body"
+Cohesion: 0.10
+Nodes (18): Body, Patch, Post, Post, DtoLocalAgentTaskAction, DtoLocalAgentTaskQuery, DtoLocalAgentTaskReport, IsEnum (+10 more)
 
 ### Community 51 - "Исправленные проблемы"
 Cohesion: 0.18
@@ -666,11 +667,11 @@ Nodes (9): Compile and run the project, Deployment, Description, License, Projec
 
 ### Community 53 - "daily-plan-rules.ts"
 Cohesion: 0.11
-Nodes (30): buildDailyPlanMessage(), dayMonth(), effectiveDeadline(), executorKey(), inWorkTail(), isWithinPlanWindow(), moscowHm(), needsShipping() (+22 more)
+Nodes (30): buildDailyPlanMessage(), dayMonth(), effectiveDeadline(), executorKey(), inWorkTail(), moscowHm(), needsShipping(), orderMarker() (+22 more)
 
-### Community 54 - "analytics-growth.service.ts"
-Cohesion: 0.05
-Nodes (66): ChangeInput, ChangePatch, ChangeRow, EvaluationRow, ChangeForEvaluation, AUDIENCE_DIMENSIONS, AudienceDefinition, AudienceDimension (+58 more)
+### Community 54 - "growth-contract.ts"
+Cohesion: 0.08
+Nodes (45): ChangeInput, AudienceDefinitionDto, CreateChangeDto, ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsInt (+37 more)
 
 ### Community 55 - "scripts"
 Cohesion: 0.08
@@ -689,20 +690,20 @@ Cohesion: 0.20
 Nodes (8): API routes (prefix: `/order-photo`), Architecture, Commands, Data model, Environment, Key behaviors, Module structure, Граф знаний (graphify)
 
 ### Community 59 - "marketplace.module.ts"
-Cohesion: 0.08
-Nodes (20): MarketplaceModule, Module, ALLOWED_INPUT, OZON_PHOTO_MAX_BYTES, OZON_PHOTO_MAX_FILES, OzonPhotoStorageService, Injectable, OzonPhotoController (+12 more)
+Cohesion: 0.06
+Nodes (42): AnalyticsDashboardModule, Module, OpsModule, Module, ReportDeliveryModule, Module, AppModule, Module (+34 more)
 
 ### Community 60 - "package.json"
 Cohesion: 0.25
 Nodes (7): concurrently, devDependencies, concurrently, name, private, scripts, dev
 
 ### Community 61 - "approval-render.service.ts"
-Cohesion: 0.07
-Nodes (37): DPI_ACCEPTABLE, DPI_GOOD, estimateDpi(), formatCm(), formatSizeCm(), isCalibrated(), isOutsidePrintArea(), PrintAreaCalibration (+29 more)
+Cohesion: 0.09
+Nodes (33): DPI_ACCEPTABLE, DPI_GOOD, estimateDpi(), formatCm(), formatSizeCm(), isCalibrated(), isOutsidePrintArea(), PrintAreaCalibration (+25 more)
 
-### Community 62 - "metrika-analytics-sync.service.ts"
-Cohesion: 0.07
-Nodes (30): DatasetState, QualityReport, BatchStatus, DatasetOutcome, MetrikaAnalyticsSyncService, MetrikaReportsClient, day(), dims() (+22 more)
+### Community 62 - "metrika-api.client.ts"
+Cohesion: 0.05
+Nodes (57): BatchStatus, describe(), MetrikaAnalyticsSyncService, MetrikaReportsClient, day(), dims(), GOALS, Handler (+49 more)
 
 ### Community 63 - "exclude"
 Cohesion: 0.25
@@ -717,20 +718,20 @@ Cohesion: 0.04
 Nodes (55): devDependencies, eslint, @eslint/eslintrc, @eslint/js, eslint-plugin-prettier, globals, jest, @nestjs/cli (+47 more)
 
 ### Community 66 - "metrika-query-catalog.ts"
-Cohesion: 0.05
-Nodes (48): IsoDate, ALL_DATASETS, ATTRIBUTION_PREFIX, behaviorChunkMetrics(), BehaviorDeviceRow, behaviorDevices, behaviorEngagement, BehaviorLandingRow (+40 more)
+Cohesion: 0.04
+Nodes (67): ctx, GOALS, registry, BEHAVIOR_EVENTS, BEHAVIOR_GOALS_PER_REQUEST, BehaviorEvent, behaviorGoalChunks(), behaviorGoals() (+59 more)
 
 ### Community 67 - "nest-cli.json"
 Cohesion: 0.33
 Nodes (5): collection, compilerOptions, deleteOutDir, $schema, sourceRoot
 
-### Community 68 - "App.tsx"
-Cohesion: 0.04
-Nodes (76): CreateAccountDto, EnumMarketplace, MarketplaceAccount, marketplaceApi, OzonConnectionInfo, UpdateAccountDto, usersApi, AdminRoute() (+68 more)
+### Community 68 - "MarketplacePage.tsx"
+Cohesion: 0.08
+Nodes (31): CreateAccountDto, EnumMarketplace, MarketplaceAccount, marketplaceApi, OzonConnectionInfo, UpdateAccountDto, MarketplacePage, AccountCard() (+23 more)
 
 ### Community 69 - "ozonProductCatalog.ts"
-Cohesion: 0.06
-Nodes (56): baseCodeOf(), BulkStockHistoryRow, BulkStockInput, BulkStockItem, BulkStockMode, BulkStockOperation, BulkStockPreview, BulkStockWarehouseInput (+48 more)
+Cohesion: 0.07
+Nodes (30): BulkStockHistoryRow, BulkStockInput, BulkStockItem, BulkStockMode, BulkStockOperation, BulkStockPreview, BulkStockWarehouseInput, COLOR_CODES (+22 more)
 
 ### Community 70 - "12_PRODUCTION_ROLLOUT.md"
 Cohesion: 0.05
@@ -745,15 +746,15 @@ Cohesion: 0.06
 Nodes (66): formatPeriod(), ChangeCard(), ChangeDetail(), ChangeForm(), EMPTY, errorMessage(), EvaluationView(), GrowthTab() (+58 more)
 
 ### Community 73 - "growth-compute.spec.ts"
-Cohesion: 0.10
-Nodes (26): cohortsFor(), CohortData, EvaluationInputs, OverlappingChange, behavior(), CHANGE_AT, FRESH, Fx (+18 more)
+Cohesion: 0.08
+Nodes (34): behavior(), CHANGE_AT, FRESH, inputs(), NOW, overview(), policy(), rate() (+26 more)
 
 ### Community 74 - "React + TypeScript + Vite"
 Cohesion: 0.50
 Nodes (3): Expanding the ESLint configuration, React Compiler, React + TypeScript + Vite
 
 ### Community 76 - "shipment-reminder-rules.ts"
-Cohesion: 0.16
+Cohesion: 0.15
 Nodes (11): buildShipmentReminder(), DEADLINE_METHODS, dueReminderStage(), hasDeadline(), hoursLeft(), SHIPMENT_REMINDER_STAGES_MS, ShipmentOrder, START (+3 more)
 
 ### Community 77 - "08_ANALYTICS_METRICS.md"
@@ -761,40 +762,40 @@ Cohesion: 0.04
 Nodes (55): 10. CRM lifecycle normalization, 11. CRM lead semantics, 12. Accepted order semantics, 13. Cancel semantics, 14. Paid semantics, 16. V1 conversion contract — Site funnel, 17. CRM funnel conversions, 18. Ratio rules (+47 more)
 
 ### Community 79 - "ImageCardBatchController"
-Cohesion: 0.14
+Cohesion: 0.13
 Nodes (10): ImageCardBatchController, Controller, Delete, Get, Param, Post, Res, UploadedFile (+2 more)
 
-### Community 80 - "order-photo.controller.ts"
-Cohesion: 0.04
-Nodes (57): NOW, VALID, ago(), ENV, fakePrisma(), NOW, RequestUser, CreateReportDto (+49 more)
+### Community 80 - "roles.decorator.ts"
+Cohesion: 0.08
+Nodes (28): VALID, ago(), ENV, fakePrisma(), NOW, RequestUser, SIDES, APPROVAL_MAX_BYTES (+20 more)
 
 ### Community 81 - "06_PRODUCTION_ROLLOUT_PHASE_I_J.md"
 Cohesion: 0.04
 Nodes (44): 10. PHASE K/L — естественные события, 11. EXECUTOR_REPORT_PHASE_J, 12. Decision Gate, 13. Предварительная сверка PHASE I — 12.09.2026 12:29 MSK (read-only GET), 14. EXECUTOR_REPORT_PHASE_I — 12.09.2026 12:58 MSK, 15. EXECUTOR_REPORT_PHASE_J — 12.09.2026, 1. PHASE I — действие владельца, 1. RESULT (+36 more)
 
-### Community 82 - "AvitoController"
-Cohesion: 0.13
-Nodes (15): AvitoController, Controller, Get, Param, Post, Query, UseGuards, DtoAvitoChatQuery (+7 more)
+### Community 82 - "report-collect.ts"
+Cohesion: 0.12
+Nodes (29): arg(), main(), parseDays(), attribution(), CollectDeps, CollectOptions, collectReport(), factText() (+21 more)
 
 ### Community 83 - "ozon-attributes.ts"
-Cohesion: 0.06
-Nodes (45): DEFAULT_SIZE_DIMENSIONS, UpdateOzonCatalogTemplateInput, buildExtraImages(), buildImportItem(), buildOfferId(), CatalogTemplateForImport, chunk(), COLOR_CODE_BY_LABEL (+37 more)
+Cohesion: 0.07
+Nodes (36): Delete, buildExtraImages(), buildImportItem(), buildOfferId(), CatalogTemplateForImport, chunk(), COLOR_CODE_BY_LABEL, colorCodeFor() (+28 more)
 
 ### Community 84 - "04_EVENT_MODEL_FIX_01.md"
 Cohesion: 0.05
 Nodes (39): 10. GIT, 10. GIT, 10. Документация, 11. Формат ответа, 12. Decision Gate, 13. EXECUTOR_REPORT_FIX_01 — 11.09.2026, 1.1. `yclid` — не хранить бессрочно, 1. RESULT (+31 more)
 
 ### Community 85 - "growth-statistics.ts"
-Cohesion: 0.19
-Nodes (23): computeStatistics(), bootstrapMeanDifference(), erfc(), fisherExactTwoSided(), Interval, LN_FACT, lnChoose(), lnFact() (+15 more)
+Cohesion: 0.15
+Nodes (27): computeStatistics(), BOOTSTRAP_ITERATIONS, BOOTSTRAP_SEED, Z_ALPHA_TWO_SIDED, Z_POWER, bootstrapMeanDifference(), erfc(), fisherExactTwoSided() (+19 more)
 
-### Community 86 - "ozon-warehouse.service.ts"
-Cohesion: 0.09
-Nodes (21): OzonApiError, OzonErrorBody, OzonConnectionInfo, OzonProductListResponse, OzonWarehouseListResponse, editability(), isStale(), NOT_EDITABLE (+13 more)
+### Community 86 - "OzonApiClient"
+Cohesion: 0.06
+Nodes (26): humanize(), OzonApiClient, OzonApiError, OzonErrorBody, Injectable, CREDS, PAPA, OzonConnectionInfo (+18 more)
 
-### Community 87 - "approval.service.ts"
-Cohesion: 0.07
-Nodes (31): date, date, approvalInclude, ApprovalService, SIZE_LABELS, Injectable, BY_LOCATION, missingSides() (+23 more)
+### Community 87 - "ApprovalService"
+Cohesion: 0.14
+Nodes (12): ApprovalService, Injectable, requiredApprovalSides(), ApprovalSides, clamp(), filledSides(), MAX_PRINT_MM, MIN_PRINT_MM (+4 more)
 
 ### Community 88 - "insights-sections.tsx"
 Cohesion: 0.07
@@ -805,20 +806,20 @@ Cohesion: 0.06
 Nodes (31): 10. Тесты, 11. Сверка (reconciliation), 11a. Поведение (этап 10) — `/analytics/dashboard/behavior/*`, 11b. Рост и изменения (этап 11) — `/analytics/dashboard/growth/*`, 11c. Инсайты (этап 12) — `/analytics/dashboard/insights/*`, 12. Чего в V1 нет (намеренно), 1. Принципы, 2. Маршруты (+23 more)
 
 ### Community 90 - "ImageCardStorageService"
-Cohesion: 0.15
+Cohesion: 0.12
 Nodes (5): ImageCardProcessorService, parseSnapshot(), Injectable, ImageCardStorageService, Injectable
 
 ### Community 91 - "canvas.pricing.ts"
-Cohesion: 0.16
-Nodes (16): CanvasPricingController, Controller, Get, calcCanvasUnitPrice(), calcCanvasUrgencyFee(), CANVAS_FRAME_LABELS, CANVAS_MATERIAL_LABELS, CANVAS_SIZES (+8 more)
+Cohesion: 0.22
+Nodes (13): calcCanvasUnitPrice(), calcCanvasUrgencyFee(), CANVAS_FRAME_LABELS, CANVAS_MATERIAL_LABELS, CANVAS_SIZES, CanvasFrame, CanvasMaterial, CanvasSize (+5 more)
 
 ### Community 92 - "05_YANDEX_METRIKA_API_LIVE_SMOKE.md"
 Cohesion: 0.05
 Nodes (38): 10. GIT, 10. Если Counter API вернул 403, 11. Если Reports API работает, а цели расходятся, 12. Формат дополнения к отчёту, 13. Decision Gate, 14. Команда исполнителю, 15. Состояние на 11.09.2026 (исполнитель), 1. RESULT (+30 more)
 
 ### Community 93 - "growth-compute.ts"
-Cohesion: 0.13
-Nodes (32): computeConfounders(), computeEvaluation(), countValue(), evaluateMetric(), evaluateSegments(), factText(), fmtInt(), fmtPct() (+24 more)
+Cohesion: 0.08
+Nodes (53): ChangePatch, ChangeRow, EvaluationRow, GrowthServiceDeps, computeConfounders(), computeEvaluation(), countValue(), evaluateMetric() (+45 more)
 
 ### Community 94 - "11_PRODUCTION_ROLLOUT.md"
 Cohesion: 0.05
@@ -826,31 +827,31 @@ Nodes (37): 10. CONTROLLED ENABLE (требование 6), 11. РЕГИСТРА
 
 ### Community 95 - "behavior-compute.ts"
 Cohesion: 0.05
-Nodes (94): baseNotes(), BehaviorInput, comparable(), computeDevices(), computeErrors(), computeFunnel(), computeIssues(), computePages() (+86 more)
+Nodes (91): baseNotes(), BehaviorInput, comparable(), computeDevices(), computeErrors(), computeFunnel(), computeIssues(), computePages() (+83 more)
 
 ### Community 96 - "12_AUTOMATED_INSIGHTS — автоматические выводы и приоритизация сигналов"
 Cohesion: 0.06
 Nodes (35): 0. STATUS, 11. POLARITY, 12_AUTOMATED_INSIGHTS — автоматические выводы и приоритизация сигналов, 12. CROSS-METRIC CONTEXT, 15. FORM ERRORS, 19. STAGE 11 CHANGE EVALUATIONS AS INSIGHTS, 1. ЦЕЛЬ ЭТАПА, 20. INSIGHT LIFECYCLE (+27 more)
 
-### Community 97 - "AnalyticsReportController"
-Cohesion: 0.21
-Nodes (8): AnalyticsReportController, Controller, Get, Header, Param, Query, Res, UseGuards
+### Community 97 - "client-message.ts"
+Cohesion: 0.13
+Nodes (26): businessConfig, executorPickupAddresses, formatOrderNumberForClient(), formatPaymentPhoneForClient(), izmailovskySevenExecutors, normalizeUsername(), resolvePickupAddress(), addDays() (+18 more)
 
-### Community 98 - "metrika-api.client.ts"
-Cohesion: 0.06
-Nodes (35): isoDate(), main(), FetchLike, humanize(), kindOf(), METRIKA_API, MetrikaApiError, MetrikaErrorKind (+27 more)
+### Community 98 - "YandexMetrikaClient"
+Cohesion: 0.09
+Nodes (19): directSpendConfig, main(), isoDate(), main(), FetchLike, humanize(), kindOf(), METRIKA_API (+11 more)
 
 ### Community 99 - "behavior-sections.tsx"
 Cohesion: 0.06
-Nodes (52): Warning, FunnelCard(), IssuesBlock(), QualityNotices(), BEHAVIOR_NOTES, behaviorWarnings(), DEVICE_LABELS_BEHAVIOR, formatSeconds() (+44 more)
+Nodes (54): Warning, DevicesBlock(), FunnelCard(), IssuesBlock(), QualityNotices(), StepRow(), BEHAVIOR_NOTES, behaviorWarnings() (+46 more)
 
 ### Community 100 - "tshirt-partner-telegram.service.ts"
 Cohesion: 0.06
-Nodes (39): canvasPriceMode, isCanvasPriceMode(), escapeHtml(), EXT_CONTENT_TYPE, money(), PRINT_LOCATION_LABELS, PRINT_TYPE_LABELS, TechSpecAttachment (+31 more)
+Nodes (40): CanvasProductionController, Controller, Get, UseGuards, canvasPriceMode, isCanvasPriceMode(), escapeHtml(), EXT_CONTENT_TYPE (+32 more)
 
-### Community 101 - "image-card-processor.service.ts"
-Cohesion: 0.12
-Nodes (11): FINAL_LONG_SIDE, PREVIEW_LONG_SIDE, ALLOWED_TEMPLATE, SavedTemplate, ImageCardsModule, Module, PdfRasterService, PdfRasterUnavailableError (+3 more)
+### Community 101 - "approval-storage.service.ts"
+Cohesion: 0.19
+Nodes (7): ALLOWED_IMAGE, ALLOWED_PRINT, SavedImage, PdfRasterService, PdfRasterUnavailableError, run, Injectable
 
 ### Community 102 - ".credentials"
 Cohesion: 0.09
@@ -865,12 +866,16 @@ Cohesion: 0.05
 Nodes (36): 10. GIT, 10. GIT, 1.1. Текущая страница конверсии, 1.2. Настоящий landingUrl, 1. RESULT, 1. RESULT, 1. Решение, 2. FIELD DECISION (+28 more)
 
 ### Community 105 - "OrdersTab.tsx"
-Cohesion: 0.13
-Nodes (20): OzonCrmOrderLink, OzonOrder, OzonOrderGroup, OzonOrderItem, ozonOrdersApi, OzonOrdersPage, GROUP_STAGE, GROUPS (+12 more)
+Cohesion: 0.08
+Nodes (37): OzonCrmOrderLink, OzonOrder, OzonOrderGroup, OzonOrderItem, ozonOrdersApi, OzonOrdersPage, APPROVED, BEFORE_PRODUCTION (+29 more)
 
 ### Community 106 - "07_METRIKA_TO_ANALYTICS.md"
 Cohesion: 0.06
 Nodes (34): 10. Traffic source dataset, 11. UTM dataset, 12. Landing pages, 13. Devices, 14. Pages, 15. Query catalog, 16. Sampling / accuracy, 17. Timezone (+26 more)
+
+### Community 107 - "salary-integrity.spec.ts"
+Cohesion: 0.09
+Nodes (19): FinancialClient, calculateManagerSalarySnapshot(), earnsStaffSalary(), ManagerSalarySnapshot, SalarySnapshot, AccrualByIdRow, AsyncMock, createOrderService() (+11 more)
 
 ### Community 112 - "dispatcher.mjs"
 Cohesion: 0.12
@@ -892,29 +897,29 @@ Nodes (32): 0. STATUS, 10. METRIKA CLIENT, 11. DATA CONSISTENCY, 12. IDEMPOTENCY
 Cohesion: 0.06
 Nodes (31): 10. PHASE E — analytics backfill apply, 11. PHASE F — OAuth/API health, 12. PHASE G — worker initially OFF, 13. Проверка production enqueue, 14. PHASE H — включение worker, 15. Первый production worker check, 16. Не делать historical CRM order mass sync, 17. PHASE I — обязательные goals (+23 more)
 
-### Community 117 - "ozon-crm-order.service.ts"
-Cohesion: 0.13
-Nodes (18): COLOR_LABEL_BY_CODE, OzonArticle, parseOzonArticle(), SIZES, STICKER_DIGITS, stickerCode(), buildMarketplaceOrderDraft(), buildNote() (+10 more)
+### Community 117 - "ozon-orders.service.ts"
+Cohesion: 0.06
+Nodes (37): LOOKALIKE, matchesLineup(), normalizeArticle(), PAPA, OzonCrmOrderService, Injectable, COLOR_LABEL_BY_CODE, OzonArticle (+29 more)
 
 ### Community 118 - "tools/orders.ts"
 Cohesion: 0.13
 Nodes (21): CATEGORY_LABELS, EXPENSE_LABELS, label(), orderedSql(), PAID_STATUSES, paidSql(), SOURCE_LABELS, basisSchema (+13 more)
 
 ### Community 119 - "AnalyticsPage.tsx"
-Cohesion: 0.06
-Nodes (79): periodKey(), AnalyticsPage, AttentionCard, attentionCards(), CHANNEL_LABELS, COVERAGE_WARNING, coverageIsLow(), deltaTone() (+71 more)
+Cohesion: 0.05
+Nodes (80): behaviorApi, AttentionCard, attentionCards(), CHANNEL_LABELS, COVERAGE_WARNING, coverageIsLow(), deltaTone(), DEVICE_LABELS (+72 more)
 
 ### Community 120 - "08_PRODUCTION_ROLLOUT.md"
 Cohesion: 0.08
 Nodes (24): 10. AnalyticsMetricsService production verification, 11. Traffic reconciliation, 12. CRM reconciliation, 13. P&L reconciliation, 14. Data-quality checks, 15. current cancellation naming check, 16. Performance, 17. Re-enable scheduler (+16 more)
 
 ### Community 121 - "metrika-orders.ts"
-Cohesion: 0.13
-Nodes (15): arg(), counterTimeZone(), flag(), fmt(), main(), openPrisma(), ORDER_SELECT, requeue() (+7 more)
+Cohesion: 0.05
+Nodes (57): arg(), counterTimeZone(), flag(), fmt(), main(), openPrisma(), ORDER_SELECT, preview() (+49 more)
 
 ### Community 122 - "metrika-dates.ts"
-Cohesion: 0.18
-Nodes (17): AfterSyncHook, DAILY_WINDOW_DAYS, HOURLY_WINDOW_DAYS, PeriodSnapshots, planTick(), SchedulerOptions, TickKind, TickPlan (+9 more)
+Cohesion: 0.08
+Nodes (43): daysBetweenInclusive(), lastCompleteDay(), PeriodType, resolvePeriod(), CONTROLLED_STAGE06_TEST_ORDER_ID, CoverageReport, CRM_TO_METRIKA_LIVE_SINCE, crmCoverage() (+35 more)
 
 ### Community 123 - "05_YANDEX_METRIKA_API.md"
 Cohesion: 0.06
@@ -925,7 +930,7 @@ Cohesion: 0.07
 Nodes (27): P10. Холст — `/interer/holst`, P1. Где распечатать фото в Москве — `/gde-raspechatat-foto-v-moskve`, P2. Цены — `/ceny`, P3. Размеры и форматы фото — `/formaty`, P4. Печать фото А4 — `/catalog/foto-a4`, P5. Печать фото на документы — `/dokumenty`, P6. Печать фото онлайн с доставкой — `/onlayn`, P7. Бумага и качество — `/bumaga` (+19 more)
 
 ### Community 125 - "TelegramService"
-Cohesion: 0.14
+Cohesion: 0.13
 Nodes (9): logger, proxyDispatcher(), resetTelegramProxyCache(), telegramFetch(), telegramFormData(), TgUpdateWithId, describeTelegramError(), TelegramService (+1 more)
 
 ### Community 126 - "11_GROWTH_AND_EXPERIMENTS.md"
@@ -945,8 +950,8 @@ Cohesion: 0.29
 Nodes (4): BASH, ROOT, Run, SCRIPT
 
 ### Community 130 - "ApprovalController"
-Cohesion: 0.15
-Nodes (14): ApprovalController, parseSide(), Controller, Delete, Get, Param, Post, Query (+6 more)
+Cohesion: 0.17
+Nodes (12): ApprovalController, parseSide(), Controller, Delete, Get, Param, Post, Query (+4 more)
 
 ### Community 131 - "tg_greeter.py"
 Cohesion: 0.14
@@ -956,17 +961,17 @@ Nodes (18): Exception, describe_code_type(), describe_next(), main(), Челов
 Cohesion: 0.08
 Nodes (26): 10. DEVICE_GAP / EVENT_NOT_MEASURED / STAGE 11 INCOMPARABLE / QUALITY (§ 15), 11. LANGUAGE / CAUSALITY (§ 16), 12. LIFECYCLE / DEDUPE / VERSIONS (§ 17), 13. SUPPRESSION / DIAGNOSTICS (§ 18), 14. STALE / GATES (§ 19–20), 15. SCHEDULER (§ 21), 16. METRIKA CALLS (§ 22) / REGRESSION 06/09/10/11 (§ 25), 17. PERFORMANCE (§ 24, production-контейнер) (+18 more)
 
-### Community 133 - "ProductsTab.tsx"
-Cohesion: 0.05
-Nodes (59): CreateOzonPrintDto, EnumOzonSyncStatus, EnumTshirtGender, OzonAttributeValueOption, ozonCatalogApi, OzonCatalogTemplate, OzonColorGroupInput, OzonPrint (+51 more)
+### Community 133 - "printDraft.ts"
+Cohesion: 0.14
+Nodes (24): EnumTshirtGender, OzonColorGroupInput, OzonVariant, Draft, ALL_SIZES, COLOR_CODE_BY_LABEL, colorCodeFor(), ColorGroupDraft (+16 more)
 
 ### Community 134 - "32. EXECUTOR_REPORT_STAGE13_RELIABILITY_SECURITY — 17.09.2026"
 Cohesion: 0.08
 Nodes (25): 32. EXECUTOR_REPORT_STAGE13_RELIABILITY_SECURITY — 17.09.2026, AUDIT, AUTH / PRIVACY, AUTO-UPDATE SAFETY, BACKUP / RESTORE, BUILD IDENTITY, CI/CD SAFETY, DEVIATIONS (+17 more)
 
-### Community 135 - "report-build.ts"
+### Community 135 - "metrics-contract.ts"
 Cohesion: 0.05
-Nodes (79): arg(), main(), parseDays(), DataQualityMetrics, Overview, biggestDropOff(), buildAnomalies(), buildCrmFunnel() (+71 more)
+Nodes (77): WindowData, CategoryPnl, ComparisonKey, Completeness, ContractFinancials, CostEvidence, CrmFunnelCohorts, CrmFunnelEvents (+69 more)
 
 ### Community 136 - "DtoUpdatePartnerSettings"
 Cohesion: 0.22
@@ -977,8 +982,8 @@ Cohesion: 0.29
 Nodes (6): Выкатка: репозиторий → сервер, Как это устроено на сервере, Команды, Откат, Почему именно так, Чего в цепочке пока нет
 
 ### Community 138 - "metrics-compute.ts"
-Cohesion: 0.04
-Nodes (109): AdSpendRow, AdSpendTotals, computeSpendMetrics(), sumAdSpend(), WebsiteOutcome, WindowData, CRM_TO_METRIKA_LIVE_AT, CRM_TO_METRIKA_LIVE_SINCE (+101 more)
+Cohesion: 0.06
+Nodes (65): AdSpendTotals, computeSpendMetrics(), sumAdSpend(), WebsiteOutcome, COUNTER_DATA_SINCE, CRM_TO_METRIKA_LIVE_AT, CRM_TO_METRIKA_LIVE_SINCE, FALSE_BROWSER_PURCHASE_STOPPED_AT (+57 more)
 
 ### Community 139 - "24. EXECUTOR_REPORT_PRODUCTION_ROLLOUT"
 Cohesion: 0.11
@@ -1000,13 +1005,13 @@ Nodes (18): 10. DATA QUALITY (last_30_days), 11. PERFORMANCE (боевой ко�
 Cohesion: 0.22
 Nodes (4): FRONTEND, NGINX_CONF, SRC, VITE_CONF
 
-### Community 144 - "image-card-batch.service.ts"
-Cohesion: 0.12
-Nodes (20): CARD_MODES, CardMode, DtoCreateImageCardBatch, ArrayMaxSize, IsArray, IsBoolean, IsIn, IsOptional (+12 more)
+### Community 144 - "image-card-batch.controller.ts"
+Cohesion: 0.08
+Nodes (28): CARD_MODES, CardMode, DtoCreateImageCardBatch, ArrayMaxSize, IsArray, IsBoolean, IsIn, IsOptional (+20 more)
 
-### Community 145 - "metrika-order-outbox-processor.service.ts"
-Cohesion: 0.15
-Nodes (22): preview(), ProcessorOptions, ProcessOutcome, RETRY_DELAYS_SECONDS, buildOrderSnapshot(), maskClientId(), OrderForMetrika, OrderSnapshot (+14 more)
+### Community 145 - "approval.service.ts"
+Cohesion: 0.09
+Nodes (19): date, date, approvalInclude, SIZE_LABELS, BY_LOCATION, missingSides(), RequiredSides, SIDE_NAME (+11 more)
 
 ### Community 146 - "ТЗ: раздел «Печать на холсте» на raspechatkaa.ru"
 Cohesion: 0.10
@@ -1033,20 +1038,20 @@ Cohesion: 0.09
 Nodes (26): CONDITION_CODES, ConditionCode, ConditionSeverity, OpsCondition, OpsInput, OpsStatus, OpsSubsystem, SUBSYSTEM_KEYS (+18 more)
 
 ### Community 152 - "auth.controller.ts"
-Cohesion: 0.15
-Nodes (13): AuthController, Controller, Get, Post, Throttle, UseGuards, AuthModule, Module (+5 more)
+Cohesion: 0.06
+Nodes (26): AuthController, Controller, Get, Post, Throttle, UseGuards, AuthModule, Module (+18 more)
 
 ### Community 153 - "35. EXECUTOR_REPORT_STAGE11_PRODUCTION_ROLLOUT — 15–16.09.2026"
 Cohesion: 0.08
 Nodes (23): 10. VERDICTS (§ 15–16) — A, факт / ожидание, 11. INCIDENT BOUNDARY (§ 17), 12. MATURITY / SCOPE / COVERAGE / P&L / SNAPSHOTS (§ 18–22), 13. SCHEDULER (§ 23), 14. PERFORMANCE (§ 24, production-контейнер, БД в соседнем контейнере), 15. PRIVACY (§ 25), 16. REGRESSION Stage 06 / 09 / 10 (§ 26), 17. UI (production-JSON → сборка кандидата; под учётной записью владельца исполнитель не входил) (+15 more)
 
-### Community 154 - "order-photo.module.ts"
-Cohesion: 0.06
-Nodes (38): CanvasItemService, canvasMoney(), Injectable, DtoUpdateCanvasItem, IsIn, IsInt, IsOptional, IsString (+30 more)
+### Community 154 - "OrderFinancialIntegrityService"
+Cohesion: 0.08
+Nodes (19): DtoUpdateTshirtItem, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Min, Type (+11 more)
 
 ### Community 155 - "canvas-production-price.ts"
-Cohesion: 0.16
-Nodes (21): CanvasProductionController, Controller, Get, UseGuards, CANVAS_MATERIAL_KIND_LABELS, CANVAS_PRICE_MODE_LABELS, CANVAS_PRODUCTION_PRICES, canvasContractorCost() (+13 more)
+Cohesion: 0.24
+Nodes (16): CANVAS_MATERIAL_KIND_LABELS, CANVAS_PRICE_MODE_LABELS, CANVAS_PRODUCTION_PRICES, canvasContractorCost(), canvasListPrice(), CanvasMaterialKind, CanvasPositionPricing, CanvasProductionPrice (+8 more)
 
 ### Community 156 - "04_EVENT_MODEL.md"
 Cohesion: 0.07
@@ -1073,8 +1078,8 @@ Cohesion: 0.06
 Nodes (31): 1. Репозитории и стек, 2.1. Счётчик Метрики, 2.2. События (цели) — `apps/web/src/lib/metrika.ts`, `METRIKA_GOALS`, 2.3. Электронная коммерция, 2.4. Атрибуция, собираемая на сайте, 2.5. Путь заявки, 2. Сайт: что собирается и куда уходит, 3.1. Модели (`crm-new/prisma/schema.prisma`) (+23 more)
 
 ### Community 162 - "OzonCredentials"
-Cohesion: 0.13
-Nodes (6): humanize(), OzonApiClient, OzonCredentials, Injectable, OzonProductCatalogService, Injectable
+Cohesion: 0.10
+Nodes (7): OzonImportPollService, Injectable, OzonImportService, Injectable, OzonCredentials, OzonProductCatalogService, Injectable
 
 ### Community 163 - "quality.ts"
 Cohesion: 0.18
@@ -1088,9 +1093,9 @@ Nodes (12): BehaviorDashboardController, Controller, Get, Query, UseGuards, Anal
 Cohesion: 0.12
 Nodes (17): 10. DATA QUALITY, 12. TESTS, 13. PERFORMANCE (копия, через SSH-туннель), 14. FILES_CHANGED, 15. NEW FACTS (для этапа 09), 16. DEVIATIONS, 17. OPEN ISSUES, 1. RESULT (+9 more)
 
-### Community 166 - "order-origin-metrics.spec.ts"
-Cohesion: 0.10
-Nodes (29): emptyCounts(), OriginBackfillPlan, OriginBackfillRow, OriginChange, OriginConflict, planOriginBackfill(), snapshotOf(), summaryOf() (+21 more)
+### Community 166 - "order-origin.ts"
+Cohesion: 0.17
+Nodes (19): emptyCounts(), OriginBackfillPlan, OriginBackfillRow, OriginChange, OriginConflict, planOriginBackfill(), snapshotOf(), summaryOf() (+11 more)
 
 ### Community 167 - "05_YANDEX_METRIKA_OAUTH_REAL_APP.md"
 Cohesion: 0.07
@@ -1105,24 +1110,24 @@ Cohesion: 0.12
 Nodes (14): Воронка CRM (crm), Воронка сайта (site, сопоставленная), Границы данных (immutable), Деньги, Жизненный цикл заказа (crm) — `deriveOrderLifecycle(order, statusHistory)`, Заказы и средний чек (crm), Качество данных, Методы сервиса (+6 more)
 
 ### Community 170 - "AnalyticsGrowthService"
-Cohesion: 0.14
-Nodes (12): AnalyticsGrowthService, AnalyticsChangeRecord, GrowthEvaluationSummary, GrowthDashboardController, Controller, Get, HttpCode, Inject (+4 more)
+Cohesion: 0.13
+Nodes (13): AnalyticsGrowthService, AnalyticsChangeRecord, GrowthEvaluationSummary, GrowthStatus, GrowthDashboardController, Controller, Get, HttpCode (+5 more)
 
-### Community 171 - "DtoCreateOrder"
-Cohesion: 0.05
-Nodes (40): DtoCreateCanvasItem, IsIn, IsInt, IsOptional, IsString, MaxLength, Min, Type (+32 more)
+### Community 171 - "order-photo.controller.ts"
+Cohesion: 0.04
+Nodes (58): strip(), StripPricesInterceptor, Injectable, DtoCreateCanvasItem, IsBoolean, IsIn, IsInt, IsOptional (+50 more)
 
 ### Community 172 - "06_CRM_TO_METRIKA_LIVE_WRITE.md"
 Cohesion: 0.08
 Nodes (22): 10. Payload, 11. Success criteria API, 12. Outbox success criteria, 13. Last uploadings verification, 14. Проверка matching / появления CRM order, 15. Не включать production worker, 16. Migration recovery — принято с ограничением, 17. Cleanup test databases (+14 more)
 
 ### Community 173 - "api/analytics.ts"
-Cohesion: 0.15
-Nodes (17): analyticsApi, behaviorApi, get(), growthApi, insightsApi, params(), reportsApi, moscow() (+9 more)
+Cohesion: 0.13
+Nodes (19): analyticsApi, get(), growthApi, insightsApi, params(), periodKey(), reportsApi, moscow() (+11 more)
 
-### Community 174 - "metrika-analytics.module.ts"
-Cohesion: 0.12
-Nodes (18): directSpendConfig, DirectSpendSync, config, data, range, main(), InMemoryLock, METRIKA_SYNC_LOCK_KEY (+10 more)
+### Community 174 - "ozonCatalog.ts"
+Cohesion: 0.13
+Nodes (19): CreateOzonPrintDto, EnumOzonSyncStatus, OzonAttributeValueOption, ozonCatalogApi, OzonCatalogTemplate, PublishResult, SizeDimensions, UpdateOzonCatalogTemplateDto (+11 more)
 
 ### Community 175 - "registry.ts"
 Cohesion: 0.16
@@ -1132,9 +1137,9 @@ Nodes (18): closePool(), log(), main(), readBody(), startHttp(), startStdio(), b
 Cohesion: 0.08
 Nodes (25): 12. SEVERITY, 13. DATA QUALITY GATES, 14. EVENT CONTRACT AUDIT, 15. METRIKA DATA SOURCE, 16. LOCAL STORAGE, 17. API, 19. UI RULES, 20. COMPARISON (+17 more)
 
-### Community 177 - "ozon-orders.service.ts"
-Cohesion: 0.07
-Nodes (23): GROUP_BY_STATUS, groupForStatus(), isShipmentOverdue(), OzonOrderGroup, STATUS_LABELS, statusLabel(), CREDS, PAPA (+15 more)
+### Community 177 - "ozon-shipped-close.service.ts"
+Cohesion: 0.15
+Nodes (8): CLOSABLE, SHIPPED_GROUPS, ShippedCandidate, shouldCloseAsShipped(), OzonShippedClosePollService, Injectable, OzonShippedCloseService, Injectable
 
 ### Community 178 - "16_REPORT_DELIVERY.md"
 Cohesion: 0.10
@@ -1149,12 +1154,12 @@ Cohesion: 0.11
 Nodes (17): 1. Ключевое решение метода (требует подтверждения Reviewer), 2. Звенья и доказательства, 3. Что считается закрытым, а что — принятым ограничением, 4. Порядок исполнения (после «СТАРТ»), 5. STOP-условия, 6. Что в этап 14 не входит, 7. OPEN DECISIONS (для Reviewer), EXECUTOR_REPORT_STAGE14_FINAL_ACCEPTANCE (22.09.2026, 22:12–22:18 MSK) (+9 more)
 
 ### Community 181 - "telegram-update.service.ts"
-Cohesion: 0.08
-Nodes (25): calcGulianPayout(), Item, PayoutResult, toGulianStatus(), buildPartnerButtons(), buildPartnerCaption(), calcSettlement(), esc() (+17 more)
+Cohesion: 0.07
+Nodes (29): GulianOutboxService, OrderForOutbox, Injectable, calcGulianPayout(), Item, PayoutResult, toGulianStatus(), buildPartnerButtons() (+21 more)
 
 ### Community 182 - "image-card-placement.ts"
 Cohesion: 0.08
-Nodes (31): BULK_ACTIONS, BulkAction, describe(), ImageCardGenerationService, MODE_COLORS, Injectable, ASPECT_ALERT, CardTransform (+23 more)
+Nodes (33): BulkAction, describe(), ImageCardGenerationService, MODE_COLORS, Injectable, ASPECT_ALERT, CardTransform, clamp() (+25 more)
 
 ### Community 183 - "29. EXECUTOR REPORT FORMAT"
 Cohesion: 0.08
@@ -1168,13 +1173,13 @@ Nodes (17): BACKFILL_REQUIRED, CURRENT_DATA (production, только чтени
 Cohesion: 0.08
 Nodes (25): 32. EXECUTOR_REPORT — 14.09.2026, API, DATA GAPS, DATA MODEL, DATA QUALITY, DEVIATIONS, DEVICES, EVENT AUDIT (+17 more)
 
-### Community 186 - "gulian-outbox.service.ts"
-Cohesion: 0.13
-Nodes (11): GulianModule, Module, GulianOutboxProcessorService, RETRY_DELAYS_SECONDS, Injectable, OrderForOutbox, GulianOrderPayload, GulianResponse (+3 more)
+### Community 186 - "GulianService"
+Cohesion: 0.16
+Nodes (8): GulianOutboxProcessorService, RETRY_DELAYS_SECONDS, Injectable, GulianOrderPayload, GulianResponse, GulianService, Injectable, item()
 
-### Community 187 - "SalaryService"
-Cohesion: 0.13
-Nodes (10): SalaryController, Controller, Delete, Get, Param, UseGuards, SalaryModule, Module (+2 more)
+### Community 187 - "PlatformBadge.tsx"
+Cohesion: 0.15
+Nodes (16): GreetingCopyButton(), copy(), formatRuPhone(), OrderContact(), NEUTRAL, PLATFORM, PlatformBadge(), platformStyle() (+8 more)
 
 ### Community 188 - "21. EXECUTOR_REPORT_PRODUCTION_ROLLOUT — 15.09.2026"
 Cohesion: 0.10
@@ -1192,49 +1197,65 @@ Nodes (15): 10. GATE H — infrastructure debts: решения для Reviewer 
 Cohesion: 0.22
 Nodes (9): 34. FIX_01 — PARTIAL PERIOD FUNNEL DROPOFF (15.09.2026), BEFORE / AFTER (production-данные 15.09 ~10:57 MSK, read-only через туннель; before = сборка HEAD 4d5a027, after = f2db719), GIT, IMPLEMENTATION, PRODUCTION_UNTOUCHED, READY_FOR_REVIEW, REGRESSION, ROOT_CAUSE (+1 more)
 
-### Community 192 - "metrika-period-snapshot.service.ts"
-Cohesion: 0.14
-Nodes (11): ExactWindowSnapshots, PERIOD_PRESETS, PeriodPreset, describe(), BehaviorGoal, MetrikaPeriodSnapshotService, SnapshotOutcome, SnapshotsClient (+3 more)
+### Community 192 - "CatalogTab.tsx"
+Cohesion: 0.21
+Nodes (18): baseCodeOf(), colorCodeOf(), firstEditableWarehouse(), groupByColor(), printCodeOf(), sizeOf(), sizeRank(), CatalogTab() (+10 more)
 
 ### Community 193 - "lead.controller.ts"
-Cohesion: 0.08
-Nodes (24): ClientDraftService, DRAFT_MAX_LENGTH, DRAFT_STATUSES, DraftStatus, isDraftStatus(), PendingDraft, Injectable, clientNameFromNote() (+16 more)
+Cohesion: 0.06
+Nodes (34): ClientDraftService, DRAFT_MAX_LENGTH, DRAFT_STATUSES, DraftStatus, isDraftStatus(), PendingDraft, Injectable, clientNameFromNote() (+26 more)
 
 ### Community 194 - "sql.ts"
 Cohesion: 0.15
 Nodes (16): FORBIDDEN_FUNCTIONS, FORBIDDEN_KEYWORDS, FORBIDDEN_TABLES, GuardedQuery, guardSelect(), hasWord(), isRedactedColumn(), MAX_ROWS (+8 more)
 
-### Community 197 - "MarketplaceController"
+### Community 197 - "DtoCreateMarketplaceAccount"
+Cohesion: 0.33
+Nodes (5): DtoCreateMarketplaceAccount, IsEnum, IsString, MaxLength, MinLength
+
+### Community 198 - "metrika-analytics-scheduler.service.ts"
 Cohesion: 0.12
-Nodes (14): DtoCreateMarketplaceAccount, IsEnum, IsString, MaxLength, MinLength, MarketplaceController, Controller, Delete (+6 more)
+Nodes (10): AfterSyncHook, DAILY_WINDOW_DAYS, HOURLY_WINDOW_DAYS, MetrikaAnalyticsSchedulerService, PeriodSnapshots, planTick(), SchedulerOptions, TickKind (+2 more)
 
 ### Community 199 - "OzonOrdersController"
-Cohesion: 0.14
-Nodes (11): OzonCrmOrderService, Injectable, OzonOrdersController, Controller, Get, Header, Param, Post (+3 more)
+Cohesion: 0.21
+Nodes (8): OzonOrdersController, Controller, Get, Header, Param, Query, Res, UseGuards
 
-### Community 201 - "metrika-report-fetcher.ts"
+### Community 200 - "OzonCatalogController"
 Cohesion: 0.18
-Nodes (14): QueryResult, ReportQuery, ACCURACY_DEFAULT, ACCURACY_FULL, API_ROW_LIMIT, FetchedQuery, mergeMeta(), metaOf() (+6 more)
+Nodes (8): OzonCatalogController, Controller, Get, Param, Post, Query, UseGuards, toTemplateView()
 
-### Community 202 - "CreateChangeDto"
+### Community 201 - "insights-event-gap.spec.ts"
+Cohesion: 0.18
+Nodes (14): DETECTORS, eventNotMeasuredDetector, canvas, ctxWith(), funnel(), gap(), issues, period (+6 more)
+
+### Community 202 - "DtoUpdateImageCardTemplate"
+Cohesion: 0.16
+Nodes (13): DtoCreateImageCardTemplate, DtoRect, DtoUpdateImageCardTemplate, IsBoolean, IsInt, IsObject, IsOptional, IsString (+5 more)
+
+### Community 203 - "ProductsTab.tsx"
+Cohesion: 0.18
+Nodes (11): OzonPrint, EditPrintModal(), GENDER_LABELS, PrintEditor(), isInFlight(), isSettled(), Mode, needsPublish() (+3 more)
+
+### Community 204 - "ApprovalStorageService"
 Cohesion: 0.22
-Nodes (18): AudienceDefinitionDto, CreateChangeDto, ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsInt, IsISO8601 (+10 more)
+Nodes (3): scaleCalibration(), ApprovalStorageService, Injectable
 
-### Community 204 - "analytics-report.worker.ts"
-Cohesion: 0.18
-Nodes (9): AnalyticsReportWorker, Injectable, SAFETY_PATTERNS, SafetyPattern, SafetyResult, scanReportContent(), fileName(), writeAtomic() (+1 more)
+### Community 205 - "utils/marketplace-tshirt.ts"
+Cohesion: 0.27
+Nodes (9): StatusStepper(), fulfillmentError(), FulfillmentOrder, needsShipmentStatus(), isMarketplaceTshirt(), MARKETPLACE_TSHIRT_FLOW, marketplaceFlowStatus(), MarketplaceTshirtOrder (+1 more)
 
 ### Community 206 - "metrika-sync.ts"
-Cohesion: 0.12
-Nodes (36): arg(), args(), coverageCmd(), datasetsFromArgs(), flag(), fmt(), main(), openPrisma() (+28 more)
+Cohesion: 0.23
+Nodes (21): arg(), args(), coverageCmd(), datasetsFromArgs(), flag(), fmt(), main(), openPrisma() (+13 more)
 
 ### Community 207 - "28. Required executor report"
 Cohesion: 0.11
 Nodes (19): 28. Required executor report, A/B CAPABILITY, API / UI, AUDIT, CHANGE REGISTRY, COMPARISON ENGINE, CONFOUNDERS, DATA MODEL (+11 more)
 
 ### Community 208 - "analytics-dashboard.controller.ts"
-Cohesion: 0.07
-Nodes (31): HeaderRoleGuard, Inject, BehaviorModule, Module, DASHBOARD_OPTIONS, dashboardEnabledFromEnv(), DashboardOptions, DASHBOARD_CACHE_TTL_MS (+23 more)
+Cohesion: 0.06
+Nodes (43): HeaderRoleGuard, stub(), Inject, BehaviorMetricsService, Injectable, BehaviorModule, Module, DASHBOARD_OPTIONS (+35 more)
 
 ### Community 210 - "03_HISTORICAL_BACKFILL.md"
 Cohesion: 0.10
@@ -1294,7 +1315,7 @@ Nodes (18): 10. RECONCILIATION (2026-09-06..2026-09-12, local vs прямой Re
 
 ### Community 224 - "CreateOrderForm.tsx"
 Cohesion: 0.05
-Nodes (44): Props, baseSchema, canvasItemSchema, clearOrderDraft(), CreateOrderForm(), EMPTY_ORDER_FORM, formatMaxPhone(), FormValues (+36 more)
+Nodes (55): CanvasPriceMode, canvasProductionApi, CanvasProductionPricing, CanvasProductionSize, CanvasItemsTable(), EditState, EMPTY, money() (+47 more)
 
 ### Community 225 - "EXECUTOR_REPORT"
 Cohesion: 0.12
@@ -1356,9 +1377,9 @@ Nodes (13): 10. DEVIATIONS FROM SPEC, 11. OPEN ISSUES, 12. QUESTIONS FOR REVIEWE
 Cohesion: 0.15
 Nodes (11): Acquisition / Communication, Configurator — футболки, Configurator — холст, Ecommerce, Form, Lead — конверсия сайта, Order / Payment / Completion — бизнес-события (CRM), Product (+3 more)
 
-### Community 241 - "image-card-template.controller.ts"
-Cohesion: 0.07
-Nodes (25): DtoCreateImageCardTemplate, DtoRect, DtoUpdateImageCardTemplate, IsBoolean, IsInt, IsObject, IsOptional, IsString (+17 more)
+### Community 241 - "ImageCardTemplateService"
+Cohesion: 0.11
+Nodes (11): ImageCardTemplateController, Controller, Delete, Get, Param, Res, UploadedFile, UseGuards (+3 more)
 
 ### Community 242 - "14. EXECUTOR_REPORT_STAGE13_PRODUCTION_ROLLOUT — 22.09.2026"
 Cohesion: 0.14
@@ -1382,7 +1403,7 @@ Nodes (9): A. CONFIGURED — событие в коде, цель есть, B. M
 
 ### Community 248 - "ozon-catalog.controller.ts"
 Cohesion: 0.03
-Nodes (68): DtoCreateOzonPrint, ArrayMaxSize, ArrayMinSize, ArrayNotEmpty, IsArray, IsEnum, IsInt, IsOptional (+60 more)
+Nodes (62): DtoCreateOzonPrint, ArrayMaxSize, ArrayMinSize, ArrayNotEmpty, IsArray, IsEnum, IsInt, IsOptional (+54 more)
 
 ### Community 249 - "Правила «Требует внимания» поведенческого слоя (этап 10, разделы 10–13)"
 Cohesion: 0.13
@@ -1393,8 +1414,8 @@ Cohesion: 0.20
 Nodes (10): 22. Тесты API client, A. Authorization header, B. Counter request, C. Reports request, D. 401, E. 403, F. 429, G. timeout/network failure (+2 more)
 
 ### Community 251 - "telegram.module.ts"
-Cohesion: 0.12
-Nodes (12): StickerModule, Module, TelegramModule, Module, TelegramStickerController, Controller, Get, Param (+4 more)
+Cohesion: 0.16
+Nodes (8): TelegramStickerController, Controller, Get, Param, Query, Res, TelegramStickerLinkService, Injectable
 
 ### Community 252 - "3. Что система должна уметь в конечном виде"
 Cohesion: 0.22
@@ -1425,8 +1446,8 @@ Cohesion: 0.29
 Nodes (7): 30. Tests, Failure isolation, Idempotency, Lock, Parser, Replacement, Timezone
 
 ### Community 259 - "TechSpecStorageService"
-Cohesion: 0.10
-Nodes (17): PartnerAdminController, Controller, Get, Param, Post, Res, UploadedFiles, UseGuards (+9 more)
+Cohesion: 0.13
+Nodes (11): PartnerAdminController, Controller, Get, Param, Post, Res, UploadedFiles, UseGuards (+3 more)
 
 ### Community 260 - "15_AI_ANALYTICS_REPORT.md"
 Cohesion: 0.15
@@ -1453,8 +1474,8 @@ Cohesion: 0.40
 Nodes (5): 23. Попытка live write по команде владельца — 12.09.2026 (POST не выполнялся), Read-only перепроверка кандидата на бою (12.09.2026, повторно), RESULT, Что нужно от владельца (одно действие), Что проверено
 
 ### Community 266 - "scenario.controller.ts"
-Cohesion: 0.13
-Nodes (14): DtoDetectProduct, IsString, MaxLength, DtoSaveDraft, IsObject, IsOptional, IsString, MaxLength (+6 more)
+Cohesion: 0.06
+Nodes (65): DtoDetectProduct, IsString, MaxLength, DtoSaveDraft, IsObject, IsOptional, IsString, MaxLength (+57 more)
 
 ### Community 267 - "13. Потоки данных"
 Cohesion: 0.50
@@ -1540,9 +1561,9 @@ Nodes (11): 17_ORDER_ORIGIN.md — происхождение заказа, Ан
 Cohesion: 0.17
 Nodes (11): Backend, D1 — фактическая дата оплаты: реализация, Frontend, Аналитика не менялась, Валидация даты и часовой пояс, Два бизнес-правила, которые теперь закреплены кодом и тестами, Проверки, Статус (+3 more)
 
-### Community 295 - "ImageCardBatchService"
-Cohesion: 0.16
-Nodes (3): ImageCardBatchService, summarize(), Injectable
+### Community 295 - "TshirtPartnerTelegramService"
+Cohesion: 0.27
+Nodes (3): Injectable, TshirtPartnerTelegramService, TelegramSendResult
 
 ### Community 296 - "50. EXECUTOR_REPORT_STAGE12_FIX01 — 16.09.2026"
 Cohesion: 0.15
@@ -1588,21 +1609,21 @@ Nodes (13): 39. TEST MATRIX — ОБЯЗАТЕЛЬНО, A. Determinism, B. Small
 Cohesion: 0.15
 Nodes (11): 1. Допущения (конфигурация, не «доказательство»), 2. Методы по виду метрики, 3. Правила вердикта (`growth-compute.ts`), 4. Созревание (`growth-maturity.ts`), 5. Что статистика не делает, Доли (siteLeadRate, formStartRate, formErrorRate, matchedAcceptedRate, leadToAcceptedRate, leadToPaidRate), Средние по заказам (paidAov), Статистика оценки «до / после» (этап 11): формулы, допущения, MDE, вердикты (+3 more)
 
-### Community 307 - "types/index.ts"
-Cohesion: 0.04
-Nodes (82): authApi, avitoApi, AvitoChatQuery, CanvasPriceMode, canvasProductionApi, CanvasProductionPricing, CanvasProductionSize, api (+74 more)
+### Community 307 - "getErrorMessage"
+Cohesion: 0.07
+Nodes (41): avitoApi, AvitoChatQuery, api, partnerSettingsApi, shipmentLeadApi, usersApi, AvitoPage, UsersPage (+33 more)
 
 ### Community 308 - "BACKUP_RESTORE_RUNBOOK — резервные копии и восстановление CRM (этап 13, раздел 14)"
 Cohesion: 0.18
 Nodes (10): 1. Что и как бэкапится сейчас, 2. Restore drill 17.09.2026 — evidence (шаги спецификации 1–7), 3.1 Восстановление во временную БД (проверка / разбор инцидента) — без остановки CRM, 3.2 Полное восстановление production (только при потере/порче данных, решение владельца), 3.3 Uploads (ТЗ-фото), 3. Процедура восстановления (runbook), 4. Проверки, которые стоит автоматизировать (предложение), 5. RPO / RTO (фактические) (+2 more)
 
-### Community 310 - "metrika-order-outbox.service.ts"
-Cohesion: 0.17
-Nodes (11): OutboxCounters, OutboxDb, StatusTransition, UNRESOLVED_STATUSES, ACCEPTED_ORDER_STATUSES, EligibilityInput, EligibilityVerdict, findSourceTransition() (+3 more)
+### Community 310 - "metrika-order-outbox-processor.spec.ts"
+Cohesion: 0.20
+Nodes (10): ClaimedRow, at(), earlier(), harness(), HarnessOptions, HistoryRow, ORDER, Row (+2 more)
 
-### Community 311 - "scenario-draft.service.ts"
-Cohesion: 0.21
-Nodes (10): DraftState, ScenarioDraftService, Injectable, FakeOrder, metrikaOutboxStub, READY_PHOTO, READY_TSHIRT, findProduct() (+2 more)
+### Community 311 - "PartnerApiController"
+Cohesion: 0.32
+Nodes (6): PartnerApiController, Controller, Get, Param, Res, UseGuards
 
 ### Community 312 - "tools/marketplace.ts"
 Cohesion: 0.18
@@ -1660,13 +1681,13 @@ Nodes (8): 1. Запреты, действующие до отдельной к�
 Cohesion: 0.22
 Nodes (8): 1. Как миграции применяются в production, 2. Проверки 17.09.2026, 3. Стратегия отката миграций, 4. Риск «образ старше базы», 5. Concurrent deploy + tick, 6. Drift `SalaryPayment.updatedAt` (R3), MIGRATION_SAFETY — миграции Prisma и drift (этап 13, раздел 17; R3), Статус
 
-### Community 326 - "scenario.types.ts"
-Cohesion: 0.21
-Nodes (13): DELIVERY_STEPS, NOTE_STEP, OPTIONAL, TSHIRT_SCENARIO, AnswerValue, Condition, FieldKind, FieldOption (+5 more)
+### Community 326 - "order-approval-state.ts"
+Cohesion: 0.23
+Nodes (8): approvalChip(), ApprovalChipView, CHIP, MarketplaceBadge(), PLACE, Props, ApprovalBrief, EnumSourceOrder
 
-### Community 327 - "scenario.mapping.ts"
-Cohesion: 0.32
-Nodes (13): PAPER_LABEL, photoToOrder(), tshirtToOrder(), bool(), date(), deliveryOf(), noteOf(), num() (+5 more)
+### Community 327 - "ReportsController"
+Cohesion: 0.27
+Nodes (5): ReportsController, Controller, Get, Query, UseGuards
 
 ### Community 328 - "22. FIX_01 ROLLOUT (правило 11.1 — окна измерения шагов)"
 Cohesion: 0.33
@@ -1772,9 +1793,9 @@ Nodes (3): 18.1 Profit quality, 18.2 Revenue/profit causality, 18. MONEY INSIGHT
 Cohesion: 0.67
 Nodes (3): 29.1 Auth, 29.2 Feature flag, 29. API
 
-### Community 354 - "salary.service.ts"
-Cohesion: 0.07
-Nodes (25): DtoCreateBonus, IsInt, IsString, IsUUID, MaxLength, Min, MinLength, Type (+17 more)
+### Community 354 - "salary.controller.ts"
+Cohesion: 0.05
+Nodes (36): DtoCreateBonus, IsInt, IsString, IsUUID, MaxLength, Min, MinLength, Type (+28 more)
 
 ### Community 355 - "Оформление и получение заказов"
 Cohesion: 0.29
@@ -1816,25 +1837,29 @@ Nodes (6): 5. GATE C — web-photo CI safety (кандидат 441d795), ACTION,
 Cohesion: 0.33
 Nodes (6): 4. ИЗВЕСТНЫЕ РИСКИ, КОТОРЫЕ НУЖНО ПРОВЕРИТЬ, R1 OAuth credentials, R2 Auto-update, R3 Prisma drift, R4 stale web feature → production latest, R5 storage growth
 
-### Community 366 - "metrika-order-csv.ts"
-Cohesion: 0.28
-Nodes (11): buildSimpleOrdersCsv(), csvEscape(), formatCounterDateTime(), isValidTimeZone(), ORDER_CURRENCY, SIMPLE_ORDERS_HEADER, SimpleOrderRow, simpleOrderToCsvLine() (+3 more)
+### Community 366 - "useOrderAutoAdvance.ts"
+Cohesion: 0.31
+Nodes (6): Harness(), HarnessProps, Args, OrderAutoAdvance, successor(), useOrderAutoAdvance()
 
 ### Community 367 - "Отправление Ozon → заказ CRM → макет"
 Cohesion: 0.15
 Nodes (12): Зачем, Как это работает, Контакт у заказа с площадки, Лист макета у заказа с площадки, Ограничения, Отправление Ozon → заказ CRM → макет, Повторное нажатие, Ссылка на переписку (+4 more)
 
-### Community 368 - "greeting-message.ts"
+### Community 368 - "DtoOzonUpdateCardText"
 Cohesion: 0.33
-Nodes (10): deliveryLine(), escapeMarkdown(), GreetingData, greetingFor(), GreetingFormat, GreetingItem, itemsList(), money() (+2 more)
+Nodes (5): DtoOzonUpdateCardText, IsOptional, IsString, MaxLength, MinLength
 
 ### Community 369 - "deploy-safety.spec.ts"
 Cohesion: 0.40
 Nodes (3): ROOT, Workflow, yaml
 
-### Community 371 - "scenario.engine.ts"
-Cohesion: 0.41
-Nodes (10): detectProduct(), evaluateCondition(), evaluateScenario(), isFilled(), isStepRequired(), isStepVisible(), normalize(), pickRelevantAnswers() (+2 more)
+### Community 370 - "DailyPlanService"
+Cohesion: 0.29
+Nodes (3): isWithinPlanWindow(), DailyPlanService, Injectable
+
+### Community 371 - "CardAnalytics.tsx"
+Cohesion: 0.47
+Nodes (5): OzonCatalogProduct, CardAnalytics(), money(), PERIODS, sumFor()
 
 ### Community 372 - "15. ОТДЕЛЬНЫЕ PRODUCTION-ПРОВЕРКИ"
 Cohesion: 0.40
@@ -1852,9 +1877,9 @@ Nodes (4): IDEMPOTENCY_MATRIX — повторные запуски операц
 Cohesion: 0.17
 Nodes (11): Безопасность, Выбор модели, Железное правило: модель не считает, ИИ-агент над CRM, сайтом и рекламой — архитектура, Инструменты, которые стоит дать агенту, Короткий ответ, Почему не Yandex AI Studio как хозяин агента, Чего не хватает: третьего MCP — по CRM (+3 more)
 
-### Community 376 - "AnalyticsReportService"
-Cohesion: 0.25
-Nodes (3): AnalyticsReportService, Injectable, removeReportDir()
+### Community 376 - "CreateReportDto"
+Cohesion: 0.40
+Nodes (4): CreateReportDto, IsIn, IsOptional, IsString
 
 ### Community 377 - "crm-mcp — CRM «Распечатка» как MCP-сервер"
 Cohesion: 0.20
@@ -1864,13 +1889,17 @@ Nodes (9): crm-mcp — CRM «Распечатка» как MCP-сервер, З�
 Cohesion: 0.24
 Nodes (8): getPool(), QueryResult, read(), ACCRUAL_STATUS_LABELS, KIND_LABELS, salaryDebt, salarySummary, salaryTools
 
-### Community 380 - "report-storage.ts"
-Cohesion: 0.31
-Nodes (8): ReportSummary, assertSafeId(), DEFAULT_REPORTS_DIR, filePath(), readReportFile(), reportDir(), ReportFormat, reportsRoot()
+### Community 380 - "DtoSendAvitoMessage"
+Cohesion: 0.40
+Nodes (4): DtoSendAvitoMessage, IsString, MaxLength, MinLength
 
-### Community 384 - "ScenarioController"
-Cohesion: 0.23
-Nodes (7): ScenarioController, Controller, Get, Param, Post, UseGuards, findScenario()
+### Community 383 - "DtoCreateOzonCrmOrder"
+Cohesion: 0.40
+Nodes (4): DtoCreateOzonCrmOrder, IsOptional, IsString, MaxLength
+
+### Community 384 - "UnitEconomicsPanel.tsx"
+Cohesion: 0.60
+Nodes (4): ProductEconomics, Line(), money(), UnitEconomicsPanel()
 
 ### Community 385 - "Push-уведомления о заявках с сайта"
 Cohesion: 0.50
@@ -1889,24 +1918,24 @@ Cohesion: 0.23
 Nodes (10): main(), COLUMN_ALIASES, detectDelimiter(), mergeDuplicates(), ParsedSpendRow, parseMoney(), ParseResult, parseSpendCsv() (+2 more)
 
 ### Community 390 - "DtoUpdateOrder"
-Cohesion: 0.22
-Nodes (9): DtoUpdateOrder, IsBoolean, IsEnum, IsInt, IsOptional, IsString, MaxLength, Min (+1 more)
+Cohesion: 0.11
+Nodes (23): buildCommunicationUrl(), buildMaxUrl(), DEFAULT_MAX_LINK_TEMPLATE, formatPhoneForDisplay(), normalizePhone(), validateCommunicationValue(), DtoUpdateOrder, IsBoolean (+15 more)
 
 ### Community 391 - "insights-fixture.spec-helper.spec.ts"
-Cohesion: 0.19
-Nodes (16): DROP, QUIET, Row, ctxWith(), behavior(), fakeEvaluation(), FRESH, landingsSlice() (+8 more)
+Cohesion: 0.14
+Nodes (21): CohortData, Fx, GrowthEvaluation, compareForFeed(), DROP, QUIET, Row, ChangeContext (+13 more)
 
-### Community 392 - "DtoUpdateItemOrder"
-Cohesion: 0.17
-Nodes (11): DtoUpdateItemOrder, IsBoolean, IsEnum, IsInt, IsOptional, IsString, MaxLength, Min (+3 more)
+### Community 392 - "canvas-item.service.ts"
+Cohesion: 0.07
+Nodes (38): canvasTermsFrom(), ADDON_LABELS, addonsClientPrice(), addonsContractorPrice(), addonsSummary(), CanvasAddons, canvasPositionMoney(), NO_ADDONS (+30 more)
 
-### Community 393 - "scenario.registry.ts"
-Cohesion: 0.31
-Nodes (6): PHOTO_SCENARIO, ScenarioModule, Module, PRODUCTS, validateAllScenarios(), validateScenario()
+### Community 393 - "DispatchToExecutorModal.tsx"
+Cohesion: 0.50
+Nodes (4): DispatchToExecutorModal(), PayoutInfo, Props, rub()
 
 ### Community 394 - "PrismaService"
 Cohesion: 0.05
-Nodes (34): AnalyticsDashboardModule, Module, AnalyticsMetricsModule, Module, OpsModule, Module, ReportDeliveryModule, Module (+26 more)
+Nodes (31): DirectSpendSync, config, data, range, ExactWindowSnapshots, AnalyticsMetricsModule, Module, PeriodPreset (+23 more)
 
 ### Community 395 - "task-reminder.service.spec.ts"
 Cohesion: 0.25
@@ -1937,44 +1966,32 @@ Cohesion: 0.29
 Nodes (6): Границы, Зачем, Как это выглядит в работе, Миграция, Номер заказа с маркетплейса, Правило выбора
 
 ### Community 403 - "DtoBulkCards"
-Cohesion: 0.33
-Nodes (6): DtoBulkCards, ArrayMaxSize, ArrayNotEmpty, IsArray, IsIn, IsUUID
-
-### Community 404 - "ozon-default-warehouses.ts"
-Cohesion: 0.47
-Nodes (3): resolveDefaultWarehouses(), WarehouseChoice, WarehouseState
-
-### Community 405 - "DtoDeleteOrder"
-Cohesion: 0.40
-Nodes (4): DtoDeleteOrder, IsString, MaxLength, MinLength
-
-### Community 406 - "HealthController"
-Cohesion: 0.40
-Nodes (3): HealthController, Controller, Get
+Cohesion: 0.25
+Nodes (7): BULK_ACTIONS, DtoBulkCards, ArrayMaxSize, ArrayNotEmpty, IsArray, IsIn, IsUUID
 
 ### Community 407 - "Достоверность значений аналитики — 28.09.2026"
 Cohesion: 0.40
 Nodes (4): Достоверность значений аналитики — 28.09.2026, Изменение, Проверка исходных пробелов, Проверки
 
 ## Knowledge Gaps
-- **3518 isolated node(s):** `name`, `version`, `private`, `type`, `description` (+3513 more)
+- **3541 isolated node(s):** `name`, `version`, `private`, `type`, `description` (+3536 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **31 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **28 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Roles()` connect `Roles` to `ScenarioController`, `TasksService`, `ApprovalController`, `TechSpecStorageService`, `DtoUpdateUser`, `scenario.controller.ts`, `DtoCreateExpense`, `reports.service.ts`, `AnalyticsInsightsService`, `OpsStatusService`, `canvas-production-price.ts`, `PeriodQuery`, `PushService`, `AnalyticsGrowthService`, `marketplace.module.ts`, `SalaryService`, `MarketplaceController`, `OzonOrdersController`, `ImageCardBatchController`, `analytics-dashboard.controller.ts`, `order-photo.controller.ts`, `AvitoController`, `AnalyticsReportController`, `tshirt-partner-telegram.service.ts`, `.credentials`, `MockupService`, `image-card-template.controller.ts`, `ozon-catalog.controller.ts`?**
-  _High betweenness centrality (0.137) - this node is a cross-community bridge._
-- **Why does `BatchView()` connect `ApprovalController` to `getErrorMessage`?**
-  _High betweenness centrality (0.132) - this node is a cross-community bridge._
-- **Why does `getErrorMessage()` connect `getErrorMessage` to `CreateOrderForm.tsx`, `ApprovalController`, `App.tsx`, `ozonProductCatalog.ts`, `ProductsTab.tsx`, `ReportsPage.tsx`, `OrdersTab.tsx`, `OrdersPage.tsx`, `api/analytics.ts`, `types/index.ts`, `AnalyticsPage.tsx`, `ApprovalEditor.tsx`, `OrderDetail.tsx`, `webpush.ts`?**
-  _High betweenness centrality (0.105) - this node is a cross-community bridge._
+- **Why does `Roles()` connect `Roles` to `TasksService`, `ApprovalController`, `TechSpecStorageService`, `users.controller.ts`, `scenario.controller.ts`, `expenses.controller.ts`, `AvitoService`, `image-card-batch.controller.ts`, `AnalyticsInsightsService`, `OpsStatusService`, `auth.controller.ts`, `MarketplaceAccountService`, `PeriodQuery`, `report-delivery.spec.ts`, `PushService`, `AnalyticsGrowthService`, `order-photo.controller.ts`, `Body`, `OzonOrdersController`, `OzonCatalogController`, `ReportsController`, `DtoUpdateImageCardTemplate`, `ImageCardBatchController`, `analytics-dashboard.controller.ts`, `roles.decorator.ts`, `salary.controller.ts`, `tshirt-partner-telegram.service.ts`, `.credentials`, `MockupService`, `ImageCardTemplateService`, `ozon-catalog.controller.ts`?**
+  _High betweenness centrality (0.140) - this node is a cross-community bridge._
+- **Why does `BatchView()` connect `get-error-message.ts` to `ApprovalController`, `getErrorMessage`?**
+  _High betweenness centrality (0.138) - this node is a cross-community bridge._
+- **Why does `getErrorMessage()` connect `getErrorMessage` to `CatalogTab.tsx`, `CreateOrderForm.tsx`, `get-error-message.ts`, `MarketplacePage.tsx`, `ozonProductCatalog.ts`, `printDraft.ts`, `types/index.ts`, `OrdersTab.tsx`, `ProductsTab.tsx`, `utils/marketplace-tshirt.ts`, `ozonCatalog.ts`, `api/analytics.ts`, `App.tsx`, `AnalyticsPage.tsx`, `ApprovalEditor.tsx`, `OrderDetail.tsx`, `webpush.ts`?**
+  _High betweenness centrality (0.122) - this node is a cross-community bridge._
 - **What connects `name`, `version`, `private` to the rest of the system?**
-  _3518 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `AnalyticsPeriod` be split into smaller, more focused modules?**
-  _Cohesion score 0.12895927601809956 - nodes in this community are weakly interconnected._
+  _3541 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `analytics-metrics.service.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.0776255707762557 - nodes in this community are weakly interconnected._
 - **Should `TasksService` be split into smaller, more focused modules?**
-  _Cohesion score 0.05649717514124294 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05200341005967604 - nodes in this community are weakly interconnected._
 - **Should `dependencies` be split into smaller, more focused modules?**
   _Cohesion score 0.03636363636363636 - nodes in this community are weakly interconnected._
