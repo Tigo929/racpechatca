@@ -1,6 +1,6 @@
 import { EnumTaskStatus } from 'src/generated/prisma/enums';
 import {
-  buildDigestMessage,
+  buildPersonalDigestMessage,
   daysUntilDeadline,
   formatDeadlineLabel,
   isTaskDueForReminder,
@@ -102,24 +102,22 @@ describe('упоминание ответственного', () => {
 });
 
 describe('сообщение дайджеста', () => {
-  it('группирует по людям и сортирует просроченное наверх', () => {
-    const text = buildDigestMessage(
-      [
-        {
-          assignee: { username: 'Иван', telegramUsername: 'ivan' },
-          tasks: [
-            {
-              title: 'Закупить плёнку',
-              deadline: new Date('2026-07-20T15:00:00Z'),
-            },
-            {
-              title: 'Переделать макет',
-              deadline: new Date('2026-07-18T09:00:00Z'),
-              orderNumber: '202607-015',
-            },
-          ],
-        },
-      ],
+  it('сортирует просроченное наверх и обращается по нику', () => {
+    const text = buildPersonalDigestMessage(
+      {
+        assignee: { username: 'Иван', telegramUsername: 'ivan' },
+        tasks: [
+          {
+            title: 'Закупить плёнку',
+            deadline: new Date('2026-07-20T15:00:00Z'),
+          },
+          {
+            title: 'Переделать макет',
+            deadline: new Date('2026-07-18T09:00:00Z'),
+            orderNumber: '202607-015',
+          },
+        ],
+      },
       NOW,
     );
 
@@ -136,20 +134,34 @@ describe('сообщение дайджеста', () => {
   });
 
   it('экранирует HTML в теме задачи', () => {
-    const text = buildDigestMessage(
-      [
-        {
-          assignee: { username: 'Иван', telegramUsername: null },
-          tasks: [
-            {
-              title: 'Печать <b>10x15</b> & рамки',
-              deadline: new Date('2026-07-20T15:00:00Z'),
-            },
-          ],
-        },
-      ],
+    const text = buildPersonalDigestMessage(
+      {
+        assignee: { username: 'Иван', telegramUsername: null },
+        tasks: [
+          {
+            title: 'Печать <b>10x15</b> & рамки',
+            deadline: new Date('2026-07-20T15:00:00Z'),
+          },
+        ],
+      },
       NOW,
     );
     expect(text).toContain('Печать &lt;b&gt;10x15&lt;/b&gt; &amp; рамки');
+  });
+
+  it('в письме только задачи своего адресата', () => {
+    // Защита от возврата к общему письму: человек не должен читать чужой
+    // список, чтобы найти в нём свою строку.
+    const text = buildPersonalDigestMessage(
+      {
+        assignee: { username: 'Иван', telegramUsername: 'ivan' },
+        tasks: [
+          { title: 'Своя задача', deadline: new Date('2026-07-20T15:00:00Z') },
+        ],
+      },
+      NOW,
+    );
+    expect(text).toContain('Своя задача');
+    expect(text).not.toContain('@maxim');
   });
 });

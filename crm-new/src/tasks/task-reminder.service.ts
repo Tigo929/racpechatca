@@ -10,17 +10,29 @@ import { EnumTaskAssigneeKind } from 'src/generated/prisma/enums';
 import {
   DigestGroup,
   OPEN_TASK_STATUSES,
-  buildDigestMessage,
+  buildPersonalDigestMessage,
   isTaskDueForReminder,
   isWithinDigestWindow,
   moscowDateKey,
 } from './task-reminder-rules';
 
+/** Дайджест одного человека вместе с задачами, которые он закрывает. */
+interface PersonalDigest {
+  group: DigestGroup;
+  /** id задач из этого письма: отметку о дне ставим только доставленным. */
+  taskIds: string[];
+}
+
 const SCAN_INTERVAL_MS = 60 * 60 * 1000;
 const SCAN_LIMIT = 200;
 
 /**
- * Раз в день напоминает в рабочий чат о задачах со сроком.
+ * Раз в день напоминает каждому исполнителю о его задачах со сроком — в личку.
+ *
+ * Общий чат для этого не годится: письмо на всех там читают по диагонали,
+ * а тема исполнителя хоть и адресная, но в неё надо зайти. Личное сообщение
+ * видно сразу. Лички нет — остаётся прежний путь: тема, затем общий чат;
+ * молчание хуже лишнего адресата.
  *
  * Проверка идёт ежечасно, а не «строго в 10:00» по расписанию: если сервер
  * в этот час перезагружался, крон пропустил бы день молча, а проверка
@@ -80,7 +92,14 @@ export class TaskReminderService implements OnModuleInit, OnModuleDestroy {
           status: true,
           deadline: true,
           assigneeId: true,
-          assignee: { select: { username: true, telegramUsername: true } },
+          assignee: {
+            select: {
+              username: true,
+              telegramUsername: true,
+              telegramTopicId: true,
+              telegramChatId: true,
+            },
+          },
           order: { select: { numberOrder: true } },
         },
       });
@@ -94,15 +113,19 @@ export class TaskReminderService implements OnModuleInit, OnModuleDestroy {
       );
       if (due.length === 0) return;
 
-      const byAssignee = new Map<string, DigestGroup>();
+      const byAssignee = new Map<string, PersonalDigest>();
       for (const task of due) {
         if (!task.assigneeId || !task.assignee) continue;
-        let group = byAssignee.get(task.assigneeId);
-        if (!group) {
-          group = { assignee: task.assignee, tasks: [] };
-          byAssignee.set(task.assigneeId, group);
+        let digest = byAssignee.get(task.assigneeId);
+        if (!digest) {
+          digest = {
+            group: { assignee: task.assignee, tasks: [] },
+            taskIds: [],
+          };
+          byAssignee.set(task.assigneeId, digest);
         }
-        group.tasks.push({
+        digest.taskIds.push(task.id);
+        digest.group.tasks.push({
           title: task.title,
           // Отфильтровано выше: у задач в дайджесте срок всегда есть.
           deadline: task.deadline!,
@@ -110,21 +133,36 @@ export class TaskReminderService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
-      const sent = await this.telegram.sendToGroup(
-        buildDigestMessage([...byAssignee.values()], now),
-      );
-      if (!sent) {
-        // Отметку не ставим — повторим на следующем часе.
-        this.logger.warn('Task digest not delivered, will retry next scan');
-        return;
+      // Отметку ставим только тем задачам, чьё письмо дошло: если у одного
+      // человека отправка сорвалась, остальным повторять не нужно, а ему —
+      // нужно, и проверка через час попробует снова только его.
+      const delivered: string[] = [];
+      for (const { group, taskIds } of byAssignee.values()) {
+        const { assignee } = group;
+        const ok = await this.telegram.sendToExecutor(
+          buildPersonalDigestMessage(group, now),
+          assignee.telegramTopicId != null
+            ? String(assignee.telegramTopicId)
+            : undefined,
+          assignee.username,
+          assignee.telegramUsername ?? undefined,
+          assignee.telegramChatId,
+        );
+        if (ok) delivered.push(...taskIds);
+        else
+          this.logger.warn(
+            `Task digest not delivered to ${assignee.username}, will retry next scan`,
+          );
       }
 
+      if (delivered.length === 0) return;
+
       await this.prisma.task.updateMany({
-        where: { id: { in: due.map((t) => t.id) } },
+        where: { id: { in: delivered } },
         data: { lastRemindedOn: todayKey },
       });
       this.logger.log(
-        `Task digest sent: ${due.length} task(s), ${byAssignee.size} assignee(s)`,
+        `Task digest sent: ${delivered.length} task(s), ${byAssignee.size} assignee(s)`,
       );
     } finally {
       this.running = false;

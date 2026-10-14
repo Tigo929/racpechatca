@@ -25,7 +25,12 @@ function makeTask(overrides: Partial<Record<string, unknown>> = {}) {
     status: EnumTaskStatus.OPEN,
     deadline: new Date('2026-07-19T09:00:00Z'),
     assigneeId: 'user-1',
-    assignee: { username: 'Иван', telegramUsername: 'ivan' },
+    assignee: {
+      username: 'Иван',
+      telegramUsername: 'ivan',
+      telegramTopicId: 10815,
+      telegramChatId: '670028406',
+    },
     order: null,
     ...overrides,
   };
@@ -34,7 +39,9 @@ function makeTask(overrides: Partial<Record<string, unknown>> = {}) {
 function setup(sendResult = true) {
   const stub = createStub();
   const telegram = {
-    sendToGroup: jest.fn<Promise<boolean>, unknown[]>().mockResolvedValue(sendResult),
+    sendToExecutor: jest
+      .fn<Promise<boolean>, unknown[]>()
+      .mockResolvedValue(sendResult),
   };
   const service = new TaskReminderService(
     stub as unknown as PrismaService,
@@ -57,7 +64,7 @@ describe('ежедневный дайджест задач', () => {
     await service.scanAndNotify(BEFORE_TEN);
 
     expect(stub.task.findMany).not.toHaveBeenCalled();
-    expect(telegram.sendToGroup).not.toHaveBeenCalled();
+    expect(telegram.sendToExecutor).not.toHaveBeenCalled();
   });
 
   it('молчит ночью, даже если задача просрочена', async () => {
@@ -66,24 +73,37 @@ describe('ежедневный дайджест задач', () => {
 
     await service.scanAndNotify(LATE_NIGHT);
 
-    // Ежечасная проверка догоняет пропущенное, но будить чат в 23:00 нельзя.
-    expect(telegram.sendToGroup).not.toHaveBeenCalled();
+    // Ежечасная проверка догоняет пропущенное, но будить людей в 23:00 нельзя.
+    expect(telegram.sendToExecutor).not.toHaveBeenCalled();
   });
 
-  it('шлёт одно сообщение на всех и отмечает день отправки', async () => {
+  it('пишет каждому своё, а не одно письмо на всех', async () => {
     const { stub, telegram, service } = setup();
     stub.task.findMany.mockResolvedValue([
       makeTask(),
-      makeTask({ id: 'task-2', title: 'Закупить плёнку', assigneeId: 'user-2' }),
+      makeTask({
+        id: 'task-2',
+        title: 'Закупить плёнку',
+        assigneeId: 'user-2',
+        assignee: {
+          username: 'Максим',
+          telegramUsername: 'maxim',
+          telegramTopicId: 10813,
+          telegramChatId: '543304870',
+        },
+      }),
     ]);
 
     await service.scanAndNotify(AT_TEN);
 
-    // Именно одно сообщение, а не по одному на задачу — иначе чат утонет.
-    expect(telegram.sendToGroup).toHaveBeenCalledTimes(1);
-    const text = telegram.sendToGroup.mock.calls[0]?.[0] as string;
-    expect(text).toContain('Переделать макет');
-    expect(text).toContain('Закупить плёнку');
+    // По письму на человека: своё видно сразу, чужого в нём нет.
+    expect(telegram.sendToExecutor).toHaveBeenCalledTimes(2);
+    const first = telegram.sendToExecutor.mock.calls[0];
+    expect(first[0]).toContain('Переделать макет');
+    expect(first[0]).not.toContain('Закупить плёнку');
+    // Личка — последним аргументом: именно она и выбирает адрес.
+    expect(first[4]).toBe('670028406');
+    expect(telegram.sendToExecutor.mock.calls[1]?.[4]).toBe('543304870');
 
     const update = stub.task.updateMany.mock.calls[0]?.[0] as {
       where: { id: { in: string[] } };
@@ -91,6 +111,47 @@ describe('ежедневный дайджест задач', () => {
     };
     expect(update.where.id.in).toEqual(['task-1', 'task-2']);
     expect(update.data.lastRemindedOn).toBe('2026-07-20');
+  });
+
+  it('без лички остаётся прежний путь — тема исполнителя', async () => {
+    // Молчать из-за незаполненного поля нельзя: срок есть срок.
+    const { stub, telegram, service } = setup();
+    stub.task.findMany.mockResolvedValue([
+      makeTask({
+        assignee: {
+          username: 'Иван',
+          telegramUsername: 'ivan',
+          telegramTopicId: 10815,
+          telegramChatId: null,
+        },
+      }),
+    ]);
+
+    await service.scanAndNotify(AT_TEN);
+
+    const call = telegram.sendToExecutor.mock.calls[0];
+    expect(call[1]).toBe('10815');
+    expect(call[4]).toBeNull();
+  });
+
+  it('повторяет только того, кому письмо не дошло', async () => {
+    const { stub, telegram, service } = setup();
+    telegram.sendToExecutor
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+    stub.task.findMany.mockResolvedValue([
+      makeTask(),
+      makeTask({ id: 'task-2', assigneeId: 'user-2' }),
+    ]);
+
+    await service.scanAndNotify(AT_TEN);
+
+    // Отметка только у доставленного: иначе через час второе письмо
+    // уйдёт повторно, а первое не уйдёт никогда.
+    const update = stub.task.updateMany.mock.calls[0]?.[0] as {
+      where: { id: { in: string[] } };
+    };
+    expect(update.where.id.in).toEqual(['task-2']);
   });
 
   it('не отмечает день, если Telegram не принял сообщение', async () => {
@@ -124,6 +185,6 @@ describe('ежедневный дайджест задач', () => {
 
     await service.scanAndNotify(AT_TEN);
 
-    expect(telegram.sendToGroup).not.toHaveBeenCalled();
+    expect(telegram.sendToExecutor).not.toHaveBeenCalled();
   });
 });

@@ -70,8 +70,16 @@ export function moscowHour(date: Date): number {
 export function daysUntilDeadline(deadline: Date, now: Date): number {
   const a = toMoscow(deadline);
   const b = toMoscow(now);
-  const aMidnight = Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate());
-  const bMidnight = Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate());
+  const aMidnight = Date.UTC(
+    a.getUTCFullYear(),
+    a.getUTCMonth(),
+    a.getUTCDate(),
+  );
+  const bMidnight = Date.UTC(
+    b.getUTCFullYear(),
+    b.getUTCMonth(),
+    b.getUTCDate(),
+  );
   return Math.round((aMidnight - bMidnight) / 86_400_000);
 }
 
@@ -140,35 +148,58 @@ export interface DigestTask {
   orderNumber?: string | null;
 }
 
+/**
+ * Кому уходит дайджест. Имя и ник нужны для обращения, остальное — адрес:
+ * личка, затем тема в рабочем чате. Порядок выбора живёт в TelegramService,
+ * здесь мы только доносим до него, что знаем о человеке.
+ */
+export interface DigestAssignee {
+  username: string;
+  telegramUsername: string | null;
+  /** Тема исполнителя в рабочем чате — запасной путь, если лички нет. */
+  telegramTopicId?: number | null;
+  /** Личка исполнителя: основной адрес дайджеста. */
+  telegramChatId?: string | null;
+}
+
 export interface DigestGroup {
-  assignee: { username: string; telegramUsername: string | null };
+  assignee: DigestAssignee;
   tasks: DigestTask[];
 }
 
 /**
- * Собирает одно сообщение на весь день вместо письма на каждую задачу.
- * Бот уже пишет в этот чат про заказы и отзывы — отдельные сообщения по
- * задачам утопили бы всё остальное.
+ * Дайджест одного человека: его задачи со сроком, одним сообщением за день.
+ *
+ * Раньше это было одно письмо на всех в общий чат, и каждый читал его по
+ * диагонали, выискивая свою строку среди чужих. Теперь письмо личное — в нём
+ * только свои задачи, искать в нём нечего.
+ *
+ * Одно сообщение на человека, а не на задачу: три отдельных пинга подряд
+ * читаются как спам и перестают замечаться вместе со всем остальным.
+ *
+ * Имя остаётся в заголовке: без лички сообщение уходит прежним путём — в тему
+ * исполнителя, — и там должно быть видно, к кому оно обращено.
  */
-export function buildDigestMessage(groups: DigestGroup[], now: Date): string {
+export function buildPersonalDigestMessage(
+  group: DigestGroup,
+  now: Date,
+): string {
   const m = toMoscow(now);
-  const header = `📋 <b>Задачи на ${pad(m.getUTCDate())}.${pad(m.getUTCMonth() + 1)}</b>`;
-  const blocks = groups.map((group) => {
-    const lines = group.tasks
-      .slice()
-      .sort(
-        (a, b) =>
-          daysUntilDeadline(a.deadline, now) - daysUntilDeadline(b.deadline, now),
-      )
-      .map((task) => {
-        const marker = deadlineMarker(task.deadline, now);
-        const label = formatDeadlineLabel(task.deadline, now);
-        const order = task.orderNumber
-          ? ` (заказ ${escapeHtml(task.orderNumber)})`
-          : '';
-        return `  ${marker} ${escapeHtml(task.title)}${order} — ${label}`;
-      });
-    return [`${mentionFor(group.assignee)}`, ...lines].join('\n');
-  });
-  return [header, '', ...blocks].join('\n');
+  const date = `${pad(m.getUTCDate())}.${pad(m.getUTCMonth() + 1)}`;
+  const header = `📋 <b>Задачи на ${date}</b> — ${mentionFor(group.assignee)}`;
+  const lines = group.tasks
+    .slice()
+    .sort(
+      (a, b) =>
+        daysUntilDeadline(a.deadline, now) - daysUntilDeadline(b.deadline, now),
+    )
+    .map((task) => {
+      const marker = deadlineMarker(task.deadline, now);
+      const label = formatDeadlineLabel(task.deadline, now);
+      const order = task.orderNumber
+        ? ` (заказ ${escapeHtml(task.orderNumber)})`
+        : '';
+      return `  ${marker} ${escapeHtml(task.title)}${order} — ${label}`;
+    });
+  return [header, '', ...lines].join('\n');
 }
