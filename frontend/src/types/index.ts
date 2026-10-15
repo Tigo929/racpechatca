@@ -132,6 +132,11 @@ export interface OrderPhoto {
   totalOrder: number;
   status: EnumStatus;
   note?: string;
+  /**
+   * Фотографии клиента, загруженные на сайте: ссылка на архив.
+   * Пусто — файлов нет либо заказ отгружен и исходники уже удалены.
+   */
+  photosArchiveUrl?: string | null;
   productCategory: EnumProductCategory;
   deadline?: string | null;
   isUrgent: boolean;

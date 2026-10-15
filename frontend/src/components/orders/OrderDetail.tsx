@@ -13,7 +13,9 @@ import {
   Printer,
   Paperclip,
   AlarmClock,
+  Download,
 } from "lucide-react";
+import { photosArchiveUrl } from "./photos-archive";
 import { usersApi } from "../../api/users";
 import { DELIVERY_LABELS, SOURCE_ORDER_LABELS } from "../../constants";
 import { displayOrderNumber, marketplaceNumber } from "../../utils/order-number";
@@ -36,6 +38,8 @@ import { ApprovalsBlock } from '../approval/ApprovalsBlock';
  */
 const LEAD_TECH_PREFIXES = [
   'ID заявки:',
+  // Ссылка на архив теперь кнопка ниже — строкой её показывать незачем.
+  'Архив фото:',
   'Slug:',
   'yclid:',
   'Yandex ClientID:',
@@ -54,6 +58,29 @@ function splitLeadNote(note: string): { visible: string; technical: string } {
     visible: visible.join('\n').trim(),
     technical: technical.join('\n').trim(),
   };
+}
+
+/**
+ * Фотографии клиента — одной кнопкой.
+ *
+ * Раньше ссылка лежала строкой в примечании: её нужно было найти среди
+ * служебных строк, выделить и вставить в адресную строку. Печатник делает
+ * это по каждому заказу, поэтому ссылка стала кнопкой.
+ *
+ * Архив собирается на стороне сайта в момент скачивания, поэтому ссылка
+ * живёт ровно до отгрузки: после неё исходники удаляются, а поле пустеет.
+ */
+function PhotosArchiveButton({ url }: { url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener"
+      className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-sky-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-sky-700"
+    >
+      <Download size={15} /> Скачать фотографии клиента
+    </a>
+  );
 }
 
 /**
@@ -489,6 +516,10 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
   }
 
   if (!order) return null;
+
+  // Ссылка на фотографии клиента: у новых заказов полем, у заведённых
+  // раньше — строкой в примечании (колонка появилась позже).
+  const archiveUrl = photosArchiveUrl(order);
 
   const techSpecPaths =
     order.techSpecPhotoPaths && order.techSpecPhotoPaths.length > 0
@@ -1226,6 +1257,11 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   onEdit={startEdit}
                 />
               )}
+              {archiveUrl && (
+                <div className="sm:col-span-2 lg:col-span-3">
+                  <PhotosArchiveButton url={archiveUrl} />
+                </div>
+              )}
               {order.note && <LeadNoteBlock note={order.note} isAdmin />}
               {order.productCategory === "CANVAS" && (
                 <div className="sm:col-span-2 lg:col-span-3 rounded-xl border border-cyan-100 bg-cyan-50/50 p-3 grid grid-cols-3 gap-3 text-sm">
@@ -1335,6 +1371,11 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 );
               })()}
             </>
+          )}
+          {!isAdmin && archiveUrl && (
+            <div className="sm:col-span-2 lg:col-span-3">
+              <PhotosArchiveButton url={archiveUrl} />
+            </div>
           )}
           {!isAdmin && order.note && (
             <LeadNoteBlock note={order.note} isAdmin={false} />
