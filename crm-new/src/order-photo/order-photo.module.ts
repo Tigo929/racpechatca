@@ -17,6 +17,7 @@ import { DailyPlanService } from './daily-plan.service';
 import { ShipmentLeadService } from './shipment-lead.service';
 import { PartnerSettingsModule } from 'src/partner/partner-settings.module';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
+import { SitePhotosService } from './site-photos.service';
 import { SiteLeadTokenGuard } from './site-lead-token.guard';
 import { PushModule } from 'src/push/push.module';
 import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
@@ -44,6 +45,7 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
     DailyPlanService,
     ShipmentLeadService,
     TshirtPartnerTelegramService,
+    SitePhotosService,
     SiteLeadTokenGuard,
   ],
   // Заведение заказа из кабинета Ozon собирает заказ тем же методом, что

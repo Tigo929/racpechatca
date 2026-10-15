@@ -71,6 +71,7 @@ import { normalizeMarketplaceNumber } from './order-number';
 import { hasTechSpecFiles } from 'src/partner/tech-spec-paths';
 import { GulianOutboxService } from 'src/gulian/gulian-outbox.service';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
+import { SitePhotosService } from './site-photos.service';
 import {
   hasProductionItems,
   NO_PRODUCTION_ITEMS_MESSAGE,
@@ -141,6 +142,21 @@ const CLOSED_STATUSES: EnumStatus[] = [
   EnumStatus.PAID,
   EnumStatus.COMPLETED,
   EnumStatus.CANCELLED,
+];
+
+/**
+ * Статусы, после которых исходники клиента на сайте больше не нужны.
+ *
+ * Отправлен — значит напечатано и уехало: фотографии сделали свою работу.
+ * Дальше по цепочке (оплачен, выполнен) они тем более не нужны, а отмена
+ * сюда не входит намеренно — отменённый заказ нередко возвращают в работу,
+ * и удалять файлы под ним рано.
+ */
+const PHOTOS_RELEASED_STATUSES: EnumStatus[] = [
+  EnumStatus.SENT,
+  EnumStatus.PAID,
+  EnumStatus.READY_FOR_REVIEW,
+  EnumStatus.COMPLETED,
 ];
 
 // «Активные» на дашборде — заказы в работе прямо сейчас. LEAD и SENT не
@@ -233,6 +249,7 @@ export class OrderPhotoService {
     private readonly gulianOutbox: GulianOutboxService,
     private readonly push: PushService,
     private readonly metrikaOutbox: MetrikaOrderOutboxService,
+    private readonly sitePhotos: SitePhotosService,
   ) {}
 
   async createOrder(dto: DtoCreateOrder, adminId?: string) {
@@ -828,6 +845,10 @@ export class OrderPhotoService {
 
           status: EnumStatus.LEAD,
           statusChangedAt: new Date(),
+          // Та же ссылка, что строкой в примечании. Колонка нужна, чтобы
+          // по ней удалить исходники, когда заказ отгружен: держать чужие
+          // фотографии дольше работы незачем.
+          photosArchiveUrl: dto.photosArchiveUrl ?? null,
           // Происхождение ставит сервер, а не заявка: сайт не может назваться
           // другим каналом, даже если в теле запроса что-то такое придёт
           // (лишние поля отсекает whitelist валидации, см. LeadController).
@@ -1966,6 +1987,24 @@ export class OrderPhotoService {
 
       return updated;
     });
+
+    /*
+     * Заказ отгружен — исходники на сайте больше не нужны.
+     *
+     * Отпечатки у человека, а фотографии продолжали бы лежать на диске
+     * сайта до истечения общего срока. Удаляем не в транзакции и не
+     * блокируя ответ: смена статуса не должна падать из-за того, что сайт
+     * в эту секунду недоступен. Ссылка обнуляется только при успехе,
+     * поэтому неудачная попытка повторится при следующей смене статуса.
+     */
+    if (
+      PHOTOS_RELEASED_STATUSES.includes(newStatus) &&
+      order.photosArchiveUrl
+    ) {
+      void this.sitePhotos
+        .dropForOrder(id, order.photosArchiveUrl)
+        .catch(() => undefined);
+    }
 
     return result;
   }
