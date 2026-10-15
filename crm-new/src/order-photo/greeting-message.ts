@@ -160,6 +160,11 @@ export function deliveryLine(
   cost: number | null | undefined,
 ): string {
   const value = Math.trunc(Number(cost ?? 0));
+  if ((method ?? '').toUpperCase() === 'PRODUCTION_MSK') {
+    return Number.isFinite(value) && value > 0
+      ? `🚚 Доставка до двери по Москве — ${money(value)} ₽`
+      : '🚚 Доставка до двери по Москве';
+  }
   if (Number.isFinite(value) && value > 0) {
     return `🚚 Доставка Яндекс ПВЗ — ${money(value)} ₽`;
   }

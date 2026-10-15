@@ -94,8 +94,9 @@ export class DtoCreateLead {
   total?: number;
 
   @IsOptional()
-  @IsIn(['yandex_pvz', 'pickup'])
-  delivery?: 'yandex_pvz' | 'pickup';
+  // courier_msk — холст до двери по Москве (сайт, с 15.10.2026).
+  @IsIn(['yandex_pvz', 'pickup', 'courier_msk'])
+  delivery?: 'yandex_pvz' | 'pickup' | 'courier_msk';
 
   /**
    * Бумага, выбранная клиентом на сайте.

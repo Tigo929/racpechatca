@@ -7,7 +7,10 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { leadDeliveryCost as deliveryCostForLead } from './free-delivery';
+import {
+  CANVAS_COURIER_MSK_PRICE,
+  leadDeliveryCost as deliveryCostForLead,
+} from './free-delivery';
 import { attributionFromLead } from './lead-attribution';
 import { clientPaidAtPatch, parseClientPaidAt } from './paid-at';
 import { clampOrderDiscount, orderTotal } from './order-total';
@@ -697,9 +700,19 @@ export class OrderPhotoService {
         maxLinkTemplate,
       );
       const isYandexPvz = dto.delivery === 'yandex_pvz';
+      /*
+        Доставка до двери по Москве — своя машина производства, то есть
+        PRODUCTION_MSK. Бывает только у холста: другой товар с ней пришёл
+        бы по ошибке, и заказ разумнее завести самовывозом, чем отбить.
+      */
+      const isCourierMsk =
+        dto.delivery === 'courier_msk' &&
+        dto.productCategory === EnumProductCategory.CANVAS;
       const deliveryMethod = isYandexPvz
         ? EnumDeliveryMethod.YANDEX_PVZ
-        : EnumDeliveryMethod.PICKUP;
+        : isCourierMsk
+          ? EnumDeliveryMethod.PRODUCTION_MSK
+          : EnumDeliveryMethod.PICKUP;
       // Цену считает сайт (в его форме поля цены нет — клиент её не задаёт),
       // но CRM не принимает числа на веру: сверяем «цена × тираж = итог» и
       // сумму позиции считаем сами. Расхождение — отказ, потому что дальше по
@@ -725,11 +738,13 @@ export class OrderPhotoService {
         числа не должны — иначе в подтверждении окажется не та сумма, которую
         человеку называли.
       */
-      const leadDeliveryCost = deliveryCostForLead({
-        yandexPvz: isYandexPvz,
-        positionsTotal: total,
-        price: leadSettings.deliveryPriceYandexPvz,
-      });
+      const leadDeliveryCost = isCourierMsk
+        ? CANVAS_COURIER_MSK_PRICE
+        : deliveryCostForLead({
+            yandexPvz: isYandexPvz,
+            positionsTotal: total,
+            price: leadSettings.deliveryPriceYandexPvz,
+          });
       // Пожелания клиента — вверху: их читают в первую очередь, а не ищут
       // среди технических строк вроде yclid и ссылок на архив.
       const clientComment =
@@ -755,7 +770,13 @@ export class OrderPhotoService {
         dto.unitPrice ? `Цена за шт: ${dto.unitPrice} ₽` : null,
         money.pricePosition ? `Итого: ${money.pricePosition} ₽` : null,
         dto.delivery
-          ? `Получение: ${dto.delivery === 'yandex_pvz' ? 'Яндекс ПВЗ' : 'Самовывоз'}`
+          ? `Получение: ${
+              dto.delivery === 'yandex_pvz'
+                ? 'Яндекс ПВЗ'
+                : isCourierMsk
+                  ? `доставка до двери по Москве — ${CANVAS_COURIER_MSK_PRICE} ₽`
+                  : 'Самовывоз'
+            }`
           : null,
         dto.paperType
           ? `Бумага: ${dto.paperType === 'MATTE' ? 'матовая' : 'глянцевая'}`
