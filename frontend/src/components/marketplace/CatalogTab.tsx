@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Boxes, RefreshCw, Search } from 'lucide-react';
 import {
-  baseCodeOf, colorCodeOf, ozonProductCatalogApi, sizeOf, type OzonCatalogProduct,
+  baseCodeOf, colorCodeOf, ozonProductCatalogApi, sizeOf,
+  type OzonCatalogProduct, type OzonContentRating,
 } from '../../api/ozonProductCatalog';
 import { FilterChip } from '../ui/FilterChip';
 import { ProductDetailModal } from './ProductDetailModal';
@@ -54,6 +55,19 @@ function colorsOf(items: OzonCatalogProduct[]): string[] {
   return [...set].sort();
 }
 
+/** Худший рейтинг в группе: тянет вниз тот цвет, что заполнен хуже всех. */
+function ratingOf(
+  items: OzonCatalogProduct[],
+  ratings: Record<string, OzonContentRating>,
+): number | null {
+  const values = items
+    .map((product) =>
+      product.sku ? ratings[product.sku]?.rating : undefined,
+    )
+    .filter((rating): rating is number => typeof rating === 'number');
+  return values.length ? Math.min(...values) : null;
+}
+
 export function CatalogTab({ accountId }: { accountId: string }) {
   // Поиск и отбор держатся: между «Моими товарами» и «Созданием» ходят
   // постоянно, и каждый раз набирать артикул заново — лишняя работа.
@@ -91,14 +105,6 @@ export function CatalogTab({ accountId }: { accountId: string }) {
     staleTime: 300_000,
   });
 
-  /** Худший рейтинг в группе: тянет вниз тот цвет, что заполнен хуже всех. */
-  const ratingOf = (items: OzonCatalogProduct[]): number | null => {
-    const values = items
-      .map((p) => (p.sku ? ratings[p.sku]?.rating : undefined))
-      .filter((r): r is number => typeof r === 'number');
-    return values.length ? Math.min(...values) : null;
-  };
-
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = products.filter(
@@ -117,7 +123,7 @@ export function CatalogTab({ accountId }: { accountId: string }) {
     // бессмысленно — улучшать всё равно придётся всю.
     if (filter !== 'improve') return entries;
     return entries.filter(([, list]) => {
-      const r = ratingOf(list);
+      const r = ratingOf(list, ratings);
       return r !== null && r < 100;
     });
   }, [products, query, filter, ratings]);
@@ -394,7 +400,7 @@ export function CatalogTab({ accountId }: { accountId: string }) {
                     </td>
                     <td className="px-3 py-2 text-xs tabular-nums">
                       {(() => {
-                        const r = ratingOf(items);
+                        const r = ratingOf(items, ratings);
                         if (r === null) return <span className="text-gray-300">—</span>;
                         // Порог 90 — не выдумка: ниже него Ozon сам помечает
                         // карточку как требующую доработки.

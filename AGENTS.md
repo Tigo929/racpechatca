@@ -30,7 +30,7 @@ npm run lint:check
 cd frontend
 npm ci
 npm run build
-npm test -- --runInBand
+npm test
 npm run lint
 
 # Local task worker

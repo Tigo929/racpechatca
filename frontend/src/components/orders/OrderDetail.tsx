@@ -267,8 +267,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
   const [showDispatchModal, setShowDispatchModal] = useState(false);
 
   const tshirtPayout = useMemo(() => {
-    if (!partnerSettings || !(order?.tshirtItems?.length)) return null;
-    const items = order!.tshirtItems!;
+    const items = order?.tshirtItems;
+    if (!partnerSettings || !items?.length) return null;
     const qty = items.reduce((s, i) => s + i.quantity, 0);
     const s = computeSettlement(items, partnerSettings.partnerRateBasisPoints);
     const totalKopecks = Math.round(s.reward * 100);
