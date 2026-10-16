@@ -21,6 +21,15 @@ export interface GreetingItem {
 
 export interface GreetingData {
   name: string | null;
+  /**
+   * Фотографии уже у нас (заказ пришёл с сайта, где их загрузили).
+   *
+   * От этого зависит, о чём просить человека. Если файлы загружены,
+   * просить прислать их ещё раз — значит заставлять делать работу
+   * второй раз и сомневаться, дошло ли вообще. Если заказ оформлен
+   * руками (Авито, звонок), файлов у нас нет, и просьба остаётся.
+   */
+  photosUploaded?: boolean;
   numberOrder: string;
   category: string;
   items: GreetingItem[];
@@ -39,6 +48,29 @@ export interface GreetingData {
  * текста ещё не написали.
  */
 const TEMPLATES: Record<string, string> = {
+  /**
+   * Фотопечать с сайта: файлы уже загружены.
+   *
+   * Человек отдал фотографии на сайте и ждёт подтверждения, что они
+   * дошли. Поэтому сообщение не просит ничего прислать — оно называет
+   * количество и просит одно короткое «да»: дальше подключается менеджер.
+   */
+  PHOTO_UPLOADED: `👋 {greeting}
+
+Получили вашу заявку на печать фотографий.
+📌 Ваш заказ №{{НОМЕР}}
+
+📷 Фотографии мы получили — всё на месте.
+
+🖼 Печатаем:
+{{СПИСОК_ТОВАРОВ}}
+
+{{ДОСТАВКА}}
+
+💳 Сумма заказа: {{СУММА}} ₽
+
+Всё верно? 🙂 Ответьте «да» — и передадим заказ в работу.`,
+
   PHOTO: `👋 {greeting}
 
 Получили вашу заявку на печать фотографий.
@@ -213,7 +245,16 @@ export function renderGreeting(
   data: GreetingData,
   format: GreetingFormat = 'plain',
 ): string {
-  const template = TEMPLATES[data.category] ?? TEMPLATES[''];
+  /*
+    У фотопечати два текста: файлы уже у нас или их ещё предстоит прислать.
+    Ключ собираем здесь, а не множим условия внутри шаблонов, — так весь
+    текст сообщения остаётся в одном месте и читается целиком.
+  */
+  const key =
+    data.category === 'PHOTO' && data.photosUploaded
+      ? 'PHOTO_UPLOADED'
+      : data.category;
+  const template = TEMPLATES[key] ?? TEMPLATES[''];
   const telegram = format === 'telegram';
   const safe = (value: string) => (telegram ? escapeMarkdown(value) : value);
   const number = telegram ? `\`${data.numberOrder}\`` : data.numberOrder;

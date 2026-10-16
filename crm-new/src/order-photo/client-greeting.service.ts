@@ -96,6 +96,9 @@ export class ClientGreetingService {
         totalOrder: true,
         deliveryCost: true,
         deliveryMethod: true,
+        // Загружены ли фотографии на сайте: от этого зависит, просить их
+        // прислать или подтвердить, что они уже у нас.
+        photosArchiveUrl: true,
         // Позиция нужна ради названия товара и тиража: письмо «ваш заказ
         // 10 фото в стиле Polaroid» человек читает как ответ на своё
         // действие, а «вы оставили заявку» — как рассылку.
@@ -137,6 +140,7 @@ export class ClientGreetingService {
         name: clientNameFromNote(row.note),
         numberOrder: row.numberOrder,
         category: row.productCategory,
+        photosUploaded: Boolean(row.photosArchiveUrl),
         items,
         deliveryCost: row.deliveryCost ?? 0,
         deliveryMethod: row.deliveryMethod,
@@ -174,6 +178,7 @@ export class ClientGreetingService {
         totalOrder: true,
         deliveryCost: true,
         deliveryMethod: true,
+        photosArchiveUrl: true,
         items: { select: { formatPaper: true, quantity: true } },
         tshirtItems: { select: { color: true, size: true, quantity: true } },
         canvasItems: { select: { formatCanvas: true, quantity: true } },
@@ -197,6 +202,7 @@ export class ClientGreetingService {
       name: clientNameFromNote(row.note),
       numberOrder: row.numberOrder,
       category: row.productCategory,
+      photosUploaded: Boolean(row.photosArchiveUrl),
       items,
       deliveryCost: row.deliveryCost ?? 0,
       deliveryMethod: row.deliveryMethod,

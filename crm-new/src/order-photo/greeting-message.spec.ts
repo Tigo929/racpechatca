@@ -151,3 +151,59 @@ describe('первое сообщение: разметка', () => {
     }
   });
 });
+
+/**
+ * Фотографии уже у нас.
+ *
+ * Клиент отдал файлы на сайте и ждёт подтверждения, что они дошли.
+ * Просьба «отправьте фотографии сюда» в этот момент означает для него,
+ * что загрузка не сработала: он либо шлёт всё заново, либо решает, что
+ * заказ не принят. Поэтому текст должен подтверждать, а не просить.
+ */
+describe('приветствие, когда фотографии загружены', () => {
+  const base = {
+    name: 'Иван',
+    numberOrder: '20261016-5',
+    category: 'PHOTO',
+    items: [{ title: 'Фото 10×15', quantity: 40 }],
+    total: 480,
+    deliveryMethod: 'YANDEX_PVZ',
+    deliveryCost: 0,
+  };
+
+  it('не просит прислать файлы и не зовёт в облако', () => {
+    const text = renderGreeting({ ...base, photosUploaded: true });
+    expect(text).not.toContain('отправьте фотографии');
+    expect(text).not.toContain('Яндекс Диск');
+    expect(text).not.toContain('облачном сервисе');
+  });
+
+  it('подтверждает получение и просит одно «да»', () => {
+    const text = renderGreeting({ ...base, photosUploaded: true });
+    expect(text).toContain('Фотографии мы получили');
+    expect(text).toContain('Всё верно?');
+    expect(text).toContain('«да»');
+  });
+
+  it('состав и сумма остаются: по ним человек узнаёт свой заказ', () => {
+    const text = renderGreeting({ ...base, photosUploaded: true });
+    expect(text).toContain('Фото 10×15 — 40 шт.');
+    expect(text).toContain('480');
+    expect(text).toContain('20261016-5');
+  });
+
+  it('заказ оформлен руками — просьба прислать файлы остаётся', () => {
+    // Авито или звонок: файлов у нас нет, и молчать об этом нельзя.
+    const text = renderGreeting({ ...base, photosUploaded: false });
+    expect(text).toContain('отправьте фотографии для печати прямо сюда');
+  });
+
+  it('холст и футболка не затронуты: там нужен макет', () => {
+    const canvas = renderGreeting({
+      ...base,
+      category: 'CANVAS',
+      photosUploaded: true,
+    });
+    expect(canvas).toContain('отправьте фотографию для печати прямо сюда');
+  });
+});
