@@ -1,9 +1,7 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -17,8 +15,7 @@ import { DtoCreateTask } from './dto/create-task.dto';
 import { DtoUpdateTask } from './dto/update-task.dto';
 import { DtoQueryTasks } from './dto/query-tasks.dto';
 import { OPEN_TASK_STATUSES } from './task-reminder-rules';
-import { TelegramService } from 'src/telegram/telegram.service';
-import { buildLocalAgentReportMessage } from './local-agent-report';
+import { assigneeKindLabel } from './task-assignee-kind';
 
 const TASK_INCLUDE = {
   assignee: {
@@ -28,20 +25,9 @@ const TASK_INCLUDE = {
   order: { select: { id: true, numberOrder: true } },
 } as const;
 
-function assigneeKindLabel(kind: EnumTaskAssigneeKind) {
-  if (kind === EnumTaskAssigneeKind.CODEX) return 'Codex';
-  if (kind === EnumTaskAssigneeKind.CLOUD_CODE) return 'Claude Code';
-  return 'сотрудник';
-}
-
 @Injectable()
 export class TasksService {
-  private readonly logger = new Logger(TasksService.name);
-
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly telegram?: TelegramService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   private async assertAssigneeExists(assigneeId: string) {
     const user = await this.prisma.user.findUnique({
@@ -335,172 +321,6 @@ export class TasksService {
       completedAt: isClosed ? new Date() : null,
       lastRemindedOn: isClosed ? undefined : null,
     };
-  }
-
-  private assertLocalAgentKind(kind: EnumTaskAssigneeKind) {
-    if (kind === EnumTaskAssigneeKind.USER) {
-      throw new BadRequestException(
-        'Для сотрудника локальный агент недоступен.',
-      );
-    }
-  }
-
-  private async localAgentTask(id: string) {
-    const task = await this.prisma.task.findUnique({
-      where: { id },
-      include: TASK_INCLUDE,
-    });
-    if (!task) throw new NotFoundException('Задача не найдена.');
-    return task;
-  }
-
-  async findLocalAgentQueue(kind: EnumTaskAssigneeKind) {
-    this.assertLocalAgentKind(kind);
-    return this.prisma.task.findMany({
-      where: { assigneeKind: kind, status: EnumTaskStatus.OPEN },
-      include: TASK_INCLUDE,
-      orderBy: { createdAt: 'asc' },
-      take: 10,
-    });
-  }
-
-  async recoverStaleLocalAgentTasks(kind: EnumTaskAssigneeKind) {
-    this.assertLocalAgentKind(kind);
-    const staleBefore = new Date(Date.now() - 10 * 60_000);
-    const recovered = await this.prisma.task.updateMany({
-      where: {
-        assigneeKind: kind,
-        status: EnumTaskStatus.IN_PROGRESS,
-        OR: [
-          { agentLastHeartbeatAt: null },
-          { agentLastHeartbeatAt: { lt: staleBefore } },
-        ],
-      },
-      data: {
-        status: EnumTaskStatus.OPEN,
-        completedAt: null,
-        agentLastHeartbeatAt: null,
-        agentSummary:
-          'Предыдущий запуск агента прервался. Задача возвращена в очередь.',
-      },
-    });
-    return { recovered: recovered.count };
-  }
-
-  async claimLocalAgentTask(id: string, kind: EnumTaskAssigneeKind) {
-    this.assertLocalAgentKind(kind);
-    const agentName = assigneeKindLabel(kind);
-    const claimed = await this.prisma.task.updateMany({
-      where: { id, assigneeKind: kind, status: EnumTaskStatus.OPEN },
-      data: {
-        status: EnumTaskStatus.IN_PROGRESS,
-        completedAt: null,
-        lastRemindedOn: null,
-        agentLastHeartbeatAt: new Date(),
-        agentSummary: `${agentName} получил задачу и начал работу.`,
-      },
-    });
-    if (!claimed.count) {
-      throw new ConflictException('Задача уже забрана или недоступна агенту.');
-    }
-    return this.localAgentTask(id);
-  }
-
-  async noteLocalAgentTask(
-    id: string,
-    kind: EnumTaskAssigneeKind,
-    summary: string,
-  ) {
-    this.assertLocalAgentKind(kind);
-    const updated = await this.prisma.task.updateMany({
-      where: {
-        id,
-        assigneeKind: kind,
-        status: { in: [EnumTaskStatus.OPEN, EnumTaskStatus.IN_PROGRESS] },
-      },
-      data: { agentSummary: summary.trim() },
-    });
-    if (!updated.count)
-      throw new NotFoundException('Задача агента не найдена.');
-    return this.localAgentTask(id);
-  }
-
-  async heartbeatLocalAgentTask(
-    id: string,
-    kind: EnumTaskAssigneeKind,
-    summary: string,
-  ) {
-    this.assertLocalAgentKind(kind);
-    const updated = await this.prisma.task.updateMany({
-      where: { id, assigneeKind: kind, status: EnumTaskStatus.IN_PROGRESS },
-      data: { agentSummary: summary.trim(), agentLastHeartbeatAt: new Date() },
-    });
-    if (!updated.count) {
-      throw new NotFoundException('Активная задача агента не найдена.');
-    }
-    return this.localAgentTask(id);
-  }
-
-  async completeLocalAgentTask(
-    id: string,
-    kind: EnumTaskAssigneeKind,
-    summary: string,
-  ) {
-    this.assertLocalAgentKind(kind);
-    const updated = await this.prisma.task.updateMany({
-      where: { id, assigneeKind: kind, status: EnumTaskStatus.IN_PROGRESS },
-      data: {
-        status: EnumTaskStatus.DONE,
-        completedAt: new Date(),
-        agentSummary: summary.trim(),
-        agentLastHeartbeatAt: new Date(),
-      },
-    });
-    if (!updated.count) {
-      throw new NotFoundException('Активная задача агента не найдена.');
-    }
-    const task = await this.localAgentTask(id);
-    await this.notifyLocalAgentReport(task, summary, 'done');
-    return task;
-  }
-
-  async failLocalAgentTask(
-    id: string,
-    kind: EnumTaskAssigneeKind,
-    summary: string,
-  ) {
-    this.assertLocalAgentKind(kind);
-    const updated = await this.prisma.task.updateMany({
-      where: { id, assigneeKind: kind, status: EnumTaskStatus.IN_PROGRESS },
-      data: {
-        status: EnumTaskStatus.CANCELLED,
-        completedAt: new Date(),
-        agentSummary: summary.trim(),
-        agentLastHeartbeatAt: new Date(),
-      },
-    });
-    if (!updated.count) {
-      throw new NotFoundException('Активная задача агента не найдена.');
-    }
-    const task = await this.localAgentTask(id);
-    await this.notifyLocalAgentReport(task, summary, 'failed');
-    return task;
-  }
-
-  private async notifyLocalAgentReport(
-    task: Awaited<ReturnType<TasksService['localAgentTask']>>,
-    summary: string,
-    status: 'done' | 'failed',
-  ) {
-    if (!this.telegram) return;
-    const sent = await this.telegram.sendToGroup(
-      buildLocalAgentReportMessage(task, summary, status),
-    );
-    if (!sent) {
-      this.logger.warn(
-        `Local agent report was not delivered to Telegram: ${task.id}`,
-      );
-    }
   }
 
   async remove(id: string) {
