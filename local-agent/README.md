@@ -40,7 +40,9 @@ node .\local-agent\dispatcher.mjs --once
 powershell -ExecutionPolicy Bypass -File .\local-agent\install-windows-task.ps1
 ```
 
-Задание Windows называется `CRM Local Code Agents`. Проверить его можно в
+Задание Windows называется `CRM Local Code Agents`. Оно запускается при входе
+и каждые пять минут проверяет, жив ли процесс; параллельные экземпляры запрещены.
+Проверить его можно в
 «Планировщике заданий» или командой:
 
 ```powershell

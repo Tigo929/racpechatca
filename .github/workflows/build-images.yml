@@ -23,6 +23,12 @@ on:
     # опять перезаписал бы прод кодом до слияния. Нужна выкатка с ветки —
     # заводите ей отдельный тег, а не общий `:latest`.
     branches: [master]
+    # Эти файлы не входят ни в backend-, ни во frontend-образ. Их изменение
+    # не должно зря пересобирать и перезапускать production.
+    paths-ignore:
+      - 'local-agent/**'
+      - 'docs/**'
+      - 'AGENTS.md'
   workflow_dispatch:
 
 env:
