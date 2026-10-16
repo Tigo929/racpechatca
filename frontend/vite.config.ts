@@ -26,6 +26,7 @@ export default defineConfig({
         '/expenses',
         '/tasks',
         '/scenarios',
+        '/ai',
         '/avito',
         '/marketplace',
         '/canvas',

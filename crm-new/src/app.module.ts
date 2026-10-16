@@ -11,6 +11,7 @@ import { ExpensesModule } from './expenses/expenses.module';
 import { PartnerModule } from './partner/partner.module';
 import { PartnerSettingsModule } from './partner/partner-settings.module';
 import { TasksModule } from './tasks/tasks.module';
+import { AiModule } from './ai/ai.module';
 import { ScenarioModule } from './scenarios/scenario.module';
 import { AvitoModule } from './avito/avito.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
@@ -52,6 +53,7 @@ import { HealthController } from './health.controller';
     PartnerModule,
     PartnerSettingsModule,
     TasksModule,
+    AiModule,
     AvitoModule,
     MarketplaceModule,
     ScenarioModule,

@@ -65,6 +65,10 @@ services:
       # Общий секрет с сайтом: по нему CRM просит удалить фотографии
       # заказа, когда он отгружен. Пусто — CRM никуда не ходит.
       SITE_PHOTOS_CLEANUP_TOKEN: ${SITE_PHOTOS_CLEANUP_TOKEN:-}
+      # Вкладка «ИИ»: шлюз агента во внутренней сети. Пусто — вкладка
+      # отвечает «не настроено», а не открывает дверь без пароля.
+      AI_GATEWAY_URL: ${AI_GATEWAY_URL:-http://ai-gateway:8010}
+      AI_GATEWAY_TOKEN: ${AI_GATEWAY_TOKEN:-}
       TELEGRAM_DAILY_PLAN_CHAT_ID: ${TELEGRAM_DAILY_PLAN_CHAT_ID:--1003723576278}
       TELEGRAM_DAILY_PLAN_THREAD_ID: ${TELEGRAM_DAILY_PLAN_THREAD_ID:-10870}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}

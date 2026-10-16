@@ -24,6 +24,10 @@ const ReportsPage = lazy(() =>
 const AnalyticsPage = lazy(() =>
   import('./pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })),
 );
+// Разговор с ИИ-агентом: отдельный чанк, страницу открывают редко.
+const AiPage = lazy(() =>
+  import('./pages/AiPage').then((m) => ({ default: m.AiPage })),
+);
 // Модуль за флагом features.printDesigner — грузим лениво, отдельным чанком.
 const PrintDesignerPage = lazy(
   () => import('./features/print-designer/PrintDesignerPage'),
@@ -122,6 +126,9 @@ function AppRoutes() {
         <Route path="/crm/reports" element={<CrmGate><AdminRoute><ReportsPage /></AdminRoute></CrmGate>} />
         <Route path="/crm/analytics" element={<CrmGate><AdminRoute><AnalyticsPage /></AdminRoute></CrmGate>} />
         <Route path="/crm/settings" element={<CrmGate><AdminRoute><SettingsPage /></AdminRoute></CrmGate>} />
+        {/* Агент отвечает по всей базе — выручка, зарплаты, себестоимость,
+            — поэтому только администратор. */}
+        <Route path="/crm/ai" element={<CrmGate><AdminRoute><AiPage /></AdminRoute></CrmGate>} />
         {/* Доступы к кабинетам площадок — «ключи от кассы», поэтому только админ.
             Площадка и раздел живут в адресе: на них можно дать ссылку, работает
             «назад», и обновление страницы не сбрасывает выбор. */}

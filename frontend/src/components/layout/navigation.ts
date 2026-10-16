@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Bell,
+  Bot,
   LineChart,
   Camera,
   CheckSquare,
@@ -130,6 +131,9 @@ export const NAV_GROUPS: NavGroup[] = [
       // Дашборд руководителя (аналитика сайта и CRM). Сервер может выключить
       // раздел флагом ANALYTICS_DASHBOARD_ENABLED — тогда страница так и скажет.
       { to: '/crm/analytics', label: 'Аналитика', icon: LineChart, roles: ADMIN },
+      // Разговор с агентом: он читает базу и код проектов и объясняет,
+      // как система работает на самом деле.
+      { to: '/crm/ai', label: 'ИИ-агент', icon: Bot, roles: ADMIN },
       { to: '/crm/users', label: 'Сотрудники', icon: Users, roles: ADMIN },
       { to: '/crm/settings', label: 'Настройки', icon: Settings, roles: ADMIN },
     ],
