@@ -16,6 +16,7 @@ import {
   Download,
 } from "lucide-react";
 import { archiveUrlNamedBy, photosArchiveUrl } from "./photos-archive";
+import { WaitingBadge } from "./WaitingBadge";
 import { usersApi } from "../../api/users";
 import { DELIVERY_LABELS, SOURCE_ORDER_LABELS } from "../../constants";
 import { displayOrderNumber, marketplaceNumber } from "../../utils/order-number";
@@ -620,6 +621,9 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                       <Flame size={11} aria-hidden="true" /> Срочно
                     </span>
                   )}
+                  {/* Сколько человек ждёт ответа на заявку. Исчезает,
+                      как только заявку приняли в работу. */}
+                  <WaitingBadge order={order} size="md" />
                   {(() => {
                     const stalled = getStalledDays(order);
                     return stalled === null ? null : (

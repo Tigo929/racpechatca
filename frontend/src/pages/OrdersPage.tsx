@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { Search, ChevronLeft, ChevronRight, Flame, Clock, Camera, Shirt, Image, Star, AlarmClock, Plus } from 'lucide-react';
 import { getDeadlineInfo, tracksDeadline } from '../utils/deadline';
 import { getStalledDays } from '../utils/stalled';
+import { WaitingBadge } from '../components/orders/WaitingBadge';
 import { ordersApi } from '../api/orders';
 import { StatusBadge, statusStripe } from '../components/ui/StatusBadge';
 import { Modal } from '../components/ui/Modal';
@@ -418,6 +419,9 @@ export function OrdersPage({ section }: Props) {
                       <span className="tabular-nums">
                         {new Date(order.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                       </span>
+                      {/* Дата одинакова у заявки десятиминутной давности и
+                          у вчерашней — ожидание показываем отдельно. */}
+                      <WaitingBadge order={order} />
                     </div>
                     <div className="flex items-center justify-between gap-2 mt-1.5">
                       <div className="flex items-center gap-2 text-xs">
@@ -540,7 +544,14 @@ export function OrdersPage({ section }: Props) {
                         </div>
                       </td>
                       <td className="px-5 py-3.5 text-sm text-gray-500 tabular-nums">
-                        {new Date(order.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                        <div className="flex flex-col items-start gap-1">
+                          <span>
+                            {new Date(order.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                          </span>
+                          {/* Сколько заявка ждёт ответа: первые минуты
+                              решают, останется ли заказ нашим. */}
+                          <WaitingBadge order={order} />
+                        </div>
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-1.5 flex-wrap">
