@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { photosArchiveUrl } from './photos-archive';
+import { archiveUrlNamedBy, photosArchiveUrl } from './photos-archive';
 
 /**
  * Откуда берётся ссылка на фотографии клиента.
@@ -43,5 +43,26 @@ describe('ссылка на фотографии заказа', () => {
 
   it('в примечании не ссылка — кнопку не рисуем', () => {
     expect(photosArchiveUrl({ note: 'Архив фото: уточнить у клиента' })).toBeNull();
+  });
+});
+
+describe('имя скачиваемого архива', () => {
+  it('к ссылке добавляется номер заказа', () => {
+    // Сайт номера не знает — заказ заводит CRM уже после заявки.
+    expect(
+      archiveUrlNamedBy('https://site/api/leads/archive/session/x?token=1', '20261016-5'),
+    ).toBe('https://site/api/leads/archive/session/x?token=1&name=20261016-5');
+  });
+
+  it('у ссылки без параметров — первым параметром', () => {
+    expect(archiveUrlNamedBy('https://site/archive', '12')).toBe(
+      'https://site/archive?name=12',
+    );
+  });
+
+  it('номера нет — ссылку не трогаем', () => {
+    expect(archiveUrlNamedBy('https://site/archive', null)).toBe(
+      'https://site/archive',
+    );
   });
 });

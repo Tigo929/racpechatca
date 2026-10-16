@@ -15,7 +15,7 @@ import {
   AlarmClock,
   Download,
 } from "lucide-react";
-import { photosArchiveUrl } from "./photos-archive";
+import { archiveUrlNamedBy, photosArchiveUrl } from "./photos-archive";
 import { usersApi } from "../../api/users";
 import { DELIVERY_LABELS, SOURCE_ORDER_LABELS } from "../../constants";
 import { displayOrderNumber, marketplaceNumber } from "../../utils/order-number";
@@ -519,7 +519,12 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
 
   // Ссылка на фотографии клиента: у новых заказов полем, у заведённых
   // раньше — строкой в примечании (колонка появилась позже).
-  const archiveUrl = photosArchiveUrl(order);
+  // Скачиваться архив должен под номером заказа: по нему печатник его
+  // и ищет в «Загрузках».
+  const archiveUrl = (() => {
+    const url = photosArchiveUrl(order);
+    return url ? archiveUrlNamedBy(url, order.numberOrder) : null;
+  })();
 
   const techSpecPaths =
     order.techSpecPhotoPaths && order.techSpecPhotoPaths.length > 0

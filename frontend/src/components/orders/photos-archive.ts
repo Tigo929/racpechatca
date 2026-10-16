@@ -24,3 +24,17 @@ export function photosArchiveUrl(order: {
   // отдаём браузеру как есть.
   return /^https?:\/\//i.test(fromNote) ? fromNote : null;
 }
+
+/**
+ * Та же ссылка, но архив скачается под номером заказа.
+ *
+ * Сайт номера не знает: заказ заводит CRM уже после заявки. В папке
+ * «Загрузки» у печатника десятки архивов, и photos-49caa9c7.zip среди них
+ * не значит ничего — номер единственное, по чему файл узнают.
+ */
+export function archiveUrlNamedBy(url: string, numberOrder?: string | null): string {
+  const name = (numberOrder ?? '').trim();
+  if (!name) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}name=${encodeURIComponent(name)}`;
+}
