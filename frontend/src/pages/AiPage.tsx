@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { CornerDownLeft, Loader2, Send, Wrench } from 'lucide-react';
 import { AppShell } from '../components/layout/AppShell';
 import { aiApi, type AiAnswer } from '../api/ai';
+import { AnswerMarkdown } from '../components/ai/AnswerMarkdown';
 import { getErrorMessage } from '../utils/get-error-message';
 
 /**
@@ -121,7 +122,14 @@ export function AiPage() {
                   : 'max-w-[92%] rounded-2xl rounded-bl-sm bg-gray-50 px-4 py-3 text-sm text-gray-800'
               }
             >
-              <p className="whitespace-pre-wrap break-words">{line.text}</p>
+              {line.role === 'you' ? (
+                <p className="whitespace-pre-wrap break-words">{line.text}</p>
+              ) : (
+                /* Ответ агента — с разметкой: он отвечает таблицами,
+                   списками и путями к файлам, и как сплошной текст это
+                   приходится расшифровывать глазами. */
+                <AnswerMarkdown text={line.text} />
+              )}
               {line.tools && line.tools.length > 0 && (
                 /* Чем пользовался агент — это и есть проверяемость ответа. */
                 <p className="mt-2 flex items-center gap-1 text-[11px] text-gray-400">
