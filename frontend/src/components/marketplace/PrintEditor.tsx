@@ -138,7 +138,9 @@ export function ColorGroupRow({
    * пользователя, а достройка умолчания; при отказе сети остаётся кнопка.
    */
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
   useEffect(() => {
     if (group.colorDictionaryValueId || !group.colorCode) return;
     const preset = COLOR_PRESETS.find((c) => c.code === group.colorCode);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Shirt, Info, Truck, Send } from 'lucide-react';
@@ -36,10 +36,8 @@ function ShipmentLeadCard() {
     staleTime: 60_000,
   });
 
-  const [selected, setSelected] = useState<string>('');
-  useEffect(() => {
-    setSelected(lead?.userId ?? '');
-  }, [lead]);
+  const [selectedOverride, setSelectedOverride] = useState<string | null>(null);
+  const selected = selectedOverride ?? lead?.userId ?? '';
 
   // Старшим может быть админ или менеджер по оформлению (кто ведёт отгрузки).
   const candidates = users.filter(
@@ -71,7 +69,7 @@ function ShipmentLeadCard() {
         <select
           className={`mt-1 ${field}`}
           value={selected}
-          onChange={(e) => setSelected(e.target.value)}
+          onChange={(e) => setSelectedOverride(e.target.value)}
         >
           <option value="">— не назначен —</option>
           {candidates.map((u) => (
@@ -252,10 +250,8 @@ export default function SettingsPage() {
     queryFn: partnerSettingsApi.get,
   });
 
-  const [form, setForm] = useState<FormState | null>(null);
-  useEffect(() => {
-    if (data) setForm(toForm(data));
-  }, [data]);
+  const [editedForm, setForm] = useState<FormState | null>(null);
+  const form = editedForm ?? (data ? toForm(data) : null);
 
   const save = useMutation({
     mutationFn: (patch: Partial<PartnerSettings>) => partnerSettingsApi.update(patch),
@@ -458,23 +454,26 @@ function Example({ thermal, blank, pct }: { thermal: number; blank: number; pct:
   const partnerProfit = Math.floor((margin * pct) / 100);
   const reward = partnerProfit + materials;
   const ownerProfit = price - reward;
-  const Row = ({ l, v, strong }: { l: string; v: string; strong?: boolean }) => (
-    <div className={`flex justify-between ${strong ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>
-      <span>{l}</span>
-      <span className="tabular-nums">{v}</span>
-    </div>
-  );
   return (
     <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 space-y-1.5 text-sm">
       <div className="flex items-center gap-2 mb-1">
         <Info size={15} className="text-indigo-500" aria-hidden="true" />
         <span className="font-semibold text-indigo-900">Пример: футболка {money(price)} (дизайн внутри цены — твоя прибыль)</span>
       </div>
-      <Row l={`Материалы (термо ${thermal} + футболка ${blank})`} v={money(materials)} />
-      <Row l="Делимая маржа (цена − дизайн − материалы)" v={money(margin)} />
-      <Row l={`Заработок партнёра (${pct}% маржи)`} v={money(partnerProfit)} />
-      <Row l="Плачу партнёру (заработок + материалы)" v={money(reward)} strong />
-      <Row l="Моя прибыль (дизайн + 70% маржи)" v={money(ownerProfit)} strong />
+      <ExampleRow label={`Материалы (термо ${thermal} + футболка ${blank})`} value={money(materials)} />
+      <ExampleRow label="Делимая маржа (цена − дизайн − материалы)" value={money(margin)} />
+      <ExampleRow label={`Заработок партнёра (${pct}% маржи)`} value={money(partnerProfit)} />
+      <ExampleRow label="Плачу партнёру (заработок + материалы)" value={money(reward)} strong />
+      <ExampleRow label="Моя прибыль (дизайн + 70% маржи)" value={money(ownerProfit)} strong />
+    </div>
+  );
+}
+
+function ExampleRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className={`flex justify-between ${strong ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>
+      <span>{label}</span>
+      <span className="tabular-nums">{value}</span>
     </div>
   );
 }

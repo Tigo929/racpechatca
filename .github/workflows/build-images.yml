@@ -28,11 +28,16 @@ on:
 env:
   REGISTRY: ghcr.io
 
+concurrency:
+  group: production-images-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # Тесты идут до сборки: сломанный код не должен доехать до реестра,
   # откуда сервер заберёт его автоматически.
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -58,6 +63,14 @@ jobs:
         working-directory: crm-new
         run: npm test
 
+      - name: Сборка бэкенда
+        working-directory: crm-new
+        run: npm run build
+
+      - name: Уязвимости бэкенда
+        working-directory: crm-new
+        run: npm audit --omit=dev --audit-level=high
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -72,6 +85,14 @@ jobs:
       - name: Тесты панели
         working-directory: frontend
         run: npm test
+
+      - name: Lint панели
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Уязвимости панели
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
 
       - uses: actions/setup-python@v5
         with:
@@ -100,6 +121,7 @@ jobs:
   build:
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write

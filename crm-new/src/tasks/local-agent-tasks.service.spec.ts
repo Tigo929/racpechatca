@@ -40,6 +40,20 @@ describe('TasksService local agent queue', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
+  it('returns stale in-progress tasks to the local queue', async () => {
+    task.updateMany.mockResolvedValue({ count: 2 });
+
+    await expect(
+      service.recoverStaleLocalAgentTasks(EnumTaskAssigneeKind.CODEX),
+    ).resolves.toEqual({ recovered: 2 });
+    expect(task.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ status: 'IN_PROGRESS' }),
+        data: expect.objectContaining({ status: 'OPEN' }),
+      }),
+    );
+  });
+
   it('sends the final agent report to the Telegram group on completion', async () => {
     const telegram = { sendToGroup: jest.fn().mockResolvedValue(true) };
     const serviceWithTelegram = new TasksService(
@@ -86,6 +100,11 @@ describe('TasksService local agent queue', () => {
       'Нужна проверка',
     );
 
+    expect(task.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'CANCELLED' }),
+      }),
+    );
     expect(telegram.sendToGroup).toHaveBeenCalledWith(
       expect.stringContaining('сообщил о проблеме'),
     );

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
@@ -58,15 +58,11 @@ export default function AvitoPage() {
     refetchInterval: 30_000,
   });
 
-  const chats = chatsQuery.data ?? [];
+  const chats = useMemo(() => chatsQuery.data ?? [], [chatsQuery.data]);
   const selected = useMemo(
     () => chats.find((chat) => chat.avitoChatId === selectedId) ?? chats[0],
     [chats, selectedId],
   );
-
-  useEffect(() => {
-    if (!selectedId && chats[0]) setSelectedId(chats[0].avitoChatId);
-  }, [chats, selectedId]);
 
   const messagesQuery = useQuery({
     queryKey: ['avito', 'messages', selected?.avitoChatId],

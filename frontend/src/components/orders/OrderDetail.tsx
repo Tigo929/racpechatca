@@ -1157,14 +1157,14 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 <Send size={13} aria-hidden="true" />
                 {sendTshirtTelegramMutation.isPending
                   ? "Отправка…"
-                  : (order as any).executorSentAt
+                  : order.executorSentAt
                     ? "Повторно отправить исполнителю"
                     : "Отправить заказ исполнителю"}
               </button>
             )}
           </div>
-          {(order as any).executorSentAt && (
-            <GulianSyncBlock orderId={order.id} order={order as any} />
+          {order.executorSentAt && (
+            <GulianSyncBlock orderId={order.id} order={order} />
           )}
         </div>
       )}
@@ -1175,7 +1175,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           payout={tshirtPayout}
           hasFreePositions={hasFreePositions}
           marketplace={marketplace}
-          isResend={(order as any).executorSentAt != null}
+          isResend={order.executorSentAt != null}
           isPending={sendTshirtTelegramMutation.isPending}
           onConfirm={() => { setShowDispatchModal(false); sendTshirtTelegramMutation.mutate(); }}
           onCancel={() => setShowDispatchModal(false)}

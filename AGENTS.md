@@ -1,93 +1,73 @@
-# AGENTS.md
+# Repository Guide
 
-This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
+This repository is a modular CRM monolith with a React frontend and a small set of
+separate runtime workers. Keep changes inside the owning feature whenever possible.
+
+## Workspace Map
+
+- `crm-new/` - NestJS API, Prisma schema, scheduled jobs, and business modules.
+- `frontend/` - React/Vite CRM application.
+- `crm-mcp/` - MCP integration used by external assistants.
+- `greeter/` - Telegram notification service.
+- `local-agent/` - laptop worker that claims CRM tasks and invokes Codex or Claude.
+- `deploy/` - production update and recovery scripts.
+- `docs/` - operational and architecture documentation.
+- `docker-compose.prod.yml` - production topology and resource limits.
 
 ## Commands
 
+Run commands from the relevant package directory.
+
 ```bash
-# Development
-npm run start:dev      # Start with watch mode
-npm run start:debug    # Start with debugger + watch
-
-# Build & production
+# Backend
+cd crm-new
+npm ci
 npm run build
-npm run start:prod     # Run from dist/
+npm test -- --runInBand
+npm run lint:check
 
-# Code quality
-npm run lint           # ESLint with auto-fix
-npm run format         # Prettier format
+# Frontend
+cd frontend
+npm ci
+npm run build
+npm test -- --runInBand
+npm run lint
 
-# Tests
-npm test               # Unit tests
-npm run test:watch
-npm run test:cov       # With coverage
-npm run test:e2e       # e2e tests (config: test/jest-e2e.json)
+# Local task worker
+cd local-agent
+node --check dispatcher.mjs
+node dispatcher.mjs --once
 ```
 
-## Architecture
+Backend lint currently includes legacy violations. Do not expand the lint debt in
+files you touch; use build and focused tests as the minimum backend gate until the
+baseline is cleaned up.
 
-NestJS 11 REST API (TypeScript) backed by PostgreSQL via Prisma ORM with the `PrismaPg` adapter.
+## Architecture Rules
 
-### Module structure
+- Keep the CRM as a modular monolith. Split deployment units only when independent
+  scaling, isolation, or ownership is demonstrated by production data.
+- Controllers handle transport and validation. Application services coordinate use
+  cases. Domain code owns business rules. Infrastructure code owns Prisma and remote
+  integrations.
+- Do not import another feature's controller, DTO implementation, or Prisma query.
+  Expose an application service or a small public contract instead.
+- Keep long-running work out of HTTP requests. Persist a job/task first, then process
+  it in a worker with retries, heartbeats, idempotency, and an audit trail.
+- Never trust client-computed prices, totals, statuses, permissions, or assignees.
+- Do not edit generated Prisma files. Schema changes require a migration and a
+  compatibility plan for the currently deployed application.
+- External AI output is untrusted input. Validate its shape, cap execution time and
+  output size, and never expose credentials in prompts, logs, or task summaries.
+- The local code agent may edit only an explicitly configured workspace. It must not
+  deploy automatically unless a later policy adds tests, review, and rollback gates.
 
-Single feature module: `order-photo/` handles all business logic. There is no auth layer.
+## Verification
 
-```
-src/
-├── main.ts                     # Bootstrap; global ValidationPipe (whitelist, implicit conversion)
-├── app.module.ts               # Imports OrderPhotoModule
-├── order-photo/
-│   ├── order-photo.controller.ts   # REST routes
-│   ├── order-photo.service.ts      # Business logic + total recalculation
-│   ├── order-photo.module.ts
-│   └── dto/                        # class-validator DTOs
-├── prisma/
-│   └── prisma.service.ts           # PrismaClient with PrismaPg adapter
-└── utils/
-    ├── caculator-total-price.ts    # Computes totalOrder from items + delivery
-    └── full-date.ts                # Formats orderNumber as YYYYMMDD-{seq}
-```
+- Add focused tests for changed behavior and regression tests for fixed defects.
+- Run package builds and tests before pushing.
+- For deployment changes, validate shell syntax and `docker compose config`.
+- Preserve unrelated local changes and never rewrite production history.
+- Confirm `/health` after deployment and compare its commit SHA with the pushed SHA.
 
-### Data model
-
-**OrderPhoto** — the main order record. Key fields:
-- `numberOrder`: auto-generated unique identifier (YYYYMMDD-sequential)
-- `sourceOrder`: `AVITO | OZON | WB | LOCAL`
-- `communicationPlatform`: `AVITO | TELEGRAM | MAX | OZON`
-- `deliveryMethod`: `YANDEX_PVZ | OZON_PVZ | PICKUP | OZON_SELLER | WB_SELLER`
-- `status`: `NEW | FOLDER_STRUCTURE_CREATED | PRINTED | READY | SENT | PAID` (default: NEW)
-- `totalOrder`: recalculated automatically on every item mutation
-- `items`: relation to ItemPhoto (CASCADE delete)
-
-**ItemPhoto** — line items within an order:
-- `formatPaper`: `SIZE_10X15 | POLAROID | INSTAX`
-- `typePaper`: `GLOSS | MATTE`
-- `pricePosition`: auto-computed as `price × quantity`
-
-### API routes (prefix: `/order-photo`)
-
-| Method | Path | Action |
-|--------|------|--------|
-| POST | `/order-photo` | Create order with items |
-| GET | `/order-photo` | List orders (pagination, filter by status/sourceOrder) |
-| GET | `/order-photo/:idOrder` | Get order with items |
-| PATCH | `/order-photo/:idOrder` | Update order fields |
-| PATCH | `/order-photo/:idOrder/status` | Update status only |
-| DELETE | `/order-photo/:idOrder` | Delete order (cascades items) |
-| POST | `/order-photo/:idOrder/items` | Add item to existing order |
-| GET | `/order-photo/items/:idItem` | Get item |
-| PATCH | `/order-photo/items/:idItem` | Update item |
-| DELETE | `/order-photo/items/:idItem` | Delete item |
-
-### Key behaviors
-
-- `totalOrder` and `pricePosition` are always recalculated server-side — never trust client-supplied totals.
-- `ValidationPipe` with `whitelist: true` strips unknown fields from all request bodies.
-- `enableImplicitConversion: true` coerces query-string primitives to their declared types.
-- Prisma `generated/prisma/` is auto-generated — do not edit manually.
-
-## Environment
-
-Required in `.env`:
-- `DATABASE_URL` — PostgreSQL connection string (`postgresql://user:pass@host:port/db`)
-- `PORT` — server port (defaults to 3000)
+See `docs/ARCHITECTURE_TARGET.md` for the target module layout and migration order.

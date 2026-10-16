@@ -26,6 +26,12 @@ export class LocalAgentTasksController {
     return this.tasksService.findLocalAgentQueue(query.assigneeKind);
   }
 
+  /** Возвращает в очередь задачи, брошенные после перезапуска ноутбука. */
+  @Post('recover')
+  recover(@Body() dto: DtoLocalAgentTaskAction) {
+    return this.tasksService.recoverStaleLocalAgentTasks(dto.assigneeKind);
+  }
+
   @Post(':id/claim')
   claim(@Param('id') id: string, @Body() dto: DtoLocalAgentTaskAction) {
     return this.tasksService.claimLocalAgentTask(id, dto.assigneeKind);
@@ -33,7 +39,11 @@ export class LocalAgentTasksController {
 
   @Patch(':id/note')
   note(@Param('id') id: string, @Body() dto: DtoLocalAgentTaskReport) {
-    return this.tasksService.noteLocalAgentTask(id, dto.assigneeKind, dto.summary);
+    return this.tasksService.noteLocalAgentTask(
+      id,
+      dto.assigneeKind,
+      dto.summary,
+    );
   }
 
   @Patch(':id/heartbeat')
@@ -56,6 +66,10 @@ export class LocalAgentTasksController {
 
   @Patch(':id/fail')
   fail(@Param('id') id: string, @Body() dto: DtoLocalAgentTaskReport) {
-    return this.tasksService.failLocalAgentTask(id, dto.assigneeKind, dto.summary);
+    return this.tasksService.failLocalAgentTask(
+      id,
+      dto.assigneeKind,
+      dto.summary,
+    );
   }
 }

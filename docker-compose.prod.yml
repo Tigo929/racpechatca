@@ -2,6 +2,8 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: always
+    mem_limit: 384m
+    pids_limit: 150
     environment:
       POSTGRES_DB: crm
       POSTGRES_USER: crm_user
@@ -15,6 +17,9 @@ services:
       retries: 5
     networks:
       - internal
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
 
   backend:
     # Образ собирает GitHub Actions, сервер только скачивает: сборка здесь
@@ -27,6 +32,8 @@ services:
     # ветка сайта подменила боевой образ.
     image: ghcr.io/tigo929/racpechatca-backend:production
     restart: always
+    mem_limit: 640m
+    pids_limit: 250
     depends_on:
       postgres:
         condition: service_healthy
@@ -144,6 +151,9 @@ services:
       start_period: 45s
     command: >
       sh -c "npx prisma migrate deploy && node dist/src/main"
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
 
   # Первое сообщение клиенту, оставившему заявку с телеграмом.
   #
@@ -156,6 +166,8 @@ services:
   greeter:
     build: ./greeter
     restart: always
+    mem_limit: 192m
+    pids_limit: 100
     depends_on:
       backend:
         condition: service_healthy
@@ -189,6 +201,8 @@ services:
     # на сервер отдельным скриптом. Метка `production` — как у backend.
     image: ghcr.io/tigo929/racpechatca-frontend:production
     restart: always
+    mem_limit: 128m
+    pids_limit: 100
     ports:
       - "80:80"
       - "443:443"
@@ -210,6 +224,9 @@ services:
       retries: 5
     networks:
       - internal
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
 
 volumes:
   pgdata:

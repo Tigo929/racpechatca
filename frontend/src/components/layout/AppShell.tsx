@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { LogOut, Menu, MoreHorizontal, Printer, RefreshCw, X } from 'lucide-react';
@@ -74,9 +74,6 @@ export function AppShell({
   // а «сроки горят», и разница должна быть видна из любого раздела.
   const tasksOverdue = (taskCount?.overdue ?? 0) > 0;
 
-  // Переход между разделами закрывает мобильное меню.
-  useEffect(() => setDrawerOpen(false), [pathname]);
-
   const maxW = width === 'narrow' ? 'max-w-3xl' : 'max-w-7xl';
 
   return (
@@ -98,6 +95,7 @@ export function AppShell({
           pathname={pathname}
           user={user}
           onLogout={logout}
+          onNavigate={() => setDrawerOpen(false)}
           onClose={() => setDrawerOpen(false)}
         />
       )}
@@ -175,6 +173,7 @@ interface NavProps {
   pathname: string;
   user: { username: string; role: string } | null;
   onLogout: () => void;
+  onNavigate?: () => void;
 }
 
 function Brand() {
@@ -193,7 +192,7 @@ function Brand() {
   );
 }
 
-function NavList({ groups, badges, tasksOverdue, pathname }: Omit<NavProps, 'user' | 'onLogout'>) {
+function NavList({ groups, badges, tasksOverdue, pathname, onNavigate }: Omit<NavProps, 'user' | 'onLogout'>) {
   return (
     <nav className="flex-1 overflow-y-auto px-2 pb-4 space-y-5">
       {groups.map((group) => (
@@ -209,6 +208,7 @@ function NavList({ groups, badges, tasksOverdue, pathname }: Omit<NavProps, 'use
                 active={pathname === item.to}
                 badge={item.badge ? badges[item.badge] : 0}
                 danger={item.badge === 'tasks' && tasksOverdue}
+                onNavigate={onNavigate}
               />
             ))}
           </div>
@@ -218,12 +218,14 @@ function NavList({ groups, badges, tasksOverdue, pathname }: Omit<NavProps, 'use
   );
 }
 
-function NavLink({ item, active, badge, danger }: {
+function NavLink({ item, active, badge, danger, onNavigate }: {
   item: NavItem; active: boolean; badge: number; danger: boolean;
+  onNavigate?: () => void;
 }) {
   return (
     <Link
       to={item.to}
+      onClick={onNavigate}
       aria-current={active ? 'page' : undefined}
       className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
         active

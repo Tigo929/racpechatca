@@ -132,8 +132,13 @@ describe('auto-update и compose: детерминированная выкла�
     expect(script).toMatch(/org\.opencontainers\.image\.revision/);
     expect(script).toMatch(/"build":"/);
     expect(script).toMatch(
-      /verify_build "\$container" "\$image" "\$health_url" \|\| failed=\$\(\(failed \+ 1\)\)/,
+      /if \[ "\$ok" = 1 \] && verify_build "\$container" "\$image" "\$health_url"; then/,
     );
+    expect(script).toMatch(/rollback_service\(\)/);
+    expect(script).toMatch(
+      /rollback_service "\$dir" "\$compose" "\$svc" "\$container" "\$image" "\$running"/,
+    );
+    expect(script).toMatch(/\[ "\$failed" -eq 0 \] \|\| exit 1/);
     // health-адреса заданы там, где ответ содержит build: CRM backend и web сайта
     expect(script).toMatch(
       /raspechatka-backend-1\|[^|]+\|http:\/\/127\.0\.0\.1:3000\/health/,

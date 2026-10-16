@@ -168,6 +168,26 @@ release_lock() {
   LOCK_HELD=""
 }
 
+rollback_service() {
+  local dir="$1" compose="$2" svc="$3" container="$4" image="$5" previous="$6"
+  [ "$previous" != "none" ] || return 1
+  log "Откат $svc на предыдущий образ $previous"
+  docker image tag "$previous" "$image" >/dev/null 2>&1 || return 1
+  (cd "$dir" && docker compose -f "$compose" up -d --force-recreate --no-deps "$svc" >/dev/null 2>&1) || return 1
+
+  local state
+  for _ in $(seq 1 30); do
+    state=$(docker inspect -f '{{.State.Status}}:{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container" 2>/dev/null || echo "missing:none")
+    case "$state" in
+      running:healthy|running:none) log "Откат $svc завершён"; return 0 ;;
+      restarting:*|exited:*) break ;;
+    esac
+    sleep 5
+  done
+  log "ОШИБКА: предыдущая версия $svc тоже не поднялась"
+  return 1
+}
+
 main() {
   exec >>"$LOG" 2>&1
 
@@ -225,13 +245,13 @@ main() {
       sleep 5
     done
 
-    if [ "$ok" = 1 ]; then
+    if [ "$ok" = 1 ] && verify_build "$container" "$image" "$health_url"; then
       log "Готово: $svc обновлён и здоров"
       updated=$((updated + 1))
-      verify_build "$container" "$image" "$health_url" || failed=$((failed + 1))
     else
-      log "ВНИМАНИЕ: $svc не поднялся здоровым после обновления (состояние $state)"
+      log "ОШИБКА: $svc не прошёл проверку после обновления (состояние $state)"
       failed=$((failed + 1))
+      rollback_service "$dir" "$compose" "$svc" "$container" "$image" "$running" || failed=$((failed + 1))
     fi
   done
 
@@ -303,6 +323,7 @@ main() {
   [ "$updated" -gt 0 ] && docker image prune -f >/dev/null 2>&1
 
   [ "$updated" -gt 0 ] || [ "$failed" -gt 0 ] && log "Итог: обновлено $updated, ошибок $failed"
+  [ "$failed" -eq 0 ] || exit 1
   exit 0
 }
 

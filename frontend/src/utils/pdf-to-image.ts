@@ -114,7 +114,8 @@ export async function pdfFirstPageToImage(
 
   stage('read');
   const data = await file.arrayBuffer();
-  const doc = await pdfjs.getDocument({ data }).promise;
+  const loadingTask = pdfjs.getDocument({ data });
+  const doc = await loadingTask.promise;
   try {
     const page = await doc.getPage(1);
     stage('render');
@@ -159,6 +160,6 @@ export async function pdfFirstPageToImage(
       type: format === 'png' ? 'image/png' : 'image/webp',
     });
   } finally {
-    await doc.destroy().catch(() => undefined);
+    await loadingTask.destroy().catch(() => undefined);
   }
 }

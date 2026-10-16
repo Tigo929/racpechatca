@@ -364,6 +364,29 @@ export class TasksService {
     });
   }
 
+  async recoverStaleLocalAgentTasks(kind: EnumTaskAssigneeKind) {
+    this.assertLocalAgentKind(kind);
+    const staleBefore = new Date(Date.now() - 10 * 60_000);
+    const recovered = await this.prisma.task.updateMany({
+      where: {
+        assigneeKind: kind,
+        status: EnumTaskStatus.IN_PROGRESS,
+        OR: [
+          { agentLastHeartbeatAt: null },
+          { agentLastHeartbeatAt: { lt: staleBefore } },
+        ],
+      },
+      data: {
+        status: EnumTaskStatus.OPEN,
+        completedAt: null,
+        agentLastHeartbeatAt: null,
+        agentSummary:
+          'Предыдущий запуск агента прервался. Задача возвращена в очередь.',
+      },
+    });
+    return { recovered: recovered.count };
+  }
+
   async claimLocalAgentTask(id: string, kind: EnumTaskAssigneeKind) {
     this.assertLocalAgentKind(kind);
     const agentName = assigneeKindLabel(kind);
@@ -446,7 +469,20 @@ export class TasksService {
     kind: EnumTaskAssigneeKind,
     summary: string,
   ) {
-    const task = await this.heartbeatLocalAgentTask(id, kind, summary);
+    this.assertLocalAgentKind(kind);
+    const updated = await this.prisma.task.updateMany({
+      where: { id, assigneeKind: kind, status: EnumTaskStatus.IN_PROGRESS },
+      data: {
+        status: EnumTaskStatus.CANCELLED,
+        completedAt: new Date(),
+        agentSummary: summary.trim(),
+        agentLastHeartbeatAt: new Date(),
+      },
+    });
+    if (!updated.count) {
+      throw new NotFoundException('Активная задача агента не найдена.');
+    }
+    const task = await this.localAgentTask(id);
     await this.notifyLocalAgentReport(task, summary, 'failed');
     return task;
   }
