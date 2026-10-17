@@ -4,6 +4,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { EnumRole } from 'src/generated/prisma/enums';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AiService, type AiAnswer } from './ai.service';
 import { DtoAskAi } from './dto/ask.dto';
 
@@ -35,7 +36,10 @@ export class AiController {
    */
   @Post('ask')
   @Throttle({ default: { ttl: 60_000, limit: 20 } })
-  ask(@Body() dto: DtoAskAi): Promise<AiAnswer> {
-    return this.ai.ask(dto.question, dto.session);
+  ask(
+    @Body() dto: DtoAskAi,
+    @CurrentUser() user: { id: string },
+  ): Promise<AiAnswer> {
+    return this.ai.ask(dto.question, dto.session, user.id);
   }
 }

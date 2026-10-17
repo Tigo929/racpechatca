@@ -1,20 +1,20 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { EnumTaskAssigneeKind } from 'src/generated/prisma/enums';
-import { TasksService } from './tasks.service';
+import { LocalAgentTaskService } from './local-agent-task.service';
 
-describe('TasksService local agent queue', () => {
+describe('LocalAgentTaskService', () => {
   const task = {
     findMany: jest.fn(),
     findUnique: jest.fn(),
     updateMany: jest.fn(),
   };
-  const service = new TasksService({ task } as never);
+  const service = new LocalAgentTaskService({ task } as never);
 
   beforeEach(() => jest.clearAllMocks());
 
   it('does not expose employee tasks through the agent queue', async () => {
     await expect(
-      service.findLocalAgentQueue(EnumTaskAssigneeKind.USER),
+      service.findQueue(EnumTaskAssigneeKind.USER),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -23,7 +23,7 @@ describe('TasksService local agent queue', () => {
     task.findUnique.mockResolvedValue({ id: 'task-1' });
 
     await expect(
-      service.claimLocalAgentTask('task-1', EnumTaskAssigneeKind.CODEX),
+      service.claim('task-1', EnumTaskAssigneeKind.CODEX),
     ).resolves.toEqual({ id: 'task-1' });
     expect(task.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -36,13 +36,27 @@ describe('TasksService local agent queue', () => {
   it('rejects a task already claimed by another process', async () => {
     task.updateMany.mockResolvedValue({ count: 0 });
     await expect(
-      service.claimLocalAgentTask('task-1', EnumTaskAssigneeKind.CODEX),
+      service.claim('task-1', EnumTaskAssigneeKind.CODEX),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('returns stale in-progress tasks to the local queue', async () => {
+    task.updateMany.mockResolvedValue({ count: 2 });
+
+    await expect(
+      service.recoverStale(EnumTaskAssigneeKind.CODEX),
+    ).resolves.toEqual({ recovered: 2 });
+    expect(task.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ status: 'IN_PROGRESS' }),
+        data: expect.objectContaining({ status: 'OPEN' }),
+      }),
+    );
   });
 
   it('sends the final agent report to the Telegram group on completion', async () => {
     const telegram = { sendToGroup: jest.fn().mockResolvedValue(true) };
-    const serviceWithTelegram = new TasksService(
+    const serviceWithTelegram = new LocalAgentTaskService(
       { task } as never,
       telegram as never,
     );
@@ -55,7 +69,7 @@ describe('TasksService local agent queue', () => {
     });
 
     await expect(
-      serviceWithTelegram.completeLocalAgentTask(
+      serviceWithTelegram.complete(
         'task-1',
         EnumTaskAssigneeKind.CODEX,
         'Готово',
@@ -68,7 +82,7 @@ describe('TasksService local agent queue', () => {
 
   it('sends a problem report to the Telegram group when the agent fails', async () => {
     const telegram = { sendToGroup: jest.fn().mockResolvedValue(true) };
-    const serviceWithTelegram = new TasksService(
+    const serviceWithTelegram = new LocalAgentTaskService(
       { task } as never,
       telegram as never,
     );
@@ -80,12 +94,17 @@ describe('TasksService local agent queue', () => {
       order: null,
     });
 
-    await serviceWithTelegram.failLocalAgentTask(
+    await serviceWithTelegram.fail(
       'task-1',
       EnumTaskAssigneeKind.CODEX,
       'Нужна проверка',
     );
 
+    expect(task.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'CANCELLED' }),
+      }),
+    );
     expect(telegram.sendToGroup).toHaveBeenCalledWith(
       expect.stringContaining('сообщил о проблеме'),
     );

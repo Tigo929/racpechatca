@@ -51,6 +51,9 @@ const NEUTRAL: Style = {
   mark: '•',
 };
 
+// Helper is intentionally colocated: component and external previews must share
+// exactly the same platform palette.
+// eslint-disable-next-line react-refresh/only-export-components
 export function platformStyle(platform: EnumCommunication): Style {
   return PLATFORM[platform] ?? NEUTRAL;
 }

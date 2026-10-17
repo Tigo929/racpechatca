@@ -46,6 +46,7 @@ const STATUS_STYLES: Record<EnumStatus, { bg: string; text: string; dot: string 
 /** Запасной цвет: статус, которого ещё нет в наборе, не должен «пропадать». */
 const NEUTRAL = { bg: 'bg-gray-50', text: 'text-gray-600', dot: 'bg-gray-400' };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function statusStyle(status: EnumStatus) {
   return STATUS_STYLES[status] ?? NEUTRAL;
 }
@@ -77,6 +78,7 @@ const STRIPE: Record<string, string> = {
   'bg-gray-400': 'border-l-gray-400',
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function statusStripe(status: EnumStatus): string {
   return STRIPE[statusStyle(status).dot] ?? 'border-l-gray-400';
 }

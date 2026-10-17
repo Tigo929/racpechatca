@@ -1,5 +1,5 @@
 import { createWriteStream } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
@@ -34,13 +34,25 @@ async function readConfig() {
 }
 
 const config = await readConfig();
-const BASE_URL = String(process.env.CRM_BASE_URL ?? config.crmBaseUrl ?? 'https://raspechatkaa.ru').replace(/\/$/, '');
+const BASE_URL = String(
+  process.env.CRM_BASE_URL ??
+    config.crmBaseUrl ??
+    'https://195-2-75-249.sslip.io',
+).replace(/\/$/, '');
 const AGENT_TOKEN = process.env.CRM_AGENT_TOKEN ?? config.crmAgentToken;
 const USERNAME = process.env.CRM_USERNAME ?? config.crmUsername;
 const PASSWORD = process.env.CRM_PASSWORD ?? config.crmPassword;
 const WORKING_DIRECTORY = path.resolve(process.env.LOCAL_AGENT_WORKDIR ?? config.workingDirectory ?? path.resolve(SCRIPT_DIR, '..'));
 const INTERVAL_MS = Math.max(5_000, Number(process.env.LOCAL_AGENT_INTERVAL_MS ?? config.pollIntervalMs ?? 15_000));
 const REQUEST_TIMEOUT_MS = Math.max(5_000, Number(process.env.LOCAL_AGENT_REQUEST_TIMEOUT_MS ?? config.requestTimeoutMs ?? 20_000));
+const EXECUTION_TIMEOUT_MS = Math.max(
+  60_000,
+  Number(
+    process.env.LOCAL_AGENT_EXECUTION_TIMEOUT_MS ??
+      config.executionTimeoutMs ??
+      2 * 60 * 60 * 1000,
+  ),
+);
 const CLAUDE_ENABLED = process.env.CLAUDE_ENABLED === 'true' || config.claudeEnabled === true;
 const ENABLED_AGENTS = new Set(
   String(process.env.CRM_AGENTS ?? config.agents ?? 'CODEX,CLOUD_CODE')
@@ -63,6 +75,57 @@ let token = '';
 let ticking = false;
 const running = new Set();
 const unavailableReported = new Set();
+const recoveredAgents = new Set();
+
+async function exists(file) {
+  try {
+    await access(file);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function newestCodexExecutable() {
+  if (process.platform !== 'win32' || !process.env.LOCALAPPDATA) return null;
+  const root = path.join(process.env.LOCALAPPDATA, 'OpenAI', 'Codex', 'bin');
+  let entries;
+  try {
+    entries = await readdir(root, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+
+  const candidates = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const executable = path.join(root, entry.name, 'codex.exe');
+    if (!(await exists(executable))) continue;
+    candidates.push({ executable, modifiedAt: (await stat(executable)).mtimeMs });
+  }
+  candidates.sort((left, right) => right.modifiedAt - left.modifiedAt);
+  return candidates[0]?.executable ?? null;
+}
+
+async function resolveExecutable(agent) {
+  const configured =
+    agent === 'CODEX'
+      ? process.env.CODEX_EXECUTABLE ?? config.codexExecutable
+      : process.env.CLAUDE_EXECUTABLE ?? config.claudeExecutable;
+
+  if (configured && path.isAbsolute(configured) && (await exists(configured))) {
+    return configured;
+  }
+
+  if (agent === 'CODEX') {
+    return (await newestCodexExecutable()) ?? configured ?? 'codex';
+  }
+  if (process.platform === 'win32' && process.env.APPDATA) {
+    const command = path.join(process.env.APPDATA, 'npm', 'claude.cmd');
+    if (await exists(command)) return command;
+  }
+  return configured ?? 'claude';
+}
 
 async function request(pathname, options = {}, retry = true) {
   const { signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS), ...requestOptions } = options;
@@ -130,20 +193,24 @@ async function prepareRun(task) {
   return { directory, prompt, promptFile, resultFile, logFile };
 }
 
-function commandFor(agent, run) {
+async function commandFor(agent, run) {
   if (agent === 'CODEX') {
     return {
-      executable: process.env.CODEX_EXECUTABLE ?? config.codexExecutable ?? 'codex',
+      executable: await resolveExecutable(agent),
       args: [
-        'exec', '--cd', WORKING_DIRECTORY, '--approve-for-me',
+        'exec', '--cd', WORKING_DIRECTORY, '--sandbox', 'workspace-write',
+        '--approve-for-me', '--color', 'never',
         '--output-last-message', run.resultFile, '-',
       ],
     };
   }
 
   return {
-    executable: process.env.CLAUDE_EXECUTABLE ?? config.claudeExecutable ?? 'claude',
-    args: ['-p', '--permission-mode', 'auto', '--output-format', 'text'],
+    executable: await resolveExecutable(agent),
+    args: [
+      '-p', '--permission-mode', 'auto', '--output-format', 'text',
+      '--no-session-persistence',
+    ],
   };
 }
 
@@ -154,9 +221,29 @@ function execute(command, run) {
       cwd: WORKING_DIRECTORY,
       windowsHide: true,
       shell: process.platform === 'win32' && !command.executable.toLowerCase().endsWith('.exe'),
+      env: {
+        ...process.env,
+        FORCE_COLOR: '0',
+        NO_COLOR: '1',
+        PYTHONUTF8: '1',
+      },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     let output = '';
+    let settled = false;
+
+    const stop = () => {
+      if (child.exitCode !== null) return;
+      if (process.platform === 'win32') {
+        spawn('taskkill.exe', ['/pid', String(child.pid), '/t', '/f'], {
+          windowsHide: true,
+          stdio: 'ignore',
+        });
+      } else {
+        child.kill('SIGTERM');
+      }
+    };
+    const timeout = setTimeout(stop, EXECUTION_TIMEOUT_MS);
 
     const record = (chunk, target) => {
       const text = chunk.toString();
@@ -172,10 +259,16 @@ function execute(command, run) {
       if (error.code !== 'EPIPE') logError('agent stdin:', error.message);
     });
     child.once('error', (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
       log.end();
       reject(error);
     });
     child.once('exit', (code, signal) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
       log.end();
       resolve({ code, signal, output });
     });
@@ -207,6 +300,29 @@ async function agentAction(id, action, assigneeKind, summary) {
   });
 }
 
+async function recoverAgentTasks(assigneeKind) {
+  if (!AGENT_TOKEN || recoveredAgents.has(assigneeKind)) return;
+  try {
+    const result = await request('/tasks-agent/recover', {
+      method: 'POST',
+      body: JSON.stringify({ assigneeKind }),
+    });
+    recoveredAgents.add(assigneeKind);
+    if (result.recovered > 0) {
+      log(`[${assigneeKind}] returned ${result.recovered} stale task(s) to the queue`);
+    }
+  } catch (error) {
+    // Совместимость на время выкладки: старый backend ещё не знает endpoint,
+    // но очередь новых задач должна продолжать работать.
+    if (String(error.message).includes('-> 404:')) {
+      recoveredAgents.add(assigneeKind);
+      log(`[${assigneeKind}] stale-task recovery is not deployed yet`);
+      return;
+    }
+    throw error;
+  }
+}
+
 async function resultSummary(task, run, execution) {
   let result = '';
   try {
@@ -231,7 +347,7 @@ async function handleTask(task) {
 
   try {
     const run = await prepareRun(task);
-    const command = commandFor(task.assigneeKind, run);
+    const command = await commandFor(task.assigneeKind, run);
     const agentName = task.assigneeKind === 'CODEX' ? 'Codex' : 'Claude Code';
     if (AGENT_TOKEN) {
       await agentAction(task.id, 'claim', task.assigneeKind);
@@ -305,6 +421,7 @@ async function tick() {
   try {
     if (!AGENT_TOKEN && !token) await login();
     for (const agent of ENABLED_AGENTS) {
+      await recoverAgentTasks(agent);
       const tasks = await request(
         AGENT_TOKEN
           ? `/tasks-agent?assigneeKind=${agent}`
@@ -336,11 +453,12 @@ async function runTick() {
 }
 
 await runTick();
-const timer = setInterval(runTick, INTERVAL_MS);
+const runOnce = process.argv.includes('--once');
+const timer = runOnce ? null : setInterval(runTick, INTERVAL_MS);
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
-    clearInterval(timer);
+    if (timer) clearInterval(timer);
     process.exitCode = 0;
   });
 }

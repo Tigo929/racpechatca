@@ -181,6 +181,14 @@ export interface OrderPhoto {
   partnerSyncStatus?: EnumPartnerSyncStatus | null;
   partnerSyncError?: string | null;
   partnerSyncAt?: string | null;
+  executorSentAt?: string | null;
+  gulianSyncStatus?: string | null;
+  gulianLastAttemptAt?: string | null;
+  gulianLastSyncedAt?: string | null;
+  gulianLastError?: string | null;
+  gulianSettlementOrderNumber?: string | null;
+  gulianPositionId?: number | null;
+  gulianAppliedRevision?: number | null;
   items: ItemPhoto[];
   tshirtItems: ItemTshirt[];
   canvasItems: ItemCanvas[];

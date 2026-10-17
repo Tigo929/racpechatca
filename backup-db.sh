@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Ежедневный бэкап CRM. Ставится в cron (0 3 * * *).
 #
 # Делает три вещи:
@@ -7,9 +7,9 @@
 #   3. выгрузку ТЗ-фото (том uploads) туда же.
 #
 # Локальная копия лежит рядом с базой, поэтому от потери сервера защищает
-# только облако. Если облако недоступно — локальный бэкап всё равно делается,
-# скрипт не падает, а пишет FAIL в лог.
-set -e
+# только облако. Ошибка облачной копии возвращает ненулевой код, чтобы cron
+# или systemd могли отправить оповещение, при этом локальный дамп сохраняется.
+set -Eeuo pipefail
 
 DIR=/opt/raspechatka/backups
 UPLOADS=/var/lib/docker/volumes/raspechatka_uploads/_data
@@ -23,11 +23,15 @@ log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG"; }
 mkdir -p "$DIR"
 TS=$(date +%Y%m%d_%H%M%S)
 FILE="$DIR/crm_$TS.sql.gz"
+TEMP_FILE="$FILE.part"
+trap 'rm -f "$TEMP_FILE"' EXIT
 
 # ── 1. Дамп базы ────────────────────────────────────────────────────────────
 # Пайп скрывает код возврата pg_dump: gzip отработает даже на пустом входе,
 # и молча появится «бэкап» в пару десятков байт. Поэтому проверяем размер.
-docker exec raspechatka-postgres-1 pg_dump -U crm_user -d crm | gzip > "$FILE"
+docker exec raspechatka-postgres-1 pg_dump -U crm_user -d crm | gzip > "$TEMP_FILE"
+gzip -t "$TEMP_FILE"
+mv "$TEMP_FILE" "$FILE"
 
 BYTES=$(stat -c %s "$FILE" 2>/dev/null || echo 0)
 if [ "$BYTES" -lt 1000 ]; then
@@ -46,16 +50,18 @@ log "OK дамп $FILE ($SIZE)"
 # Роль ключа — storage.uploader: загружать можно, удалять нельзя. Чистка
 # старого делается правилом жизненного цикла на стороне бакета.
 if ! command -v aws >/dev/null 2>&1; then
-  log "SKIP облако: aws-cli не установлен"
-  exit 0
+  log "FAIL облако: aws-cli не установлен"
+  exit 1
 fi
 
 S3="aws --profile $S3_PROFILE --endpoint-url $S3_ENDPOINT"
 
+FAILED=0
 if $S3 s3 cp "$FILE" "s3://$S3_BUCKET/db/$(basename "$FILE")" >/dev/null 2>&1; then
   log "OK облако db/$(basename "$FILE")"
 else
   log "FAIL облако: дамп не выгрузился"
+  FAILED=1
 fi
 
 # ── 3. ТЗ-фото ──────────────────────────────────────────────────────────────
@@ -67,7 +73,11 @@ if [ -d "$UPLOADS" ]; then
     log "OK облако techspec/ ($COUNT файлов)"
   else
     log "FAIL облако: ТЗ-фото не выгрузились"
+    FAILED=1
   fi
 else
-  log "SKIP ТЗ-фото: каталог $UPLOADS не найден"
+  log "FAIL ТЗ-фото: каталог $UPLOADS не найден"
+  FAILED=1
 fi
+
+exit "$FAILED"

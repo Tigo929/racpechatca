@@ -267,8 +267,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
   const [showDispatchModal, setShowDispatchModal] = useState(false);
 
   const tshirtPayout = useMemo(() => {
-    if (!partnerSettings || !(order?.tshirtItems?.length)) return null;
-    const items = order!.tshirtItems!;
+    const items = order?.tshirtItems;
+    if (!partnerSettings || !items?.length) return null;
     const qty = items.reduce((s, i) => s + i.quantity, 0);
     const s = computeSettlement(items, partnerSettings.partnerRateBasisPoints);
     const totalKopecks = Math.round(s.reward * 100);
@@ -1157,14 +1157,14 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 <Send size={13} aria-hidden="true" />
                 {sendTshirtTelegramMutation.isPending
                   ? "Отправка…"
-                  : (order as any).executorSentAt
+                  : order.executorSentAt
                     ? "Повторно отправить исполнителю"
                     : "Отправить заказ исполнителю"}
               </button>
             )}
           </div>
-          {(order as any).executorSentAt && (
-            <GulianSyncBlock orderId={order.id} order={order as any} />
+          {order.executorSentAt && (
+            <GulianSyncBlock orderId={order.id} order={order} />
           )}
         </div>
       )}
@@ -1175,7 +1175,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           payout={tshirtPayout}
           hasFreePositions={hasFreePositions}
           marketplace={marketplace}
-          isResend={(order as any).executorSentAt != null}
+          isResend={order.executorSentAt != null}
           isPending={sendTshirtTelegramMutation.isPending}
           onConfirm={() => { setShowDispatchModal(false); sendTshirtTelegramMutation.mutate(); }}
           onCancel={() => setShowDispatchModal(false)}

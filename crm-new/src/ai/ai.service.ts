@@ -3,6 +3,7 @@ import {
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 
 /**
  * Разговор с ИИ-агентом.
@@ -22,6 +23,8 @@ export interface AiAnswer {
   /** Какими инструментами агент пользовался — видно, на чём основан ответ. */
   tools: string[];
   usage: Record<string, number>;
+  requestId: string;
+  durationMs: number;
 }
 
 /**
@@ -50,7 +53,11 @@ export class AiService {
     return Boolean(this.token);
   }
 
-  async ask(question: string, session?: string): Promise<AiAnswer> {
+  async ask(
+    question: string,
+    session?: string,
+    userId = 'unknown',
+  ): Promise<AiAnswer> {
     if (!this.isConfigured()) {
       // Пустой секрет — это выключенная функция, а не открытая дверь.
       throw new ServiceUnavailableException(
@@ -58,6 +65,8 @@ export class AiService {
       );
     }
 
+    const requestId = randomUUID();
+    const startedAt = Date.now();
     let response: Response;
     try {
       response = await fetch(`${this.url}/ask`, {
@@ -65,12 +74,16 @@ export class AiService {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.token}`,
+          'X-Request-Id': requestId,
+          'X-CRM-User-Id': userId,
         },
         body: JSON.stringify({ question, session: session || undefined }),
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
     } catch (error) {
-      this.logger.error(`Шлюз ИИ недоступен: ${String(error)}`);
+      this.logger.error(
+        `AI request ${requestId} failed after ${Date.now() - startedAt} ms: ${String(error)}`,
+      );
       throw new ServiceUnavailableException(
         'ИИ-агент сейчас недоступен. Попробуйте позже.',
       );
@@ -78,7 +91,9 @@ export class AiService {
 
     if (!response.ok) {
       const detail = await response.text().catch(() => '');
-      this.logger.warn(`Шлюз ИИ ответил ${response.status}: ${detail.slice(0, 300)}`);
+      this.logger.warn(
+        `Шлюз ИИ ответил ${response.status}: ${detail.slice(0, 300)}`,
+      );
       throw new ServiceUnavailableException(
         response.status === 409
           ? 'Предыдущий вопрос ещё обрабатывается — подождите ответа.'
@@ -86,18 +101,54 @@ export class AiService {
       );
     }
 
-    return (await response.json()) as AiAnswer;
+    const payload = (await response
+      .json()
+      .catch(() => null)) as Partial<AiAnswer> | null;
+    if (
+      !payload ||
+      typeof payload.session !== 'string' ||
+      typeof payload.answer !== 'string' ||
+      !Array.isArray(payload.tools) ||
+      payload.tools.some((tool) => typeof tool !== 'string')
+    ) {
+      this.logger.error(`AI request ${requestId} returned an invalid payload`);
+      throw new ServiceUnavailableException(
+        'ИИ-агент вернул некорректный ответ. Попробуйте позже.',
+      );
+    }
+
+    const durationMs = Date.now() - startedAt;
+    this.logger.log(
+      `AI request ${requestId} completed for user ${userId} in ${durationMs} ms; tools=${payload.tools.length}`,
+    );
+    return {
+      session: payload.session,
+      answer: payload.answer,
+      tools: payload.tools,
+      usage:
+        payload.usage && typeof payload.usage === 'object' ? payload.usage : {},
+      requestId,
+      durationMs,
+    };
   }
 
   /** Состояние шлюза: какие источники подключены и сколько инструментов. */
   async health(): Promise<Record<string, unknown>> {
+    if (!this.isConfigured()) {
+      return { status: 'disabled', configured: false };
+    }
     try {
       const response = await fetch(`${this.url}/health`, {
+        headers: { Authorization: `Bearer ${this.token}` },
         signal: AbortSignal.timeout(10_000),
       });
-      return (await response.json()) as Record<string, unknown>;
+      if (!response.ok) {
+        return { status: 'unavailable', configured: true };
+      }
+      const health = (await response.json()) as Record<string, unknown>;
+      return { ...health, configured: true };
     } catch {
-      return { status: 'unavailable' };
+      return { status: 'unavailable', configured: true };
     }
   }
 }
