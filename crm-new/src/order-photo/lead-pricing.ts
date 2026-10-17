@@ -68,3 +68,46 @@ export function resolveLeadMoney(input: LeadMoneyInput): LeadMoneyResult {
 
   return { quantity, unitPrice, pricePosition };
 }
+
+/** Строка заказа из заявки: сайт присылает её уже посчитанной. */
+export interface LeadItemInput {
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+/**
+ * Проверяет заявку из нескольких позиций и считает её итог.
+ *
+ * Так приходит заказ фотопечати, где часть снимков печатается с полями,
+ * а часть без: у каждой строки своя цена, и единой «цены за штуку» у
+ * такого заказа нет. Поэтому итог складывается из строк, а проверяется
+ * каждая строка по отдельности — ровно так же, как одиночная позиция.
+ */
+export function resolveLeadItemsMoney(items: LeadItemInput[]): LeadMoneyResult {
+  if (items.length === 0) {
+    return { quantity: 0, unitPrice: 0, pricePosition: 0 };
+  }
+
+  let quantity = 0;
+  let pricePosition = 0;
+  for (const item of items) {
+    const line = resolveLeadMoney(item);
+    if (line.quantity <= 0) {
+      throw new LeadMoneyError('Пустая позиция в заявке.');
+    }
+    quantity += line.quantity;
+    pricePosition += line.pricePosition;
+  }
+
+  if (pricePosition > MAX_POSITION_TOTAL) {
+    throw new LeadMoneyError('Сумма заявки выходит за разумные пределы.');
+  }
+
+  /*
+   * Единой цены за штуку у смешанного заказа нет, и выдумывать среднюю
+   * нельзя: по ней потом посчитали бы зарплату. Ноль здесь означает
+   * «смотри строки», а строки заведены отдельно.
+   */
+  return { quantity, unitPrice: 0, pricePosition };
+}

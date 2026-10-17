@@ -28,7 +28,11 @@ import { MetrikaOrderOutboxService } from 'src/metrika/orders/metrika-order-outb
 import { PrismaService } from 'src/prisma/prisma.service';
 import DtoCreateOrder from './dto/create-order.dto';
 import { calcItemPricePosition } from './order-pricing';
-import { LeadMoneyError, resolveLeadMoney } from './lead-pricing';
+import {
+  LeadMoneyError,
+  resolveLeadItemsMoney,
+  resolveLeadMoney,
+} from './lead-pricing';
 import {
   buildCommunicationUrl,
   validateCommunicationValue,
@@ -736,11 +740,19 @@ export class OrderPhotoService {
       // этой сумме считается зарплата и расчёт с партнёром.
       let money;
       try {
-        money = resolveLeadMoney({
-          quantity: dto.quantity,
-          unitPrice: dto.unitPrice,
-          total: dto.total,
-        });
+        /*
+          Заявка из нескольких строк («часть с полями, часть без») — это
+          не одна позиция с усреднённой ценой: проверяем каждую строку
+          отдельно и складываем итог из них.
+        */
+        money =
+          dto.items && dto.items.length > 0
+            ? resolveLeadItemsMoney(dto.items)
+            : resolveLeadMoney({
+                quantity: dto.quantity,
+                unitPrice: dto.unitPrice,
+                total: dto.total,
+              });
       } catch (err) {
         if (err instanceof LeadMoneyError) {
           throw new BadRequestException(err.message);
@@ -2490,6 +2502,28 @@ function buildLeadPosition(
             designNote: buildTshirtNote(dto),
           },
         ],
+      },
+    };
+  }
+
+  /*
+   * Несколько позиций: «часть с полями, часть без».
+   *
+   * Заводим их отдельными строками заказа, а не одной суммой: печатник
+   * смотрит именно на строки, и «30 фото 10×15» вместо «20 с полями и
+   * 10 без» означает, что половину заказа напечатают не так.
+   */
+  if (dto.items && dto.items.length > 0) {
+    return {
+      items: {
+        create: dto.items.map((item) => ({
+          formatPaper: item.productName.trim() || item.productSlug.trim(),
+          typePaper:
+            dto.paperType === 'MATTE' ? ('MATTE' as const) : ('GLOSS' as const),
+          quantity: item.quantity,
+          price: item.unitPrice,
+          pricePosition: item.total,
+        })),
       },
     };
   }

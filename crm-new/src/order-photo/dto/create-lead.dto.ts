@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
@@ -5,6 +6,9 @@ import {
   IsInt,
   IsISO8601,
   IsObject,
+  IsArray,
+  ArrayMaxSize,
+  ValidateNested,
   IsOptional,
   IsString,
   IsUrl,
@@ -34,6 +38,37 @@ function hasPhone(o: DtoCreateLead): boolean {
  * обязателен всегда, и заявка от человека, который оставил только Telegram,
  * отбивалась с 400 — сайт показывал «принято», а в CRM ничего не появлялось.
  */
+/**
+ * Строка заказа из заявки: что печатать, сколько и почём.
+ *
+ * Цена в рублях целыми: копеек в прайсе нет, а дробные значения в деньгах
+ * однажды разойдутся с отчётом.
+ */
+export class DtoLeadItem {
+  @IsString()
+  @MaxLength(160)
+  productSlug: string;
+
+  @IsString()
+  @MaxLength(240)
+  productName: string;
+
+  @IsInt()
+  @Min(1)
+  @Max(100000)
+  quantity: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(1000000)
+  unitPrice: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(100000000)
+  total: number;
+}
+
 export class DtoCreateLead {
   @IsOptional()
   @IsString()
@@ -69,6 +104,23 @@ export class DtoCreateLead {
   @IsString()
   @MaxLength(160)
   productSlug?: string;
+
+  /**
+   * Позиции заказа, когда их несколько.
+   *
+   * Так приходит заказ фотопечати 10×15, где часть снимков печатается
+   * с полями, а часть без: это одна заявка, но печатнику нужны две
+   * строки. Пусто — обычная заявка на один товар.
+   *
+   * Цены считает сайт по тому же прайсу, из которого показывал их
+   * клиенту, — здесь мы их принимаем, а не пересчитываем.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => DtoLeadItem)
+  items?: DtoLeadItem[];
 
   @IsOptional()
   @IsString()
