@@ -62,6 +62,8 @@ services:
       # /id в переписке с ботом: по @нику Telegram писать не умеет.
       # Пусто — заявка идёт в общую группу: молчание хуже лишнего адресата.
       TELEGRAM_OWNER_CHAT_ID: ${TELEGRAM_OWNER_CHAT_ID:-}
+      # Кому ещё приходит заявка с сайта, через запятую. Пусто — только владельцу.
+      TELEGRAM_LEAD_WATCHER_IDS: ${TELEGRAM_LEAD_WATCHER_IDS:-}
       # Общий секрет с сайтом: по нему CRM просит удалить фотографии
       # заказа, когда он отгружен. Пусто — CRM никуда не ходит.
       SITE_PHOTOS_CLEANUP_TOKEN: ${SITE_PHOTOS_CLEANUP_TOKEN:-}

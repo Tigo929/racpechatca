@@ -122,3 +122,80 @@ describe('адреса сообщений бота', () => {
     expect(sent[0]).toMatchObject({ chatId: '-100222', threadId: undefined });
   });
 });
+
+/**
+ * Заявка с сайта — это деньги, и увидеть её должен тот, кто с клиентом
+ * разговаривает. Раньше она уходила только владельцу; теперь список
+ * адресатов настраивается, и здесь закреплено, что он работает и что
+ * лишних копий не будет.
+ */
+describe('кому приходит заявка с сайта', () => {
+  const service = (env: Record<string, string>) => {
+    const sent: { chatId: string; text: string }[] = [];
+    const instance = new TelegramService({
+      get: (key: string) => env[key],
+    } as never);
+    (instance as unknown as Record<string, unknown>).sendMessage = async (
+      chatId: string,
+      text: string,
+    ) => {
+      sent.push({ chatId, text });
+      return true;
+    };
+    return { instance, sent };
+  };
+
+  const BASE = { TELEGRAM_BOT_TOKEN: 'token', TELEGRAM_GROUP_CHAT_ID: '-100111' };
+
+  it('владельцу и рабочему аккаунту сразу', async () => {
+    const { instance, sent } = service({
+      ...BASE,
+      TELEGRAM_OWNER_CHAT_ID: '555',
+      TELEGRAM_LEAD_WATCHER_IDS: '6300295618',
+    });
+
+    await instance.sendLeadAlert('Заявка');
+
+    expect(sent.map((m) => m.chatId)).toEqual(['555', '6300295618']);
+  });
+
+  it('тот же адрес в двух настройках — одно сообщение, а не два', async () => {
+    const { instance, sent } = service({
+      ...BASE,
+      TELEGRAM_OWNER_CHAT_ID: '555',
+      TELEGRAM_LEAD_WATCHER_IDS: '555, 777',
+    });
+
+    await instance.sendLeadAlert('Заявка');
+
+    expect(sent.map((m) => m.chatId)).toEqual(['555', '777']);
+  });
+
+  it('список пуст — всё как раньше, только владельцу', async () => {
+    const { instance, sent } = service({ ...BASE, TELEGRAM_OWNER_CHAT_ID: '555' });
+
+    await instance.sendLeadAlert('Заявка');
+
+    expect(sent.map((m) => m.chatId)).toEqual(['555']);
+  });
+
+  it('личных адресов нет вовсе — заявка уходит в группу, а не пропадает', async () => {
+    const { instance, sent } = service(BASE);
+
+    await instance.sendLeadAlert('Заявка');
+
+    expect(sent[0]?.chatId).toBe('-100111');
+  });
+
+  it('пробелы и лишние запятые в настройке не ломают список', async () => {
+    const { instance, sent } = service({
+      ...BASE,
+      TELEGRAM_OWNER_CHAT_ID: '555',
+      TELEGRAM_LEAD_WATCHER_IDS: ' 111 ,, 222 ',
+    });
+
+    await instance.sendLeadAlert('Заявка');
+
+    expect(sent.map((m) => m.chatId)).toEqual(['555', '111', '222']);
+  });
+});

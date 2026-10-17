@@ -644,9 +644,9 @@ export class OrderPhotoService {
         },
         pickLeadResponders(users, settings?.leadMentionUsernames ?? ''),
       );
-      // Заявку с сайта разбирает владелец, а не исполнители: ей место
-      // в личке, а не в общей группе, где она тонет среди задач.
-      await this.telegram.sendToOwner(text);
+      // Заявку с сайта разбирают в личке, а не в общей группе, где она
+      // тонет среди задач: владельцу и всем, кто её ведёт.
+      await this.telegram.sendLeadAlert(text);
     } catch (error) {
       // Заявка уже принята и лежит в CRM — молчание бота её не отменяет.
       this.logger.warn(

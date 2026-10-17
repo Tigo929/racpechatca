@@ -84,6 +84,14 @@ export class TelegramService {
   private readonly executorMaximThreadId: string;
   private readonly dailyPlanChatId: string;
   private readonly dailyPlanThreadId: string;
+  /**
+   * Кому ещё приходит заявка с сайта, кроме владельца.
+   *
+   * Заявку разбирает тот, кто первым её увидел, — а это не всегда один
+   * человек: у рабочего аккаунта, где ведётся переписка с клиентом,
+   * она должна лежать рядом с самой перепиской.
+   */
+  private readonly leadWatchers: string[];
 
   constructor(private config: ConfigService) {
     this.token = config.get<string>('TELEGRAM_BOT_TOKEN') ?? '';
@@ -100,6 +108,9 @@ export class TelegramService {
       config.get<string>('TELEGRAM_DAILY_PLAN_CHAT_ID') ?? '';
     this.dailyPlanThreadId =
       config.get<string>('TELEGRAM_DAILY_PLAN_THREAD_ID') ?? '';
+    this.leadWatchers = parseChatIds(
+      config.get<string>('TELEGRAM_LEAD_WATCHER_IDS') ?? '',
+    );
   }
 
   /**
@@ -233,6 +244,41 @@ export class TelegramService {
       'TELEGRAM_OWNER_CHAT_ID не задан — уведомление ушло в общую группу',
     );
     return this.sendToGroup(text);
+  }
+
+  /**
+   * Заявка с сайта — владельцу и всем, кто её разбирает.
+   *
+   * Отправляем каждому по отдельности, а не в общий чат: заявка — это
+   * деньги, и она должна лежать там, где человек её точно увидит.
+   * Дубликаты отсеиваем — один и тот же адрес в двух настройках не
+   * должен превращаться в два одинаковых сообщения.
+   *
+   * Успехом считаем доставку хотя бы одному: молчание при одном
+   * недоступном адресате было бы хуже лишней копии.
+   */
+  async sendLeadAlert(text: string): Promise<boolean> {
+    const seen = new Set<string>();
+    const results: boolean[] = [];
+
+    if (this.ownerChatId) {
+      seen.add(this.ownerChatId);
+      results.push(await this.sendMessage(this.ownerChatId, text));
+    }
+    for (const chatId of this.leadWatchers) {
+      if (seen.has(chatId)) continue;
+      seen.add(chatId);
+      results.push(await this.sendMessage(chatId, text));
+    }
+
+    if (results.length === 0) {
+      // Ни одного личного адреса — заявка всё равно не должна пропасть.
+      this.logger.warn(
+        'Ни TELEGRAM_OWNER_CHAT_ID, ни TELEGRAM_LEAD_WATCHER_IDS не заданы — заявка ушла в общую группу',
+      );
+      return this.sendToGroup(text);
+    }
+    return results.some(Boolean);
   }
 
   /**
@@ -467,4 +513,18 @@ export class TelegramService {
       return false;
     }
   }
+}
+
+/**
+ * Список чатов из переменной окружения: «123, 456».
+ *
+ * Пробелы и пустые куски отбрасываем, остальное оставляем как есть:
+ * у групп идентификатор отрицательный, и «чистка нецифрового» сломала бы
+ * ровно их.
+ */
+function parseChatIds(raw: string): string[] {
+  return raw
+    .split(/[,\s]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
