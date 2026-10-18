@@ -13,6 +13,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { OrderPhotoService } from './order-photo.service';
 import { DtoCreateLead } from './dto/create-lead.dto';
+import { DtoPhotosShortfall } from './dto/photos-shortfall.dto';
 import { SiteLeadTokenGuard } from './site-lead-token.guard';
 import { ClientGreetingService } from './client-greeting.service';
 import { isGreetingStatus } from './client-greeting';
@@ -57,6 +58,25 @@ export class LeadController {
   async createLead(@Body() dto: DtoCreateLead) {
     const order = await this.orderPhotoService.createLead(dto);
     return { ok: true, numberOrder: order.numberOrder };
+  }
+
+  /**
+   * Сайт заметил, что фотографии заказа доехали не все.
+   *
+   * Файлы грузит браузер клиента: закрыл вкладку, ушёл в другое
+   * приложение, потерял сеть — хвост не доехал. Заявка при этом давно у
+   * нас, и карточка показывает полный тираж. Раньше правда всплывала у
+   * печатника, когда в архиве оказывалась половина заказа.
+   *
+   * Отвечаем «принято» даже на неизвестную папку: сайт отмечает у себя,
+   * что сообщил, и повторять ему незачем. Нераспознанный номер — наша
+   * забота, она уходит в лог, а не обратно на сайт бесконечным повтором.
+   */
+  @Post('photos-shortfall')
+  @HttpCode(200)
+  async photosShortfall(@Body() dto: DtoPhotosShortfall) {
+    await this.orderPhotoService.reportPhotosShortfall(dto);
+    return { ok: true };
   }
 
   /*

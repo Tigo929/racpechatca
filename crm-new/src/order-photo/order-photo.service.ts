@@ -42,6 +42,7 @@ import DtoAllOrdersforQuery from './dto/all-oreders-for-query.dto';
 import UpdateStatus from './dto/update-status.dto';
 import { DtoUpdateOrder } from './dto/update-order.dto';
 import { DtoCreateLead } from './dto/create-lead.dto';
+import { DtoPhotosShortfall } from './dto/photos-shortfall.dto';
 import {
   CANVAS_FRAME_LABELS,
   findCanvasSize,
@@ -659,6 +660,67 @@ export class OrderPhotoService {
     }
     // Web Push has its own durable queue, populated in createLeadTx. Telegram
     // retries cannot delay it and a process restart cannot lose a committed job.
+  }
+
+  /**
+   * Сайт сообщил, что фотографии заказа доехали не все.
+   *
+   * Файлы грузит браузер клиента, и дойти могут не все: закрыл вкладку,
+   * ушёл в другое приложение, потерял сеть. Заявка при этом давно у нас
+   * — её отправляют первой, не дожидаясь последнего файла, — и карточка
+   * показывает полный тираж. Правда всплывала у печатника, когда в
+   * архиве оказывалась половина заказа.
+   *
+   * Поэтому две вещи сразу: сообщение владельцу и строка в примечании.
+   * Сообщение заметят сегодня, примечание переживёт этот день: заказ
+   * может уехать в печать через неделю, и тогда вспомнить про недобор
+   * будет уже некому.
+   *
+   * Заказ ищем по ссылке на папку: своего номера сайт не знает, его
+   * присваиваем мы.
+   */
+  async reportPhotosShortfall(dto: DtoPhotosShortfall): Promise<void> {
+    const order = await this.prisma.orderPhoto.findFirst({
+      where: { photosArchiveUrl: { contains: dto.uploadId } },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, numberOrder: true, note: true },
+    });
+
+    if (!order) {
+      // Заказ удалили или фотографии уже подчистили после отгрузки —
+      // сообщать не о чем, но знать об этом стоит.
+      this.logger.warn(
+        `Недобор по папке ${dto.uploadId}: заказ не найден (${dto.arrived} из ${dto.expected})`,
+      );
+      return;
+    }
+
+    const line = `⚠️ Фотографии доехали не все: ${dto.arrived} из ${dto.expected}. Запросите у клиента остальные до печати.`;
+
+    try {
+      await this.prisma.orderPhoto.update({
+        where: { id: order.id },
+        data: { note: [order.note?.trim(), line].filter(Boolean).join('\n') },
+      });
+    } catch (error) {
+      // Примечание не записалось — сообщение всё равно должно уйти.
+      this.logger.warn(
+        `Не удалось дописать недобор в заказ ${order.numberOrder}: ${String(error)}`,
+      );
+    }
+
+    try {
+      await this.telegram.sendLeadAlert(
+        [`⚠️ Заказ ${order.numberOrder}: фотографии доехали не все.`, '', line].join(
+          '\n',
+        ),
+      );
+    } catch (error) {
+      // Молчание бота не отменяет записи в примечании — она уже на месте.
+      this.logger.warn(
+        `Не удалось сообщить о недоборе по ${order.numberOrder}: ${String(error)}`,
+      );
+    }
   }
 
   private async createLeadTx(dto: DtoCreateLead) {
