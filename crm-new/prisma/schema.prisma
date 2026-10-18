@@ -85,6 +85,10 @@ model OrderPhoto {
   status                   EnumStatus          @default(NEW)
   productCategory          EnumProductCategory @default(PHOTO)
   deadline                 DateTime?
+  /// Срок в том виде, в каком его видно в списке: заданный вручную
+  /// либо дата создания плюс три дня. Считает база (generated column),
+  /// писать сюда нельзя — только читать и сортировать.
+  deadlineEffective        DateTime?
   isUrgent                 Boolean             @default(false)
   // Свободная (договорная) цена: сумма позиции = её цене, количество НЕ умножается.
   isFreePrice              Boolean             @default(false)
@@ -285,6 +289,7 @@ model OrderPhoto {
   // Отчёты по дате оплаты: с заполненным clientPaidAt период отчёта
   // будет резаться по нему, а не по statusChangedAt.
   @@index([clientPaidAt])
+  @@index([deadlineEffective])
 }
 
 /// Подключённый кабинет маркетплейса. Модель намеренно не «озоновская»:

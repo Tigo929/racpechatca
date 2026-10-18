@@ -20,19 +20,32 @@ describe('порядок списка заказов', () => {
 
   it('по дедлайну — от позднего к раннему и обратно', () => {
     expect(buildOrdersOrderBy('deadline', 'desc')[0]).toEqual({
-      deadline: { sort: 'desc', nulls: 'last' },
+      deadlineEffective: { sort: 'desc', nulls: 'last' },
     });
     expect(buildOrdersOrderBy('deadline', 'asc')[0]).toEqual({
-      deadline: { sort: 'asc', nulls: 'last' },
+      deadlineEffective: { sort: 'asc', nulls: 'last' },
     });
   });
 
+  it('сортирует по тому сроку, который видно в списке', () => {
+    /*
+      Колонка `deadline` заполнена не у всех заказов, и пустая означает
+      не «без срока», а «срок по умолчанию»: дата создания плюс три дня.
+      Сортировка по самой колонке врала ровно на тех заказах, ради
+      которых её и открывают, — просроченный заказ уходил в конец
+      списка «сначала ранние».
+    */
+    const order = buildOrdersOrderBy('deadline', 'asc');
+    expect(JSON.stringify(order)).toContain('deadlineEffective');
+    expect(Object.keys(order[0] ?? {})).not.toContain('deadline');
+  });
+
   it('заказы без срока уходят в конец при любом направлении', () => {
-    // Пустой дедлайн — не «самый ранний» и не «самый поздний», его нет.
-    // Наверху списка он занимал бы место настоящих сроков.
+    // Пусто остаётся только у футболок: их сроки ведёт партнёр, и в
+    // списке отсчёт для них не показан вовсе.
     for (const dir of ['asc', 'desc'] as const) {
       expect(buildOrdersOrderBy('deadline', dir)[0]).toMatchObject({
-        deadline: { nulls: 'last' },
+        deadlineEffective: { nulls: 'last' },
       });
     }
   });
