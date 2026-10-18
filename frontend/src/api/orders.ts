@@ -29,6 +29,19 @@ export const ordersApi = {
     if (query.reviewLeft !== undefined) params.set('reviewLeft', String(query.reviewLeft));
     if (query.search) params.set('search', query.search);
     if (query.executorId) params.set('executorId', query.executorId);
+    if (query.delivery) params.set('delivery', query.delivery);
+    /*
+      Порядок списка. Без него сервер отдаёт обычный порядок работы:
+      активные сверху, срочные выше, дальше по дате.
+    */
+    if (query.sort) params.set('sort', query.sort);
+    if (query.dir) params.set('dir', query.dir);
+    /*
+      Заказы с площадок. Параметр не передавался вовсе, и переключатель
+      «Только маркетплейс / Без них / Все» ничего не менял: сервер каждый
+      раз применял умолчание.
+    */
+    if (query.marketplace) params.set('marketplace', query.marketplace);
     const { data } = await api.get<OrdersResponse>(`/order-photo?${params}`);
     return data;
   },
@@ -41,6 +54,10 @@ export const ordersApi = {
     if (query.reviewLeft !== undefined) params.set('reviewLeft', String(query.reviewLeft));
     if (query.search) params.set('search', query.search);
     if (query.executorId) params.set('executorId', query.executorId);
+    // Счётчики считаем по тому же отбору, что и список: иначе над
+    // отфильтрованным списком висит число из другого набора заказов.
+    if (query.delivery) params.set('delivery', query.delivery);
+    if (query.marketplace) params.set('marketplace', query.marketplace);
     const qs = params.toString();
     const { data } = await api.get<OrdersStats>(`/order-photo/stats${qs ? `?${qs}` : ''}`);
     return data;

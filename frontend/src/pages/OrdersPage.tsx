@@ -21,6 +21,8 @@ import { MarketplaceBadge } from '../components/ui/MarketplaceBadge';
 import { approvalChip } from '../components/orders/order-approval-state';
 import { ExecutorFilter } from '../components/orders/ExecutorFilter';
 import { FilterChip } from '../components/ui/FilterChip';
+import { SortableHeader } from '../components/orders/SortableHeader';
+import { nextSort, type OrdersSortField } from '../utils/orders-sort';
 import { DeliveryBadge } from '../components/ui/DeliveryBadge';
 import {
   CANVAS_STATUS_FLOW,
@@ -188,6 +190,14 @@ export function OrdersPage({ section }: Props) {
   const setExecutor = (executorId: string | undefined) =>
     setQuery(q => ({ ...q, executorId, page: 1 }));
 
+  const setDelivery = (delivery: 'pickup' | 'delivery' | undefined) =>
+    setQuery(q => ({ ...q, delivery, page: 1 }));
+
+  // Три состояния на один заголовок: по убыванию, по возрастанию и
+  // обратно к обычному порядку работы (см. utils/orders-sort).
+  const toggleSort = (field: OrdersSortField) =>
+    setQuery(q => ({ ...q, ...nextSort(q, field), page: 1 }));
+
   // У футболок свой путь заказа — показываем только его статусы. Раньше здесь
   // всегда были фото-статусы, поэтому «Выполнен» и «На стадии дизайна» у
   // футболок нельзя было выбрать вообще.
@@ -326,6 +336,41 @@ export function OrdersPage({ section }: Props) {
               value={query.executorId}
               onChange={setExecutor}
             />
+          )}
+          {/* Как забирают заказ: самовывоз собирают к приходу человека,
+              посылку надо успеть отдать в пункт выдачи. Это два разных
+              дня, и смотреть их вперемешку неудобно. */}
+          {!isLeads && (
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">Получение</span>
+              <div className="flex gap-1.5 flex-wrap">
+                <FilterChip active={!query.delivery} onClick={() => setDelivery(undefined)}>Все</FilterChip>
+                <FilterChip active={query.delivery === 'pickup'} onClick={() => setDelivery('pickup')}>
+                  Самовывоз
+                </FilterChip>
+                <FilterChip active={query.delivery === 'delivery'} onClick={() => setDelivery('delivery')}>
+                  Доставка
+                </FilterChip>
+              </div>
+            </div>
+          )}
+          {/* Порядок списка. На телефоне таблицы с заголовками нет, а
+              вопрос «что горит» и «где дорогие» тот же самый. */}
+          {!isLeads && (
+            <div className="flex items-center gap-3 flex-wrap md:hidden">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">Порядок</span>
+              <div className="flex gap-1.5 flex-wrap">
+                <FilterChip active={!query.sort} onClick={() => setQuery(q => ({ ...q, sort: undefined, dir: undefined, page: 1 }))}>
+                  Как в работе
+                </FilterChip>
+                <FilterChip active={query.sort === 'deadline'} onClick={() => toggleSort('deadline')}>
+                  Дедлайн {query.sort === 'deadline' ? (query.dir === 'asc' ? '↑' : '↓') : ''}
+                </FilterChip>
+                <FilterChip active={query.sort === 'total'} onClick={() => toggleSort('total')}>
+                  Сумма {query.sort === 'total' ? (query.dir === 'asc' ? '↑' : '↓') : ''}
+                </FilterChip>
+              </div>
+            </div>
           )}
           {/* Фильтр по отзыву — только для администратора */}
           {isAdmin && (
@@ -478,7 +523,13 @@ export function OrdersPage({ section }: Props) {
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Номер</th>
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Тип</th>
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Дата</th>
-                    <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Дедлайн</th>
+                    <SortableHeader
+                      label="Дедлайн"
+                      field="deadline"
+                      sort={query.sort}
+                      dir={query.dir}
+                      onToggle={toggleSort}
+                    />
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Статус</th>
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Доставка</th>
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Позиций</th>
@@ -486,7 +537,14 @@ export function OrdersPage({ section }: Props) {
                       <th scope="col" className="px-5 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Отзыв</th>
                     )}
                     {isAdmin && (
-                      <th scope="col" className="px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Сумма</th>
+                      <SortableHeader
+                        label="Сумма"
+                        field="total"
+                        sort={query.sort}
+                        dir={query.dir}
+                        onToggle={toggleSort}
+                        align="right"
+                      />
                     )}
                   </tr>
                 </thead>
