@@ -415,5 +415,10 @@
   "413": "@tailwindcss/vite",
   "414": "typescript-eslint",
   "415": "@types/react-dom",
-  "416": "pdfjs-dist"
+  "416": "pdfjs-dist",
+  "417": "eslint",
+  "418": "jsdom",
+  "419": "@testing-library/jest-dom",
+  "420": "@types/node",
+  "421": "partner-outbound-items.spec.ts"
 }
