@@ -50,6 +50,9 @@ export interface OzonOrder {
 export interface OzonOrdersPage {
   orders: OzonOrder[];
   hasNext: boolean;
+  /** Последний успешный снимок: Ozon временно ограничил новые запросы. */
+  stale: boolean;
+  refreshedAt: string;
   /** Сколько отправлений скрыто фильтром «только наши принты». */
   hiddenByCatalog: number;
 }

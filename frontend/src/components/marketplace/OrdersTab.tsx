@@ -233,6 +233,9 @@ export function OrdersTab({ accountId }: { accountId: string }) {
     // Заказы приходят в течение дня; минута свежести — разумный компромисс
     // между актуальностью и лимитами API Ozon.
     staleTime: 60_000,
+    // Повтор через секунду не лечит минутный лимит Ozon, а только продлевает
+    // блокировку. Человек может повторить запрос явной кнопкой после паузы.
+    retry: false,
   });
 
   const all = data?.orders ?? [];
@@ -257,6 +260,19 @@ export function OrdersTab({ accountId }: { accountId: string }) {
 
   return (
     <div className="space-y-4">
+      {data?.stale && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900">
+          Ozon временно ограничил обновление. Показаны последние полученные
+          данные на{' '}
+          {new Date(data.refreshedAt).toLocaleString('ru-RU', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+          .
+        </div>
+      )}
       {(hidden > 0 || showAll) && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-700">
           <span>

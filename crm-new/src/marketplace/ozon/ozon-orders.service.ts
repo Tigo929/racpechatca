@@ -1,6 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { matchesLineup } from './article-lineup';
-import { OzonApiClient, type OzonCredentials } from './ozon-api.client';
+import {
+  OzonApiClient,
+  OzonApiError,
+  type OzonCredentials,
+} from './ozon-api.client';
 import {
   groupForStatus,
   isShipmentOverdue,
@@ -18,6 +22,10 @@ import {
  */
 
 const OZON_MAX_LIMIT = 1000;
+/** Не дёргаем один и тот же список отдельно для экрана и фонового опроса. */
+const ORDERS_CACHE_FRESH_MS = 6 * 60_000;
+/** При 429 лучше показать недавний снимок, чем снова спрятать все заказы. */
+const ORDERS_CACHE_STALE_MS = 24 * 60 * 60_000;
 
 interface RawPostingProduct {
   offer_id?: string;
@@ -83,6 +91,10 @@ export interface OzonOrderView {
 export interface OzonOrdersPage {
   orders: OzonOrderView[];
   hasNext: boolean;
+  /** Ozon временно отказал, поэтому отдан последний успешный снимок. */
+  stale: boolean;
+  /** Когда снимок был действительно получен от Ozon. */
+  refreshedAt: string;
   /**
    * Сколько отправлений скрыто фильтром «только наши принты».
    *
@@ -94,6 +106,25 @@ export interface OzonOrdersPage {
 
 @Injectable()
 export class OzonOrdersService {
+  private readonly logger = new Logger(OzonOrdersService.name);
+  private readonly cache = new Map<
+    string,
+    {
+      response: RawPostingListResponse;
+      refreshedAt: Date;
+      freshUntil: number;
+      staleUntil: number;
+    }
+  >();
+  private readonly inFlight = new Map<
+    string,
+    Promise<{
+      response: RawPostingListResponse;
+      stale: boolean;
+      refreshedAt: Date;
+    }>
+  >();
+
   constructor(private readonly api: OzonApiClient) {}
 
   /**
@@ -119,17 +150,9 @@ export class OzonOrdersService {
     const limit = Math.min(options.limit ?? 100, OZON_MAX_LIMIT);
     const since = new Date(Date.now() - sinceDays * 24 * 3600 * 1000);
 
-    const res = await this.api.post<RawPostingListResponse>(
-      creds,
-      '/v3/posting/fbs/list',
-      {
-        dir: 'DESC',
-        filter: { since: since.toISOString(), to: new Date().toISOString() },
-        limit,
-        offset: options.offset ?? 0,
-        with: { financial_data: true },
-      },
-    );
+    const offset = options.offset ?? 0;
+    const cached = await this.postings(creds, sinceDays, limit, offset, since);
+    const res = cached.response;
 
     const postings = res.result?.postings ?? [];
     const all = postings.map((p) => this.toView(p));
@@ -162,7 +185,84 @@ export class OzonOrdersService {
       orders,
       hasNext: Boolean(res.result?.has_next),
       hiddenByCatalog: all.length - orders.length,
+      stale: cached.stale,
+      refreshedAt: cached.refreshedAt.toISOString(),
     };
+  }
+
+  /**
+   * Один запрос на кабинет и страницу обслуживает и экран, и фоновую сверку.
+   *
+   * Без этого фоновый опрос и React почти одновременно били в один метод
+   * Ozon. При лимите площадки первый запрос проходил, а экран получал 429 и
+   * выглядел пустым. Одновременные обращения объединяем, успешный ответ на
+   * несколько минут переиспользуем, а при 429 отдаём последний снимок.
+   */
+  private postings(
+    creds: OzonCredentials,
+    sinceDays: number,
+    limit: number,
+    offset: number,
+    since: Date,
+  ): Promise<{
+    response: RawPostingListResponse;
+    stale: boolean;
+    refreshedAt: Date;
+  }> {
+    const key = JSON.stringify([creds.clientId, sinceDays, limit, offset]);
+    const now = Date.now();
+    const cached = this.cache.get(key);
+    if (cached && cached.freshUntil > now) {
+      return Promise.resolve({
+        response: cached.response,
+        stale: false,
+        refreshedAt: cached.refreshedAt,
+      });
+    }
+
+    const running = this.inFlight.get(key);
+    if (running) return running;
+
+    const request = this.api
+      .post<RawPostingListResponse>(creds, '/v3/posting/fbs/list', {
+        dir: 'DESC',
+        filter: { since: since.toISOString(), to: new Date().toISOString() },
+        limit,
+        offset,
+        with: { financial_data: true },
+      })
+      .then((response) => {
+        const refreshedAt = new Date();
+        this.cache.set(key, {
+          response,
+          refreshedAt,
+          freshUntil: refreshedAt.getTime() + ORDERS_CACHE_FRESH_MS,
+          staleUntil: refreshedAt.getTime() + ORDERS_CACHE_STALE_MS,
+        });
+        return { response, stale: false, refreshedAt };
+      })
+      .catch((error: unknown) => {
+        if (
+          error instanceof OzonApiError &&
+          error.status === 429 &&
+          cached &&
+          cached.staleUntil > Date.now()
+        ) {
+          this.logger.warn(
+            `Ozon ограничил запросы кабинета ${creds.clientId}; отдаю снимок от ${cached.refreshedAt.toISOString()}`,
+          );
+          return {
+            response: cached.response,
+            stale: true,
+            refreshedAt: cached.refreshedAt,
+          };
+        }
+        throw error;
+      })
+      .finally(() => this.inFlight.delete(key));
+
+    this.inFlight.set(key, request);
+    return request;
   }
 
   /**
