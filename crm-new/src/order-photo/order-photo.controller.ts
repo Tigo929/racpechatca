@@ -33,6 +33,8 @@ import { ShipmentLeadService } from './shipment-lead.service';
 import { DtoSetShipmentLead } from './dto/set-shipment-lead.dto';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 import { DtoDeleteOrder } from './dto/delete-order.dto';
+import { OrderArchiveService } from './order-archive.service';
+import { DtoArchiveQuery } from './dto/archive-query.dto';
 import DtoCreateOrder from './dto/create-order.dto';
 import DtoAllOrdersforQuery from './dto/all-oreders-for-query.dto';
 import UpdateStatus from './dto/update-status.dto';
@@ -82,6 +84,7 @@ export class OrderPhotoController {
     private readonly shipmentLeadService: ShipmentLeadService,
     private readonly greeting: ClientGreetingService,
     private readonly draft: ClientDraftService,
+    private readonly archive: OrderArchiveService,
   ) {}
 
   // ── Admin: отправить «план дня» в рабочий чат прямо сейчас ──────────────────
@@ -122,6 +125,26 @@ export class OrderPhotoController {
   @Roles(EnumRole.ADMIN)
   setShipmentLead(@Body() dto: DtoSetShipmentLead) {
     return this.shipmentLeadService.set(dto.userId ?? null);
+  }
+
+  // ── Admin-only: корзина удалённых заказов ──────────────────────────────────
+  //
+  // ВАЖНО: объявлено ДО маршрутов с `:idOrder`. Nest подбирает маршрут в
+  // порядке объявления, и ниже `:idOrder` путь `/order-photo/deleted` ушёл бы
+  // в «покажи заказ с идентификатором deleted». Переносить этот блок вниз
+  // нельзя — корзина молча перестанет открываться.
+
+  @Get('deleted')
+  @Roles(EnumRole.ADMIN)
+  listDeleted(@Query() query: DtoArchiveQuery) {
+    return this.archive.list(query);
+  }
+
+  /** Вернуть заказ из корзины. Срок — см. ORDER_ARCHIVE_RETENTION_DAYS. */
+  @Post('deleted/:id/restore')
+  @Roles(EnumRole.ADMIN)
+  restoreDeleted(@Param('id') id: string, @CurrentUser() me: RequestUser) {
+    return this.archive.restore(id, { id: me.id, name: me.username });
   }
 
   // ── Admin-only: create / update / delete order ─────────────────────────────

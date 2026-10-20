@@ -9,6 +9,8 @@ import { StickerModule } from './sticker.module';
 import { OrderPhotoController } from './order-photo.controller';
 import { LeadController } from './lead.controller';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
+import { OrderArchiveService } from './order-archive.service';
+import { OrderArchivePurgeService } from './order-archive-purge.service';
 import { GulianModule } from 'src/gulian/gulian.module';
 import { TelegramModule } from 'src/telegram/telegram.module';
 import { ReviewReminderService } from './review-reminder.service';
@@ -40,6 +42,9 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
     TshirtItemService,
     CanvasItemService,
     OrderFinancialIntegrityService,
+    // Корзина удалённых заказов и очистка снимков по сроку.
+    OrderArchiveService,
+    OrderArchivePurgeService,
     ReviewReminderService,
     ShipmentReminderService,
     DailyPlanService,

@@ -1124,3 +1124,72 @@ export interface ImageCardGenerated {
     heightPx: number;
   };
 }
+
+// ── Корзина удалённых заказов ───────────────────────────────────────────────
+
+/**
+ * Запись корзины: удалённый заказ, причина и сколько осталось на возврат.
+ *
+ * Снимок заказа сюда не приходит намеренно: у большого заказа он весит
+ * сотни килобайт, а списку нужны только номер, причина и срок.
+ */
+export interface DeletedOrder {
+  id: string;
+  deletedAt: string;
+  /** Причина словами — её пишет тот, кто удаляет. */
+  reason: string;
+  deletedById: string | null;
+  deletedByName: string | null;
+  /** Идентификатор удалённого заказа: он же вернётся при восстановлении. */
+  orderId: string;
+  numberOrder: string;
+  status: EnumStatus;
+  sourceOrder: EnumSourceOrder;
+  productCategory: EnumProductCategory;
+  totalOrder: number;
+  orderCreatedAt: string | null;
+  /** До этого момента заказ можно вернуть. */
+  purgeAfter: string | null;
+  purgedAt: string | null;
+  restoredAt: string | null;
+  restoredById: string | null;
+  restoredByName: string | null;
+  /** Сколько дней осталось на возврат. null — срока не было. */
+  daysLeft: number | null;
+  canRestore: boolean;
+  /** Почему вернуть нельзя. Заполнено, когда canRestore = false. */
+  restoreBlockedReason: string | null;
+}
+
+export interface DeletedOrdersResponse {
+  data: DeletedOrder[];
+  meta: {
+    page: number;
+    limit: number;
+    quantityElements: number;
+    totalPages: number;
+    /** Срок хранения снимка в днях — его показываем человеку. */
+    retentionDays: number;
+  };
+}
+
+export interface DeletedOrdersQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sourceOrder?: EnumSourceOrder;
+  productCategory?: EnumProductCategory;
+  /** Показать и разобранное: восстановленное и просроченное. */
+  includeHandled?: boolean;
+}
+
+export interface RestoreOrderResult {
+  message: string;
+  data: OrderPhoto;
+  /**
+   * Что при возврате пошло не совсем гладко: сменился номер, снят ключ
+   * заявки, не вернулись выплаченные начисления. Пустой массив — всё
+   * вернулось как было.
+   */
+  warnings: string[];
+}
