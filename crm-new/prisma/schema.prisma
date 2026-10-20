@@ -340,6 +340,22 @@ model MarketplaceAccount {
   @@index([marketplace, isActive])
 }
 
+/// Последний успешный ответ списка отправлений Ozon.
+///
+/// Ozon периодически отвечает 429 даже на редкие запросы. Снимок хранится в
+/// базе, а не только в памяти процесса, чтобы после деплоя или перезапуска CRM
+/// не показывала пустой экран до следующего удачного ответа площадки.
+model OzonOrderSnapshot {
+  cacheKey    String   @id
+  clientId    String
+  response    Json
+  refreshedAt DateTime
+  staleUntil  DateTime
+
+  @@index([clientId])
+  @@index([staleUntil])
+}
+
 enum EnumMarketplace {
   OZON
   WB

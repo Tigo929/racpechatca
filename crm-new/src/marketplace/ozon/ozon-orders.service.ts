@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma, type OzonOrderSnapshot } from 'src/generated/prisma/client';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { matchesLineup } from './article-lineup';
 import {
   OzonApiClient,
@@ -25,7 +27,7 @@ const OZON_MAX_LIMIT = 1000;
 /** Не дёргаем один и тот же список отдельно для экрана и фонового опроса. */
 const ORDERS_CACHE_FRESH_MS = 6 * 60_000;
 /** При 429 лучше показать недавний снимок, чем снова спрятать все заказы. */
-const ORDERS_CACHE_STALE_MS = 24 * 60 * 60_000;
+const ORDERS_CACHE_STALE_MS = 7 * 24 * 60 * 60_000;
 
 interface RawPostingProduct {
   offer_id?: string;
@@ -54,6 +56,13 @@ interface RawPosting {
 
 interface RawPostingListResponse {
   result?: { postings?: RawPosting[]; has_next?: boolean };
+}
+
+interface OrdersCacheEntry {
+  response: RawPostingListResponse;
+  refreshedAt: Date;
+  freshUntil: number;
+  staleUntil: number;
 }
 
 export interface OzonOrderItem {
@@ -107,15 +116,7 @@ export interface OzonOrdersPage {
 @Injectable()
 export class OzonOrdersService {
   private readonly logger = new Logger(OzonOrdersService.name);
-  private readonly cache = new Map<
-    string,
-    {
-      response: RawPostingListResponse;
-      refreshedAt: Date;
-      freshUntil: number;
-      staleUntil: number;
-    }
-  >();
+  private readonly cache = new Map<string, OrdersCacheEntry>();
   private readonly inFlight = new Map<
     string,
     Promise<{
@@ -125,7 +126,10 @@ export class OzonOrdersService {
     }>
   >();
 
-  constructor(private readonly api: OzonApiClient) {}
+  constructor(
+    private readonly api: OzonApiClient,
+    private readonly prisma?: PrismaService,
+  ) {}
 
   /**
    * Список отправлений за период. Ozon фильтрует по одному статусу, а нам
@@ -223,46 +227,121 @@ export class OzonOrdersService {
     const running = this.inFlight.get(key);
     if (running) return running;
 
-    const request = this.api
-      .post<RawPostingListResponse>(creds, '/v3/posting/fbs/list', {
-        dir: 'DESC',
-        filter: { since: since.toISOString(), to: new Date().toISOString() },
-        limit,
-        offset,
-        with: { financial_data: true },
-      })
-      .then((response) => {
+    const request = (async () => {
+      const fallback = cached ?? (await this.loadPersisted(key));
+      if (fallback && fallback.freshUntil > Date.now()) {
+        return {
+          response: fallback.response,
+          stale: false,
+          refreshedAt: fallback.refreshedAt,
+        };
+      }
+
+      try {
+        const response = await this.api.post<RawPostingListResponse>(
+          creds,
+          '/v3/posting/fbs/list',
+          {
+            dir: 'DESC',
+            filter: {
+              since: since.toISOString(),
+              to: new Date().toISOString(),
+            },
+            limit,
+            offset,
+            with: { financial_data: true },
+          },
+        );
         const refreshedAt = new Date();
-        this.cache.set(key, {
+        const entry: OrdersCacheEntry = {
           response,
           refreshedAt,
           freshUntil: refreshedAt.getTime() + ORDERS_CACHE_FRESH_MS,
           staleUntil: refreshedAt.getTime() + ORDERS_CACHE_STALE_MS,
-        });
+        };
+        this.cache.set(key, entry);
+        await this.savePersisted(key, creds.clientId, entry);
         return { response, stale: false, refreshedAt };
-      })
-      .catch((error: unknown) => {
+      } catch (error: unknown) {
         if (
           error instanceof OzonApiError &&
           error.status === 429 &&
-          cached &&
-          cached.staleUntil > Date.now()
+          fallback &&
+          fallback.staleUntil > Date.now()
         ) {
           this.logger.warn(
-            `Ozon ограничил запросы кабинета ${creds.clientId}; отдаю снимок от ${cached.refreshedAt.toISOString()}`,
+            `Ozon ограничил запросы кабинета ${creds.clientId}; отдаю снимок от ${fallback.refreshedAt.toISOString()}`,
           );
           return {
-            response: cached.response,
+            response: fallback.response,
             stale: true,
-            refreshedAt: cached.refreshedAt,
+            refreshedAt: fallback.refreshedAt,
           };
         }
         throw error;
-      })
-      .finally(() => this.inFlight.delete(key));
+      }
+    })().finally(() => this.inFlight.delete(key));
 
     this.inFlight.set(key, request);
     return request;
+  }
+
+  /** Поднять последний снимок после перезапуска backend. */
+  private async loadPersisted(
+    key: string,
+  ): Promise<OrdersCacheEntry | undefined> {
+    if (!this.prisma) return undefined;
+    let row: OzonOrderSnapshot | null;
+    try {
+      row = await this.prisma.ozonOrderSnapshot.findUnique({
+        where: { cacheKey: key },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Не удалось прочитать снимок заказов Ozon: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return undefined;
+    }
+    if (!row || row.staleUntil.getTime() <= Date.now()) return undefined;
+
+    const entry: OrdersCacheEntry = {
+      response: row.response as unknown as RawPostingListResponse,
+      refreshedAt: row.refreshedAt,
+      freshUntil: row.refreshedAt.getTime() + ORDERS_CACHE_FRESH_MS,
+      staleUntil: row.staleUntil.getTime(),
+    };
+    this.cache.set(key, entry);
+    return entry;
+  }
+
+  /** Сохранение кеша не должно превращать успешный ответ Ozon в ошибку. */
+  private async savePersisted(
+    key: string,
+    clientId: string,
+    entry: OrdersCacheEntry,
+  ): Promise<void> {
+    if (!this.prisma) return;
+    try {
+      await this.prisma.ozonOrderSnapshot.upsert({
+        where: { cacheKey: key },
+        create: {
+          cacheKey: key,
+          clientId,
+          response: entry.response as unknown as Prisma.InputJsonValue,
+          refreshedAt: entry.refreshedAt,
+          staleUntil: new Date(entry.staleUntil),
+        },
+        update: {
+          response: entry.response as unknown as Prisma.InputJsonValue,
+          refreshedAt: entry.refreshedAt,
+          staleUntil: new Date(entry.staleUntil),
+        },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Не удалось сохранить снимок заказов Ozon: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   /**
