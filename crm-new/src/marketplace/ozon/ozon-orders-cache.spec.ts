@@ -38,16 +38,21 @@ describe('OzonOrdersService cache', () => {
     const post = jest.fn().mockResolvedValue(RESPONSE);
     const service = makeService(post);
 
-    const first = await service.list(CREDS, { sinceDays: 90, limit: 200 });
+    const first = await service.list(CREDS, { sinceDays: 90, limit: 1000 });
     const second = await service.list(CREDS, {
       sinceDays: 90,
-      limit: 200,
+      limit: 1000,
       articlePrefixes: ['papa-'],
     });
 
     expect(first.orders).toHaveLength(1);
     expect(second.orders).toHaveLength(1);
     expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith(
+      CREDS,
+      '/v3/posting/fbs/list',
+      expect.objectContaining({ limit: 1000, offset: 0 }),
+    );
   });
 
   it('объединяет одновременные запросы к одной странице', async () => {
@@ -58,8 +63,8 @@ describe('OzonOrdersService cache', () => {
     const post = jest.fn().mockReturnValue(pending);
     const service = makeService(post);
 
-    const first = service.list(CREDS, { sinceDays: 90, limit: 200 });
-    const second = service.list(CREDS, { sinceDays: 90, limit: 200 });
+    const first = service.list(CREDS, { sinceDays: 90, limit: 1000 });
+    const second = service.list(CREDS, { sinceDays: 90, limit: 1000 });
     resolve(RESPONSE);
 
     await expect(Promise.all([first, second])).resolves.toHaveLength(2);
@@ -77,9 +82,9 @@ describe('OzonOrdersService cache', () => {
       );
     const service = makeService(post);
 
-    const fresh = await service.list(CREDS, { sinceDays: 90, limit: 200 });
+    const fresh = await service.list(CREDS, { sinceDays: 90, limit: 1000 });
     jest.setSystemTime(new Date('2026-10-20T10:07:00Z'));
-    const stale = await service.list(CREDS, { sinceDays: 90, limit: 200 });
+    const stale = await service.list(CREDS, { sinceDays: 90, limit: 1000 });
 
     expect(fresh.stale).toBe(false);
     expect(stale.stale).toBe(true);

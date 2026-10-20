@@ -123,7 +123,10 @@ export class OzonShippedCloseService {
       const creds = await this.accounts.credentials(accountId);
       const page = await this.orders.list(creds, {
         sinceDays: OzonShippedCloseService.LOOKBACK_DAYS,
-        limit: 200,
+        // Та же максимальная страница, что на экране маркетплейса. Так
+        // активный заказ не теряется за отправлениями других линеек, а
+        // экран и фоновая сверка продолжают делить один кешированный ответ.
+        limit: 1000,
       });
       return new Map(page.orders.map((o) => [o.postingNumber, o.group]));
     } catch (error) {

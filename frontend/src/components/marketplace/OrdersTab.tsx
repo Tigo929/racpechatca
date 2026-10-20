@@ -32,6 +32,13 @@ import {
 const TH =
   'px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-400';
 
+/**
+ * Ozon фильтрует по артикулу только после выдачи страницы. Берём максимально
+ * допустимую страницу, иначе нужные papa/ПАПА могут оказаться за первыми 200
+ * отправлениями других линеек и вообще не попасть в локальный фильтр.
+ */
+const OZON_ORDERS_PAGE_LIMIT = 1000;
+
 const GROUPS: { key: OzonOrderGroup | 'all'; label: string }[] = [
   { key: 'to_ship', label: 'Нужно отгрузить' },
   { key: 'in_transit', label: 'В доставке' },
@@ -227,7 +234,7 @@ export function OrdersTab({ accountId }: { accountId: string }) {
     queryFn: () =>
       ozonOrdersApi.list(accountId, {
         sinceDays: 90,
-        limit: 200,
+        limit: OZON_ORDERS_PAGE_LIMIT,
         ...(showAll ? { all: 1 as const } : {}),
       }),
     // Заказы приходят в течение дня; минута свежести — разумный компромисс
@@ -531,7 +538,7 @@ export function OrdersTab({ accountId }: { accountId: string }) {
 
       {data?.hasNext && (
         <p className="text-xs text-gray-400">
-          Показаны заказы за последние 90 дней (первые 200). Более старые — в кабинете Ozon.
+          Показаны заказы за последние 90 дней (первые 1000). Более старые — в кабинете Ozon.
         </p>
       )}
     </div>
