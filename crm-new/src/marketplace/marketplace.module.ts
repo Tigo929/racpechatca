@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { PrismaModule } from 'src/prisma/prisma.module';
+import { OzonApiExceptionFilter } from './ozon-api-exception.filter';
 import { MarketplaceController } from './marketplace.controller';
 import { MarketplaceAccountService } from './marketplace-account.service';
 import { MarketplaceAccessGuard } from './marketplace-access.guard';
@@ -45,6 +47,10 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
     OzonCatalogController,
   ],
   providers: [
+    // Ответ площадки показываем текстом, а не «Internal server error».
+    // Фильтр ловит только OzonApiError, поэтому на остальные маршруты
+    // проекта он не влияет, хотя и регистрируется глобально.
+    { provide: APP_FILTER, useClass: OzonApiExceptionFilter },
     MarketplaceAccessGuard,
     MarketplaceAccountService,
     OzonApiClient,
