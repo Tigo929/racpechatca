@@ -28,8 +28,9 @@ function posting(postingNumber: string, ...offerIds: string[]) {
 }
 
 function serviceReturning(postings: unknown[]): OzonOrdersService {
+  // Конвертv4: отправления в корне ответа, без обёртки `result`.
   const api = {
-    post: jest.fn().mockResolvedValue({ result: { postings, has_next: false } }),
+    post: jest.fn().mockResolvedValue({ postings, has_next: false }),
   } as unknown as OzonApiClient;
   return new OzonOrdersService(api);
 }

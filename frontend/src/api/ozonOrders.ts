@@ -50,6 +50,11 @@ export interface OzonOrder {
 export interface OzonOrdersPage {
   orders: OzonOrder[];
   hasNext: boolean;
+  /**
+   * Метка следующей страницы. Площадка листает курсором, а не смещением:
+   * запрос с offset отдаёт ту же первую страницу.
+   */
+  nextCursor: string | null;
   /** Сколько отправлений скрыто фильтром «только наши принты». */
   hiddenByCatalog: number;
 }

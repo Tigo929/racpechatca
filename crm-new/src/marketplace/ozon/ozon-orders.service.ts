@@ -40,12 +40,20 @@ interface RawPosting {
   delivery_method?: { name?: string; warehouse?: string };
   cancellation?: { cancel_reason?: string };
   financial_data?: {
-    products?: { payout?: number; commission_amount?: number }[];
+    products?: { payout?: number }[];
   };
 }
 
+/**
+ * Ответ v4: отправления лежат в корне, без обёртки `result`, а страницы
+ * идут курсором. У v3 было `{result: {postings, has_next}}` — разница
+ * тихая: читать старое поле значит получить пустой список и показать
+ * «заказов нет» вместо поломки.
+ */
 interface RawPostingListResponse {
-  result?: { postings?: RawPosting[]; has_next?: boolean };
+  postings?: RawPosting[];
+  has_next?: boolean;
+  cursor?: string;
 }
 
 export interface OzonOrderItem {
@@ -84,6 +92,13 @@ export interface OzonOrdersPage {
   orders: OzonOrderView[];
   hasNext: boolean;
   /**
+   * Метка следующей страницы. Пусто — дальше ничего нет.
+   *
+   * Строка площадки, а не номер: v4 листает курсором, и смещение он
+   * молча игнорирует — запрос с offset=3 отдаёт ту же первую страницу.
+   */
+  nextCursor: string | null;
+  /**
    * Сколько отправлений скрыто фильтром «только наши принты».
    *
    * Отдаём числом, а не молча: скрытый заказ — это заказ, которого человек
@@ -100,13 +115,19 @@ export class OzonOrdersService {
    * Список отправлений за период. Ozon фильтрует по одному статусу, а нам
    * нужна группа (несколько статусов сразу), поэтому фильтруем на своей
    * стороне: запрашиваем всё за период и раскладываем по группам.
+   *
+   * Версия метода — четвёртая. Третью Ozon выключил: она отвечает
+   * `400 {"code":9,"message":"obsolete method cannot be used"}`, и раздел
+   * заказов переставал работать целиком. Поля отправления в v4 те же,
+   * изменились конверт ответа и способ листать страницы.
    */
   async list(
     creds: OzonCredentials,
     options: {
       sinceDays?: number;
       limit?: number;
-      offset?: number;
+      /** Метка следующей страницы из прошлого ответа. */
+      cursor?: string;
       /**
        * Какими буквами начинается артикул нужной линейки («papa-»).
        * Пусто — не фильтруем вовсе: пустой список значит «показывать всё»,
@@ -121,17 +142,17 @@ export class OzonOrdersService {
 
     const res = await this.api.post<RawPostingListResponse>(
       creds,
-      '/v3/posting/fbs/list',
+      '/v4/posting/fbs/list',
       {
         dir: 'DESC',
         filter: { since: since.toISOString(), to: new Date().toISOString() },
         limit,
-        offset: options.offset ?? 0,
+        ...(options.cursor ? { cursor: options.cursor } : {}),
         with: { financial_data: true },
       },
     );
 
-    const postings = res.result?.postings ?? [];
+    const postings = res.postings ?? [];
     const all = postings.map((p) => this.toView(p));
 
     /*
@@ -160,7 +181,8 @@ export class OzonOrdersService {
 
     return {
       orders,
-      hasNext: Boolean(res.result?.has_next),
+      hasNext: Boolean(res.has_next),
+      nextCursor: res.cursor || null,
       hiddenByCatalog: all.length - orders.length,
     };
   }
