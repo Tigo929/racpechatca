@@ -72,14 +72,13 @@ export class OzonOrdersController {
     @Param('accountId', ParseUUIDPipe) accountId: string,
     @Query('sinceDays') sinceDays?: string,
     @Query('limit') limit?: string,
-    @Query('cursor') cursor?: string,
+
     @Query('all') all?: string,
   ) {
     const creds = await this.accounts.credentials(accountId);
     const page = await this.orders.list(creds, {
       sinceDays: sinceDays ? Number(sinceDays) : undefined,
       limit: limit ? Number(limit) : undefined,
-      cursor: cursor || undefined,
       articlePrefixes: all === '1' ? [] : MARKETPLACE_ARTICLE_PREFIXES,
     });
 

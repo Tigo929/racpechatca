@@ -23,7 +23,26 @@ import {
  * отгрузить и горит ли срок.
  */
 
-const OZON_MAX_LIMIT = 1000;
+/**
+ * Сколько отправлений Ozon отдаёт за один запрос.
+ *
+ * Сотня — потолок четвёртой версии метода, и он жёсткий: запрос на
+ * большее отбивается целиком, а список выглядит пустым. Третья версия
+ * разрешала тысячу, и на этом держался прежний расчёт — одна большая
+ * страница и фильтр линейки у себя.
+ */
+const OZON_PAGE_LIMIT = 100;
+
+/**
+ * Докуда листаем.
+ *
+ * Фильтр линейки применяется уже у нас, после выдачи страницы: нужные
+ * «papa» могут лежать за сотнями чужих отправлений, и остановка на
+ * первой странице просто теряет заказы. Потолок всё же нужен — иначе
+ * кабинет с тысячами отправлений выгребался бы целиком на каждый вход
+ * в раздел.
+ */
+const OZON_MAX_POSTINGS = 1000;
 /** Не дёргаем один и тот же список отдельно для экрана и фонового опроса. */
 const ORDERS_CACHE_FRESH_MS = 6 * 60_000;
 /** При 429 лучше показать недавний снимок, чем снова спрятать все заказы. */
@@ -119,13 +138,6 @@ export interface OzonOrdersPage {
    * не увидит, и он должен знать, что они есть. Ноль — скрывать было нечего.
    */
   hiddenByCatalog: number;
-  /**
-   * Метка следующей страницы. Пусто — дальше ничего нет.
-   *
-   * Строка площадки, а не номер: v4 листает курсором, и смещение он
-   * молча игнорирует — запрос с offset=3 отдаёт ту же первую страницу.
-   */
-  nextCursor: string | null;
 }
 
 @Injectable()
@@ -154,15 +166,18 @@ export class OzonOrdersService {
    * Версия метода — четвёртая. Третью Ozon выключил: она отвечает
    * `400 {"code":9,"message":"obsolete method cannot be used"}`, и раздел
    * заказов переставал работать целиком. Поля отправления в v4 те же,
-   * изменились конверт ответа и способ листать страницы.
+   * изменились конверт ответа и предел страницы: сотня вместо тысячи.
+   *
+   * `limit` здесь — сколько отправлений просмотреть всего. Страницы по
+   * сотне собираются внутри, курсором: наружу это по-прежнему один
+   * список, а не забота вызывающего.
    */
   async list(
     creds: OzonCredentials,
     options: {
       sinceDays?: number;
+      /** Сколько отправлений просмотреть всего, а не за один запрос. */
       limit?: number;
-      /** Метка следующей страницы из прошлого ответа. */
-      cursor?: string;
       /**
        * Какими буквами начинается артикул нужной линейки («papa-»).
        * Пусто — не фильтруем вовсе: пустой список значит «показывать всё»,
@@ -172,11 +187,10 @@ export class OzonOrdersService {
     } = {},
   ): Promise<OzonOrdersPage> {
     const sinceDays = options.sinceDays ?? 90;
-    const limit = Math.min(options.limit ?? 100, OZON_MAX_LIMIT);
+    const limit = Math.min(options.limit ?? OZON_PAGE_LIMIT, OZON_MAX_POSTINGS);
     const since = new Date(Date.now() - sinceDays * 24 * 3600 * 1000);
 
-    const cursor = options.cursor ?? '';
-    const cached = await this.postings(creds, sinceDays, limit, cursor, since);
+    const cached = await this.postings(creds, sinceDays, limit, since);
     const res = cached.response;
 
     const postings = res.postings ?? [];
@@ -209,7 +223,6 @@ export class OzonOrdersService {
     return {
       orders,
       hasNext: Boolean(res.has_next),
-      nextCursor: res.cursor || null,
       hiddenByCatalog: all.length - orders.length,
       stale: cached.stale,
       refreshedAt: cached.refreshedAt.toISOString(),
@@ -228,14 +241,13 @@ export class OzonOrdersService {
     creds: OzonCredentials,
     sinceDays: number,
     limit: number,
-    cursor: string,
     since: Date,
   ): Promise<{
     response: RawPostingListResponse;
     stale: boolean;
     refreshedAt: Date;
   }> {
-    const key = JSON.stringify([creds.clientId, sinceDays, limit, cursor]);
+    const key = JSON.stringify([creds.clientId, sinceDays, limit]);
     const now = Date.now();
     const cached = this.cache.get(key);
     if (cached && cached.freshUntil > now) {
@@ -260,21 +272,7 @@ export class OzonOrdersService {
       }
 
       try {
-        const response = await this.api.post<RawPostingListResponse>(
-          creds,
-          '/v4/posting/fbs/list',
-          {
-            dir: 'DESC',
-            filter: {
-              since: since.toISOString(),
-              to: new Date().toISOString(),
-            },
-            limit,
-            // Пустой курсор — не «с начала», а неизвестно что: не шлём.
-            ...(cursor ? { cursor } : {}),
-            with: { financial_data: true },
-          },
-        );
+        const response = await this.fetchAllPages(creds, limit, since);
         const refreshedAt = new Date();
         const entry: OrdersCacheEntry = {
           response,
@@ -406,6 +404,57 @@ export class OzonOrdersService {
     return this.api.postBinary(creds, '/v2/posting/fbs/package-label', {
       posting_number: [postingNumber],
     });
+  }
+
+  /**
+   * Собирает страницы по сотне в один ответ.
+   *
+   * Фильтр линейки применяется уже у нас, после выдачи страницы, и
+   * нужные отправления могут лежать за чужими. Поэтому листаем курсором,
+   * пока площадка говорит «есть ещё» и пока не набрали столько, сколько
+   * просили.
+   *
+   * Смещение здесь не годится: v4 его молча игнорирует — запрос с
+   * offset=3 отдаёт ту же первую страницу.
+   */
+  private async fetchAllPages(
+    creds: OzonCredentials,
+    limit: number,
+    since: Date,
+  ): Promise<RawPostingListResponse> {
+    const postings: RawPosting[] = [];
+    let cursor = '';
+    let hasNext = false;
+
+    while (postings.length < limit) {
+      const page = await this.api.post<RawPostingListResponse>(
+        creds,
+        '/v4/posting/fbs/list',
+        {
+          dir: 'DESC',
+          filter: {
+            since: since.toISOString(),
+            to: new Date().toISOString(),
+          },
+          limit: Math.min(OZON_PAGE_LIMIT, limit - postings.length),
+          // Пустой курсор — не «с начала», а неизвестно что: не шлём.
+          ...(cursor ? { cursor } : {}),
+          with: { financial_data: true },
+        },
+      );
+
+      postings.push(...(page.postings ?? []));
+      hasNext = Boolean(page.has_next);
+      cursor = page.cursor ?? '';
+      /*
+        Площадка сказала «больше нет» — или перестала двигать курсор.
+        Второе проверяем отдельно: без этого ошибка на её стороне
+        превратилась бы в вечный цикл запросов.
+      */
+      if (!hasNext || !cursor || (page.postings ?? []).length === 0) break;
+    }
+
+    return { postings, has_next: hasNext };
   }
 
   private toView(p: RawPosting): OzonOrderView {

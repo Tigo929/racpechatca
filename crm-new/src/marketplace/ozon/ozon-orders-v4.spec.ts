@@ -53,15 +53,12 @@ describe('список отправлений Ozon', () => {
   it('читает отправления из корня ответа, а не из result', async () => {
     const { service } = serviceWith({
       postings: [posting('111-0001')],
-      has_next: true,
-      cursor: 'eyJ0ZXN0Ijp0cnVlfQ==',
+      has_next: false,
     });
 
     const page = await service.list(CREDS);
 
     expect(page.orders.map((o) => o.postingNumber)).toEqual(['111-0001']);
-    expect(page.hasNext).toBe(true);
-    expect(page.nextCursor).toBe('eyJ0ZXN0Ijp0cnVlfQ==');
   });
 
   it('старый конверт больше не считается ответом', async () => {
@@ -77,15 +74,61 @@ describe('список отправлений Ozon', () => {
     expect(page.hasNext).toBe(false);
   });
 
-  it('листает курсором: смещение площадка игнорирует', async () => {
-    // Запрос с offset=3 отдаёт ту же первую страницу — проверено на бою.
+  it('просит не больше сотни за раз — это потолок v4', async () => {
+    /*
+      Четвёртая версия отбивает страницу крупнее сотни целиком:
+      `400 invalid PostingFbsListRequest.Limit: value must be inside
+      range (0, 100]`. Третья разрешала тысячу, и на ней держался
+      прежний расчёт — одна большая страница и фильтр линейки у себя.
+    */
     const { service, post } = serviceWith({ postings: [], has_next: false });
 
-    await service.list(CREDS, { cursor: 'ABC' });
+    await service.list(CREDS, { limit: 1000 });
 
     const body = post.mock.calls[0]![2] as Record<string, unknown>;
-    expect(body.cursor).toBe('ABC');
+    expect(body.limit).toBe(100);
     expect(body).not.toHaveProperty('offset');
+  });
+
+  it('листает курсором, пока площадка говорит «есть ещё»', async () => {
+    // Фильтр линейки применяется после выдачи страницы: нужные заказы
+    // могут лежать за чужими, и остановка на первой странице их теряет.
+    const post = jest
+      .fn()
+      .mockResolvedValueOnce({
+        postings: [posting('111-0001')],
+        has_next: true,
+        cursor: 'СТРАНИЦА-2',
+      })
+      .mockResolvedValueOnce({
+        postings: [posting('111-0002')],
+        has_next: false,
+      });
+    const service = new OzonOrdersService({ post } as unknown as OzonApiClient);
+
+    const page = await service.list(CREDS, { limit: 1000 });
+
+    expect(page.orders.map((o) => o.postingNumber)).toEqual([
+      '111-0001',
+      '111-0002',
+    ]);
+    expect((post.mock.calls[1]![2] as Record<string, unknown>).cursor).toBe(
+      'СТРАНИЦА-2',
+    );
+  });
+
+  it('курсор перестал двигаться — выходим, а не ходим по кругу', async () => {
+    // Иначе ошибка на стороне площадки превратилась бы в вечный цикл.
+    const post = jest.fn().mockResolvedValue({
+      postings: [posting('111-0003')],
+      has_next: true,
+      cursor: '',
+    });
+    const service = new OzonOrdersService({ post } as unknown as OzonApiClient);
+
+    await service.list(CREDS, { limit: 1000 });
+
+    expect(post).toHaveBeenCalledTimes(1);
   });
 
   it('первая страница идёт без курсора', async () => {

@@ -50,9 +50,9 @@ describe('OzonOrdersService cache', () => {
     expect(post).toHaveBeenCalledTimes(1);
     expect(post).toHaveBeenCalledWith(
       CREDS,
-      // Третью версию метода Ozon выключил; первая страница идёт без курсора.
+      // Третью версию метода Ozon выключил; сотня — потолок четвёртой.
       '/v4/posting/fbs/list',
-      expect.objectContaining({ limit: 1000 }),
+      expect.objectContaining({ limit: 100 }),
     );
   });
 

@@ -50,11 +50,6 @@ export interface OzonOrder {
 export interface OzonOrdersPage {
   orders: OzonOrder[];
   hasNext: boolean;
-  /**
-   * Метка следующей страницы. Площадка листает курсором, а не смещением:
-   * запрос с offset отдаёт ту же первую страницу.
-   */
-  nextCursor: string | null;
   /** Последний успешный снимок: Ozon временно ограничил новые запросы. */
   stale: boolean;
   refreshedAt: string;
@@ -74,9 +69,8 @@ export const ozonOrdersApi = {
     accountId: string,
     params: {
       sinceDays?: number;
+      /** Сколько отправлений просмотреть всего, а не за один запрос. */
       limit?: number;
-      /** Метка следующей страницы из прошлого ответа. */
-      cursor?: string;
       /** 1 — показать и чужие товары кабинета, не только наши принты. */
       all?: 1;
     } = {},
