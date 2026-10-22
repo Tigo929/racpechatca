@@ -13,7 +13,7 @@ import { OzonShippedCloseService } from './ozon-shipped-close.service';
  * спрашивать площадку незачем — у неё лимиты, а выигрыша нет. Заказ закроется
  * в течение нескольких минут после того, как Ozon отметит отправление.
  */
-const POLL_INTERVAL_MS = 5 * 60 * 1000;
+const POLL_INTERVAL_MS = 15 * 60 * 1000;
 
 @Injectable()
 export class OzonShippedClosePollService
@@ -29,9 +29,9 @@ export class OzonShippedClosePollService
     this.timer = setInterval(() => {
       this.tick();
     }, POLL_INTERVAL_MS);
-    // Первый проход не сразу после старта: дать подняться соединениям
-    // и не дёргать площадку на каждом перезапуске контейнера.
-    this.startupTimer = setTimeout(() => this.tick(), 60_000);
+    // После старта приоритет у человека, открывшего раздел заказов. Иначе
+    // фоновый опрос первым расходует лимит Ozon, а экран получает 429.
+    this.startupTimer = setTimeout(() => this.tick(), 5 * 60_000);
   }
 
   onModuleDestroy() {

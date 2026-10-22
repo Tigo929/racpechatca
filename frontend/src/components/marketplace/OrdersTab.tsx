@@ -6,6 +6,7 @@ import { FilterChip } from '../ui/FilterChip';
 import { OzonOrderModal } from './OzonOrderModal';
 import { OrderNavigator } from '../orders/OrderNavigator';
 import { parseOzonArticle } from '../../utils/ozon-article';
+import { getErrorMessage } from '../../utils/get-error-message';
 import {
   formatAccepted,
   neighbourPosting,
@@ -30,6 +31,13 @@ import {
 /** Шапка столбца — в одном месте, чтобы столбцы не разъезжались. */
 const TH =
   'px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-400';
+
+/**
+ * Ozon фильтрует по артикулу только после выдачи страницы. Берём максимально
+ * допустимую страницу, иначе нужные papa/ПАПА могут оказаться за первыми 200
+ * отправлениями других линеек и вообще не попасть в локальный фильтр.
+ */
+const OZON_ORDERS_PAGE_LIMIT = 1000;
 
 const GROUPS: { key: OzonOrderGroup | 'all'; label: string }[] = [
   { key: 'to_ship', label: 'Нужно отгрузить' },
@@ -221,17 +229,20 @@ export function OrdersTab({ accountId }: { accountId: string }) {
    */
   const [stage, setStage] = useState<MarketplaceStageKey | 'all'>('all');
 
-  const { data, isLoading, isFetching, refetch } = useQuery({
+  const { data, isLoading, isFetching, refetch, isError, error } = useQuery({
     queryKey: ['ozon-orders', accountId, showAll],
     queryFn: () =>
       ozonOrdersApi.list(accountId, {
         sinceDays: 90,
-        limit: 200,
+        limit: OZON_ORDERS_PAGE_LIMIT,
         ...(showAll ? { all: 1 as const } : {}),
       }),
     // Заказы приходят в течение дня; минута свежести — разумный компромисс
     // между актуальностью и лимитами API Ozon.
     staleTime: 60_000,
+    // Повтор через секунду не лечит минутный лимит Ozon, а только продлевает
+    // блокировку. Человек может повторить запрос явной кнопкой после паузы.
+    retry: false,
   });
 
   const all = data?.orders ?? [];
@@ -256,6 +267,19 @@ export function OrdersTab({ accountId }: { accountId: string }) {
 
   return (
     <div className="space-y-4">
+      {data?.stale && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900">
+          Ozon временно ограничил обновление. Показаны последние полученные
+          данные на{' '}
+          {new Date(data.refreshedAt).toLocaleString('ru-RU', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+          .
+        </div>
+      )}
       {(hidden > 0 || showAll) && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-700">
           <span>
@@ -366,15 +390,49 @@ export function OrdersTab({ accountId }: { accountId: string }) {
 
       {isLoading ? (
         <p className="text-sm text-gray-500">Загрузка…</p>
+      ) : isError ? (
+        /*
+         * Сбой запроса показываем как сбой.
+         *
+         * Раньше ошибка сюда не доходила вовсе: из useQuery брались только
+         * data и isLoading, упавший запрос давал пустой список, и экран
+         * сообщал «ничего не ждёт отгрузки» — то есть заявлял, что в
+         * кабинете пусто, хотя на самом деле до кабинета не достучались.
+         * Отличить одно от другого было нельзя, и причину приходилось
+         * искать в логах сервера.
+         */
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+          <AlertTriangle
+            size={24}
+            className="mx-auto text-red-400"
+            aria-hidden="true"
+          />
+          <p className="mt-3 text-sm font-medium text-red-800">
+            Не удалось получить заказы из кабинета
+          </p>
+          <p className="mt-1 text-sm text-red-700">{getErrorMessage(error)}</p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="mt-4 inline-flex min-h-9 items-center rounded-lg bg-red-600 px-3 text-sm font-medium text-white transition-colors hover:bg-red-700"
+          >
+            Попробовать снова
+          </button>
+        </div>
       ) : visible.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-8 text-center">
           <Package size={28} className="mx-auto text-gray-300" aria-hidden="true" />
           <p className="mt-3 text-sm text-gray-500">
             {stage !== 'all'
               ? 'На этом этапе сейчас пусто.'
-              : group === 'to_ship'
-                ? 'Ничего не ждёт отгрузки — всё передано в доставку.'
-                : 'В этой группе заказов нет.'}
+              : all.length === 0
+                ? // Пусто во всех группах — это не «всё отгружено», а «из
+                  // кабинета не пришло ни одного отправления». Разные
+                  // причины, и подсказка должна вести к нужной.
+                  'Из кабинета не пришло ни одного отправления за последние 90 дней. Проверьте связь в разделе «Подключение».'
+                : group === 'to_ship'
+                  ? 'Ничего не ждёт отгрузки — всё передано в доставку.'
+                  : 'В этой группе заказов нет.'}
           </p>
         </div>
       ) : (
@@ -480,7 +538,7 @@ export function OrdersTab({ accountId }: { accountId: string }) {
 
       {data?.hasNext && (
         <p className="text-xs text-gray-400">
-          Показаны заказы за последние 90 дней (первые 200). Более старые — в кабинете Ozon.
+          Показаны заказы за последние 90 дней (первые 1000). Более старые — в кабинете Ozon.
         </p>
       )}
     </div>

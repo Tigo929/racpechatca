@@ -138,7 +138,24 @@ function makeOrder(productCategory: 'PHOTO' | 'TSHIRT' = 'PHOTO') {
   };
 }
 
-function createOrderService(stub: PrismaStub) {
+/**
+ * Заглушка корзины удалённых заказов.
+ *
+ * Снимок и возврат заказа проверяются отдельно (order-archive.spec.ts);
+ * здесь важно лишь то, что удаление обращается к корзине и передаёт ей
+ * причину — сама запись делается внутри неё.
+ */
+function createArchiveStub() {
+  return {
+    capture: jest.fn<Promise<void>, unknown[]>().mockResolvedValue(),
+    retentionDays: jest.fn<number, []>().mockReturnValue(30),
+  };
+}
+
+function createOrderService(
+  stub: PrismaStub,
+  archive = createArchiveStub(),
+) {
   const financialIntegrity = {
     assertOrderFinanciallyEditable: jest.fn<Promise<void>, [string]>(),
     recalcPendingAccrual: jest.fn<Promise<void>, unknown[]>(),
@@ -169,6 +186,9 @@ function createOrderService(stub: PrismaStub) {
     // Web Push (master) в этих тестах тоже не участвует.
     null as never,
     metrikaOutboxStub,
+    // Удаление фотографий клиента с сайта здесь не участвует.
+    {} as never,
+    archive as never,
   );
 }
 
@@ -732,20 +752,20 @@ describe('salary accrual integrity', () => {
       items: [],
       tshirtItems: [],
     });
-    const service = createOrderService(stub);
+    const archive = createArchiveStub();
+    const service = createOrderService(stub, archive);
 
     // Причина обязательна: удаление без объяснения больше не проходит.
     const result = await service.deleteOrder('order-1', 'тестовое удаление');
 
-    // Причина записана вместе со снимком заказа — иначе после удаления
-    // связать её будет не с чем.
-    expect(stub.orderDeletion.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          reason: 'тестовое удаление',
-          orderId: 'order-1',
-        }) as unknown,
-      }),
+    // Заказ уезжает в корзину ДО удаления и в той же транзакции: иначе
+    // упавшее удаление оставило бы заказ без объяснения и без снимка,
+    // а вернуть его было бы нечем.
+    expect(archive.capture).toHaveBeenCalledWith(
+      stub,
+      'order-1',
+      'тестовое удаление',
+      undefined,
     );
 
     // Платёжные связи удаляются раньше начислений (FK-целостность)
@@ -756,8 +776,12 @@ describe('salary accrual integrity', () => {
       where: { id: { in: ['accrual-1', 'accrual-2'] } },
     });
     expect(stub.orderPhoto.delete).toHaveBeenCalledTimes(1);
+    // Про срок возврата говорим сразу: иначе удаление выглядит
+    // безвозвратным, и заказ пойдут заводить заново вместо восстановления.
     expect(result).toEqual(
-      expect.objectContaining({ message: 'Заказ удалён успешно' }),
+      expect.objectContaining({
+        message: 'Заказ удалён. Его можно вернуть из корзины в течение 30 дней',
+      }),
     );
   });
 });

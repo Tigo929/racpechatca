@@ -224,8 +224,38 @@ export class MarketplaceAccountService {
     const row = await this.getOrFail(id);
     return {
       clientId: row.externalId,
-      apiKey: decryptSecret(row.apiKeySecret, this.masterSecret),
+      apiKey: this.decryptApiKey(row.apiKeySecret, row.title),
     };
+  }
+
+  /**
+   * Расшифровка ключа кабинета с внятным отказом.
+   *
+   * Ключ зашифрован мастер-секретом (MARKETPLACE_SECRET, а если его не
+   * завели — JWT_SECRET). Смените JWT_SECRET без заданного
+   * MARKETPLACE_SECRET — и все сохранённые ключи перестанут читаться.
+   *
+   * Без этой обёртки наружу уходила голая ошибка AES («Unsupported state or
+   * unable to authenticate data») в виде 500 без текста. Раздел просто
+   * перестаёт отдавать данные, и отличить это от любой другой поломки
+   * нельзя — причину приходится угадывать. А починка простая: ввести ключ
+   * заново, он перешифруется текущим секретом.
+   */
+  private decryptApiKey(stored: string, title: string): string {
+    try {
+      return decryptSecret(stored, this.masterSecret);
+    } catch (error) {
+      this.logger.error(
+        `Кабинет «${title}»: ключ не расшифровывается — мастер-секрет не тот, которым он сохранён (${
+          error instanceof Error ? error.message : String(error)
+        })`,
+      );
+      throw new ConflictException(
+        `Ключ кабинета «${title}» зашифрован другим секретом и больше не читается. ` +
+          'Так бывает после смены JWT_SECRET, если не задан MARKETPLACE_SECRET. ' +
+          'Введите Api-Key заново в разделе «Подключение» — он перешифруется.',
+      );
+    }
   }
 
   /** Проверка связи с площадкой; результат сохраняем на карточке кабинета. */

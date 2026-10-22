@@ -40,6 +40,9 @@ function serviceWithTx() {
     orderPhoto: { create, findUnique: jest.fn().mockResolvedValue(null) },
     orderAssignment: { create: jest.fn() },
     user: { findUnique: jest.fn() },
+    // Корзина удалённых: приём заявки проверяет, не удаляли ли эту заявку
+    // руками. Здесь таких нет — заявка заводится как обычно.
+    orderDeletion: { findFirst: jest.fn().mockResolvedValue(null) },
   };
   const prisma = {
     $transaction: (fn: (t: typeof tx) => unknown) => fn(tx),
@@ -65,6 +68,10 @@ function serviceWithTx() {
     {} as never,
     {} as never,
     push as never,
+    {} as never,
+    // Очередь Метрики, удаление фотографий с сайта и корзина удалённых в
+    // этих тестах не участвуют — заглушки нужны, чтобы собрать сервис.
+    {} as never,
     {} as never,
   );
   return { service, create };

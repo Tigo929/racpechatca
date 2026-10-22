@@ -77,6 +77,7 @@ import { hasTechSpecFiles } from 'src/partner/tech-spec-paths';
 import { GulianOutboxService } from 'src/gulian/gulian-outbox.service';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 import { SitePhotosService } from './site-photos.service';
+import { OrderArchiveService } from './order-archive.service';
 import {
   hasProductionItems,
   NO_PRODUCTION_ITEMS_MESSAGE,
@@ -255,6 +256,7 @@ export class OrderPhotoService {
     private readonly push: PushService,
     private readonly metrikaOutbox: MetrikaOrderOutboxService,
     private readonly sitePhotos: SitePhotosService,
+    private readonly archive: OrderArchiveService,
   ) {}
 
   async createOrder(dto: DtoCreateOrder, adminId?: string) {
@@ -590,6 +592,15 @@ export class OrderPhotoService {
   async createLead(dto: DtoCreateLead) {
     try {
       const created = await this.createLeadTx(dto);
+      // Повторная доставка удалённой заявки: заказа нет и уведомлять некого.
+      // В лог пишем — иначе «заявка ушла в CRM, а её там нет» выглядит как
+      // потеря, и человек идёт искать несуществующий сбой.
+      if ('deletedLead' in created) {
+        this.logger.warn(
+          `Заявка ${dto.leadId ?? '—'} повторно доставлена с сайта, но она удалена (${created.numberOrder}: ${created.reason}). Заказ заново не заводим.`,
+        );
+        return created;
+      }
       // Уведомление вне транзакции и без await на ошибку: Telegram может
       // молчать (блокировки, прокси), но заявка от этого пропасть не должна.
       void this.notifyLead(created, dto);
@@ -738,6 +749,35 @@ export class OrderPhotoService {
           where: { externalRequestId: dto.leadId },
         });
         if (existing) return existing;
+
+        /*
+         * Заявку уже удалили руками — заводить её заново нельзя.
+         *
+         * Сайт досылает недоставленную заявку до семи часов. Без этой
+         * проверки заявка, удалённая как дубль или ошибка, возвращалась бы
+         * следующей же досылкой — и так по кругу, пока сайт не выдохнется.
+         *
+         * Отказом не отвечаем: для сайта отказ означает «не доставлено», и
+         * он продолжит досылать, а потом положит заявку в «недоставленные»,
+         * где её будет разбирать человек. Удаление — это наше решение, а не
+         * сбой доставки, поэтому доставку подтверждаем.
+         *
+         * Восстановленные записи пропускаем: у них заказ снова существует,
+         * и его нашла бы проверка выше.
+         */
+        const deleted = await tx.orderDeletion.findFirst({
+          where: { externalRequestId: dto.leadId, restoredAt: null },
+          orderBy: { deletedAt: 'desc' },
+          select: { numberOrder: true, reason: true, deletedAt: true },
+        });
+        if (deleted) {
+          return {
+            deletedLead: true as const,
+            numberOrder: deleted.numberOrder,
+            reason: deleted.reason,
+            deletedAt: deleted.deletedAt,
+          };
+        }
       }
 
       const now = new Date();
@@ -2435,14 +2475,22 @@ export class OrderPhotoService {
   }
 
   /**
-   * Удалить заказ — только с объяснением.
+   * Удалить заказ — только с объяснением, и обратимо 30 дней.
    *
    * Заявки с сайта иногда приходится удалять: дубль, ошибка, человек
    * передумал. Раньше заказ исчезал молча, и через месяц никто не мог
-   * сказать, почему заявок с сайта меньше, чем визитов. Теперь причина
-   * записывается в OrderDeletion вместе со снимком заказа — в той же
-   * транзакции, что и удаление: либо есть и запись, и удаление, либо нет
-   * ни того, ни другого.
+   * сказать, почему заявок с сайта меньше, чем визитов. Поэтому причина
+   * обязательна.
+   *
+   * Но причины мало: удаляют и по ошибке, а с заказом уходили позиции,
+   * история и начисления — восстанавливать было нечего. Теперь перед
+   * удалением заказ целиком уезжает в корзину (OrderArchiveService), и
+   * месяц его можно вернуть.
+   *
+   * Сам заказ при этом по-прежнему удаляется физически, а не прячется
+   * флагом: заказы читают около девяноста запросов в тридцати модулях, и
+   * любой пропущенный «не показывать удалённые» вернул бы удалённый заказ
+   * в выручку или в чью-то зарплату, причём молча.
    */
   async deleteOrder(
     idOrder: string,
@@ -2455,25 +2503,15 @@ export class OrderPhotoService {
         'Укажите причину удаления — без неё заявка не удаляется.',
       );
     }
-    const order = await this.getOrderById(idOrder, '', EnumRole.ADMIN);
+    // Проверка существования и прав — до транзакции, как было: 404 не должен
+    // зависеть от того, что происходит внутри.
+    await this.getOrderById(idOrder, '', EnumRole.ADMIN);
 
     return this.prisma.$transaction(async (tx) => {
-      // Снимок пишем первым: если удаление упадёт, транзакция откатит и его,
-      // а вот обратный порядок оставил бы удалённый заказ без объяснения.
-      await tx.orderDeletion.create({
-        data: {
-          reason: clean,
-          deletedById: deletedBy?.id ?? null,
-          deletedByName: deletedBy?.name ?? null,
-          orderId: idOrder,
-          numberOrder: order.numberOrder,
-          status: order.status,
-          sourceOrder: order.sourceOrder,
-          productCategory: order.productCategory,
-          totalOrder: order.totalOrder ?? 0,
-          orderCreatedAt: order.createdAt,
-        },
-      });
+      // Корзину заполняем первой: если удаление упадёт, транзакция откатит и
+      // её, а обратный порядок оставил бы удалённый заказ без объяснения и
+      // без снимка.
+      await this.archive.capture(tx, idOrder, clean, deletedBy);
       // Удаляем все начисления (любой статус) и их платёжные связи
       const accruals = await tx.salaryAccrual.findMany({
         where: { orderId: idOrder },
@@ -2492,7 +2530,13 @@ export class OrderPhotoService {
         include: { items: true, tshirtItems: true, canvasItems: true },
       });
 
-      return { message: 'Заказ удалён успешно', data: deleted };
+      // Про срок возврата говорим сразу: иначе удаление выглядит
+      // безвозвратным, и человек идёт заводить заказ заново вместо того,
+      // чтобы вернуть его из корзины.
+      return {
+        message: `Заказ удалён. Его можно вернуть из корзины в течение ${this.archive.retentionDays()} дней`,
+        data: deleted,
+      };
     });
   }
 }

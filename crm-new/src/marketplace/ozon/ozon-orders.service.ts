@@ -1,6 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { Prisma, type OzonOrderSnapshot } from 'src/generated/prisma/client';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { matchesLineup } from './article-lineup';
-import { OzonApiClient, type OzonCredentials } from './ozon-api.client';
+import {
+  OzonApiClient,
+  OzonApiError,
+  type OzonCredentials,
+} from './ozon-api.client';
 import {
   groupForStatus,
   isShipmentOverdue,
@@ -18,6 +24,10 @@ import {
  */
 
 const OZON_MAX_LIMIT = 1000;
+/** Не дёргаем один и тот же список отдельно для экрана и фонового опроса. */
+const ORDERS_CACHE_FRESH_MS = 6 * 60_000;
+/** При 429 лучше показать недавний снимок, чем снова спрятать все заказы. */
+const ORDERS_CACHE_STALE_MS = 7 * 24 * 60 * 60_000;
 
 interface RawPostingProduct {
   offer_id?: string;
@@ -56,6 +66,13 @@ interface RawPostingListResponse {
   cursor?: string;
 }
 
+interface OrdersCacheEntry {
+  response: RawPostingListResponse;
+  refreshedAt: Date;
+  freshUntil: number;
+  staleUntil: number;
+}
+
 export interface OzonOrderItem {
   offerId: string;
   name: string;
@@ -91,13 +108,10 @@ export interface OzonOrderView {
 export interface OzonOrdersPage {
   orders: OzonOrderView[];
   hasNext: boolean;
-  /**
-   * Метка следующей страницы. Пусто — дальше ничего нет.
-   *
-   * Строка площадки, а не номер: v4 листает курсором, и смещение он
-   * молча игнорирует — запрос с offset=3 отдаёт ту же первую страницу.
-   */
-  nextCursor: string | null;
+  /** Ozon временно отказал, поэтому отдан последний успешный снимок. */
+  stale: boolean;
+  /** Когда снимок был действительно получен от Ozon. */
+  refreshedAt: string;
   /**
    * Сколько отправлений скрыто фильтром «только наши принты».
    *
@@ -105,11 +119,32 @@ export interface OzonOrdersPage {
    * не увидит, и он должен знать, что они есть. Ноль — скрывать было нечего.
    */
   hiddenByCatalog: number;
+  /**
+   * Метка следующей страницы. Пусто — дальше ничего нет.
+   *
+   * Строка площадки, а не номер: v4 листает курсором, и смещение он
+   * молча игнорирует — запрос с offset=3 отдаёт ту же первую страницу.
+   */
+  nextCursor: string | null;
 }
 
 @Injectable()
 export class OzonOrdersService {
-  constructor(private readonly api: OzonApiClient) {}
+  private readonly logger = new Logger(OzonOrdersService.name);
+  private readonly cache = new Map<string, OrdersCacheEntry>();
+  private readonly inFlight = new Map<
+    string,
+    Promise<{
+      response: RawPostingListResponse;
+      stale: boolean;
+      refreshedAt: Date;
+    }>
+  >();
+
+  constructor(
+    private readonly api: OzonApiClient,
+    private readonly prisma?: PrismaService,
+  ) {}
 
   /**
    * Список отправлений за период. Ozon фильтрует по одному статусу, а нам
@@ -140,17 +175,9 @@ export class OzonOrdersService {
     const limit = Math.min(options.limit ?? 100, OZON_MAX_LIMIT);
     const since = new Date(Date.now() - sinceDays * 24 * 3600 * 1000);
 
-    const res = await this.api.post<RawPostingListResponse>(
-      creds,
-      '/v4/posting/fbs/list',
-      {
-        dir: 'DESC',
-        filter: { since: since.toISOString(), to: new Date().toISOString() },
-        limit,
-        ...(options.cursor ? { cursor: options.cursor } : {}),
-        with: { financial_data: true },
-      },
-    );
+    const cursor = options.cursor ?? '';
+    const cached = await this.postings(creds, sinceDays, limit, cursor, since);
+    const res = cached.response;
 
     const postings = res.postings ?? [];
     const all = postings.map((p) => this.toView(p));
@@ -184,7 +211,160 @@ export class OzonOrdersService {
       hasNext: Boolean(res.has_next),
       nextCursor: res.cursor || null,
       hiddenByCatalog: all.length - orders.length,
+      stale: cached.stale,
+      refreshedAt: cached.refreshedAt.toISOString(),
     };
+  }
+
+  /**
+   * Один запрос на кабинет и страницу обслуживает и экран, и фоновую сверку.
+   *
+   * Без этого фоновый опрос и React почти одновременно били в один метод
+   * Ozon. При лимите площадки первый запрос проходил, а экран получал 429 и
+   * выглядел пустым. Одновременные обращения объединяем, успешный ответ на
+   * несколько минут переиспользуем, а при 429 отдаём последний снимок.
+   */
+  private postings(
+    creds: OzonCredentials,
+    sinceDays: number,
+    limit: number,
+    cursor: string,
+    since: Date,
+  ): Promise<{
+    response: RawPostingListResponse;
+    stale: boolean;
+    refreshedAt: Date;
+  }> {
+    const key = JSON.stringify([creds.clientId, sinceDays, limit, cursor]);
+    const now = Date.now();
+    const cached = this.cache.get(key);
+    if (cached && cached.freshUntil > now) {
+      return Promise.resolve({
+        response: cached.response,
+        stale: false,
+        refreshedAt: cached.refreshedAt,
+      });
+    }
+
+    const running = this.inFlight.get(key);
+    if (running) return running;
+
+    const request = (async () => {
+      const fallback = cached ?? (await this.loadPersisted(key));
+      if (fallback && fallback.freshUntil > Date.now()) {
+        return {
+          response: fallback.response,
+          stale: false,
+          refreshedAt: fallback.refreshedAt,
+        };
+      }
+
+      try {
+        const response = await this.api.post<RawPostingListResponse>(
+          creds,
+          '/v4/posting/fbs/list',
+          {
+            dir: 'DESC',
+            filter: {
+              since: since.toISOString(),
+              to: new Date().toISOString(),
+            },
+            limit,
+            // Пустой курсор — не «с начала», а неизвестно что: не шлём.
+            ...(cursor ? { cursor } : {}),
+            with: { financial_data: true },
+          },
+        );
+        const refreshedAt = new Date();
+        const entry: OrdersCacheEntry = {
+          response,
+          refreshedAt,
+          freshUntil: refreshedAt.getTime() + ORDERS_CACHE_FRESH_MS,
+          staleUntil: refreshedAt.getTime() + ORDERS_CACHE_STALE_MS,
+        };
+        this.cache.set(key, entry);
+        await this.savePersisted(key, creds.clientId, entry);
+        return { response, stale: false, refreshedAt };
+      } catch (error: unknown) {
+        if (
+          error instanceof OzonApiError &&
+          error.status === 429 &&
+          fallback &&
+          fallback.staleUntil > Date.now()
+        ) {
+          this.logger.warn(
+            `Ozon ограничил запросы кабинета ${creds.clientId}; отдаю снимок от ${fallback.refreshedAt.toISOString()}`,
+          );
+          return {
+            response: fallback.response,
+            stale: true,
+            refreshedAt: fallback.refreshedAt,
+          };
+        }
+        throw error;
+      }
+    })().finally(() => this.inFlight.delete(key));
+
+    this.inFlight.set(key, request);
+    return request;
+  }
+
+  /** Поднять последний снимок после перезапуска backend. */
+  private async loadPersisted(
+    key: string,
+  ): Promise<OrdersCacheEntry | undefined> {
+    if (!this.prisma) return undefined;
+    let row: OzonOrderSnapshot | null;
+    try {
+      row = await this.prisma.ozonOrderSnapshot.findUnique({
+        where: { cacheKey: key },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Не удалось прочитать снимок заказов Ozon: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return undefined;
+    }
+    if (!row || row.staleUntil.getTime() <= Date.now()) return undefined;
+
+    const entry: OrdersCacheEntry = {
+      response: row.response as unknown as RawPostingListResponse,
+      refreshedAt: row.refreshedAt,
+      freshUntil: row.refreshedAt.getTime() + ORDERS_CACHE_FRESH_MS,
+      staleUntil: row.staleUntil.getTime(),
+    };
+    this.cache.set(key, entry);
+    return entry;
+  }
+
+  /** Сохранение кеша не должно превращать успешный ответ Ozon в ошибку. */
+  private async savePersisted(
+    key: string,
+    clientId: string,
+    entry: OrdersCacheEntry,
+  ): Promise<void> {
+    if (!this.prisma) return;
+    try {
+      await this.prisma.ozonOrderSnapshot.upsert({
+        where: { cacheKey: key },
+        create: {
+          cacheKey: key,
+          clientId,
+          response: entry.response as unknown as Prisma.InputJsonValue,
+          refreshedAt: entry.refreshedAt,
+          staleUntil: new Date(entry.staleUntil),
+        },
+        update: {
+          response: entry.response as unknown as Prisma.InputJsonValue,
+          refreshedAt: entry.refreshedAt,
+          staleUntil: new Date(entry.staleUntil),
+        },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Не удалось сохранить снимок заказов Ozon: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   /**

@@ -35,7 +35,9 @@ export class OzonShippedCloseService {
   private static readonly BATCH = 20;
 
   /** За сколько дней спрашиваем отправления: заказ закрывают и через месяц. */
-  private static readonly LOOKBACK_DAYS = 60;
+  // Совпадает с экраном заказов: тогда фоновая сверка и интерфейс делят один
+  // ответ Ozon через кэш OzonOrdersService, а не расходуют лимит дважды.
+  private static readonly LOOKBACK_DAYS = 90;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -84,7 +86,12 @@ export class OzonShippedCloseService {
         if (!groups) continue;
         for (const order of ordersOfAccount) {
           const group = groups.get(order.marketplacePostingNumber!);
-          if (!shouldCloseAsShipped({ status: order.status, marketplaceGroup: group })) {
+          if (
+            !shouldCloseAsShipped({
+              status: order.status,
+              marketplaceGroup: group,
+            })
+          ) {
             continue;
           }
           await this.close(order.id, order.status);
@@ -116,7 +123,10 @@ export class OzonShippedCloseService {
       const creds = await this.accounts.credentials(accountId);
       const page = await this.orders.list(creds, {
         sinceDays: OzonShippedCloseService.LOOKBACK_DAYS,
-        limit: 200,
+        // Та же максимальная страница, что на экране маркетплейса. Так
+        // активный заказ не теряется за отправлениями других линеек, а
+        // экран и фоновая сверка продолжают делить один кешированный ответ.
+        limit: 1000,
       });
       return new Map(page.orders.map((o) => [o.postingNumber, o.group]));
     } catch (error) {

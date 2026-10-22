@@ -10,6 +10,7 @@ import {
   Settings,
   Shirt,
   Store,
+  Trash2,
   Users,
   Wallet,
   Wand2,
@@ -135,6 +136,9 @@ export const NAV_GROUPS: NavGroup[] = [
       // как система работает на самом деле.
       { to: '/crm/ai', label: 'ИИ-агент', icon: Bot, roles: ADMIN },
       { to: '/crm/users', label: 'Сотрудники', icon: Users, roles: ADMIN },
+      // Удалённые заказы ждут здесь 30 дней, и вернуть их может только тот,
+      // кто удаляет, — администратор.
+      { to: '/crm/deleted', label: 'Корзина', icon: Trash2, roles: ADMIN },
       { to: '/crm/settings', label: 'Настройки', icon: Settings, roles: ADMIN },
     ],
   },

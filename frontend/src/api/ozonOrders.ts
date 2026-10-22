@@ -55,6 +55,9 @@ export interface OzonOrdersPage {
    * запрос с offset отдаёт ту же первую страницу.
    */
   nextCursor: string | null;
+  /** Последний успешный снимок: Ozon временно ограничил новые запросы. */
+  stale: boolean;
+  refreshedAt: string;
   /** Сколько отправлений скрыто фильтром «только наши принты». */
   hiddenByCatalog: number;
 }
@@ -72,7 +75,8 @@ export const ozonOrdersApi = {
     params: {
       sinceDays?: number;
       limit?: number;
-      offset?: number;
+      /** Метка следующей страницы из прошлого ответа. */
+      cursor?: string;
       /** 1 — показать и чужие товары кабинета, не только наши принты. */
       all?: 1;
     } = {},
