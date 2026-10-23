@@ -105,10 +105,16 @@ export class TshirtPartnerTelegramService {
     this.threadId = (
       config.get<string>('TSHIRT_PARTNER_TELEGRAM_THREAD_ID') ?? ''
     ).trim();
-    this.marketplaceChatId =
-      (
-        config.get<string>('MARKETPLACE_PARTNER_TELEGRAM_CHAT_ID') ?? ''
-      ).trim() || this.chatId;
+    /*
+      Запасного значения здесь нет намеренно. Раньше чат площадки
+      подставлялся из общего, а тема бралась своя — и получалась пара,
+      которой не существует: тема живёт внутри конкретного чата, и в
+      чужом её нет. Telegram на такое отвечает «message thread not
+      found», задание не уходит, а выглядит это как молчание исполнителя.
+    */
+    this.marketplaceChatId = (
+      config.get<string>('MARKETPLACE_PARTNER_TELEGRAM_CHAT_ID') ?? ''
+    ).trim();
     this.marketplaceThreadId = (
       config.get<string>('MARKETPLACE_PARTNER_TELEGRAM_THREAD_ID') ?? ''
     ).trim();
@@ -212,9 +218,19 @@ export class TshirtPartnerTelegramService {
     }
   }
 
-  /** Чат и тема под тип заказа. */
+  /**
+   * Чат и тема под тип заказа.
+   *
+   * Отдельная ветка для площадки — только когда задан её чат. Чат и тема
+   * неразделимы: тема существует внутри своего чата, и взять чат из
+   * одной настройки, а тему из другой значит отправить в тему, которой
+   * там нет.
+   *
+   * Не задан чат площадки — значит отдельной ветки нет, и задание идёт
+   * общим маршрутом. Лучше вместе с остальными, чем никуда.
+   */
   private routeFor(marketplace: boolean): TelegramRoute {
-    return marketplace
+    return marketplace && this.marketplaceChatId
       ? { chatId: this.marketplaceChatId, threadId: this.marketplaceThreadId }
       : { chatId: this.chatId, threadId: this.threadId };
   }
