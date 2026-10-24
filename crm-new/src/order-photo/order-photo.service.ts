@@ -706,7 +706,7 @@ export class OrderPhotoService {
     const order = await this.prisma.orderPhoto.findFirst({
       where: { photosArchiveUrl: { contains: input.uploadId } },
       orderBy: { createdAt: 'desc' },
-      select: { id: true, numberOrder: true, note: true },
+      select: { id: true, numberOrder: true, note: true, status: true },
     });
     if (!order) {
       this.logger.warn(
@@ -716,13 +716,59 @@ export class OrderPhotoService {
     }
 
     const line = `📁 Фотографии на Яндекс.Диске: ${input.folder}`;
-    if (order.note?.includes(input.folder)) return;
+    const noteDone = Boolean(order.note?.includes(input.folder));
+    /*
+      Папка создана — это первый шаг производства, и заказ встаёт на него
+      сам: раньше менеджер щёлкал статус руками ровно после того, как
+      разложил фотографии по папкам.
+
+      Двигаем только из «Новый». Дальше по пути заказ ведёт человек, и
+      повторная выгрузка — хвост доехал, папку дополнили — не должна
+      тянуть назад заказ, который уже печатают или отправили.
+    */
+    const advance = order.status === EnumStatus.NEW;
+    if (noteDone && !advance) return;
 
     try {
-      await this.prisma.orderPhoto.update({
-        where: { id: order.id },
-        data: { note: [order.note?.trim(), line].filter(Boolean).join('\n') },
+      await this.prisma.$transaction(async (tx) => {
+        if (!noteDone) {
+          await tx.orderPhoto.update({
+            where: { id: order.id },
+            data: {
+              note: [order.note?.trim(), line].filter(Boolean).join('\n'),
+            },
+          });
+        }
+        if (!advance) return;
+
+        const history = await tx.statusHistory.create({
+          data: {
+            orderId: order.id,
+            fromStatus: order.status,
+            toStatus: EnumStatus.FOLDER_STRUCTURE_CREATED,
+            changedBy: 'site',
+          },
+        });
+        await tx.orderPhoto.update({
+          where: { id: order.id },
+          data: {
+            status: EnumStatus.FOLDER_STRUCTURE_CREATED,
+            // Отсчёт «завис» начинается заново: заказ сдвинулся по пути.
+            statusChangedAt: new Date(),
+          },
+        });
+        await this.metrikaOutbox.enqueueTransition(tx, {
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: EnumStatus.FOLDER_STRUCTURE_CREATED,
+          statusHistoryId: history.id,
+        });
       });
+      if (advance) {
+        this.logger.log(
+          `Заказ ${order.numberOrder}: папка на Диске создана — статус «Создана папка»`,
+        );
+      }
     } catch (error) {
       this.logger.warn(
         `Не удалось записать папку Диска в заказ ${order.numberOrder}: ${String(error)}`,
