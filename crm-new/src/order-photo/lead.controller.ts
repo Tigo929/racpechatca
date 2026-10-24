@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  NotFoundException,
   Post,
   Query,
   UseGuards,
@@ -14,6 +15,10 @@ import { Throttle } from '@nestjs/throttler';
 import { OrderPhotoService } from './order-photo.service';
 import { DtoCreateLead } from './dto/create-lead.dto';
 import { DtoPhotosShortfall } from './dto/photos-shortfall.dto';
+import {
+  DtoPhotosFolder,
+  DtoPhotosOrderNumber,
+} from './dto/photos-folder.dto';
 import { SiteLeadTokenGuard } from './site-lead-token.guard';
 import { ClientGreetingService } from './client-greeting.service';
 import { isGreetingStatus } from './client-greeting';
@@ -72,6 +77,33 @@ export class LeadController {
    * что сообщил, и повторять ему незачем. Нераспознанный номер — наша
    * забота, она уходит в лог, а не обратно на сайт бесконечным повтором.
    */
+  /**
+   * Как называется заказ, заведённый по этой папке загрузки.
+   *
+   * Сайт держит фотографии в папке со случайным номером, а на Диске
+   * владельца они должны лечь в папку с номером заказа — по нему их и
+   * ищут. Номер присваиваем мы, поэтому спрашивают у нас.
+   */
+  @Post('photos-order-number')
+  @HttpCode(200)
+  async photosOrderNumber(@Body() dto: DtoPhotosOrderNumber) {
+    const numberOrder = await this.orderPhotoService.orderNumberByUpload(
+      dto.uploadId,
+    );
+    if (!numberOrder) {
+      throw new NotFoundException('Заказ по этой папке не найден');
+    }
+    return { numberOrder };
+  }
+
+  /** Фотографии заказа выгружены на Диск — записываем, куда именно. */
+  @Post('photos-folder')
+  @HttpCode(200)
+  async photosFolder(@Body() dto: DtoPhotosFolder) {
+    await this.orderPhotoService.recordPhotosFolder(dto);
+    return { ok: true };
+  }
+
   @Post('photos-shortfall')
   @HttpCode(200)
   async photosShortfall(@Body() dto: DtoPhotosShortfall) {

@@ -674,6 +674,63 @@ export class OrderPhotoService {
   }
 
   /**
+   * Номер заказа по папке загрузки сайта.
+   *
+   * Связь — через ссылку на папку: она записана в заказе и содержит её
+   * номер. Отдельного поля заводить не стали, чтобы не держать два
+   * источника одной и той же связи.
+   */
+  async orderNumberByUpload(uploadId: string): Promise<string | null> {
+    const order = await this.prisma.orderPhoto.findFirst({
+      where: { photosArchiveUrl: { contains: uploadId } },
+      orderBy: { createdAt: 'desc' },
+      select: { numberOrder: true },
+    });
+    return order?.numberOrder ?? null;
+  }
+
+  /**
+   * Фотографии заказа выгружены на Яндекс.Диск владельца.
+   *
+   * Путь пишем в примечание, а не в новое поле: менеджер читает
+   * примечание первым, а поле пришлось бы заводить миграцией, выводить в
+   * карточку и поддерживать — ради строки, которую смотрят один раз.
+   *
+   * Повторная выгрузка строку не задваивает: хвост заказа может доехать
+   * позже, и тогда сайт сообщает о той же папке ещё раз.
+   */
+  async recordPhotosFolder(input: {
+    uploadId: string;
+    folder: string;
+  }): Promise<void> {
+    const order = await this.prisma.orderPhoto.findFirst({
+      where: { photosArchiveUrl: { contains: input.uploadId } },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, numberOrder: true, note: true },
+    });
+    if (!order) {
+      this.logger.warn(
+        `Папка Диска ${input.folder}: заказ по ${input.uploadId} не найден`,
+      );
+      return;
+    }
+
+    const line = `📁 Фотографии на Яндекс.Диске: ${input.folder}`;
+    if (order.note?.includes(input.folder)) return;
+
+    try {
+      await this.prisma.orderPhoto.update({
+        where: { id: order.id },
+        data: { note: [order.note?.trim(), line].filter(Boolean).join('\n') },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Не удалось записать папку Диска в заказ ${order.numberOrder}: ${String(error)}`,
+      );
+    }
+  }
+
+  /**
    * Сайт сообщил, что фотографии заказа доехали не все.
    *
    * Файлы грузит браузер клиента, и дойти могут не все: закрыл вкладку,
