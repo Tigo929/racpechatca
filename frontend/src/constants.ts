@@ -168,8 +168,24 @@ export const TYPE_LABELS: Record<EnumTypePaper, string> = {
   MATTE: 'Матт',
 };
 
+/**
+ * Размер футболки: буква и номер на бирке вместе — `S(46)`.
+ *
+ * На изделии стоит российская нумерация, и маркетплейсы показывают
+ * клиенту именно её. Пара убирает расхождение из переписки: менеджер,
+ * печатник и покупатель называют размер одинаково.
+ *
+ * Номера совпадают с таблицей бэкенда (`tshirt-size.ts`), по которой
+ * размер уходит в карточки, в макет на согласование и на наклейку.
+ */
 export const TSHIRT_SIZE_LABELS: Record<EnumTshirtSize, string> = {
-  XS: 'XS', S: 'S', M: 'M', L: 'L', XL: 'XL', XXL: 'XXL', XXXL: '3XL',
+  XS: 'XS(44)',
+  S: 'S(46)',
+  M: 'M(48)',
+  L: 'L(50)',
+  XL: 'XL(52)',
+  XXL: 'XXL(54)',
+  XXXL: 'XXXL(56)',
 };
 
 export const PRINT_LOCATION_LABELS: Record<EnumPrintLocation, string> = {

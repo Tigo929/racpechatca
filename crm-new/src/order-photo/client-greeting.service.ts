@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EnumCommunication } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { tshirtSizeLabel } from './tshirt-size';
 import {
   clientNameFromNote,
   telegramUsernameFromUrl,
@@ -131,7 +132,7 @@ export class ClientGreetingService {
           quantity: i.quantity,
         })),
         ...row.tshirtItems.map((i) => ({
-          title: `Футболка ${i.color}, размер ${i.size}`,
+          title: `Футболка ${i.color}, размер ${tshirtSizeLabel(i.size)}`,
           quantity: i.quantity,
         })),
       ].filter((i) => i.title);
@@ -193,7 +194,7 @@ export class ClientGreetingService {
         quantity: i.quantity,
       })),
       ...row.tshirtItems.map((i) => ({
-        title: `Футболка ${i.color}, размер ${i.size}`,
+        title: `Футболка ${i.color}, размер ${tshirtSizeLabel(i.size)}`,
         quantity: i.quantity,
       })),
     ].filter((i) => i.title);

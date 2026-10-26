@@ -163,6 +163,35 @@ describe('сообщение клиенту', () => {
     expect(buildClientMessage(order(), 'READY')).not.toContain('номер телефона');
   });
 
+  it('размер футболки назван буквой и номером на бирке', () => {
+    // На изделии стоит «54», в карточке маркетплейса тоже «54», а в нашей
+    // базе размер хранится как XXL. Клиент должен увидеть обе записи
+    // сразу — иначе он сверяет размер с биркой и не находит совпадения.
+    const tshirt = order({
+      productCategory: 'TSHIRT',
+      items: [],
+      tshirtItems: [
+        {
+          id: 'tshirt-1',
+          color: 'Чёрный',
+          size: 'XXL',
+          gender: 'UNISEX',
+          printLocation: 'FRONT',
+          printType: 'DTF',
+          quantity: 1,
+          price: 1800,
+          pricePosition: 1800,
+        },
+      ],
+      totalOrder: 1800,
+    } as Partial<OrderPhoto>);
+
+    for (const kind of ['CONFIRMATION', 'READY'] as const) {
+      const text = buildClientMessage(tshirt, kind);
+      expect(text).toContain('р-р XXL(54)');
+    }
+  });
+
   it('предупреждение о предоплате — задача карточки, а не текста', () => {
     expect(prepaymentNeedsAttention(order({ status: 'READY' }))).toBe(true);
     expect(

@@ -14,6 +14,7 @@ import {
 import { attributionFromLead } from './lead-attribution';
 import { clientPaidAtPatch, parseClientPaidAt } from './paid-at';
 import { clampOrderDiscount, orderTotal } from './order-total';
+import { tshirtSizeLabel } from './tshirt-size';
 import {
   deadlineOnAccept,
   DEFAULT_DEADLINE_MS,
@@ -1735,7 +1736,7 @@ export class OrderPhotoService {
     }
     for (const i of order.tshirtItems) {
       lines.push(
-        `• Футболка ${escapeHtml(i.color)}, р-р ${i.size} × ${i.quantity} шт`,
+        `• Футболка ${escapeHtml(i.color)}, р-р ${tshirtSizeLabel(i.size)} × ${i.quantity} шт`,
       );
     }
     for (const i of order.canvasItems ?? []) {

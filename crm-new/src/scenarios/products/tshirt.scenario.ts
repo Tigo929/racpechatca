@@ -1,5 +1,6 @@
 import type { ProductScenario } from '../scenario.types';
 import { DELIVERY_STEPS, NOTE_STEP, OPTIONAL } from './common-steps';
+import { tshirtSizeLabel } from '../../order-photo/tshirt-size';
 
 /**
  * Печать на футболках.
@@ -43,15 +44,11 @@ export const TSHIRT_SCENARIO: ProductScenario = {
       ask: 'Подскажите размер футболки.',
       field: {
         kind: 'select',
-        options: [
-          { value: 'XS', label: 'XS' },
-          { value: 'S', label: 'S' },
-          { value: 'M', label: 'M' },
-          { value: 'L', label: 'L' },
-          { value: 'XL', label: 'XL' },
-          { value: 'XXL', label: 'XXL' },
-          { value: 'XXXL', label: 'XXXL' },
-        ],
+        // Номер на бирке в подписи: у клиента в голове может быть
+        // любая из двух систем, и выбирать он должен без таблицы.
+        options: (
+          ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] as const
+        ).map((value) => ({ value, label: tshirtSizeLabel(value) })),
       },
     },
     {

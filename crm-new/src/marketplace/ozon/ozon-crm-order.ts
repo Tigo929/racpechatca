@@ -22,6 +22,7 @@ import {
   type OzonArticle,
 } from './ozon-article';
 import type { OzonOrderView } from './ozon-orders.service';
+import { tshirtSizeLabel } from 'src/order-photo/tshirt-size';
 
 export interface MarketplaceOrderDraftItem {
   color: string;
@@ -123,7 +124,7 @@ function buildNote(
     'Позиции по артикулу:',
     ...items.map(
       (i) =>
-        `• ${i.offerId} → ${i.color}, ${i.size}, принт ${i.printSlug} × ${i.quantity}`,
+        `• ${i.offerId} → ${i.color}, ${tshirtSizeLabel(i.size)}, принт ${i.printSlug} × ${i.quantity}`,
     ),
   ];
   return lines.join('\n');

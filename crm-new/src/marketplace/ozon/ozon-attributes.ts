@@ -3,6 +3,7 @@ import type {
   EnumTshirtGender,
   EnumTshirtSize,
 } from 'src/generated/prisma/enums';
+import { TSHIRT_SIZE_TAG } from 'src/order-photo/tshirt-size';
 
 /**
  * Всё, что нужно, чтобы собрать тело `/v3/product/import` для категории
@@ -55,15 +56,13 @@ export const SIZE_TO_OZON_DICTIONARY_ID: Record<EnumTshirtSize, number> = {
   XXXL: 35576, // 56
 };
 
-export const SIZE_TO_RUSSIAN_LABEL: Record<EnumTshirtSize, string> = {
-  XS: '44',
-  S: '46',
-  M: '48',
-  L: '50',
-  XL: '52',
-  XXL: '54',
-  XXXL: '56',
-};
+/**
+ * Номер размера для карточки маркетплейса.
+ *
+ * Та же таблица, по которой размер подписывается в макете и на наклейке:
+ * номер в карточке и номер в согласовании обязаны быть одним числом.
+ */
+export const SIZE_TO_RUSSIAN_LABEL = TSHIRT_SIZE_TAG;
 
 /**
  * Стандартный набор размеров, который продавец использует по умолчанию для

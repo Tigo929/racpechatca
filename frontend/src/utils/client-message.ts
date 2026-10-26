@@ -24,7 +24,7 @@ import {
   formatPaymentPhoneForClient,
   resolvePickupAddress,
 } from '../config/business';
-import { DELIVERY_LABELS } from '../constants';
+import { DELIVERY_LABELS, TSHIRT_SIZE_LABELS } from '../constants';
 import { computePrepayment } from './prepayment';
 import type { OrderPhoto } from '../types/index';
 
@@ -86,7 +86,7 @@ function compositionLines(order: OrderPhoto): string[] {
   }
   for (const item of order.tshirtItems ?? []) {
     lines.push(
-      `• Футболка ${item.color}, р-р ${item.size} × ${item.quantity} шт — ${money(item.pricePosition)}`,
+      `• Футболка ${item.color}, р-р ${TSHIRT_SIZE_LABELS[item.size] ?? item.size} × ${item.quantity} шт — ${money(item.pricePosition)}`,
     );
   }
   for (const item of order.canvasItems ?? []) {

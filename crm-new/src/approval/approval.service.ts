@@ -30,21 +30,12 @@ import {
   ApprovalRenderService,
   type RenderSideInput,
 } from './approval-render.service';
+import { tshirtSizeLabel } from '../order-photo/tshirt-size';
 import { MockupService } from './mockup.service';
 import { DtoCreateApproval } from './dto/create-approval.dto';
 import { DtoUpdateApproval } from './dto/update-approval.dto';
 import { deliverySelect } from './approval-delivery-state';
 import { randomUUID } from 'node:crypto';
-
-const SIZE_LABELS: Record<EnumTshirtSize, string> = {
-  XS: 'XS',
-  S: 'S',
-  M: 'M',
-  L: 'L',
-  XL: 'XL',
-  XXL: '2XL',
-  XXXL: '3XL',
-};
 
 /** Размер печати по умолчанию для только что загруженного принта: 28 × 35 см. */
 /** Насколько широким ложится только что загруженный принт — доля зоны печати. */
@@ -509,7 +500,7 @@ export class ApprovalService {
           : null),
       version: approval.version,
       shirtColor: approval.shirtColor,
-      shirtSizeLabel: SIZE_LABELS[approval.shirtSize] ?? approval.shirtSize,
+      shirtSizeLabel: tshirtSizeLabel(approval.shirtSize),
       clientItem,
       comment: approval.comment,
       date: new Date(),

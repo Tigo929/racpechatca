@@ -19,6 +19,7 @@ import {
   EnumTshirtSize,
 } from 'src/generated/prisma/enums';
 import { actualBalanceDue } from './prepayment';
+import { tshirtSizeLabel } from './tshirt-size';
 
 /**
  * Соцсети на клиентском стикере. Меняются здесь — попадут на все новые стикеры.
@@ -72,16 +73,6 @@ const MARGIN = 5;
 // ~4.4 точки на модуль, то есть коды уверенно считываются.
 const CLIENT_PAGE_W = 100 * MM; // ≈ 283.5 pt
 const CLIENT_PAGE_H = 150 * MM; // ≈ 425.2 pt
-
-const SIZE_LABELS: Record<EnumTshirtSize, string> = {
-  XS: 'XS',
-  S: 'S',
-  M: 'M',
-  L: 'L',
-  XL: 'XL',
-  XXL: 'XXL',
-  XXXL: '3XL',
-};
 
 const PRINT_LOCATION_LABELS: Record<EnumPrintLocation, string> = {
   FRONT: 'Грудь',
@@ -646,7 +637,7 @@ function buildTshirtItemLines(order: {
   }[];
 }): string[] {
   return order.tshirtItems.map((i) => {
-    const size = SIZE_LABELS[i.size] ?? i.size;
+    const size = tshirtSizeLabel(i.size);
     const place = PRINT_LOCATION_LABELS[i.printLocation] ?? i.printLocation;
     return `${i.color} · ${size} · ${place} × ${i.quantity} шт`;
   });
