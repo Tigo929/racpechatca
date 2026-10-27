@@ -958,6 +958,12 @@ export interface PrintApproval {
 
 export interface ApprovalTelegramDelivery {
   id: string;
+  /**
+   * Куда ушёл макет. Telegram отправляет userbot, чат Ozon — сама CRM;
+   * для карточки разница в том, как называть адресата: ник или «чат
+   * покупателя» (там он не ник, а идентификатор переписки).
+   */
+  channel: 'TELEGRAM' | 'OZON';
   status: 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'UNKNOWN';
   recipient: string;
   createdAt: string;

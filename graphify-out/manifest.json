@@ -295,8 +295,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/lead.controller.ts": {
-    "mtime": 1792839483.5804822,
-    "ast_hash": "fdd0b2b9d00edf74c8c7f5b17cba6d11",
+    "mtime": 1793096597.0548167,
+    "ast_hash": "aff7421bc33cf7a41ac488095787a622",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-financial-integrity.service.ts": {
@@ -320,8 +320,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-photo.service.ts": {
-    "mtime": 1793046692.787685,
-    "ast_hash": "2b66d75679c0cc697c561bb722d91781",
+    "mtime": 1793096597.058817,
+    "ast_hash": "4f1d4d2ee03f5c4dae61f988eee39b9d",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-pricing.ts": {
@@ -350,8 +350,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/sticker.service.ts": {
-    "mtime": 1793046692.785685,
-    "ast_hash": "180e5c6a847b31c41cab245c6d1b2908",
+    "mtime": 1793096597.060817,
+    "ast_hash": "4efc1e957503c86461ca4af83cec3a35",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/tshirt-item.service.ts": {
@@ -735,8 +735,8 @@
     "semantic_hash": ""
   },
   "frontend/src/constants.ts": {
-    "mtime": 1793046710.5219817,
-    "ast_hash": "fcd743763e2330bd69111250d6ae0885",
+    "mtime": 1793096597.0648217,
+    "ast_hash": "a158a9be5d54d46a14bde4f8431492e5",
     "semantic_hash": ""
   },
   "frontend/src/context/AuthContext.tsx": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "frontend/src/types/index.ts": {
-    "mtime": 1792688851.6695876,
-    "ast_hash": "e31c1fd73e89fd7942d90a809a753bed",
+    "mtime": 1793097256.3711996,
+    "ast_hash": "de435f11716273f85a42ac78845838c9",
     "semantic_hash": ""
   },
   "frontend/src/utils/deadline.ts": {
@@ -1060,8 +1060,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/scenarios/products/tshirt.scenario.ts": {
-    "mtime": 1793046723.4712403,
-    "ast_hash": "7af6a37f9424bd09bbc60d6d1624e09f",
+    "mtime": 1793096597.063822,
+    "ast_hash": "7fe254247c40c00d7c3b714ee3f263dc",
     "semantic_hash": ""
   },
   "crm-new/src/scenarios/scenario-draft.service.ts": {
@@ -1510,8 +1510,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon/ozon-attributes.ts": {
-    "mtime": 1793046692.7836845,
-    "ast_hash": "27129c17303e1a006df6b32596128e16",
+    "mtime": 1793096597.049817,
+    "ast_hash": "574b888010312f1e55542589b99e82d6",
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon/ozon-catalog.service.ts": {
@@ -1730,13 +1730,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval.module.ts": {
-    "mtime": 1791635756.0438175,
-    "ast_hash": "d1b01b01024fd7c0e9ff9f3f5c813b67",
+    "mtime": 1793097077.4516537,
+    "ast_hash": "4df747aebdc75ccf5d9b6cb1aeb4cf71",
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval.service.ts": {
-    "mtime": 1793046692.7846847,
-    "ast_hash": "5966a84aa1ae11bf6e4d1412a55a6030",
+    "mtime": 1793096597.047817,
+    "ast_hash": "030d1d84f21a9c09767cf878e30d874c",
     "semantic_hash": ""
   },
   "crm-new/src/approval/dto/create-approval.dto.ts": {
@@ -1825,8 +1825,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/approval/ApprovalsBlock.tsx": {
-    "mtime": 1791107971.705308,
-    "ast_hash": "b36de8e48de02f8821df3f45602d56c7",
+    "mtime": 1793097306.2228172,
+    "ast_hash": "d04abcf867b9b49f60a44c631fda558e",
     "semantic_hash": ""
   },
   "frontend/src/components/approval/MockupTemplatesCard.tsx": {
@@ -2155,8 +2155,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/client-greeting.service.ts": {
-    "mtime": 1793046877.1210227,
-    "ast_hash": "f8ecf4071071e5f1925222c9a1cdbbf7",
+    "mtime": 1793096597.0518167,
+    "ast_hash": "3babb702b1a2c89b63d8ef74df61e31e",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/client-greeting.spec.ts": {
@@ -3560,8 +3560,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval-delivery-state.ts": {
-    "mtime": 1790952193.5872357,
-    "ast_hash": "8498ffd4b43ae90aca47b2256dbf931d",
+    "mtime": 1793096902.0294225,
+    "ast_hash": "fb8445e204ff82da1b4091207c7f9f02",
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval-delivery.controller.ts": {
@@ -3570,13 +3570,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval-delivery.service.ts": {
-    "mtime": 1790341484.9539657,
-    "ast_hash": "c57603cb02e52dd8a605240141197bd0",
+    "mtime": 1793097121.9058511,
+    "ast_hash": "43025347052f2eac05e83c95e78bd960",
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval-delivery.spec.ts": {
-    "mtime": 1790952251.1338985,
-    "ast_hash": "ae2faa4c8acd46a96337fc0c5e6744cf",
+    "mtime": 1793097223.1591072,
+    "ast_hash": "b4fdabb755049d3c7efadbb44ac27eef",
     "semantic_hash": ""
   },
   "crm-new/src/approval/dto/approval-delivery.dto.ts": {
@@ -4455,13 +4455,13 @@
     "semantic_hash": ""
   },
   "frontend/src/utils/client-message.test.ts": {
-    "mtime": 1793046839.3807366,
-    "ast_hash": "d5b8a0b2eb8bb87606c0f574d5ff0beb",
+    "mtime": 1793096597.0668216,
+    "ast_hash": "056a2df5cc4bdae44410960a777138ec",
     "semantic_hash": ""
   },
   "frontend/src/utils/client-message.ts": {
-    "mtime": 1793046723.4722407,
-    "ast_hash": "bfc0baa552bc8c1c64bae7df4d76b66c",
+    "mtime": 1793096597.0678217,
+    "ast_hash": "e26883e9013ed555764f78e4b9150295",
     "semantic_hash": ""
   },
   "frontend/src/utils/clipboard.ts": {
@@ -4675,8 +4675,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon/ozon-crm-order.ts": {
-    "mtime": 1793046888.015629,
-    "ast_hash": "a721c45182a03b0df0916822bfd39337",
+    "mtime": 1793096597.0508187,
+    "ast_hash": "6f327e13c98ec75628e094e080a60fac",
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon/ozon-orders-catalog-filter.spec.ts": {
@@ -5045,12 +5045,12 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-archive.spec.ts": {
-    "mtime": 1793096319.6667106,
+    "mtime": 1793096597.0558167,
     "ast_hash": "a2b0993c9b29d994e208902bdbfc1ae0",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-archive.ts": {
-    "mtime": 1793096291.600574,
+    "mtime": 1793096597.056817,
     "ast_hash": "db6822e9cfb06ed6205466d1a990a3a2",
     "semantic_hash": ""
   },
@@ -5190,8 +5190,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/dto/photos-folder.dto.ts": {
-    "mtime": 1792839483.5718882,
-    "ast_hash": "0e4bd3db42333222ef39ed99d30437c4",
+    "mtime": 1793096597.0528195,
+    "ast_hash": "e54457ca708d3de6845fdc3082550bc0",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/partner-telegram-route.spec.ts": {
@@ -5200,18 +5200,18 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/photos-folder.spec.ts": {
-    "mtime": 1792839830.6612406,
-    "ast_hash": "bf1a469a7c26b38b124c6fa9ecca780c",
+    "mtime": 1793096597.0598178,
+    "ast_hash": "63171b688205256687c52a174b352348",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/tshirt-size.spec.ts": {
-    "mtime": 1793046654.032099,
-    "ast_hash": "7d2da23003357b96d0aeb48429c23f30",
+    "mtime": 1793096597.0618217,
+    "ast_hash": "b3e35c1e3cdf96ee624d913650de5788",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/tshirt-size.ts": {
-    "mtime": 1793046762.4971602,
-    "ast_hash": "1560af1a47ab4e9069f22eb363a24036",
+    "mtime": 1793096597.0628211,
+    "ast_hash": "c7a992c702560fbdcf4b5057543f2806",
     "semantic_hash": ""
   },
   "crm-new/src/partner/partner-ozon.controller.ts": {
@@ -5222,6 +5222,21 @@
   "crm-new/src/partner/partner-ozon.spec.ts": {
     "mtime": 1792748294.733641,
     "ast_hash": "86275ce7bca86e01c400f28fa2478cf7",
+    "semantic_hash": ""
+  },
+  "crm-new/src/approval/approval-ozon-chat.service.ts": {
+    "mtime": 1793096938.1434567,
+    "ast_hash": "a9516e7c2c13f8f8e203c7cb1e641e24",
+    "semantic_hash": ""
+  },
+  "crm-new/src/approval/ozon-chat.spec.ts": {
+    "mtime": 1793096865.4322855,
+    "ast_hash": "10674aa344446d5b499434e81fabc860",
+    "semantic_hash": ""
+  },
+  "crm-new/src/approval/ozon-chat.ts": {
+    "mtime": 1793096849.9025135,
+    "ast_hash": "d6fc3cccc49083185c08b1ef24e8af39",
     "semantic_hash": ""
   }
 }

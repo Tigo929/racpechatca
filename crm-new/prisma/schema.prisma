@@ -1910,6 +1910,20 @@ model PrintApproval {
   @@index([orderId])
 }
 
+/// Куда уходит лист согласования.
+///
+/// Канал задаётся заказом (способ связи) и больше не меняется: в строке
+/// лежит уже подготовленная картинка и уже выбранный адресат, и подменить
+/// их значило бы отправить согласованный макет не туда.
+enum EnumApprovalChannel {
+  /// Личные сообщения Telegram. Отправляет userbot (greeter), забирая
+  /// задание из этой же таблицы.
+  TELEGRAM
+  /// Чат с покупателем в кабинете Ozon. Отправляет сама CRM: ключи от
+  /// кабинета у неё, и посредник не нужен.
+  OZON
+}
+
 enum ApprovalDeliveryStatus {
   PENDING
   SENDING
@@ -1918,7 +1932,13 @@ enum ApprovalDeliveryStatus {
   UNKNOWN
 }
 
-/// One successful Telegram delivery per approval version. Image and recipient
+/// Отправка листа согласования клиенту — одна на версию макета.
+///
+/// Имя модели осталось телеграмным: таблица появилась раньше чата Ozon, а
+/// переименование стоило бы миграции данных на ровном месте. Канал теперь
+/// в поле `channel`.
+///
+/// One successful delivery per approval version. Image and recipient
 /// are captured at enqueue time; worker failures never cause an automatic resend.
 model ApprovalTelegramDelivery {
   id String @id @default(uuid())
@@ -1930,6 +1950,9 @@ model ApprovalTelegramDelivery {
   caption String
   image Bytes
   finalizedAt DateTime
+  /// Канал отправки. По умолчанию Telegram: так работали все строки до
+  /// появления чата Ozon, и переписывать их не нужно.
+  channel EnumApprovalChannel @default(TELEGRAM)
   status ApprovalDeliveryStatus @default(PENDING)
   claimToken String? @unique
   claimedAt DateTime?

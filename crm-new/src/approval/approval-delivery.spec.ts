@@ -3,6 +3,7 @@
 import 'reflect-metadata';
 import sharp from 'sharp';
 import { ApprovalDeliveryService } from './approval-delivery.service';
+import { OzonChatError } from './approval-ozon-chat.service';
 import {
   approvalCaption,
   approvalRecipient,
@@ -19,7 +20,9 @@ describe('Telegram approval delivery', () => {
   let row: any;
   let db: any;
   let storage: any;
+  let ozonChat: any;
   let service: ApprovalDeliveryService;
+  const OZON_CHAT_ID = '0f8c1a2b-3d4e-4f50-9a6b-7c8d9e0f1a2b';
 
   beforeEach(async () => {
     row = {
@@ -46,8 +49,12 @@ describe('Telegram approval delivery', () => {
       statusHistory: { create: jest.fn() },
       approvalTelegramDelivery: {
         findUnique: jest.fn(async () => null),
+        findUniqueOrThrow: jest.fn(async () => ({
+          id: 'delivery',
+          status: 'SENT',
+        })),
         findFirst: jest.fn(),
-        upsert: jest.fn(async (args) => args.create),
+        upsert: jest.fn(async (args) => ({ id: 'delivery', ...args.create })),
         update: jest.fn(),
         updateMany: jest.fn(async () => ({ count: 1 })),
       },
@@ -63,7 +70,11 @@ describe('Telegram approval delivery', () => {
           .toBuffer(),
       ),
     };
-    service = new ApprovalDeliveryService(db, storage);
+    ozonChat = {
+      resolveChatId: jest.fn(async () => OZON_CHAT_ID),
+      send: jest.fn(async () => undefined),
+    };
+    service = new ApprovalDeliveryService(db, storage, ozonChat);
   });
 
   it.each([
@@ -274,5 +285,97 @@ describe('Telegram approval delivery', () => {
     await expect(service.image('id', 'wrong-token')).rejects.toThrow(
       'не найдена',
     );
+  });
+  it('userbot забирает только телеграмные отправки', async () => {
+    // Макет для Ozon отправляет сама CRM. Отдай его userbot'у — покупатель
+    // получит второй экземпляр, и это уже не починить.
+    await service.claim('token');
+    const sql = db.$queryRaw.mock.calls
+      .flatMap((call: any) => call[0])
+      .join(' ');
+    expect(sql).toContain(`"channel" = 'TELEGRAM'`);
+  });
+
+  /**
+   * Чат Ozon. Канал отличается от Telegram в одном: отправляем мы сами,
+   * прямо в запросе. Значит, к моменту ответа судьба макета уже известна —
+   * и строка должна быть закрыта, а заказ сдвинут.
+   */
+  describe('отправка в чат Ozon', () => {
+    beforeEach(() => {
+      row.order.communicationPlatform = 'OZON';
+      row.order.marketplaceOrderNumber = '0123-4567-8901';
+      row.order.marketplacePostingNumber = '0123-4567-8901-1';
+      row.order.marketplaceAccountId = 'cabinet';
+      row.order.urlCommunication = `https://seller.ozon.ru/app/messenger?id=${OZON_CHAT_ID}`;
+      db.approvalTelegramDelivery.findFirst.mockResolvedValue({
+        status: 'SENDING',
+        approvalId: 'approval',
+        finalizedAt: date,
+        requestedById: 'manager',
+      });
+    });
+
+    it('пишет покупателю и отмечает отправку', async () => {
+      await service.enqueue('approval', 'manager');
+      expect(ozonChat.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          chatId: OZON_CHAT_ID,
+          marketplaceAccountId: 'cabinet',
+        }),
+      );
+      expect(db.approvalTelegramDelivery.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ status: 'SENT' }) }),
+      );
+    });
+
+    it('строка сразу занята — второй щелчок не отправит макет дважды', async () => {
+      await service.enqueue('approval', 'manager');
+      const created = db.approvalTelegramDelivery.upsert.mock.calls[0][0].create;
+      expect(created).toMatchObject({ channel: 'OZON', status: 'SENDING' });
+      expect(created.claimToken).toEqual(expect.any(String));
+    });
+
+    it('в подписи нет телеграмной разметки', async () => {
+      await service.enqueue('approval', 'manager');
+      const text = ozonChat.send.mock.calls[0][0].text;
+      expect(text).toContain('0123-4567-8901');
+      expect(text).not.toContain('`');
+    });
+
+    it('заказ встаёт на «Макет отправлен»', async () => {
+      await service.enqueue('approval', 'manager');
+      expect(db.orderPhoto.updateMany).toHaveBeenCalledWith({
+        where: { id: 'order', status: 'NEW' },
+        data: { status: 'APPROVAL_SENT' },
+      });
+    });
+
+    it('площадка отказала — отправка закрыта причиной, заказ не двинулся', async () => {
+      ozonChat.send.mockRejectedValue(
+        new OzonChatError('ozon_chat_closed', 'переписка закрыта'),
+      );
+      await service.enqueue('approval', 'manager');
+      expect(db.approvalTelegramDelivery.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: 'FAILED',
+            errorCode: 'ozon_chat_closed',
+          }),
+        }),
+      );
+      expect(db.orderPhoto.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('чат не определился — макет даже не готовим', async () => {
+      ozonChat.resolveChatId.mockRejectedValue(
+        new OzonChatError('ozon_no_chat', 'непонятно, кому писать'),
+      );
+      await expect(service.enqueue('approval', 'manager')).rejects.toThrow(
+        'непонятно, кому писать',
+      );
+      expect(storage.readSheet).not.toHaveBeenCalled();
+      expect(db.approvalTelegramDelivery.upsert).not.toHaveBeenCalled();
+    });
   });
 });

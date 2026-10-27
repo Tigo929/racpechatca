@@ -20,13 +20,15 @@ interface Props {
   communicationPlatform: string;
   communicationUrl: string | null;
   /**
-   * Заказ с площадки: согласовывать не с кем.
+   * Заказ с площадки.
    *
-   * Покупатель на Ozon макет не утверждает — он купил карточку, и печатать
-   * надо то, что на ней. Лист здесь нужен производству: по нему печатник
-   * видит цвет, размер, размещение и номер посылки. Поэтому меняются только
-   * подписи; кнопка отправки клиенту и так не появляется — она есть лишь
-   * у заказов с Telegram.
+   * Лист здесь прежде всего нужен производству: по нему печатник видит
+   * цвет, размер, размещение и номер посылки, — поэтому подписи другие.
+   *
+   * Согласовать макет с покупателем на Ozon при этом можно: в кабинете
+   * есть чат, и той же кнопкой CRM пишет туда сама. Обязательным это не
+   * делает — печатают то, что на карточке, — но принт на футболке стоит
+   * заготовки, и спросить дешевле, чем переделать.
    */
   marketplace?: boolean;
 }
@@ -49,6 +51,15 @@ const STATUS_STYLES: Record<EnumApprovalStatus, string> = {
 
 const btn =
   'inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50';
+
+/**
+ * Где мы умеем написать клиенту сами.
+ *
+ * В Авито и MAX переписку ведёт человек, и кнопка там только вводила бы в
+ * заблуждение. Telegram отправляет userbot, чат Ozon — сама CRM своими
+ * ключами от кабинета.
+ */
+const SENDABLE_PLATFORMS = ['TELEGRAM', 'OZON'];
 
 /**
  * Блок «Согласования» в карточке заказа: история версий макета и вход в
@@ -80,8 +91,15 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
     mutationFn: (id: string) => approvalsApi.sendTelegram(id),
     onSuccess: (delivery) => {
       qc.invalidateQueries({ queryKey: ['approvals', orderId] });
-      if (delivery.status === 'PENDING' || delivery.status === 'SENDING') toast.success('Макет поставлен в очередь отправки');
-      else if (delivery.status === 'SENT') toast.success('Этот макет уже отправлен');
+      // Чат Ozon ведёт сама CRM, поэтому ответ приходит уже с результатом —
+      // в том числе с отказом площадки. Молчать о нём нельзя: человек
+      // уверен, что покупателю написали.
+      if (delivery.status === 'FAILED')
+        toast.error(DELIVERY_ERRORS[delivery.errorCode ?? ''] ?? 'Макет отправить не удалось');
+      else if (delivery.status === 'SENT')
+        toast.success(delivery.channel === 'OZON' ? 'Макет отправлен покупателю в чат Ozon' : 'Этот макет уже отправлен');
+      else if (delivery.status === 'PENDING' || delivery.status === 'SENDING')
+        toast.success('Макет поставлен в очередь отправки');
     },
     onError: (error) => toast.error(getErrorMessage(error, 'Не удалось отправить макет')),
   });
@@ -239,14 +257,18 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
                 )}
 
                 <span className="ml-auto flex flex-wrap items-center gap-1.5">
-                  {communicationPlatform === 'TELEGRAM' && (
+                  {SENDABLE_PLATFORMS.includes(communicationPlatform) && (
                     <button
                       onClick={() => sendMutation.mutate(approval.id)}
                       disabled={sendMutation.isPending || !communicationUrl || !approval.previewFile || approval.fileOutdated ||
                         !['READY', 'CHANGES_REQUESTED'].includes(approval.status) ||
                         (!!approval.telegramDelivery && approval.telegramDelivery.status !== 'FAILED')}
                       className={`${btn} text-indigo-700`}
-                      title={!communicationUrl ? 'Укажите Telegram клиента в заказе' : `Отправить макет клиенту: ${communicationUrl}`}
+                      title={!communicationUrl
+                        ? (communicationPlatform === 'OZON'
+                          ? 'Укажите в заказе ссылку на чат с покупателем из кабинета Ozon'
+                          : 'Укажите Telegram клиента в заказе')
+                        : `Отправить макет клиенту: ${communicationUrl}`}
                     >
                       <Send size={13} aria-hidden="true" />
                       {approval.telegramDelivery?.status === 'FAILED' ? 'Повторить отправку' : 'Отправить клиенту на согласование'}
@@ -301,21 +323,40 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
   );
 }
 
+/**
+ * Состояние отправки словами.
+ *
+ * Канал меняет не только название места, но и как зовут адресата: в
+ * Telegram это ник, а на Ozon — идентификатор переписки, который человеку
+ * ничего не говорит и показывать его незачем.
+ */
 function deliveryText(approval: PrintApproval): string {
   const delivery = approval.telegramDelivery!;
-  const recipient = `@${delivery.recipient}`;
-  if (delivery.status === 'PENDING') return `Ожидает отправки в Telegram · ${recipient}`;
-  if (delivery.status === 'SENDING') return `Отправляется в Telegram · ${recipient}`;
-  if (delivery.status === 'SENT') return `Отправлено в Telegram · ${recipient} · ${new Date(delivery.sentAt!).toLocaleString('ru-RU')}. Для изменений создайте новую версию.`;
-  if (delivery.status === 'UNKNOWN') return `Результат отправки не подтверждён. Проверьте переписку с ${recipient} в Telegram перед созданием новой версии.`;
-  const errors: Record<string, string> = {
-    not_found: 'Telegram клиента не найден. Проверьте контакт в заказе.',
-    not_user: 'Контакт должен вести на личный аккаунт клиента, а не на группу, канал или бота.',
-    privacy: 'Клиент запретил сообщения. Попросите его первым написать в Telegram.',
-    blocked: 'Отправка заблокирована клиентом.',
-    flood: 'Telegram временно ограничил отправку. Повторите позже.',
-    file: 'Не удалось подготовить изображение.',
-    unavailable: 'Сервис временно недоступен. Можно повторить отправку.',
-  };
-  return `Не отправлено · ${recipient}. ${errors[delivery.errorCode ?? ''] ?? 'Проверьте контакт и повторите отправку.'}`;
+  const ozon = delivery.channel === 'OZON';
+  const where = ozon ? 'в чат Ozon' : 'в Telegram';
+  const recipient = ozon ? 'покупателю' : `@${delivery.recipient}`;
+  if (delivery.status === 'PENDING') return `Ожидает отправки ${where} · ${recipient}`;
+  if (delivery.status === 'SENDING') return `Отправляется ${where} · ${recipient}`;
+  if (delivery.status === 'SENT') return `Отправлено ${where} · ${recipient} · ${new Date(delivery.sentAt!).toLocaleString('ru-RU')}. Для изменений создайте новую версию.`;
+  if (delivery.status === 'UNKNOWN') return `Результат отправки не подтверждён. Проверьте переписку ${ozon ? 'в кабинете Ozon' : `с ${recipient} в Telegram`} перед созданием новой версии.`;
+  return `Не отправлено · ${recipient}. ${DELIVERY_ERRORS[delivery.errorCode ?? ''] ?? 'Проверьте контакт и повторите отправку.'}`;
 }
+
+const DELIVERY_ERRORS: Record<string, string> = {
+  not_found: 'Telegram клиента не найден. Проверьте контакт в заказе.',
+  not_user: 'Контакт должен вести на личный аккаунт клиента, а не на группу, канал или бота.',
+  privacy: 'Клиент запретил сообщения. Попросите его первым написать в Telegram.',
+  blocked: 'Отправка заблокирована клиентом.',
+  flood: 'Telegram временно ограничил отправку. Повторите позже.',
+  file: 'Не удалось подготовить изображение.',
+  unavailable: 'Сервис временно недоступен. Можно повторить отправку.',
+  // Чат Ozon. Коды приходят с бэкенда (approval-ozon-chat.service.ts).
+  ozon_no_account: 'У заказа не указан кабинет Ozon — писать покупателю нечем.',
+  ozon_no_chat: 'Не нашли чат с покупателем: добавьте в заказ ссылку на переписку из кабинета.',
+  ozon_chat_closed: 'Ozon закрыл переписку по этому заказу. Напишите покупателю из кабинета.',
+  ozon_keys: 'Ozon не принял доступы кабинета. Проверьте ключи в разделе маркетплейсов.',
+  ozon_flood: 'Ozon временно ограничил отправку. Повторите через минуту.',
+  ozon_unavailable: 'Ozon сейчас недоступен. Можно повторить отправку.',
+  ozon_rejected: 'Ozon отклонил сообщение. Проверьте переписку в кабинете.',
+  ozon_file: 'Сообщение покупателю ушло, а макет — нет. При повторе текст придёт второй раз.',
+};
