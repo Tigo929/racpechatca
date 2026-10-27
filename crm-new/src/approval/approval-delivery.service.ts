@@ -112,6 +112,15 @@ export class ApprovalDeliveryService {
     // завершить строку сможет только этот запрос, а не случайный повтор.
     const claimToken = randomUUID();
 
+    // Текст считаем один раз: он попадёт и в строку отправки, и в само
+    // сообщение, и разойтись эти два экземпляра не должны.
+    // Сообщение читает покупатель: заказ с площадки называем её номером.
+    const caption = approvalCaption(
+      displayOrderNumber(approval.order),
+      approval.version,
+      channel,
+    );
+
     const queued = await this.prisma.$transaction(async (tx) => {
       // Serializes simultaneous clicks across API instances. Recheck the revision
       // after reading the file so a concurrent edit cannot enqueue an old sheet.
@@ -135,16 +144,15 @@ export class ApprovalDeliveryService {
         where: { approvalId },
         select: deliverySelect,
       });
-      if (existing && existing.status !== 'FAILED') return existing;
+      // Чужая отправка уже идёт (соседний щелчок, другой экземпляр API).
+      // `claimed: false` здесь принципиально: пропуск на отправку не наш,
+      // и попытка дослать макет была бы вторым сообщением покупателю.
+      if (existing && existing.status !== 'FAILED')
+        return { row: existing, claimed: false };
       const data = {
         channel,
         recipient,
-        // Сообщение читает покупатель: заказ с площадки называем её номером.
-        caption: approvalCaption(
-          displayOrderNumber(approval.order),
-          approval.version,
-          channel,
-        ),
+        caption,
         image: new Uint8Array(image),
         requestedById,
         finalizedAt: approval.finalizedAt!,
@@ -161,16 +169,18 @@ export class ApprovalDeliveryService {
         messageId: null,
         errorCode: null,
       };
-      return tx.approvalTelegramDelivery.upsert({
+      const row = await tx.approvalTelegramDelivery.upsert({
         where: { approvalId },
         create: { approvalId, ...data },
         update: data,
         select: deliverySelect,
       });
+      return { row, claimed: true };
     });
 
     // Telegram отсюда уходит сам: задание в очереди, его заберёт userbot.
-    if (queued.channel !== 'OZON' || queued.status !== 'SENDING') return queued;
+    // Чужую отправку не трогаем — её доведёт тот, кто её начал.
+    if (!queued.claimed || queued.row.channel !== 'OZON') return queued.row;
 
     // Чат Ozon ведём сами. Отказ площадки не бросаем исключением: строка
     // уже создана, и карточке важнее показать её состояние с причиной, чем
@@ -179,16 +189,12 @@ export class ApprovalDeliveryService {
       await this.ozonChat.send({
         marketplaceAccountId: approval.order.marketplaceAccountId,
         chatId: recipient,
-        text: approvalCaption(
-          displayOrderNumber(approval.order),
-          approval.version,
-          'OZON',
-        ),
+        text: caption,
         image,
         orderNumber: displayOrderNumber(approval.order),
         version: approval.version,
       });
-      return this.finish(queued.id, claimToken, { status: 'SENT' });
+      return this.finish(queued.row.id, claimToken, { status: 'SENT' });
     } catch (error) {
       const chatError =
         error instanceof OzonChatError
@@ -200,7 +206,7 @@ export class ApprovalDeliveryService {
       this.logger.warn(
         `Макет ${approval.id} в чат Ozon не ушёл: ${chatError.code} — ${chatError.message}`,
       );
-      return this.finish(queued.id, claimToken, {
+      return this.finish(queued.row.id, claimToken, {
         status: 'FAILED',
         errorCode: chatError.code,
       });

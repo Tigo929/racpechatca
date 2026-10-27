@@ -7,6 +7,7 @@ import {
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { Resolver } from 'react-hook-form';
 import { z } from 'zod';
 import { Plus, Trash2, Camera, Shirt, Image, Flame, Clock } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -81,7 +82,7 @@ const canvasItemSchema = z.object({
 }).superRefine((row, ctx) => {
   if (!row.sizeKey && !(row.formatCanvas ?? '').trim()) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: 'custom',
       message: 'Выберите размер или опишите нестандартный',
       path: ['formatCanvas'],
     });
@@ -174,7 +175,7 @@ const baseSchema = z.object({
 }).superRefine((data, ctx) => {
   if (data.communicationPlatform === 'TELEGRAM' && !/^@[A-Za-z0-9_]{1,32}$/.test(data.urlCommunication.trim()) && !/^https?:\/\/(?:t\.me|telegram\.me)\/(?:[A-Za-z0-9_]{1,32}|\+\d{7,15})\/?$/i.test(data.urlCommunication.trim())) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: 'custom',
       message: 'Для Telegram укажите @username или ссылку https://t.me/username',
       path: ['urlCommunication'],
     });
@@ -187,7 +188,7 @@ const baseSchema = z.object({
     !isRussianPhone(data.urlCommunication)
   ) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: 'custom',
       message: 'Для MAX укажите номер телефона, например +7 999 123-45-67',
       path: ['urlCommunication'],
     });
@@ -203,7 +204,7 @@ const baseSchema = z.object({
     !OZON_POSTING_RE.test(data.urlCommunication.trim())
   ) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: 'custom',
       message: 'Для Ozon укажите номер отправления (0189070451-0031-1) или ссылку на кабинет',
       path: ['urlCommunication'],
     });
@@ -214,7 +215,7 @@ const baseSchema = z.object({
     !data.urlCommunication.startsWith('http')
   ) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: 'custom',
       message: 'Укажите полную ссылку (начинается с https://)',
       path: ['urlCommunication'],
     });
@@ -227,26 +228,26 @@ const fullSchema = baseSchema.superRefine((data, ctx) => {
   if (data.freePrice) {
     const fi = data.freeItems ?? [];
     if (fi.length === 0) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Добавьте хотя бы один товар', path: ['freeItems'] });
+      ctx.addIssue({ code: 'custom', message: 'Добавьте хотя бы один товар', path: ['freeItems'] });
     } else {
       fi.forEach((it, i) => {
         if (!it.name || !it.name.trim()) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Укажите название', path: ['freeItems', i, 'name'] });
+          ctx.addIssue({ code: 'custom', message: 'Укажите название', path: ['freeItems', i, 'name'] });
         }
       });
     }
     return;
   }
   if (data.productCategory === 'PHOTO' && (!data.items || data.items.length === 0)) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Добавьте хотя бы одну позицию', path: ['items'] });
+    ctx.addIssue({ code: 'custom', message: 'Добавьте хотя бы одну позицию', path: ['items'] });
   }
   if (data.productCategory === 'TSHIRT') {
     if (!data.tshirtItems || data.tshirtItems.length === 0) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Добавьте хотя бы одну позицию', path: ['tshirtItems'] });
+      ctx.addIssue({ code: 'custom', message: 'Добавьте хотя бы одну позицию', path: ['tshirtItems'] });
     } else {
       data.tshirtItems.forEach((it, i) => {
         if (it.freePrice && !it.name?.trim()) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Укажите название', path: ['tshirtItems', i, 'name'] });
+          ctx.addIssue({ code: 'custom', message: 'Укажите название', path: ['tshirtItems', i, 'name'] });
         }
       });
     }
@@ -260,13 +261,13 @@ const fullSchema = baseSchema.superRefine((data, ctx) => {
     !(data.marketplaceOrderNumber ?? '').trim()
   ) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: 'custom',
       message: 'Укажите номер заказа на площадке — он в кабинете рядом с заказом',
       path: ['marketplaceOrderNumber'],
     });
   }
   if (data.productCategory === 'CANVAS' && (!data.canvasItems || data.canvasItems.length === 0)) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Добавьте хотя бы одну позицию', path: ['canvasItems'] });
+    ctx.addIssue({ code: 'custom', message: 'Добавьте хотя бы одну позицию', path: ['canvasItems'] });
   }
 });
 
@@ -352,7 +353,21 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
   const [restoredDraft] = useState(readOrderDraft);
   const [draftRestored, setDraftRestored] = useState(restoredDraft !== null);
   const { register, control, handleSubmit, getValues, setValue, watch, reset, formState: { errors } } = useForm<FormValues>({
-    resolver: zodResolver(fullSchema),
+    /*
+      Приведение типа, а не смена типизации формы.
+
+      Поля ввода отдают строки, а схема превращает их в числа
+      (`z.coerce.number()`). Zod 4 стал разделять «что пришло» и «что
+      получилось», и resolver теперь описан двумя разными типами. Форма же
+      во всех своих тысяче строк рассчитывает на один — тот, что после
+      проверки, как было и с Zod 3.
+
+      Поведение от этого не меняется ни на шаг: те же поля, та же схема,
+      то же приведение. Меняется только то, какой из двух типов видит
+      TypeScript. Разделить их по-настоящему — отдельная работа по всей
+      форме, и делать её заодно с правкой зависимости нельзя.
+    */
+    resolver: zodResolver(fullSchema) as unknown as Resolver<FormValues>,
     // Черновик накладывается поверх пустой формы, а не заменяет её: у
     // сохранённого раньше может не оказаться полей, добавленных позже, и
     // форма открылась бы с дырами вместо значений по умолчанию.

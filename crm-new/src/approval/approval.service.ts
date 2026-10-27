@@ -301,7 +301,10 @@ export class ApprovalService {
       )
     ) {
       throw new BadRequestException(
-        'Макет отправляется или результат отправки не подтверждён. Сначала проверьте переписку в Telegram',
+        'Макет отправляется или результат отправки не подтверждён. Сначала проверьте переписку ' +
+          (approval.telegramDelivery.channel === 'OZON'
+            ? 'с покупателем в кабинете Ozon'
+            : 'в Telegram'),
       );
     }
     for (const { state } of filledSides(parseSides(approval.sides))) {

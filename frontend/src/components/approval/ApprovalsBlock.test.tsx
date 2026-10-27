@@ -52,13 +52,13 @@ it('disables sending without a customer contact', async () => {
 });
 
 it.each(['PENDING', 'SENDING', 'SENT', 'UNKNOWN'] as const)('does not allow duplicate delivery in %s', async (status) => {
-  show({ ...approval, telegramDelivery: { id: 'delivery', status, recipient: 'client_test', createdAt: approval.createdAt, finalizedAt: approval.finalizedAt!, sentAt: approval.finalizedAt, errorCode: null } });
+  show({ ...approval, telegramDelivery: { id: 'delivery', channel: 'TELEGRAM' as const, status, recipient: 'client_test', createdAt: approval.createdAt, finalizedAt: approval.finalizedAt!, sentAt: approval.finalizedAt, errorCode: null } });
   expect(await screen.findByRole('button', { name: 'Отправить клиенту на согласование' })).toBeDisabled();
   expect(screen.getByRole('status')).toHaveTextContent('@client_test');
 });
 
 it('shows an explicit retry after a confirmed refusal', async () => {
-  show({ ...approval, telegramDelivery: { id: 'delivery', status: 'FAILED', recipient: 'client_test', createdAt: approval.createdAt, finalizedAt: approval.finalizedAt!, sentAt: null, errorCode: 'privacy' } });
+  show({ ...approval, telegramDelivery: { id: 'delivery', channel: 'TELEGRAM' as const, status: 'FAILED', recipient: 'client_test', createdAt: approval.createdAt, finalizedAt: approval.finalizedAt!, sentAt: null, errorCode: 'privacy' } });
   expect(await screen.findByRole('button', { name: 'Повторить отправку' })).toBeEnabled();
   expect(screen.getByRole('status')).toHaveTextContent('Клиент запретил сообщения');
 });
@@ -70,7 +70,7 @@ it('shows customer-owned printing instead of the fallback garment size', async (
 });
 
 it('refreshes the order when the delivery worker confirms sending', async () => {
-  const pending = { ...approval, telegramDelivery: { id: 'delivery', status: 'SENDING' as const, recipient: 'client_test', createdAt: approval.createdAt, finalizedAt: approval.finalizedAt!, sentAt: null, errorCode: null } };
+  const pending = { ...approval, telegramDelivery: { id: 'delivery', channel: 'TELEGRAM' as const, status: 'SENDING' as const, recipient: 'client_test', createdAt: approval.createdAt, finalizedAt: approval.finalizedAt!, sentAt: null, errorCode: null } };
   const { qc } = show(pending);
   await screen.findByText('v1');
   const invalidate = vi.spyOn(qc, 'invalidateQueries');

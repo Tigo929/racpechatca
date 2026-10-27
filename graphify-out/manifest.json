@@ -15,8 +15,8 @@
     "semantic_hash": ""
   },
   "crm-new/package.json": {
-    "mtime": 1792330640.1637485,
-    "ast_hash": "76a01f273c1be97bbff8648ffc4d0e7c",
+    "mtime": 1793098330.6855433,
+    "ast_hash": "0d07162a52db64ddf6c56cfdf863f1a1",
     "semantic_hash": ""
   },
   "crm-new/prisma.config.ts": {
@@ -605,8 +605,8 @@
     "semantic_hash": ""
   },
   "frontend/package.json": {
-    "mtime": 1792330640.2034173,
-    "ast_hash": "be3516e8d7b2a3a31fc8a6a6362a0f8d",
+    "mtime": 1793098674.5295117,
+    "ast_hash": "b582675fca080838fb6cdb1fdcb8f055",
     "semantic_hash": ""
   },
   "frontend/src/App.tsx": {
@@ -675,8 +675,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/CreateOrderForm.tsx": {
-    "mtime": 1791579128.0733876,
-    "ast_hash": "86ffdd37f97e10f48ef8d30cb2af26bb",
+    "mtime": 1793099380.3805008,
+    "ast_hash": "14aeb262f08764ff0fdeb4945f221fd5",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/ItemsTable.tsx": {
@@ -1735,8 +1735,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval.service.ts": {
-    "mtime": 1793096597.047817,
-    "ast_hash": "030d1d84f21a9c09767cf878e30d874c",
+    "mtime": 1793098753.1803243,
+    "ast_hash": "c8f58fbec9eae0329a8fababb603323d",
     "semantic_hash": ""
   },
   "crm-new/src/approval/dto/create-approval.dto.ts": {
@@ -3570,13 +3570,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval-delivery.service.ts": {
-    "mtime": 1793097121.9058511,
-    "ast_hash": "43025347052f2eac05e83c95e78bd960",
+    "mtime": 1793098882.5625863,
+    "ast_hash": "151e1161b80bbe1e34026bb3d9468ff5",
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval-delivery.spec.ts": {
-    "mtime": 1793097223.1591072,
-    "ast_hash": "b4fdabb755049d3c7efadbb44ac27eef",
+    "mtime": 1793098859.5423698,
+    "ast_hash": "39acf691f7e8cb2eaafd149df9b6e10f",
     "semantic_hash": ""
   },
   "crm-new/src/approval/dto/approval-delivery.dto.ts": {
@@ -3620,8 +3620,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/approval/ApprovalsBlock.test.tsx": {
-    "mtime": 1790264005.5439444,
-    "ast_hash": "3ff824064314669e0f8656eed0f60285",
+    "mtime": 1793099413.9606493,
+    "ast_hash": "3de116bd6c9551a4fed4d1d3a877fac3",
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/__tests__/growth.test.tsx": {
@@ -4455,8 +4455,8 @@
     "semantic_hash": ""
   },
   "frontend/src/utils/client-message.test.ts": {
-    "mtime": 1793096597.0668216,
-    "ast_hash": "056a2df5cc4bdae44410960a777138ec",
+    "mtime": 1793099491.4979243,
+    "ast_hash": "b5d9f07e47d7e5c4085ed6a3beccff66",
     "semantic_hash": ""
   },
   "frontend/src/utils/client-message.ts": {

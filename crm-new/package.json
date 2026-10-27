@@ -33,6 +33,10 @@
     "ads:sync": "node dist/src/analytics/direct-spend-cli.js",
     "ads:import": "node dist/src/analytics/ad-spend-cli.js"
   },
+  "comment:overrides": "multer 2.4.0 прибит внутри @nestjs/platform-express и уязвим (GHSA-q7qp-rjg7-q26m, отказ в обслуживании). Исправленной сборки NestJS пока нет, поэтому поднимаем сам multer до 2.5.0 — версии, названной в самом уведомлении. Убрать, когда NestJS обновит свою закреплённую версию.",
+  "overrides": {
+    "multer": "2.5.0"
+  },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",

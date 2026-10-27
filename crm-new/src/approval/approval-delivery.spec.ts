@@ -367,6 +367,21 @@ describe('Telegram approval delivery', () => {
       expect(db.orderPhoto.updateMany).not.toHaveBeenCalled();
     });
 
+    it('чужая отправка уже идёт — второй раз покупателю не пишем', async () => {
+      // Два щелчка одновременно (или два экземпляра API). Строку занял
+      // первый, пропуск на отправку у него же — второму остаётся только
+      // показать состояние. Иначе покупатель получил бы макет дважды.
+      db.approvalTelegramDelivery.findUnique.mockResolvedValue({
+        id: 'delivery',
+        channel: 'OZON',
+        status: 'SENDING',
+      });
+      const result = await service.enqueue('approval', 'manager');
+      expect(result).toMatchObject({ status: 'SENDING' });
+      expect(ozonChat.send).not.toHaveBeenCalled();
+      expect(db.approvalTelegramDelivery.upsert).not.toHaveBeenCalled();
+    });
+
     it('чат не определился — макет даже не готовим', async () => {
       ozonChat.resolveChatId.mockRejectedValue(
         new OzonChatError('ozon_no_chat', 'непонятно, кому писать'),
