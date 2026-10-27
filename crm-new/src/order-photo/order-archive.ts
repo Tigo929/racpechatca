@@ -132,7 +132,23 @@ export interface OrderSnapshot {
  * живёт 30 дней, за это время схема успевает измениться, и `create` с
  * колонкой, которой больше нет, упал бы с «Unknown argument».
  */
-const ORDER_FIELDS = Object.keys(Prisma.OrderPhotoScalarFieldEnum);
+/**
+ * Колонки, которые считает сама база (generated columns).
+ *
+ * Prisma перечисляет их наравне с обычными, но записать в такую колонку
+ * нельзя: Postgres отвечает «cannot insert a non-DEFAULT value» (428C9), и
+ * возврат заказа падал именно здесь — снимок честно нёс в себе посчитанный
+ * срок, а `create` пытался его вписать.
+ *
+ * Данные при этом не теряются: `deadlineEffective` выводится из полей,
+ * которые в снимке есть (`deadline`, `createdAt`, `productCategory`), и
+ * база пересчитает его сама, как только заказ вернётся.
+ */
+const GENERATED_ORDER_FIELDS: readonly string[] = ['deadlineEffective'];
+
+const ORDER_FIELDS = Object.keys(Prisma.OrderPhotoScalarFieldEnum).filter(
+  (field) => !GENERATED_ORDER_FIELDS.includes(field),
+);
 const ITEM_PHOTO_FIELDS = Object.keys(Prisma.ItemPhotoScalarFieldEnum);
 const ITEM_TSHIRT_FIELDS = Object.keys(Prisma.ItemTshirtScalarFieldEnum);
 const ITEM_CANVAS_FIELDS = Object.keys(Prisma.ItemCanvasScalarFieldEnum);

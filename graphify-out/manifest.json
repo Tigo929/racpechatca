@@ -5045,13 +5045,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-archive.spec.ts": {
-    "mtime": 1792688851.6595912,
-    "ast_hash": "47153b70ef79a731924f36969fa27ac1",
+    "mtime": 1793096319.6667106,
+    "ast_hash": "a2b0993c9b29d994e208902bdbfc1ae0",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-archive.ts": {
-    "mtime": 1792688851.6605897,
-    "ast_hash": "996d40c31ed0442cada790dcdc4d7cd8",
+    "mtime": 1793096291.600574,
+    "ast_hash": "db6822e9cfb06ed6205466d1a990a3a2",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-sequence.ts": {

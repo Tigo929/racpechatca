@@ -147,6 +147,9 @@ describe('корзина: снимок заказа', () => {
     numberOrder: '20261020-015',
     status: 'LEAD',
     totalOrder: 7600,
+    deadline: new Date('2026-10-23T12:00:00.000Z'),
+    // Срок считает сама база, писать в эту колонку нельзя.
+    deadlineEffective: new Date('2026-10-23T12:00:00.000Z'),
     // Связи и вычисленные поля в снимок попадать не должны: при возврате
     // Prisma не знает, что с ними делать.
     executor: { id: 'u1', username: 'Петя' },
@@ -173,6 +176,18 @@ describe('корзина: снимок заказа', () => {
     expect(snapshot.order.totalOrder).toBe(7600);
     expect('executor' in snapshot.order).toBe(false);
     expect('items' in snapshot.order).toBe(false);
+  });
+
+  it('колонку, которую считает база, в снимок не кладём', () => {
+    // Postgres отказывается принимать значение в generated column, и
+    // возврат заказа падал с «cannot insert a non-DEFAULT value».
+    // Заданный вручную срок при этом обязан сохраниться: из него база
+    // посчитает колонку заново.
+    const snapshot = buildOrderSnapshot(order);
+    expect('deadlineEffective' in snapshot.order).toBe(false);
+    expect(snapshot.order.deadline).toEqual(
+      new Date('2026-10-23T12:00:00.000Z'),
+    );
   });
 
   it('сохраняет позиции, историю и чистит лишние поля', () => {
@@ -243,6 +258,17 @@ describe('корзина: разбор снимка для возврата', ()
   it('служебное поле hadPayment в базу не уходит', () => {
     const payload = restorePayload(snapshot);
     expect('hadPayment' in payload.accruals[0]).toBe(false);
+  });
+
+  it('снимок, снятый до этой правки, возвращается без посчитанной колонки', () => {
+    // Снимки лежат в базе по тридцать дней, и в уже сделанных
+    // `deadlineEffective` записан. Отбор идёт по списку колонок, а не по
+    // содержимому снимка, — поэтому старые снимки чинятся тем же списком.
+    const old = {
+      ...snapshot,
+      order: { ...snapshot.order, deadlineEffective: '2026-10-23T12:00:00Z' },
+    };
+    expect('deadlineEffective' in restorePayload(old).order).toBe(false);
   });
 
   it('не падает на пустом или битом снимке', () => {
