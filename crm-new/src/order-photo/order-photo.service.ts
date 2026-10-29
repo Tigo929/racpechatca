@@ -1,5 +1,6 @@
 import { fulfillmentError } from './fulfillment';
 import { automaticStatusError } from './status-automatic';
+import { withShortfallLine } from './photos-shortfall';
 import {
   BadRequestException,
   ConflictException,
@@ -811,12 +812,56 @@ export class OrderPhotoService {
       return;
     }
 
+    /*
+      Числа пишем всегда, даже когда всё сошлось: по ним краснеет карточка
+      заказа, и перестать краснеть она должна сама, как только хвост
+      доехал. Сайт сообщает о папке заново при каждом изменении числа
+      файлов — ровно для этого.
+
+      photosResolvedAt не трогаем: если менеджер уже сказал «снимки
+      собраны», повторный отчёт по той же папке не поднимает тревогу
+      заново.
+    */
+    const counts = {
+      photosExpected: dto.expected,
+      photosArrived: dto.arrived,
+    };
+
     const line = `⚠️ Фотографии доехали не все: ${dto.arrived} из ${dto.expected}. Запросите у клиента остальные до печати.`;
+    const note = withShortfallLine(order.note, line);
+    /*
+      Строка уже стояла — значит о недоборе по этому заказу говорили.
+      Второй раз в Telegram не пишем: сайт сообщает при каждом изменении
+      числа файлов, и поток сообщений об одном заказе только приучит их
+      пролистывать.
+    */
+    const alreadyTold = note.hadLine;
+
+    if (dto.arrived >= dto.expected) {
+      // Хвост доехал. Карточка перестаёт краснеть, а строку о недоборе
+      // убираем: она описывает положение, которого больше нет.
+      try {
+        await this.prisma.orderPhoto.update({
+          where: { id: order.id },
+          data: { ...counts, note: note.without },
+        });
+      } catch (error) {
+        this.logger.warn(
+          `Не удалось снять недобор с заказа ${order.numberOrder}: ${String(error)}`,
+        );
+      }
+      if (alreadyTold) {
+        this.logger.log(
+          `Заказ ${order.numberOrder}: фотографии доехали полностью (${dto.arrived})`,
+        );
+      }
+      return;
+    }
 
     try {
       await this.prisma.orderPhoto.update({
         where: { id: order.id },
-        data: { note: [order.note?.trim(), line].filter(Boolean).join('\n') },
+        data: { ...counts, note: note.text },
       });
     } catch (error) {
       // Примечание не записалось — сообщение всё равно должно уйти.
@@ -824,6 +869,8 @@ export class OrderPhotoService {
         `Не удалось дописать недобор в заказ ${order.numberOrder}: ${String(error)}`,
       );
     }
+
+    if (alreadyTold) return;
 
     try {
       await this.telegram.sendLeadAlert(
@@ -2583,6 +2630,37 @@ export class OrderPhotoService {
   }
 
   /** Отметить, оставил ли клиент отзыв (вручную из списка заказов). */
+  /**
+   * Менеджер подтвердил, что фотографии собраны.
+   *
+   * Снимает красную карточку, когда хвост пришёл мимо сайта — в
+   * переписке или ссылкой на облако. Сервер такого увидеть не может
+   * никогда, поэтому последнее слово за человеком.
+   *
+   * Числа не трогаем: по ним потом видно, что недобор был и чем
+   * закончился. Отметка ставится один раз — повторное нажатие дату
+   * не переписывает, иначе «когда разобрались» превратилось бы в
+   * «когда нажали в последний раз».
+   */
+  async markPhotosCollected(idOrder: string, userId: string) {
+    const order = await this.getOrderById(idOrder, userId, EnumRole.ADMIN);
+    if (order.photosResolvedAt) return order;
+
+    this.logger.log(
+      `Заказ ${order.numberOrder}: менеджер подтвердил, что фотографии собраны`,
+    );
+    return this.prisma.orderPhoto.update({
+      where: { id: idOrder },
+      data: { photosResolvedAt: new Date() },
+      include: {
+        items: true,
+        tshirtItems: true,
+        canvasItems: true,
+        executor: { select: { id: true, username: true } },
+      },
+    });
+  }
+
   async setReviewLeft(idOrder: string, value: boolean) {
     await this.getOrderById(idOrder, '', EnumRole.ADMIN);
     return this.prisma.orderPhoto.update({

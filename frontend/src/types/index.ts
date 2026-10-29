@@ -137,6 +137,16 @@ export interface OrderPhoto {
    * Пусто — файлов нет либо заказ отгружен и исходники уже удалены.
    */
   photosArchiveUrl?: string | null;
+  /**
+   * Сколько фотографий обещано и сколько файлов дошло до сервера.
+   *
+   * Расходятся — карточка заказа краснеет целиком. Пусто — сверять
+   * нечего: фотографии могли прийти мимо сайта, в переписке.
+   */
+  photosExpected?: number | null;
+  photosArrived?: number | null;
+  /** Менеджер подтвердил, что остальные снимки у нас. */
+  photosResolvedAt?: string | null;
   productCategory: EnumProductCategory;
   deadline?: string | null;
   isUrgent: boolean;

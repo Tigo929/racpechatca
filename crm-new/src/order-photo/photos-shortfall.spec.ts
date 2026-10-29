@@ -1,121 +1,120 @@
-import { OrderPhotoService } from './order-photo.service';
-import type { DtoPhotosShortfall } from './dto/photos-shortfall.dto';
+import { photosShortfall, withShortfallLine } from './photos-shortfall';
 
 /**
- * Заказ, фотографии которого доехали не все.
+ * Недобор фотографий.
  *
- * Файлы грузит браузер клиента: закрыл вкладку, ушёл в другое приложение,
- * потерял сеть — хвост не дошёл. Заявка при этом давно в CRM и показывает
- * полный тираж. Так заказ на 172 отпечатка уезжал в печать с 84 файлами,
- * и выяснялось это у печатника.
- *
- * Сообщить нужно двумя способами сразу: письмом в Telegram — чтобы
- * заметили сегодня, и строкой в примечании — чтобы не забыли через
- * неделю, когда заказ дойдёт до печати.
+ * Проверяется граница в обе стороны. Пропустить недобор — заказ уедет
+ * в печать неполным. Поднять тревогу зря — красной станет половина
+ * списка, и на цвет перестанут смотреть вообще.
  */
-describe('недогруженные фотографии заказа', () => {
-  const dto: DtoPhotosShortfall = {
-    uploadId: '54e6fc13-62e9-4b89-9ebe-283c5b442111',
-    expected: 172,
-    arrived: 84,
-  };
+describe('недобор фотографий', () => {
+  it('доехало меньше обещанного — это недобор', () => {
+    expect(photosShortfall({ photosExpected: 172, photosArrived: 84 })).toEqual({
+      expected: 172,
+      arrived: 84,
+      missing: 88,
+    });
+  });
 
-  function build(options: {
-    order?: { id: string; numberOrder: string; note: string | null } | null;
-    updateFails?: boolean;
-    alertFails?: boolean;
-  }) {
-    const updates: { id: string; note: string }[] = [];
-    const alerts: string[] = [];
-    const queries: unknown[] = [];
+  it('не хватает одного кадра — тоже недобор', () => {
+    // Один потерянный снимок стоит ровно столько же: перепечатка заказа.
+    expect(photosShortfall({ photosExpected: 40, photosArrived: 39 })?.missing).toBe(1);
+  });
 
-    const prisma = {
-      orderPhoto: {
-        findFirst: async (args: unknown) => {
-          queries.push(args);
-          return options.order === undefined
-            ? { id: 'o1', numberOrder: '20261016-261', note: '🆕 Заявка с сайта' }
-            : options.order;
-        },
-        update: async ({
-          where,
-          data,
-        }: {
-          where: { id: string };
-          data: { note: string };
-        }) => {
-          if (options.updateFails) throw new Error('база недоступна');
-          updates.push({ id: where.id, note: data.note });
-          return {};
-        },
-      },
-    };
+  it('всё доехало — тревожить незачем', () => {
+    expect(photosShortfall({ photosExpected: 40, photosArrived: 40 })).toBeNull();
+  });
 
-    const telegram = {
-      sendLeadAlert: async (text: string) => {
-        if (options.alertFails) throw new Error('бот недоступен');
-        alerts.push(text);
-        return true;
-      },
-    };
+  it('доехало больше обещанного — не недобор', () => {
+    // Хвост дошёл после отправки заявки: файлов стало больше, чем было
+    // названо. Это не потеря.
+    expect(photosShortfall({ photosExpected: 10, photosArrived: 12 })).toBeNull();
+  });
 
-    const service = new OrderPhotoService(
-      prisma as never,
-      {} as never,
-      telegram as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
+  it('пустые числа — значит сверять нечего', () => {
+    // Фотографии пришли мимо сайта: в переписке, ссылкой на облако.
+    expect(photosShortfall({})).toBeNull();
+    expect(photosShortfall({ photosExpected: 10 })).toBeNull();
+    expect(photosShortfall({ photosArrived: 0 })).toBeNull();
+    expect(photosShortfall({ photosExpected: null, photosArrived: null })).toBeNull();
+  });
+
+  it('ноль обещанных — не повод краснеть', () => {
+    expect(photosShortfall({ photosExpected: 0, photosArrived: 0 })).toBeNull();
+  });
+
+  it('ни одного файла из обещанных — самый громкий случай', () => {
+    expect(photosShortfall({ photosExpected: 30, photosArrived: 0 })?.missing).toBe(30);
+  });
+
+  it('менеджер подтвердил сбор — тревога снята', () => {
+    // Остальные снимки пришли в переписке: сервер этого не увидит никогда,
+    // и без ручного снятия карточка осталась бы красной навсегда.
+    expect(
+      photosShortfall({
+        photosExpected: 40,
+        photosArrived: 12,
+        photosResolvedAt: new Date('2026-10-29T10:00:00Z'),
+      }),
+    ).toBeNull();
+  });
+
+  it('подтверждение строкой из JSON тоже считается', () => {
+    // С фронта дата приезжает строкой — пустая строка подтверждением не является.
+    expect(
+      photosShortfall({
+        photosExpected: 40,
+        photosArrived: 12,
+        photosResolvedAt: '2026-10-29T10:00:00.000Z',
+      }),
+    ).toBeNull();
+    expect(
+      photosShortfall({ photosExpected: 40, photosArrived: 12, photosResolvedAt: '' }),
+    ).not.toBeNull();
+  });
+});
+
+describe('строка о недоборе в примечании', () => {
+  const line = (arrived: number) =>
+    `⚠️ Фотографии доехали не все: ${arrived} из 172. Запросите у клиента остальные до печати.`;
+
+  it('дописывается к примечанию, когда её там не было', () => {
+    const result = withShortfallLine('🆕 Заявка с сайта\nИмя: Анна', line(84));
+    expect(result.hadLine).toBe(false);
+    expect(result.text.split('\n')).toEqual([
+      '🆕 Заявка с сайта',
+      'Имя: Анна',
+      line(84),
+    ]);
+  });
+
+  it('вторая строка не добавляется — прежняя переписывается', () => {
+    // Сайт сообщает о папке при каждом изменении числа файлов: без этого
+    // примечание превратилось бы в столбик почти одинаковых строк.
+    const first = withShortfallLine('Имя: Анна', line(84));
+    const second = withShortfallLine(first.text, line(120));
+    expect(second.hadLine).toBe(true);
+    expect(second.text.split('\n')).toEqual(['Имя: Анна', line(120)]);
+  });
+
+  it('строка стоит там же, где стояла, а не уезжает в конец', () => {
+    // Ниже неё бывают указания печатнику — их порядок менять незачем.
+    const note = ['Имя: Анна', line(84), '📁 Фотографии на Яндекс.Диске: /заказ'].join(
+      '\n',
     );
-
-    return { service, updates, alerts, queries };
-  }
-
-  it('находит заказ по номеру папки — своего номера сайт не знает', async () => {
-    const { service, queries } = build({});
-    await service.reportPhotosShortfall(dto);
-    expect(JSON.stringify(queries[0])).toContain(dto.uploadId);
+    expect(withShortfallLine(note, line(120)).text.split('\n')[1]).toBe(line(120));
   });
 
-  it('пишет недобор в примечание и не затирает то, что там было', async () => {
-    const { service, updates } = build({});
-    await service.reportPhotosShortfall(dto);
-
-    expect(updates).toHaveLength(1);
-    expect(updates[0]?.note).toContain('🆕 Заявка с сайта');
-    expect(updates[0]?.note).toContain('84 из 172');
+  it('когда всё доехало, строка убирается целиком', () => {
+    const note = ['Имя: Анна', line(84), 'Телефон: +7 900'].join('\n');
+    expect(withShortfallLine(note, line(172)).without.split('\n')).toEqual([
+      'Имя: Анна',
+      'Телефон: +7 900',
+    ]);
   });
 
-  it('сообщает владельцу с номером заказа', async () => {
-    const { service, alerts } = build({});
-    await service.reportPhotosShortfall(dto);
-
-    expect(alerts).toHaveLength(1);
-    expect(alerts[0]).toContain('20261016-261');
-    expect(alerts[0]).toContain('84 из 172');
-  });
-
-  it('неизвестная папка не роняет запрос', async () => {
-    // Заказ удалили или фотографии подчистили после отгрузки: сообщать
-    // не о чем, но и падать с ошибкой наружу незачем.
-    const { service, updates, alerts } = build({ order: null });
-    await expect(service.reportPhotosShortfall(dto)).resolves.toBeUndefined();
-    expect(updates).toEqual([]);
-    expect(alerts).toEqual([]);
-  });
-
-  it('база не записала примечание — сообщение всё равно уходит', async () => {
-    const { service, alerts } = build({ updateFails: true });
-    await service.reportPhotosShortfall(dto);
-    expect(alerts).toHaveLength(1);
-  });
-
-  it('бот молчит — примечание всё равно на месте', async () => {
-    const { service, updates } = build({ alertFails: true });
-    await expect(service.reportPhotosShortfall(dto)).resolves.toBeUndefined();
-    expect(updates).toHaveLength(1);
+  it('пустое примечание не превращается в пустую первую строку', () => {
+    expect(withShortfallLine(null, line(0)).text).toBe(line(0));
+    expect(withShortfallLine('', line(0)).without).toBe('');
   });
 });

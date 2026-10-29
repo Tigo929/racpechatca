@@ -258,6 +258,25 @@ export class OrderPhotoController {
 
   // ── Admin-only: отметка отзыва клиента ──────────────────────────────────────
 
+  /**
+   * «Фотографии собраны» — снять красную карточку.
+   *
+   * Недобор закрывается двумя путями: хвост доехал сам (тогда сайт
+   * сообщит новое число, и карточка побелеет без чьего-либо участия) или
+   * остальные снимки пришли мимо сайта — в переписке, ссылкой на облако.
+   * Второго сервер не видит никогда, поэтому снять тревогу должен уметь
+   * человек. Без этого красная карточка остаётся красной навсегда и
+   * перестаёт что-либо значить.
+   */
+  @Patch(':idOrder/photos-collected')
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  markPhotosCollected(
+    @Param('idOrder') idOrder: string,
+    @CurrentUser() me: RequestUser,
+  ) {
+    return this.orderPhotoService.markPhotosCollected(idOrder, me.id);
+  }
+
   @Patch(':idOrder/review')
   @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
   setReview(@Param('idOrder') idOrder: string, @Body() dto: DtoSetReview) {

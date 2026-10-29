@@ -25,6 +25,7 @@ import {
   prepaymentNeedsAttention,
 } from "../../utils/client-message";
 import { copyToClipboard } from "../../utils/clipboard";
+import { photosShortfall, pluralPhotos } from "../../utils/photos-shortfall";
 import { GulianSyncBlock } from './GulianSyncBlock';
 import { DispatchToExecutorModal } from './DispatchToExecutorModal';
 import { DeleteOrderModal } from './DeleteOrderModal';
@@ -291,6 +292,24 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
   // Telegram. Поэтому в окне для них показываем «по составу», а не число.
   const hasFreePositions = (order?.items?.length ?? 0) > 0;
 
+  /*
+    Недобор фотографий: обещано больше, чем доехало до сервера.
+
+    Одно из двух, что красит окно заказа целиком. Строка об этом есть и
+    в примечании, но её пролистывали — и заказ уезжал в печать неполным.
+  */
+  const shortfall = order ? photosShortfall(order) : null;
+
+  const photosCollectedMutation = useMutation({
+    mutationFn: () => ordersApi.markPhotosCollected(orderId),
+    onSuccess: (updated) => {
+      qc.setQueryData(["order", orderId], updated);
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      toast.success("Отметили: фотографии собраны");
+    },
+    onError: () => toast.error("Не удалось снять отметку о недоборе"),
+  });
+
   const updateMutation = useMutation({
     mutationFn: (dto: UpdateOrderDto) => ordersApi.update(orderId, dto),
     onSuccess: (updated) => {
@@ -548,6 +567,41 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
 
   return (
     <div className="space-y-6">
+      {/*
+        Недобор фотографий — первым, до всего остального.
+
+        Окно уже красное целиком (см. tone у Modal), но цвет сам по себе
+        не говорит, чего именно не хватает. Здесь — числа и единственное
+        действие, которое закрывает вопрос, когда хвост пришёл мимо
+        сайта: в переписке или ссылкой на облако. Сервер такого не видит
+        никогда, поэтому последнее слово за человеком.
+      */}
+      {shortfall && (
+        <div className="rounded-xl border-2 border-red-300 bg-red-100 p-4">
+          <p className="text-base font-bold text-red-900">
+            Фотографий доехало меньше, чем в заказе
+          </p>
+          <p className="mt-1 text-sm text-red-800">
+            На сервере {shortfall.arrived} из {shortfall.expected} — не хватает{" "}
+            <span className="font-semibold">
+              {shortfall.missing} {pluralPhotos(shortfall.missing)}
+            </span>
+            . Запросите у клиента остальные до печати.
+          </p>
+          {isAdmin && (
+            <button
+              onClick={() => photosCollectedMutation.mutate()}
+              disabled={photosCollectedMutation.isPending}
+              className="mt-3 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+            >
+              {photosCollectedMutation.isPending
+                ? "Отмечаем…"
+                : "Фотографии собраны"}
+            </button>
+          )}
+        </div>
+      )}
+
       {/*
         Шапка карточки.
 

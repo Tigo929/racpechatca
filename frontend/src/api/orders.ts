@@ -76,6 +76,19 @@ export const ordersApi = {
     return data;
   },
 
+  /**
+   * «Фотографии собраны» — снять красную карточку недобора.
+   *
+   * Хвост снимков часто приходит мимо сайта: в переписке, ссылкой на
+   * облако. Сервер такого не видит, поэтому тревогу снимает человек.
+   */
+  markPhotosCollected: async (orderId: string): Promise<OrderPhoto> => {
+    const { data } = await api.patch<OrderPhoto>(
+      `/order-photo/${orderId}/photos-collected`,
+    );
+    return data;
+  },
+
   setReview: async (orderId: string, reviewLeft: boolean): Promise<OrderPhoto> => {
     const { data } = await api.patch<OrderPhoto>(`/order-photo/${orderId}/review`, { reviewLeft });
     return data;

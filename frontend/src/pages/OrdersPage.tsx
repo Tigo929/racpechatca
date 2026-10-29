@@ -33,6 +33,7 @@ import {
   TSHIRT_STATUS_LABELS,
 } from '../constants';
 import { displayOrderNumber } from '../utils/order-number';
+import { photosShortfall } from '../utils/photos-shortfall';
 import { AppShell } from '../components/layout/AppShell';
 import { useAuth } from '../context/useAuth';
 import type { EnumStatus, EnumProductCategory, OrdersQuery } from '../types/index';
@@ -136,6 +137,20 @@ export function OrdersPage({ section }: Props) {
 
   const orders = data?.data ?? [];
   const meta = data?.meta;
+
+  /*
+    Открытый заказ — целиком, тем же запросом, что и карточка внутри окна.
+    React Query отдаёт обе стороны из одного кэша, так что лишнего запроса
+    это не делает, зато окно и его содержимое всегда говорят одно и то же:
+    строка списка успевает устареть, а недобор фотографий красит окно
+    целиком, и мигание цвета было бы хуже отсутствия цвета.
+  */
+  const { data: openOrder } = useQuery({
+    queryKey: ['order', selectedId],
+    queryFn: () => ordersApi.getById(selectedId!),
+    enabled: !!selectedId,
+  });
+  const openShortfall = openOrder ? photosShortfall(openOrder) : null;
 
   /*
    * Переход между заказами из открытой карточки.
@@ -707,8 +722,14 @@ export function OrdersPage({ section }: Props) {
       <Modal
         open={!!selectedId}
         onClose={() => setSelectedId(null)}
-        title="Заявка"
+        title={openShortfall ? 'Заявка — не хватает фотографий' : 'Заявка'}
         size="xl"
+        /*
+          Фотографий доехало меньше, чем в заказе, — окно красное целиком.
+          Строку в примечании пролистывали, и заказ уезжал в печать
+          неполным; цвет всего окна пролистать нельзя.
+        */
+        tone={openShortfall ? 'alert' : 'normal'}
         bodyKey={selectedId}
         headerExtra={
           <OrderNavigator

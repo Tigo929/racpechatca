@@ -20,9 +20,23 @@ interface Props {
    * и не понимает, сменился заказ или нет.
    */
   bodyKey?: string | number | null;
+  /**
+   * Тревожный вид окна: красная рамка, красная шапка, красный фон.
+   *
+   * Не украшение, а единственный способ не пройти мимо. Раньше о том,
+   * что фотографии заказа доехали не все, говорила строка в примечании —
+   * среди десятка других строк, ниже сгиба. Её пролистывали, и заказ
+   * уезжал в печать неполным.
+   *
+   * Поэтому цвет взят у всего окна целиком: его нельзя не заметить и
+   * нельзя прокрутить мимо. Ровно по этой причине он не должен
+   * появляться там, где дело терпит, — иначе на красное перестанут
+   * смотреть.
+   */
+  tone?: 'normal' | 'alert';
 }
 
-export function Modal({ open, onClose, title, children, size = 'md', headerExtra, bodyKey }: Props) {
+export function Modal({ open, onClose, title, children, size = 'md', headerExtra, bodyKey, tone = 'normal' }: Props) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
@@ -72,6 +86,7 @@ export function Modal({ open, onClose, title, children, size = 'md', headerExtra
   if (!open) return null;
 
   const widths = { md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
+  const alert = tone === 'alert';
 
   return (
     // На мобильном модалка занимает весь экран (проще попадать пальцем,
@@ -87,18 +102,27 @@ export function Modal({ open, onClose, title, children, size = 'md', headerExtra
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`relative bg-white rounded-none sm:rounded-2xl shadow-xl w-full ${widths[size]} max-h-[100dvh] sm:max-h-[90vh] flex flex-col overscroll-contain`}
+        className={`relative rounded-none sm:rounded-2xl shadow-xl w-full ${widths[size]} max-h-[100dvh] sm:max-h-[90vh] flex flex-col overscroll-contain ${
+          alert ? 'bg-red-50 ring-4 ring-red-500' : 'bg-white'
+        }`}
       >
         {/* На телефоне модалка раскрывается во весь экран, поэтому её шапка
             упирается в «динамический остров» — и крестик становится
             ненажимаемым. Отступ по безопасной зоне решает это; на десктопе
             inset = 0, и остаётся обычный отступ 1rem. */}
         <div
-          className="flex items-center justify-between gap-2 px-4 sm:px-6 pb-4 border-b border-gray-100"
+          className={`flex items-center justify-between gap-2 px-4 sm:px-6 pb-4 border-b ${
+            alert ? 'border-red-200 bg-red-100 rounded-t-none sm:rounded-t-2xl' : 'border-gray-100'
+          }`}
           style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
         >
           <div className="flex items-center gap-3 min-w-0">
-            <h2 id={titleId} className="text-lg font-semibold text-gray-900">{title}</h2>
+            <h2
+              id={titleId}
+              className={`text-lg font-semibold ${alert ? 'text-red-800' : 'text-gray-900'}`}
+            >
+              {title}
+            </h2>
             {headerExtra}
           </div>
           <button
