@@ -320,8 +320,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-photo.service.ts": {
-    "mtime": 1793096597.058817,
-    "ast_hash": "4f1d4d2ee03f5c4dae61f988eee39b9d",
+    "mtime": 1793282264.788038,
+    "ast_hash": "366e048938792c27da9ff24cb23d4f57",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-pricing.ts": {
@@ -480,8 +480,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/salary/salary-integrity.spec.ts": {
-    "mtime": 1792688851.6635876,
-    "ast_hash": "a58f0547faad6e3c38abcfeced9ae3f7",
+    "mtime": 1793282455.1624947,
+    "ast_hash": "02970da5261f9a0d85fc1c24391da5cb",
     "semantic_hash": ""
   },
   "crm-new/src/salary/salary.controller.ts": {
@@ -695,8 +695,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/StatusStepper.tsx": {
-    "mtime": 1790952519.4162376,
-    "ast_hash": "f13bfc9d500116ec9c9d87b93488fc4c",
+    "mtime": 1793282290.0425787,
+    "ast_hash": "10d9742e858d75513668fa89360692b9",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/TshirtItemsTable.tsx": {
@@ -775,8 +775,8 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/OrdersPage.tsx": {
-    "mtime": 1792330640.2218697,
-    "ast_hash": "dc8ed2501faae36ddadb76e8c743a310",
+    "mtime": 1793282323.458918,
+    "ast_hash": "e60015b4c631dd1ea9cb56f21b37b419",
     "semantic_hash": ""
   },
   "frontend/src/pages/ReportsPage.tsx": {
@@ -5237,6 +5237,26 @@
   "crm-new/src/approval/ozon-chat.ts": {
     "mtime": 1793096849.9025135,
     "ast_hash": "d6fc3cccc49083185c08b1ef24e8af39",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/status-automatic.spec.ts": {
+    "mtime": 1793282251.9199653,
+    "ast_hash": "2c4b2e7a6b5e9cc4abc17242a36bba09",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/status-automatic.ts": {
+    "mtime": 1793282238.175036,
+    "ast_hash": "80fa5de701b5f59ada42e4c5503b7598",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/orders/StatusAutomatic.test.tsx": {
+    "mtime": 1793282368.5509527,
+    "ast_hash": "d2a4b485963f7983d974d8957e107844",
+    "semantic_hash": ""
+  },
+  "frontend/src/utils/status-automatic.ts": {
+    "mtime": 1793282280.3342555,
+    "ast_hash": "58ad9dac2376345df4c99fc1d7038a33",
     "semantic_hash": ""
   }
 }

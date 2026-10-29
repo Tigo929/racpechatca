@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { fulfillmentError } from '../../utils/fulfillment';
+import { automaticStatusError } from '../../utils/status-automatic';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { ordersApi } from '../../api/orders';
@@ -172,12 +173,20 @@ export function StatusStepper({ order }: Props) {
         const blockedShipmentRole = shipmentOnly && !canManageShipment;
         const transitionError = fulfillmentError(order, status);
         const blockedShipmentMissing = Boolean(transitionError);
+        /*
+          Шаг, который система ставит сама. Кнопка гаснет совсем — не
+          потому, что «пока нельзя», а потому, что нажимать её нечего:
+          статус появится, когда произойдёт событие, которое он описывает.
+          Подсказка объясняет, какое именно.
+        */
+        const automaticError = automaticStatusError(order, status);
         const clickable =
           !isCurrent &&
           canSetTarget &&
           !blockedNoExecutor &&
           !blockedShipmentRole &&
-          !blockedShipmentMissing;
+          !blockedShipmentMissing &&
+          !automaticError;
         const isPastClickable = idx < currentIdx && clickable;
         const isFutureClickable = idx > currentIdx && clickable;
 
@@ -195,7 +204,9 @@ export function StatusStepper({ order }: Props) {
               tabIndex={clickable ? 0 : -1}
               aria-current={isCurrent ? 'step' : undefined}
               title={
-                blockedNoExecutor
+                automaticError
+                  ? automaticError
+                  : blockedNoExecutor
                   ? 'Сначала назначьте исполнителя'
                   : blockedShipmentRole
                     ? 'Отгрузку создаёт администратор или менеджер'

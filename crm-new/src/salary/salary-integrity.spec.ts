@@ -287,6 +287,10 @@ describe('зарплата по категориям товара', () => {
       { status: EnumStatus.SENT },
       'admin-1',
       EnumRole.ADMIN,
+      // Руками футболку в этот статус больше не поставить: его ставит
+      // отправка ТЗ исполнителю (status-automatic.ts). Зарплату проверяем
+      // на том пути, которым заказ ходит на самом деле.
+      { automatic: true },
     );
 
     expect(stub.salaryAccrual.create).not.toHaveBeenCalled();
@@ -397,6 +401,10 @@ describe('salary accrual integrity', () => {
       { status: EnumStatus.SENT },
       'admin-1',
       EnumRole.ADMIN,
+      // Руками футболку в этот статус больше не поставить: его ставит
+      // отправка ТЗ исполнителю (status-automatic.ts). Зарплату проверяем
+      // на том пути, которым заказ ходит на самом деле.
+      { automatic: true },
     );
 
     expect(stub.salaryAccrual.create).not.toHaveBeenCalled();
@@ -624,6 +632,8 @@ describe('salary accrual integrity', () => {
         { status: EnumStatus.SENT },
         'admin-1',
         EnumRole.ADMIN,
+        // Этот статус у футболки ставит отправка ТЗ исполнителю.
+        { automatic: true },
       ),
     ).resolves.toBeDefined();
   });

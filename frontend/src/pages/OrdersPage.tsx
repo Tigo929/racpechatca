@@ -285,35 +285,19 @@ export function OrdersPage({ section }: Props) {
               </div>
             </div>
           )}
-          {/* Откуда заказ: по заявке или с площадки. Только у футболок —
-              у фото и холстов маркетплейсных заказов не бывает. */}
-          {section === 'TSHIRT' && (
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">
-                Откуда
-              </span>
-              <div className="flex gap-1.5 flex-wrap">
-                <FilterChip
-                  active={query.marketplace === 'exclude'}
-                  onClick={() => setQuery((q) => ({ ...q, marketplace: 'exclude', page: 1 }))}
-                >
-                  По заявкам
-                </FilterChip>
-                <FilterChip
-                  active={query.marketplace === 'only'}
-                  onClick={() => setQuery((q) => ({ ...q, marketplace: 'only', page: 1 }))}
-                >
-                  С маркетплейса
-                </FilterChip>
-                <FilterChip
-                  active={query.marketplace === 'all'}
-                  onClick={() => setQuery((q) => ({ ...q, marketplace: 'all', page: 1 }))}
-                >
-                  Все
-                </FilterChip>
-              </div>
-            </div>
-          )}
+          {/*
+            Фильтра «Откуда» здесь больше нет.
+
+            Футболки с площадки — отдельное направление: деньги считает
+            Ozon, отгрузку подтверждает он же, и в общем списке такие
+            заказы были шумом, сквозь который не видно собственную
+            очередь. Теперь они живут только в разделе «Маркетплейс»,
+            где по отправлению открывается та же карточка заказа —
+            с согласованием макета, ТЗ исполнителю и статусами.
+
+            Сервер прячет их сам, когда фильтр не задан (marketplaceWhere
+            в order-photo.service.ts), поэтому убрать кнопки достаточно.
+          */}
           {/* Статусы только своего продукта: у футболок свой путь заказа */}
           {!isLeads && (
             <div className="flex items-center gap-3 flex-wrap">

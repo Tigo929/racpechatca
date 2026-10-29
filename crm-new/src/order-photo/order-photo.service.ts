@@ -1,4 +1,5 @@
 import { fulfillmentError } from './fulfillment';
+import { automaticStatusError } from './status-automatic';
 import {
   BadRequestException,
   ConflictException,
@@ -1829,13 +1830,28 @@ export class OrderPhotoService {
     });
   }
 
+  /**
+   * Сменить статус заказа.
+   *
+   * `automatic` отличает событие от намерения. Человек нажимает кнопку в
+   * карточке — это намерение, и часть статусов ему запрещена: их ставит то
+   * событие, которое они описывают (см. status-automatic.ts). Сама система,
+   * отправив ТЗ исполнителю или получив отгрузку от площадки, передаёт
+   * `automatic: true` — она и есть то самое событие.
+   */
   async updateStatusOrder(
     id: string,
     dto: UpdateStatus,
     userId: string,
     userRole: string,
+    options: { automatic?: boolean } = {},
   ) {
     const order = await this.getOrderById(id, userId, userRole);
+
+    if (!options.automatic) {
+      const automaticError = automaticStatusError(order, dto.status);
+      if (automaticError) throw new BadRequestException(automaticError);
+    }
 
     const isAdmin = userRole === 'ADMIN';
     // Менеджер по оформлению не привязан к заказу как исполнитель, но ведёт
@@ -2338,6 +2354,9 @@ export class OrderPhotoService {
         { status: EnumStatus.SENT },
         userId,
         userRole,
+        // Это и есть то событие, ради которого статус существует: ТЗ ушло
+        // исполнителю, и подтверждение отправки уже получено выше.
+        { automatic: true },
       );
     }
 
