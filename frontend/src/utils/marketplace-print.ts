@@ -77,3 +77,60 @@ export function printScriptTone(script: PrintScript): string {
   if (script === 'mixed') return 'bg-red-100 text-red-900 border-red-400';
   return 'bg-gray-100 text-gray-800 border-gray-300';
 }
+
+/**
+ * Одно и то же слово, написанное двумя алфавитами.
+ *
+ * «ПАПА» и «papa» — не похожие коды, а один и тот же код в кириллице и
+ * латинице. Поймать это сравнением строк нельзя: для машины они разные
+ * целиком, ни одна буква не совпадает. Поэтому кириллицу приводим
+ * к латинице по звучанию и сравниваем уже приведённое.
+ *
+ * Таблица короткая намеренно: сюда входят буквы, которыми пишут коды
+ * принтов. Полная транслитерация здесь не нужна и только добавила бы
+ * случаев, где два разных принта считаются одним.
+ */
+const TRANSLIT: Record<string, string> = {
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh',
+  з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o',
+  п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'c',
+  ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu',
+  я: 'ya',
+};
+
+/** Код принта «по звучанию»: им и сравниваются ПАПА с papa. */
+export function printKey(slug: string): string {
+  return slug
+    .toLowerCase()
+    .split('')
+    .map((ch) => TRANSLIT[ch] ?? ch)
+    .join('');
+}
+
+/**
+ * Есть ли в заказе два макета, которые различаются только алфавитом.
+ *
+ * Это худший из возможных случаев: в одной посылке два принта, по виду
+ * названные одинаково. Напечатать две одинаковые футболки здесь проще,
+ * чем правильные, и заметит это уже покупатель.
+ */
+export function hasConfusablePrints(slugs: string[]): boolean {
+  const byKey = new Map<string, Set<string>>();
+  for (const slug of slugs) {
+    const key = printKey(slug);
+    const set = byKey.get(key) ?? new Set<string>();
+    set.add(slug);
+    byKey.set(key, set);
+  }
+  return [...byKey.values()].some((set) => set.size > 1);
+}
+
+/** Склонение: «2 футболки», «5 футболок». */
+export function pluralShirts(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 14) return 'футболок';
+  if (mod10 === 1) return 'футболка';
+  if (mod10 >= 2 && mod10 <= 4) return 'футболки';
+  return 'футболок';
+}

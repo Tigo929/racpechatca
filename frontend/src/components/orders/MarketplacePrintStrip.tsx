@@ -1,6 +1,8 @@
 import { TSHIRT_SIZE_LABELS } from '../../constants';
 import {
+  hasConfusablePrints,
   marketplacePrint,
+  pluralShirts,
   printScriptTone,
   type PrintScript,
 } from '../../utils/marketplace-print';
@@ -44,16 +46,56 @@ export function MarketplacePrintStrip({ order }: Props) {
   // подпись макета нельзя: неверная хуже отсутствующей.
   if (rows.length === 0) return null;
 
+  /*
+    Сколько футболок в заказе — по тиражу, а не по числу строк: две
+    одинаковые футболки приходят одной позицией с количеством 2, и
+    «1 позиция» прочиталось бы как «одна футболка».
+  */
+  const shirts = rows.reduce((sum, row) => sum + (row.item.quantity || 0), 0);
+  const slugs = rows.map((row) => row.print.slug);
+  const distinct = new Set(slugs);
+  const confusable = hasConfusablePrints(slugs);
+
   return (
     <div className="space-y-2">
       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-        Макет
+        {shirts > 1 ? `Макеты · ${shirts} ${pluralShirts(shirts)} в заказе` : 'Макет'}
       </p>
-      {rows.map(({ item, print }) => (
+
+      {/*
+        Два макета, названные одним словом в разных алфавитах, — худший
+        из случаев: в одной посылке два разных принта, по виду
+        одинаковых. Напечатать две одинаковые футболки здесь проще, чем
+        правильные, и заметит это покупатель.
+      */}
+      {confusable && (
+        <p className="rounded-xl border-2 border-red-400 bg-red-100 px-4 py-3 text-sm font-bold text-red-900">
+          В этом заказе оба макета сразу — и кириллицей, и латиницей.
+          Это разные принты. Печатать две одинаковые футболки нельзя.
+        </p>
+      )}
+
+      {/*
+        Разные макеты без путаницы алфавитов — не тревога, но и не
+        «как обычно»: заказ с одной футболкой выглядит так же, и разницу
+        надо назвать, пока её не прочитали как привычную единицу.
+      */}
+      {!confusable && distinct.size > 1 && (
+        <p className="rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-900">
+          В заказе {distinct.size} разных макета — соберите каждый отдельно.
+        </p>
+      )}
+
+      {rows.map(({ item, print }, index) => (
         <div
           key={item.id}
           className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border-2 px-4 py-3 ${printScriptTone(print.script)}`}
         >
+          {/* Номер — только когда позиций несколько: на одиночном заказе
+              «#1» это шум, а на заказе из двух им сверяются с листом. */}
+          {rows.length > 1 && (
+            <span className="text-sm font-bold opacity-60">#{index + 1}</span>
+          )}
           <span className="font-mono text-2xl font-bold leading-none tracking-tight">
             {print.slug}
           </span>

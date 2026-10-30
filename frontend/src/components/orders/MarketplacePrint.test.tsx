@@ -1,7 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { MarketplacePrintStrip } from './MarketplacePrintStrip';
-import { marketplacePrint, printScript } from '../../utils/marketplace-print';
+import {
+  hasConfusablePrints,
+  marketplacePrint,
+  pluralShirts,
+  printKey,
+  printScript,
+} from '../../utils/marketplace-print';
 import type { OrderPhoto } from '../../types/index';
 
 /**
@@ -38,17 +44,45 @@ describe('код принта из артикула', () => {
   });
 });
 
-const order = (article: string): OrderPhoto =>
+describe('один код в двух алфавитах', () => {
+  it('«ПАПА» и «papa» — одно и то же слово', () => {
+    // Сравнением строк это не поймать: для машины у них не совпадает
+    // ни одна буква.
+    expect(printKey('ПАПА')).toBe(printKey('papa'));
+  });
+
+  it('разные принты остаются разными', () => {
+    expect(printKey('JDM-1-1')).not.toBe(printKey('ПАПА'));
+    expect(hasConfusablePrints(['JDM-1-1', 'ПАПА'])).toBe(false);
+  });
+
+  it('оба алфавита в одном заказе — находим', () => {
+    expect(hasConfusablePrints(['ПАПА', 'papa'])).toBe(true);
+  });
+
+  it('два одинаковых макета путаницей не считаются', () => {
+    // Две футболки одного принта разного цвета — обычный заказ.
+    expect(hasConfusablePrints(['papa', 'papa'])).toBe(false);
+  });
+
+  it('футболки склоняются по-русски', () => {
+    expect(pluralShirts(1)).toBe('футболка');
+    expect(pluralShirts(2)).toBe('футболки');
+    expect(pluralShirts(5)).toBe('футболок');
+    expect(pluralShirts(11)).toBe('футболок');
+    expect(pluralShirts(22)).toBe('футболки');
+  });
+});
+
+const order = (...articles: string[]): OrderPhoto =>
   ({
-    tshirtItems: [
-      {
-        id: 'i1',
-        color: 'Чёрный',
-        size: 'XXL',
-        quantity: 1,
-        marketplaceArticle: article,
-      },
-    ],
+    tshirtItems: articles.map((article, i) => ({
+      id: `i${i}`,
+      color: 'Чёрный',
+      size: 'XXL',
+      quantity: 1,
+      marketplaceArticle: article,
+    })),
   }) as unknown as OrderPhoto;
 
 describe('полоса макета в карточке', () => {
@@ -85,5 +119,57 @@ describe('полоса макета в карточке', () => {
       <MarketplacePrintStrip order={order('sticker-pack')} />,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe('заказ больше чем на одну футболку', () => {
+  it('число футболок названо в заголовке', () => {
+    // Заказ на две выглядел точно так же, как на одну, — и читался
+    // как одна.
+    render(<MarketplacePrintStrip order={order('papa-black-L', 'papa-white-XL')} />);
+    expect(screen.getByText(/2 футболки в заказе/)).toBeInTheDocument();
+  });
+
+  it('два макета в одном алфавите — предупреждение без паники', () => {
+    render(<MarketplacePrintStrip order={order('papa-black-L', 'JDM-1-1-black-S')} />);
+    expect(screen.getByText(/2 разных макета/)).toBeInTheDocument();
+  });
+
+  it('ПАПА и papa в одном заказе — самая громкая тревога', () => {
+    render(<MarketplacePrintStrip order={order('ПАПА-black-L', 'papa-white-XL')} />);
+    expect(
+      screen.getByText(/оба макета сразу — и кириллицей, и латиницей/),
+    ).toBeInTheDocument();
+  });
+
+  it('позиции пронумерованы, когда их несколько', () => {
+    render(<MarketplacePrintStrip order={order('ПАПА-black-L', 'papa-white-XL')} />);
+    expect(screen.getByText('#1')).toBeInTheDocument();
+    expect(screen.getByText('#2')).toBeInTheDocument();
+  });
+
+  it('на заказе из одной футболки номера и предупреждений нет', () => {
+    // Лишняя разметка на каждом обычном заказе превращается в шум,
+    // который перестают замечать — вместе с настоящей тревогой.
+    render(<MarketplacePrintStrip order={order('papa-black-XXL')} />);
+    expect(screen.queryByText('#1')).not.toBeInTheDocument();
+    expect(screen.queryByText(/разных макета/)).not.toBeInTheDocument();
+    expect(screen.getByText('Макет')).toBeInTheDocument();
+  });
+
+  it('две одинаковые футболки одной позицией всё равно считаются двумя', () => {
+    const two = {
+      tshirtItems: [
+        {
+          id: 'i1',
+          color: 'Чёрный',
+          size: 'XXL',
+          quantity: 2,
+          marketplaceArticle: 'papa-black-XXL',
+        },
+      ],
+    } as unknown as OrderPhoto;
+    render(<MarketplacePrintStrip order={two} />);
+    expect(screen.getByText(/2 футболки в заказе/)).toBeInTheDocument();
   });
 });
