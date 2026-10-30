@@ -84,3 +84,34 @@ export function stickerCode(
   if (digits.length < STICKER_DIGITS) return null;
   return digits.slice(-STICKER_DIGITS);
 }
+
+/**
+ * На каком алфавите написан код принта.
+ *
+ * В каталоге два разных принта с одинаково выглядящими кодами: «ПАПА»
+ * кириллицей и «papa» латиницей. Буквы П/P и А/A не различаются глазом
+ * почти ни в одном шрифте, поэтому алфавит приходится называть словом —
+ * иначе напечатают не тот макет, а узнают об этом по возврату.
+ *
+ * Буквы двух алфавитов в одном коде — отдельный случай: так выглядит
+ * опечатка в карточке маркетплейса, и по такому коду макет не найдётся.
+ */
+export type PrintScript = 'cyrillic' | 'latin' | 'mixed' | 'none';
+
+export function printScript(slug: string): PrintScript {
+  const cyrillic = /[\u0400-\u04FF]/.test(slug);
+  const latin = /[A-Za-z]/.test(slug);
+  if (cyrillic && latin) return 'mixed';
+  if (cyrillic) return 'cyrillic';
+  if (latin) return 'latin';
+  return 'none';
+}
+
+/** Подпись алфавита для примечания. Пусто — в коде нет букв. */
+export function printScriptLabel(slug: string): string {
+  const script = printScript(slug);
+  if (script === 'cyrillic') return 'кириллица';
+  if (script === 'latin') return 'латиница';
+  if (script === 'mixed') return '⚠ буквы двух алфавитов';
+  return '';
+}

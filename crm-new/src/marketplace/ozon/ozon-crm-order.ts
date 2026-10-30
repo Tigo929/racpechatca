@@ -18,6 +18,7 @@
 
 import {
   parseOzonArticle,
+  printScriptLabel,
   stickerCode,
   type OzonArticle,
 } from './ozon-article';
@@ -96,36 +97,34 @@ export function buildMarketplaceOrderDraft(
     marketplacePostingNumber: posting.postingNumber,
     sticker,
     items,
-    note: buildNote(posting, items, sticker),
+    note: buildNote(items),
   };
 }
 
 /**
- * Примечание заказа: то, что человек должен увидеть без похода в кабинет.
+ * Примечание заказа — только макет, и ничего больше.
  *
- * Артикулы оставлены целиком не для красоты — по ним видно, из чего выведены
- * цвет и размер, и спор «почему белая» решается на месте.
+ * Раньше здесь лежали номер заказа, номер отправления, стикер и строка
+ * на каждый артикул. Всё это повторяло известное: номера стоят в шапке
+ * карточки и в своих колонках, стикер считается из номера отправления
+ * и печатается на листе согласования, состав выведен из артикула и
+ * показан полосой макета в карточке.
+ *
+ * Оставшийся вопрос один, и ради него примечание и открывали: какой
+ * печатаем макет — «ПАПА» или «papa». Это разные принты с одинаково
+ * выглядящими кодами, и перепутать их значит напечатать не то, что
+ * купили. Поэтому алфавит назван словом: сами буквы глазом
+ * не различаются.
+ *
+ * Срока отгрузки здесь нет и не было: он живёт в кабинете и меняется
+ * там, а замороженная копия через день врёт.
  */
-/*
- * Срок отгрузки в примечание не пишем: он живёт в кабинете и меняется там,
- * а замороженная копия в тексте заказа через день врёт. Смотреть срок —
- * в списке отправлений, где он приходит от площадки.
- */
-function buildNote(
-  posting: OzonOrderView,
-  items: MarketplaceOrderDraftItem[],
-  sticker: string | null,
-): string {
-  const lines = [
-    `Заказ Ozon: ${posting.orderNumber || '—'}`,
-    `Отправление: ${posting.postingNumber}`,
-    ...(sticker ? [`Стикер: …${sticker}`] : []),
-
-    'Позиции по артикулу:',
-    ...items.map(
-      (i) =>
-        `• ${i.offerId} → ${i.color}, ${tshirtSizeLabel(i.size)}, принт ${i.printSlug} × ${i.quantity}`,
-    ),
-  ];
-  return lines.join('\n');
+function buildNote(items: MarketplaceOrderDraftItem[]): string {
+  return items
+    .map((i) => {
+      const script = printScriptLabel(i.printSlug);
+      const name = script ? `${i.printSlug} (${script})` : i.printSlug;
+      return `Макет: ${name} — ${i.color}, ${tshirtSizeLabel(i.size)} × ${i.quantity}`;
+    })
+    .join('\n');
 }

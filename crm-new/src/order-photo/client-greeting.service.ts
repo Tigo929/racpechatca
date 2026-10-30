@@ -31,8 +31,16 @@ import { renderGreeting } from './greeting-message';
  */
 const MAX_AGE_HOURS = 12;
 
+/**
+ * Тот же срок давности в миллисекундах — для сторожа очереди.
+ *
+ * Экспортируется, чтобы у сторожа и у самой очереди он был общим: разойдись
+ * они, сторож тревожил бы о заявках, которые очередь уже не приветствует.
+ */
+export const GREETING_MAX_AGE_MS = MAX_AGE_HOURS * 60 * 60 * 1000;
+
 /** Заявки сайта помечены этим префиксом в externalRequestId. */
-const SITE_LEAD_PREFIX = 'web-photo';
+export const SITE_LEAD_PREFIX = 'web-photo';
 
 export interface PendingGreeting {
   id: string;
@@ -76,7 +84,7 @@ export class ClientGreetingService {
    * разобрать при каждом опросе.
    */
   async pending(limit: number): Promise<PendingGreeting[]> {
-    const since = new Date(Date.now() - MAX_AGE_HOURS * 60 * 60 * 1000);
+    const since = new Date(Date.now() - GREETING_MAX_AGE_MS);
 
     const rows = await this.prisma.orderPhoto.findMany({
       where: {

@@ -315,8 +315,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-photo.module.ts": {
-    "mtime": 1792688851.6615887,
-    "ast_hash": "c10027f4c2cab65a0982963408063385",
+    "mtime": 1793363536.7793193,
+    "ast_hash": "4aca8aecdb5156ee06dd75c5181cbd96",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-photo.service.ts": {
@@ -685,8 +685,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderDetail.tsx": {
-    "mtime": 1793288038.3348844,
-    "ast_hash": "c43a5bb29107daf0ec95d02ea4ae1fe8",
+    "mtime": 1793363755.0313804,
+    "ast_hash": "fd203ad0f2669a72e57172f8e21dc64b",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderEditForm.tsx": {
@@ -2155,8 +2155,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/client-greeting.service.ts": {
-    "mtime": 1793096597.0518167,
-    "ast_hash": "3babb702b1a2c89b63d8ef74df61e31e",
+    "mtime": 1793363536.778319,
+    "ast_hash": "897ff4bfdea72567e415bb866d5f719a",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/client-greeting.spec.ts": {
@@ -4665,18 +4665,18 @@
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon/ozon-article.ts": {
-    "mtime": 1790605105.1626506,
-    "ast_hash": "03feb98dad99aea6b003268cada52971",
+    "mtime": 1793363785.8148766,
+    "ast_hash": "953e8f9a21e3ac5ee6d4bffc50857528",
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon/ozon-crm-order.spec.ts": {
-    "mtime": 1790607954.9843378,
-    "ast_hash": "6883bf2cd625a69d6adaaeebd8149b38",
+    "mtime": 1793363826.9677632,
+    "ast_hash": "aaac08a0304345bc7c5eb62ef1f7e99a",
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon/ozon-crm-order.ts": {
-    "mtime": 1793096597.0508187,
-    "ast_hash": "6f327e13c98ec75628e094e080a60fac",
+    "mtime": 1793363810.5720525,
+    "ast_hash": "fc4dc62b09b939bfebe2b98a5b6c1284",
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon/ozon-orders-catalog-filter.spec.ts": {
@@ -5277,6 +5277,41 @@
   "frontend/src/utils/photos-shortfall.ts": {
     "mtime": 1793287969.7404397,
     "ast_hash": "d377b8ab38aceb38582335c9a0f171fd",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/greeting-stuck.spec.ts": {
+    "mtime": 1793363570.8805954,
+    "ast_hash": "206a95933053ee5182f28c686fb1344a",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/greeting-stuck.ts": {
+    "mtime": 1793363499.5082426,
+    "ast_hash": "a395d5ea3fc014d548bca2ed0613927d",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/greeting-watchdog.service.ts": {
+    "mtime": 1793363526.0841265,
+    "ast_hash": "16f3afcad4f733cdc8d9ddd22fbc1f2f",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/greeting-watchdog.spec.ts": {
+    "mtime": 1793363570.911594,
+    "ast_hash": "2335bc59063eeeefe5b82ab267d4dc9e",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/orders/MarketplacePrint.test.tsx": {
+    "mtime": 1793363847.0868647,
+    "ast_hash": "a9c2bee3113bbdcf9202db68c9cdde6c",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/orders/MarketplacePrintStrip.tsx": {
+    "mtime": 1793363739.1085439,
+    "ast_hash": "16594add7c05cf33933f50a0720df80f",
+    "semantic_hash": ""
+  },
+  "frontend/src/utils/marketplace-print.ts": {
+    "mtime": 1793363684.8563435,
+    "ast_hash": "a5f4585f7e33472a81ea8c248d2c4b1c",
     "semantic_hash": ""
   }
 }

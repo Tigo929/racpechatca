@@ -117,14 +117,48 @@ describe('черновик заказа из отправления Ozon', () =>
     ).toThrow(OzonArticleError);
   });
 
-  it('в примечании видно, из чего выведены цвет и размер', () => {
+  it('в примечании остаётся только макет', () => {
+    /*
+      Ради него примечание и открывают: какой печатаем принт. Номера,
+      стикер и состав повторяли то, что уже есть в карточке, в колонках
+      и на листе согласования, — и прятали за собой единственный вопрос,
+      ответ на который здесь нужен.
+    */
     const draft = buildMarketplaceOrderDraft(posting());
-    expect(draft.note).toContain('0189070451-0031-1');
-    expect(draft.note).toContain('Стикер: …0311');
-    expect(draft.note).toContain('JDM-1-1-black-S → Чёрный, S');
+    expect(draft.note).toContain('Макет: JDM-1-1');
+    expect(draft.note).toContain('Чёрный, S(46) × 1');
+    expect(draft.note).not.toContain('0189070451-0031-1');
+    expect(draft.note).not.toContain('Стикер');
+    expect(draft.note).not.toContain('Позиции по артикулу');
     // Срок отгрузки живёт в кабинете и меняется там: замороженная копия
     // в примечании через день врёт.
     expect(draft.note).not.toContain('Отгрузить до');
+  });
+
+  it('алфавит кода принта назван словом', () => {
+    /*
+      «ПАПА» кириллицей и «papa» латиницей — разные макеты, а буквы
+      П/P и А/A выглядят одинаково почти в любом шрифте. Без подписи
+      алфавита примечание не отвечает на вопрос, ради которого его
+      открыли.
+    */
+    const cyrillic = buildMarketplaceOrderDraft(
+      posting({
+        items: [
+          { offerId: 'ПАПА-black-XXL', name: '', sku: null, quantity: 1, price: 0 },
+        ],
+      }),
+    );
+    expect(cyrillic.note).toContain('Макет: ПАПА (кириллица)');
+
+    const latin = buildMarketplaceOrderDraft(
+      posting({
+        items: [
+          { offerId: 'papa-black-XXL', name: '', sku: null, quantity: 1, price: 0 },
+        ],
+      }),
+    );
+    expect(latin.note).toContain('Макет: papa (латиница)');
   });
 
   it('без номера заказа площадки подставляется номер отправления', () => {

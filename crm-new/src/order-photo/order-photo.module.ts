@@ -14,6 +14,7 @@ import { OrderArchivePurgeService } from './order-archive-purge.service';
 import { GulianModule } from 'src/gulian/gulian.module';
 import { TelegramModule } from 'src/telegram/telegram.module';
 import { ReviewReminderService } from './review-reminder.service';
+import { GreetingWatchdogService } from './greeting-watchdog.service';
 import { ShipmentReminderService } from './shipment-reminder.service';
 import { DailyPlanService } from './daily-plan.service';
 import { ShipmentLeadService } from './shipment-lead.service';
@@ -46,6 +47,7 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
     OrderArchiveService,
     OrderArchivePurgeService,
     ReviewReminderService,
+    GreetingWatchdogService,
     ShipmentReminderService,
     DailyPlanService,
     ShipmentLeadService,

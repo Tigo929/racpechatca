@@ -26,6 +26,8 @@ import {
 } from "../../utils/client-message";
 import { copyToClipboard } from "../../utils/clipboard";
 import { photosShortfall, pluralPhotos } from "../../utils/photos-shortfall";
+import { isMarketplaceTshirt } from "../../utils/marketplace-tshirt";
+import { MarketplacePrintStrip } from "./MarketplacePrintStrip";
 import { GulianSyncBlock } from './GulianSyncBlock';
 import { DispatchToExecutorModal } from './DispatchToExecutorModal';
 import { DeleteOrderModal } from './DeleteOrderModal';
@@ -981,6 +983,18 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           </div>
         )}
 
+      {/*
+        Какой макет печатаем — выше согласования и выше всего остального.
+
+        «ПАПА» кириллицей и «papa» латиницей — разные принты с одинаково
+        выглядящими кодами. Ответ на этот вопрос приходилось вычитывать
+        из примечания, среди номеров и артикулов; теперь он стоит там,
+        где взгляд и так останавливается первым.
+      */}
+      {isAdmin && isMarketplaceTshirt(order) && (
+        <MarketplacePrintStrip order={order} />
+      )}
+
       {/* Согласование макета с клиентом. Стоит перед блоком отправки
           исполнителю намеренно: это предыдущий шаг процесса — сначала клиент
           подтверждает макет, потом заказ уходит в печать. */}
@@ -1446,9 +1460,17 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
         </div>
       )}
 
-      {/* Items — исполнители видят только фото-позиции */}
+      {/*
+        Items — исполнители видят только фото-позиции.
+
+        У заказа с площадки таблицы позиций нет вовсе. Деньги там считает
+        маркетплейс, поэтому в ней стояли одни нули, а состав — цвет,
+        размер, тираж — целиком выведен из артикула и уже показан полосой
+        макета выше. Таблица повторяла известное и прятала за собой то,
+        ради чего карточку открывают.
+      */}
       {order.productCategory === "TSHIRT" && isAdmin ? (
-        order.isFreePrice ? (
+        isMarketplaceTshirt(order) ? null : order.isFreePrice ? (
           <ItemsTable order={order} />
         ) : (
           <TshirtItemsTable order={order} />
