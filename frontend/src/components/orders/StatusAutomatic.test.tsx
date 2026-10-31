@@ -42,11 +42,21 @@ const marketplaceOrder = (status: string) =>
 
 it.each([
   ['Передан в производство', 'NEW'],
-  ['В работе', 'SENT'],
   ['Отгружен', 'IN_PROGRESS'],
 ])('по шагу «%s» нельзя щёлкнуть мышкой', (label, status) => {
   wrap(<StatusStepper order={marketplaceOrder(status)} />);
   expect(screen.getByRole('button', { name: label })).toBeDisabled();
+});
+
+it('«В работе» ставит человек — запрет с него снят', () => {
+  /*
+    Запрет здесь был и оказался ошибкой: кнопку исполнителя в Telegram
+    нажимали 3 раза за всё время, а из панели этот статус ставили
+    391 раз. Погашенный шаг закрыл единственный живой путь, и заказы
+    пошли мимо него вовсе.
+  */
+  wrap(<StatusStepper order={marketplaceOrder('SENT')} />);
+  expect(screen.getByRole('button', { name: 'В работе' })).toBeEnabled();
 });
 
 it('подсказка объясняет, чем именно ставится шаг', () => {

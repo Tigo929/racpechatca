@@ -5240,23 +5240,23 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/status-automatic.spec.ts": {
-    "mtime": 1793282251.9199653,
-    "ast_hash": "2c4b2e7a6b5e9cc4abc17242a36bba09",
+    "mtime": 1793459448.9269135,
+    "ast_hash": "4e4e541cdf1e202440803405fa7ede08",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/status-automatic.ts": {
-    "mtime": 1793282238.175036,
-    "ast_hash": "80fa5de701b5f59ada42e4c5503b7598",
+    "mtime": 1793459424.8545523,
+    "ast_hash": "b6817e930405f9307d6d3dae49baedcd",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/StatusAutomatic.test.tsx": {
-    "mtime": 1793282368.5509527,
-    "ast_hash": "d2a4b485963f7983d974d8957e107844",
+    "mtime": 1793459448.9279127,
+    "ast_hash": "d3f27a153240390c9a5ac21672e16c7e",
     "semantic_hash": ""
   },
   "frontend/src/utils/status-automatic.ts": {
-    "mtime": 1793282280.3342555,
-    "ast_hash": "58ad9dac2376345df4c99fc1d7038a33",
+    "mtime": 1793459431.9523816,
+    "ast_hash": "53505aa4bb27bcc6c9e8a954a30229b9",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/photos-shortfall-report.spec.ts": {

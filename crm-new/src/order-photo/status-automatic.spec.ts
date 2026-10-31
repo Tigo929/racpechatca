@@ -18,11 +18,16 @@ describe('статусы, которые ставит система', () => {
     expect(automaticStatusError(marketplace, 'SENT')).toContain('ТЗ');
   });
 
-  it('«В работе» у футболки ставит исполнитель', () => {
-    expect(automaticStatusError(tshirt, 'IN_PROGRESS')).toContain('исполнитель');
-    expect(automaticStatusError(marketplace, 'IN_PROGRESS')).toContain(
-      'исполнитель',
-    );
+  it('«В работе» ставит человек — запрет с него снят', () => {
+    /*
+      Запрет здесь был и оказался ошибкой: посылка «его ставит
+      исполнитель кнопкой в Telegram» не подтвердилась. Кнопку нажимали
+      3 раза, последний в сентябре, а из панели этот статус ставили
+      391 раз. Запрет закрыл единственный живой путь, и заказы пошли
+      мимо шага вовсе.
+    */
+    expect(automaticStatusError(tshirt, 'IN_PROGRESS')).toBeNull();
+    expect(automaticStatusError(marketplace, 'IN_PROGRESS')).toBeNull();
   });
 
   it('«Отгружен» подтверждает площадка, а не человек', () => {
@@ -33,7 +38,6 @@ describe('статусы, которые ставит система', () => {
     // Тот же EnumStatus.SENT, но смысл другой: «отправлен клиенту».
     // Запретить его значило бы остановить выдачу заказов и начисления.
     expect(automaticStatusError(photo, 'SENT')).toBeNull();
-    expect(automaticStatusError(photo, 'IN_PROGRESS')).toBeNull();
   });
 
   it('у холста «У подрядчика» ставит человек — автоматики там нет', () => {
