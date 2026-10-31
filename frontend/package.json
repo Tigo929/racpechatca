@@ -10,6 +10,10 @@
     "preview": "vite preview",
     "test": "vitest run"
   },
+  "comment:overrides": "follow-redirects 1.16.1 прибит внутри axios и уязвим (GHSA-mrwp-f3q8-3g9p: заголовки с учётными данными переживают редирект на чужой хост). Исправление вышло в 1.16.2, но axios свою закреплённую версию ещё не поднял. Убрать, когда поднимет.",
+  "overrides": {
+    "follow-redirects": "1.16.2"
+  },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
     "@tanstack/react-query": "^5.100.14",
