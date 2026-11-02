@@ -22,12 +22,24 @@ interface Props {
    * заказа поле не показывается — принести туда чужой номер нельзя.
    */
   marketplacePrint?: boolean;
+  /**
+   * Номер отправления Ozon, если заказ заведён из него, а не руками.
+   *
+   * Отличает две разные вещи, которые раньше были одной. Заказ, приехавший
+   * из отправления, получил номер площадки от самого Ozon — править его
+   * здесь незачем и вредно: в кабинете номер один, и расхождение сделало бы
+   * заказ ненаходимым ровно тогда, когда его ищут. А заказ, заведённый
+   * руками (артикул не разобрался, и оператор оформлял его сам), номер
+   * получил от человека — значит в нём бывает опечатка, и её надо дать
+   * исправить.
+   */
+  marketplacePostingNumber?: string | null;
 }
 
 const inputCls = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent';
 const labelCls = 'text-xs text-gray-500 mb-1';
 
-export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, productCategory, orderTotal, marketplacePrint = false }: Props) {
+export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, productCategory, orderTotal, marketplacePrint = false, marketplacePostingNumber = null }: Props) {
   const set = (patch: Partial<UpdateOrderDto>) => onChange({ ...form, ...patch });
   // Цена доставки Яндекс ПВЗ из настроек — та же, что подставляется при
   // оформлении новой заявки. Нужна, чтобы при смене способа на «Яндекс ПВЗ»
@@ -78,20 +90,41 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, pro
         </div>
       </div>
 
-      {/* Номер заказа на площадке. Правится здесь, потому что в момент
-          оформления его иногда не знают, а опечатка в номере делает заказ
+      {/*
+          Номер заказа на площадке.
+
+          Пришёл из отправления — показываем и не даём трогать: его выдал
+          Ozon, и любая правка здесь разводит наш номер с тем, что стоит
+          в кабинете. Заведён руками — оставляем поле: номер вводил человек,
+          в момент оформления его знают не всегда, а опечатка делает заказ
           ненаходимым со стороны кабинета. Пустое поле возвращает заказу
-          внутренний номер. */}
+          внутренний номер.
+      */}
       {marketplacePrint && (
         <div>
           <p className={labelCls}>Номер заказа на площадке</p>
-          <input
-            className={inputCls}
-            aria-label="Номер заказа на площадке"
-            placeholder="например 0123-4567-8901"
-            value={form.marketplaceOrderNumber ?? ''}
-            onChange={e => set({ marketplaceOrderNumber: e.target.value })}
-          />
+          {marketplacePostingNumber ? (
+            <>
+              <p
+                aria-label="Номер заказа на площадке"
+                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm tabular-nums text-gray-700"
+              >
+                {form.marketplaceOrderNumber?.trim() || '—'}
+              </p>
+              <p className="mt-1 text-xs text-gray-400">
+                Пришёл от Ozon вместе с отправлением {marketplacePostingNumber}.
+                Здесь не правится: в кабинете номер один.
+              </p>
+            </>
+          ) : (
+            <input
+              className={inputCls}
+              aria-label="Номер заказа на площадке"
+              placeholder="например 0123-4567-8901"
+              value={form.marketplaceOrderNumber ?? ''}
+              onChange={e => set({ marketplaceOrderNumber: e.target.value })}
+            />
+          )}
         </div>
       )}
 
@@ -107,163 +140,183 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, pro
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <p className={labelCls}>Способ доставки</p>
-          <select className={inputCls} value={form.deliveryMethod} aria-label="Способ доставки"
-            onChange={e => changeDelivery(e.target.value as UpdateOrderDto['deliveryMethod'])}>
-            <option value="PICKUP">Самовывоз</option>
-            {productCategory === 'CANVAS' && <option value="PRODUCTION_MSK">Доставка в пределах МКАД</option>}
-            <option value="YANDEX_PVZ">Яндекс ПВЗ</option>
-            <option value="OZON_PVZ">Ozon ПВЗ</option>
-            <option value="OZON_SELLER">Ozon Продавец</option>
-            <option value="WB_SELLER">WB Продавец</option>
-          </select>
-        </div>
-        <div>
-          <p className={labelCls}>Стоимость доставки, ₽</p>
-          <input type="number" min={0} readOnly={form.deliveryMethod === 'PICKUP'} className={inputCls} value={form.deliveryCost}
-            onChange={e => set({ deliveryCost: Number(e.target.value) })} />
-        </div>
-      </div>
+      {/*
+          Деньги заказа с площадки считает Ozon, не мы.
 
-      {/* Дизайн — только футболки. Кнопка «Нужен дизайн» раскрывает сумму;
-          её можно менять и добавлять к уже созданному заказу. */}
-      {(productCategory === 'TSHIRT' || productCategory === 'CANVAS') && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 space-y-2">
+          В таком заказе позиции заведены без цены, доставку организует
+          площадка, а оплату она берёт с покупателя сама. Поэтому доставка,
+          платный дизайн, срочность, скидка и предоплата здесь не просто
+          бесполезны — они опасны: проставленная вручную сумма попала бы
+          в чек и в базу зарплаты, и заказ Ozon начал бы отличаться
+          по деньгам от того, что видит площадка.
+      */}
+      {!marketplacePrint ? (
+        <>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className={labelCls}>Способ доставки</p>
+            <select className={inputCls} value={form.deliveryMethod} aria-label="Способ доставки"
+              onChange={e => changeDelivery(e.target.value as UpdateOrderDto['deliveryMethod'])}>
+              <option value="PICKUP">Самовывоз</option>
+              {productCategory === 'CANVAS' && <option value="PRODUCTION_MSK">Доставка в пределах МКАД</option>}
+              <option value="YANDEX_PVZ">Яндекс ПВЗ</option>
+              <option value="OZON_PVZ">Ozon ПВЗ</option>
+              <option value="OZON_SELLER">Ozon Продавец</option>
+              <option value="WB_SELLER">WB Продавец</option>
+            </select>
+          </div>
+          <div>
+            <p className={labelCls}>Стоимость доставки, ₽</p>
+            <input type="number" min={0} readOnly={form.deliveryMethod === 'PICKUP'} className={inputCls} value={form.deliveryCost}
+              onChange={e => set({ deliveryCost: Number(e.target.value) })} />
+          </div>
+        </div>
+
+        {/* Дизайн — только футболки. Кнопка «Нужен дизайн» раскрывает сумму;
+            её можно менять и добавлять к уже созданному заказу. */}
+        {(productCategory === 'TSHIRT' || productCategory === 'CANVAS') && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 space-y-2">
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={designEnabled}
+                onChange={e => {
+                  const on = e.target.checked;
+                  setDesignEnabled(on);
+                  // Выключили — сумма дизайна уходит из чека; включили — база под ввод.
+                  set({ designDevelopmentCost: on ? (form.designDevelopmentCost ?? 0) : 0 });
+                }}
+                className="w-4 h-4 accent-amber-600"
+              />
+              <span className="text-sm font-medium text-gray-800">Нужен дизайн</span>
+            </label>
+            {designEnabled && (
+              <div>
+                <p className={labelCls}>Стоимость разработки дизайна, ₽</p>
+                <input
+                  type="number"
+                  min={0}
+                  className={inputCls}
+                  placeholder="1000"
+                  value={form.designDevelopmentCost ?? 0}
+                  onChange={e => set({ designDevelopmentCost: Number(e.target.value) })}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Входит в чек клиента отдельной суммой. От неё считается премия менеджера по оформлению.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Срочность и плата за неё. Плата входит в чек клиента, но не в базу
+            зарплаты — ни исполнителю, ни менеджеру. */}
+        <div className="rounded-xl border border-red-200 bg-red-50/50 p-3 space-y-2">
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input
               type="checkbox"
-              checked={designEnabled}
+              checked={form.isUrgent ?? false}
               onChange={e => {
                 const on = e.target.checked;
-                setDesignEnabled(on);
-                // Выключили — сумма дизайна уходит из чека; включили — база под ввод.
-                set({ designDevelopmentCost: on ? (form.designDevelopmentCost ?? 0) : 0 });
+                // Сняли срочность — снимается и плата за неё.
+                set({ isUrgent: on, urgencyFee: on ? (form.urgencyFee ?? 0) : 0 });
               }}
-              className="w-4 h-4 accent-amber-600"
+              className="w-4 h-4 accent-red-600"
             />
-            <span className="text-sm font-medium text-gray-800">Нужен дизайн</span>
+            <span className="text-sm font-medium text-gray-800">Срочный заказ</span>
           </label>
-          {designEnabled && (
+          {form.isUrgent && (
             <div>
-              <p className={labelCls}>Стоимость разработки дизайна, ₽</p>
+              <p className={labelCls}>Стоимость срочности, ₽</p>
               <input
                 type="number"
                 min={0}
                 className={inputCls}
-                placeholder="1000"
-                value={form.designDevelopmentCost ?? 0}
-                onChange={e => set({ designDevelopmentCost: Number(e.target.value) })}
+                placeholder="500"
+                value={form.urgencyFee ?? 0}
+                onChange={e => set({ urgencyFee: Number(e.target.value) })}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Входит в чек клиента отдельной суммой. От неё считается премия менеджера по оформлению.
-              </p>
             </div>
           )}
         </div>
-      )}
 
-      {/* Срочность и плата за неё. Плата входит в чек клиента, но не в базу
-          зарплаты — ни исполнителю, ни менеджеру. */}
-      <div className="rounded-xl border border-red-200 bg-red-50/50 p-3 space-y-2">
-        <label className="flex items-center gap-2.5 cursor-pointer">
+        {/* Скидка клиенту. Отдельной суммой, а не правкой цены позиции: иначе
+            через месяц не понять, был ли заказ дешёвым сам по себе или его
+            продали со скидкой. Уменьшает чек и базу зарплаты исполнителя. */}
+        <div>
+          <p className={labelCls}>Скидка клиенту, ₽</p>
           <input
-            type="checkbox"
-            checked={form.isUrgent ?? false}
-            onChange={e => {
-              const on = e.target.checked;
-              // Сняли срочность — снимается и плата за неё.
-              set({ isUrgent: on, urgencyFee: on ? (form.urgencyFee ?? 0) : 0 });
-            }}
-            className="w-4 h-4 accent-red-600"
+            type="number"
+            min={0}
+            className={inputCls}
+            placeholder="0"
+            aria-label="Скидка клиенту"
+            value={form.discountAmount ?? 0}
+            onChange={e => set({ discountAmount: Math.max(0, Number(e.target.value) || 0) })}
           />
-          <span className="text-sm font-medium text-gray-800">Срочный заказ</span>
-        </label>
-        {form.isUrgent && (
-          <div>
-            <p className={labelCls}>Стоимость срочности, ₽</p>
-            <input
-              type="number"
-              min={0}
-              className={inputCls}
-              placeholder="500"
-              value={form.urgencyFee ?? 0}
-              onChange={e => set({ urgencyFee: Number(e.target.value) })}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Скидка клиенту. Отдельной суммой, а не правкой цены позиции: иначе
-          через месяц не понять, был ли заказ дешёвым сам по себе или его
-          продали со скидкой. Уменьшает чек и базу зарплаты исполнителя. */}
-      <div>
-        <p className={labelCls}>Скидка клиенту, ₽</p>
-        <input
-          type="number"
-          min={0}
-          className={inputCls}
-          placeholder="0"
-          aria-label="Скидка клиенту"
-          value={form.discountAmount ?? 0}
-          onChange={e => set({ discountAmount: Math.max(0, Number(e.target.value) || 0) })}
-        />
-        <p className="mt-1 text-xs text-gray-400">
-          Доставку и срочность не уменьшает; больше суммы товара с дизайном
-          сервер не примет.
-        </p>
-      </div>
-
-      {/* Предоплата. Записываем реальную внесённую сумму один раз; дальше
-          остаток считается как «сумма заказа − предоплата» и не пересчитывается
-          на 50% при каждой правке. Работает для всех категорий одинаково. */}
-      <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 space-y-2">
-        <label className="flex items-center gap-2.5 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={prepaidRecorded}
-            onChange={e => {
-              // Включили — фиксируем текущий ориентир (50% суммы) как стартовое
-              // значение, которое можно поправить. Выключили — вернулись к «50%».
-              set({ prepaidAmount: e.target.checked ? prepay.prepaid : null });
-            }}
-            className="w-4 h-4 accent-emerald-600"
-          />
-          <span className="text-sm font-medium text-gray-800">Клиент внёс предоплату</span>
-        </label>
-        {prepaidRecorded ? (
-          <div>
-            <p className={labelCls}>Внесённая предоплата, ₽</p>
-            <input
-              type="number"
-              min={0}
-              className={inputCls}
-              value={form.prepaidAmount ?? 0}
-              onChange={e => set({ prepaidAmount: Math.max(0, Number(e.target.value)) })}
-            />
-            <p className="text-xs mt-1 font-medium">
-              {prepay.balanceDue < 0 ? (
-                <span className="text-red-600">
-                  Переплата к возврату: {Math.abs(prepay.balanceDue).toLocaleString('ru-RU')} ₽
-                </span>
-              ) : prepay.balanceDue === 0 ? (
-                <span className="text-emerald-700">Заказ оплачен полностью</span>
-              ) : (
-                <span className="text-gray-600">
-                  Останется доплатить: {prepay.balanceDue.toLocaleString('ru-RU')} ₽
-                  <span className="text-gray-400"> (сумма заказа {orderTotal.toLocaleString('ru-RU')} ₽)</span>
-                </span>
-              )}
-            </p>
-          </div>
-        ) : (
-          <p className="text-xs text-gray-500">
-            Пока не отмечено — остаток считается как 50% от суммы заказа
-            ({prepay.prepaid.toLocaleString('ru-RU')} ₽).
+          <p className="mt-1 text-xs text-gray-400">
+            Доставку и срочность не уменьшает; больше суммы товара с дизайном
+            сервер не примет.
           </p>
-        )}
-      </div>
+        </div>
+
+        {/* Предоплата. Записываем реальную внесённую сумму один раз; дальше
+            остаток считается как «сумма заказа − предоплата» и не пересчитывается
+            на 50% при каждой правке. Работает для всех категорий одинаково. */}
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 space-y-2">
+          <label className="flex items-center gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={prepaidRecorded}
+              onChange={e => {
+                // Включили — фиксируем текущий ориентир (50% суммы) как стартовое
+                // значение, которое можно поправить. Выключили — вернулись к «50%».
+                set({ prepaidAmount: e.target.checked ? prepay.prepaid : null });
+              }}
+              className="w-4 h-4 accent-emerald-600"
+            />
+            <span className="text-sm font-medium text-gray-800">Клиент внёс предоплату</span>
+          </label>
+          {prepaidRecorded ? (
+            <div>
+              <p className={labelCls}>Внесённая предоплата, ₽</p>
+              <input
+                type="number"
+                min={0}
+                className={inputCls}
+                value={form.prepaidAmount ?? 0}
+                onChange={e => set({ prepaidAmount: Math.max(0, Number(e.target.value)) })}
+              />
+              <p className="text-xs mt-1 font-medium">
+                {prepay.balanceDue < 0 ? (
+                  <span className="text-red-600">
+                    Переплата к возврату: {Math.abs(prepay.balanceDue).toLocaleString('ru-RU')} ₽
+                  </span>
+                ) : prepay.balanceDue === 0 ? (
+                  <span className="text-emerald-700">Заказ оплачен полностью</span>
+                ) : (
+                  <span className="text-gray-600">
+                    Останется доплатить: {prepay.balanceDue.toLocaleString('ru-RU')} ₽
+                    <span className="text-gray-400"> (сумма заказа {orderTotal.toLocaleString('ru-RU')} ₽)</span>
+                  </span>
+                )}
+              </p>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-500">
+              Пока не отмечено — остаток считается как 50% от суммы заказа
+              ({prepay.prepaid.toLocaleString('ru-RU')} ₽).
+            </p>
+          )}
+        </div>
+        </>
+      ) : (
+        <p className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs leading-relaxed text-gray-500">
+          Доставку, оплату и стоимость по этому заказу ведёт Ozon. Суммы
+          берутся из кабинета площадки, поэтому доставки, дизайна, срочности,
+          скидки и предоплаты здесь нет.
+        </p>
+      )}
 
       <div>
         <p className={labelCls}>Примечание</p>

@@ -68,6 +68,39 @@ function setup(over: Record<string, unknown> = {}) {
   return { order, db, finance, service };
 }
 
+describe('номер заказа на площадке', () => {
+  /*
+    Заказ, приехавший из отправления Ozon, получил номер от самой площадки.
+    В кабинете этот номер один, и наш разошедшийся с ним сделал бы заказ
+    ненаходимым ровно тогда, когда его ищут: при отгрузке и при разборе
+    претензии. Панель такое поле не показывает — здесь отказ на случай,
+    если запрос придёт мимо панели.
+  */
+  it('из отправления Ozon — правке не подлежит', async () => {
+    const { service } = setup({
+      marketplacePostingNumber: '0121078243-0040-1',
+      marketplaceOrderNumber: '0121078243-0040',
+    });
+    const updated = await service.updateOrder('order', {
+      marketplaceOrderNumber: '9999-9999-9999',
+    });
+    expect(updated.marketplaceOrderNumber).toBe('0121078243-0040');
+  });
+
+  it('заведённому руками номер дописать можно', async () => {
+    // Артикул не разобрался, заказ оформлял человек — номер вводил он же,
+    // и опечатку в нём надо дать исправить.
+    const { service } = setup({
+      marketplacePostingNumber: null,
+      marketplaceOrderNumber: null,
+    });
+    const updated = await service.updateOrder('order', {
+      marketplaceOrderNumber: '0123-4567-8901',
+    });
+    expect(updated.marketplaceOrderNumber).toBe('0123-4567-8901');
+  });
+});
+
 describe('order editing and payment integrity', () => {
   it.each(['PHOTO', 'CANVAS', 'TSHIRT'])(
     '%s switches shipping to pickup atomically',

@@ -85,6 +85,42 @@ describe('источник заказа с маркетплейса', () => {
   });
 });
 
+/** Правка карточки: форма живёт в состоянии, как в самой панели. */
+function renderEdit({
+  form: initial,
+  marketplacePrint = true,
+  marketplacePostingNumber = null,
+  productCategory = 'TSHIRT',
+}: {
+  form: UpdateOrderDto;
+  marketplacePrint?: boolean;
+  marketplacePostingNumber?: string | null;
+  productCategory?: 'PHOTO' | 'TSHIRT' | 'CANVAS';
+}) {
+  function Form() {
+    const [form, setForm] = useState<UpdateOrderDto>(initial);
+    return (
+      <OrderEditForm
+        form={form}
+        onChange={setForm}
+        onSave={() => {}}
+        onCancel={() => {}}
+        isPending={false}
+        productCategory={productCategory}
+        orderTotal={1500}
+        marketplacePrint={marketplacePrint}
+        marketplacePostingNumber={marketplacePostingNumber}
+      />
+    );
+  }
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <Form />
+    </QueryClientProvider>,
+  );
+}
+
 describe('номер заказа на площадке', () => {
   beforeEach(() => {
     sessionStorage.clear();
@@ -149,6 +185,60 @@ describe('номер заказа на площадке', () => {
     const field = screen.getByLabelText('Номер заказа на площадке');
     fireEvent.change(field, { target: { value: '0123-4567-8901' } });
     expect(field).toHaveValue('0123-4567-8901');
+  });
+
+  it('номер из отправления Ozon показан, но не правится', () => {
+    /*
+      Номер выдал Ozon. Правка здесь разводит наш номер с тем, что стоит
+      в кабинете, — и заказ становится ненаходимым ровно тогда, когда его
+      ищут: при отгрузке и при разборе претензии.
+    */
+    renderEdit({
+      form: {
+        communicationPlatform: 'OZON',
+        deliveryMethod: 'PICKUP',
+        marketplaceOrderNumber: '0121078243-0040',
+      },
+      marketplacePostingNumber: '0121078243-0040-1',
+    });
+    const field = screen.getByLabelText('Номер заказа на площадке');
+    expect(field).toHaveTextContent('0121078243-0040');
+    expect(field.tagName).not.toBe('INPUT');
+    expect(screen.queryByPlaceholderText('например 0123-4567-8901')).not.toBeInTheDocument();
+  });
+
+  it('у заказа с площадки нет доставки, скидки, срочности и предоплаты', () => {
+    /*
+      Деньги такого заказа считает Ozon: позиции заведены без цены, оплату
+      площадка берёт сама. Проставленная вручную сумма попала бы в чек и
+      в базу зарплаты, и заказ начал бы расходиться по деньгам с кабинетом.
+    */
+    renderEdit({
+      form: { communicationPlatform: 'OZON', deliveryMethod: 'PICKUP', marketplaceOrderNumber: '0121078243-0040' },
+      marketplacePostingNumber: '0121078243-0040-1',
+      productCategory: 'TSHIRT',
+    });
+    expect(screen.queryByLabelText('Способ доставки')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Скидка клиенту')).not.toBeInTheDocument();
+    expect(screen.queryByText('Срочный заказ')).not.toBeInTheDocument();
+    expect(screen.queryByText('Клиент внёс предоплату')).not.toBeInTheDocument();
+    expect(screen.queryByText('Нужен дизайн')).not.toBeInTheDocument();
+    // Взамен — объяснение, а не пустое место.
+    expect(screen.getByText(/ведёт Ozon/)).toBeInTheDocument();
+  });
+
+  it('у обычного заказа деньги на месте', () => {
+    // Сторож на перестраховку: признак площадки не должен прятать поля
+    // у обычного заказа.
+    renderEdit({
+      form: { communicationPlatform: 'TELEGRAM', deliveryMethod: 'PICKUP' },
+      marketplacePrint: false,
+      productCategory: 'TSHIRT',
+    });
+    expect(screen.getByLabelText('Способ доставки')).toBeInTheDocument();
+    expect(screen.getByLabelText('Скидка клиенту')).toBeInTheDocument();
+    expect(screen.getByText('Срочный заказ')).toBeInTheDocument();
+    expect(screen.getByText('Клиент внёс предоплату')).toBeInTheDocument();
   });
 
   it('у обычного заказа поля номера площадки в правке нет', () => {

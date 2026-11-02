@@ -1261,6 +1261,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           productCategory={order.productCategory}
           orderTotal={order.totalOrder ?? 0}
           marketplacePrint={order.isMarketplacePrint ?? false}
+          marketplacePostingNumber={order.marketplacePostingNumber}
         />
       ) : (
         // Три колонки на широком экране вместо двух: пары «подпись —
