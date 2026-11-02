@@ -11,6 +11,7 @@ import {
   canvasContractorCost,
   canvasTermsFrom,
 } from './canvas-production-price';
+import { findCanvasSize } from '../scenarios/products/canvas.pricing';
 
 /**
  * Прайс производства для расчёта внутри CRM.
@@ -49,6 +50,22 @@ export class CanvasProductionController {
         label: `${row.widthCm} × ${row.heightCm} см`,
         widthCm: row.widthCm,
         heightCm: row.heightCm,
+        /*
+          Цена для клиента — та самая, что стоит на сайте.
+
+          Берётся из CANVAS_SIZES, то есть из единственного источника цены
+          (ТЗ, блок 11): сайт читает этот же список через /canvas/pricing.
+          Здесь она нужна, чтобы при смене размера в заявке с сайта цена
+          подставлялась сама. Раньше менеджер вбивал её руками, глядя
+          на сайт в соседней вкладке, — и заказ расходился с витриной
+          на любой опечатке.
+
+          Ключи обоих прайсов совпадают (46 к 46, сторожит тест), но
+          null здесь оставлен намеренно: если когда-нибудь размер появится
+          в производственном прайсе раньше, чем в витринном, подставлять
+          нечего — и ноль был бы хуже пустого поля.
+        */
+        clientPrice: findCanvasSize(row.key)?.price ?? null,
         retail: { SYNTHETIC: row.synthetic, COTTON: row.cotton },
         wholesale: {
           SYNTHETIC: row.wholesaleSynthetic,

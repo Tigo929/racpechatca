@@ -34,6 +34,8 @@ const size = {
   retail: { SYNTHETIC: 630, COTTON: 780 },
   wholesale: { SYNTHETIC: 470, COTTON: 590 },
   cost: { SYNTHETIC: 504, COTTON: 624 },
+  /* Витринная цена: по ней подставляется «клиент / шт» при смене размера. */
+  clientPrice: 630,
 };
 
 const pricing = (mode: 'RETAIL' | 'WHOLESALE') => ({

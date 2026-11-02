@@ -26,6 +26,15 @@ export interface CanvasProductionSize {
   wholesale: Record<EnumCanvasMaterial, number>;
   /** Сколько должны производству по действующей системе. */
   cost: Record<EnumCanvasMaterial, number>;
+  /**
+   * Цена для клиента — та, что стоит на сайте.
+   *
+   * Из единственного источника цены: сайт читает тот же список. По ней
+   * подставляется «клиент / шт» при смене размера, чтобы заказ не
+   * расходился с витриной. `null` — размера нет в витринном прайсе,
+   * подставлять нечего.
+   */
+  clientPrice: number | null;
 }
 
 export interface CanvasProductionPricing {

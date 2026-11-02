@@ -224,6 +224,38 @@ export function CanvasItemsTable({ order }: Props) {
     pricing?.sizes.find((x) => x.key === state.sizeKey)?.cost[state.material] ?? 0;
 
   /**
+   * Цена этого размера на сайте — ею и считается заявка с сайта.
+   *
+   * `null` значит «сайт этот размер не продаёт»: нестандарт или размер,
+   * которого нет в витринном прайсе. Тогда цену вводят руками, и это
+   * нормально — а вот подставленный ноль был бы молчаливой ошибкой.
+   */
+  const sitePriceOf = (sizeKey: string): number | null =>
+    (sizeKey ? pricing?.sizes.find((x) => x.key === sizeKey)?.clientPrice : null) ?? null;
+
+  /**
+   * Смена размера тянет за собой цену клиента.
+   *
+   * Раньше менеджер правил размер в заявке с сайта, а цена оставалась от
+   * прежнего размера — и заказ уезжал в работу с суммой, которой на сайте
+   * нет. Теперь цена едет следом, а если её правили руками, под полем
+   * видно, насколько она разошлась с витриной, и одним нажатием
+   * возвращается обратно.
+   */
+  const changeSize = (
+    state: EditState,
+    sizeKey: string,
+    onChange: (next: EditState) => void,
+  ) => {
+    const site = sitePriceOf(sizeKey);
+    onChange({
+      ...state,
+      sizeKey,
+      clientPrice: site === null ? state.clientPrice : String(site),
+    });
+  };
+
+  /**
    * Цена действующего прайса — показываем рядом, чтобы было видно, откуда
    * взялся долг: в рознице от неё отнимается скидка, в опте она и есть долг.
    */
@@ -253,7 +285,7 @@ export function CanvasItemsTable({ order }: Props) {
           <select
             className={inputCls}
             value={state.sizeKey}
-            onChange={(e) => onChange({ ...state, sizeKey: e.target.value })}
+            onChange={(e) => changeSize(state, e.target.value, onChange)}
             aria-label="Размер холста"
           >
             {(pricing?.sizes ?? []).map((size) => (
@@ -350,13 +382,45 @@ export function CanvasItemsTable({ order }: Props) {
         />
       </td>
       <td className="px-4 py-2">
+        {/* Подпись обязательна: поле в колонке с иконкой-заголовком, и без
+            неё у числа нет имени ни для скринридера, ни для проверки. */}
         <input
           type="number"
           min={0}
+          aria-label="Цена клиента за штуку"
           className={`${inputCls} text-right`}
           value={state.clientPrice}
           onChange={(e) => onChange({ ...state, clientPrice: e.target.value })}
         />
+        {/*
+            Подпись под ценой — откуда она взялась.
+
+            Совпала с сайтом — так и написано, и менеджеру не нужно лезть
+            в соседнюю вкладку сверять. Разошлась — названы обе суммы и
+            дано вернуть витринную: скидка по договорённости бывает, а вот
+            случайная цифра в заказе на холст за две тысячи стоит дорого.
+        */}
+        {(() => {
+          const site = sitePriceOf(state.sizeKey);
+          if (site === null) return null;
+          const same = Number(state.clientPrice) === site;
+          return same ? (
+            <span className="mt-1 block text-right text-[11px] text-gray-400">
+              цена с сайта
+            </span>
+          ) : (
+            <span className="mt-1 block text-right text-[11px] text-amber-700">
+              на сайте {money(site)} ·{' '}
+              <button
+                type="button"
+                onClick={() => onChange({ ...state, clientPrice: String(site) })}
+                className="underline underline-offset-2 hover:text-amber-900"
+              >
+                вернуть
+              </button>
+            </span>
+          );
+        })()}
       </td>
       <td className="px-4 py-2 text-right">
         {state.sizeKey ? (
@@ -381,6 +445,7 @@ export function CanvasItemsTable({ order }: Props) {
           <input
             type="number"
             min={0}
+            aria-label="Цена производства за штуку"
             className={`${inputCls} text-right`}
             value={state.contractorPrice}
             onChange={(e) =>
