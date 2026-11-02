@@ -66,6 +66,22 @@ const FONT = "'DejaVu Sans','Roboto','Segoe UI','Arial',sans-serif";
 const INK = '#111827';
 const MUTED = '#6b7280';
 /** Плашка стикера: синий фон, чёрный текст — просили именно так. */
+/*
+  Плашка «изделие клиента».
+
+  Цвет светлый, а текст почти чёрный — не наоборот. Лист печатают на
+  обычном принтере, часто чёрно-белом: тёмная плашка со светлым текстом
+  превращается там в серое пятно, из которого слов не выбрать. По той же
+  причине у плашки есть обводка: в оттенках серого она и остаётся тем,
+  что отличает предупреждение от фона.
+*/
+const CLIENT_ITEM_BG = '#fde68a';
+const CLIENT_ITEM_BORDER = '#b45309';
+const CLIENT_ITEM_H = 78;
+const CLIENT_ITEM_TEXT = 'ПЕЧАТЬ НА ИЗДЕЛИИ КЛИЕНТА · ЗАМЕНЫ НЕТ';
+/** На столько уезжают строки данных, когда над ними встаёт полоса. */
+const CLIENT_ITEM_SHIFT = 108;
+
 const STICKER_BG = '#bfdbfe';
 const STICKER_BOX_W = 260;
 const STICKER_BOX_H = 56;
@@ -318,7 +334,10 @@ export class ApprovalRenderService {
     // на него принт, и только потом подписи, иначе поле закрыло бы оба.
     if (printSides.length > 0) {
       const pageTop = SHEET_H * sides.length;
-      const boxes = printBoxes(printSides.length);
+      const boxes = printBoxes(
+        printSides.length,
+        input.clientItem ? CLIENT_ITEM_SHIFT : 0,
+      );
       for (const [index, side] of printSides.entries()) {
         const box = boxes[index];
         if (!box) break;
@@ -411,6 +430,21 @@ export class ApprovalRenderService {
       ),
     );
 
+    /*
+      Полоса стоит над строками данных, а строки уезжают ниже на её высоту.
+
+      Двигать макет изделия нельзя — он занимает лист по высоте целиком.
+      А вот справа места в избытке: строк пять, и под ними пусто до самого
+      низа листа. Без сдвига полоса накрывала строку «Заказ №» — номер
+      заказа, то есть ровно то, без чего страница бесполезна.
+    */
+    const infoTop = input.clientItem ? INFO_TOP + CLIENT_ITEM_SHIFT : INFO_TOP;
+    if (input.clientItem) {
+      parts.push(
+        clientItemBanner(INFO_X - 16, 248, SHEET_W - PADDING - INFO_X + 16),
+      );
+    }
+
     const rows: [string, string][] = input.clientItem
       ? [
           ['Заказ №', input.numberOrder],
@@ -418,9 +452,10 @@ export class ApprovalRenderService {
             ? ([[STICKER_LABEL, `…${input.sticker}`]] as [string, string][])
             : []),
           // Изделие принёс клиент — цвет и размер футболки тут ни при чём,
-          // на них печатник ориентироваться не должен.
+          // на них печатник ориентироваться не должен. Строки «Работа»
+          // здесь больше нет: то же самое крупно сказано полосой выше,
+          // а освободившееся место уходит под размер печати.
           ['Изделие', 'Клиента'],
-          ['Работа', 'Печать на изделии клиента'],
         ]
       : [
           ['Заказ №', input.numberOrder],
@@ -444,7 +479,7 @@ export class ApprovalRenderService {
     rows.push(['Дата', formatDate(input.date)]);
 
     rows.forEach(([label, value], rowIndex) => {
-      const y = INFO_TOP + rowIndex * ROW_H;
+      const y = infoTop + rowIndex * ROW_H;
       parts.push(text(label, LABEL_X, y, { size: 32, fill: MUTED }));
       if (label === STICKER_LABEL) {
         // Стикер — единственное, что ищут на листе глазами, не читая:
@@ -461,7 +496,7 @@ export class ApprovalRenderService {
     });
 
     if (input.comment) {
-      const commentTop = INFO_TOP + rows.length * ROW_H + 30;
+      const commentTop = infoTop + rows.length * ROW_H + 30;
       parts.push(
         text('Комментарий', LABEL_X, commentTop, { size: 32, fill: MUTED }),
       );
@@ -504,6 +539,12 @@ export class ApprovalRenderService {
       ),
       line(PADDING, 228, SHEET_W - PADDING, 228),
     );
+
+    // На этой странице печатник и работает — значит предупреждение нужно
+    // здесь в первую очередь, а не только на страницах сторон.
+    if (input.clientItem) {
+      parts.push(clientItemBanner(PADDING, 238, CONTENT_W));
+    }
 
     for (const [index, side] of sides.entries()) {
       const box = boxes[index];
@@ -588,18 +629,24 @@ export interface Box {
  * страницы сторон. Порядок важнее симметрии: перепутанные местами принты
  * означают футболку с чужим рисунком на спине.
  */
-function printBoxes(count: number): Box[] {
+function printBoxes(count: number, shift = 0): Box[] {
   if (count <= 0) return [];
+  /*
+    Полоса «изделие клиента» занимает место над полем принта, и поле
+    уезжает вниз ровно на её высоту. Нижний край при этом остаётся
+    на месте — высота уменьшается на столько же: под полем подписаны
+    размер печати и dpi, и сдвинуть их значило бы увести за край листа.
+  */
+  const top = PRINTS_TOP + shift;
+  const height = PRINTS_BOX_H - shift;
   if (count === 1) {
-    return [
-      { left: PADDING, top: PRINTS_TOP, width: CONTENT_W, height: PRINTS_BOX_H },
-    ];
+    return [{ left: PADDING, top, width: CONTENT_W, height }];
   }
   const gap = 60;
   const width = Math.round((CONTENT_W - gap) / 2);
   return [
-    { left: PADDING, top: PRINTS_TOP, width, height: PRINTS_BOX_H },
-    { left: PADDING + width + gap, top: PRINTS_TOP, width, height: PRINTS_BOX_H },
+    { left: PADDING, top, width, height },
+    { left: PADDING + width + gap, top, width, height },
   ];
 }
 
@@ -675,6 +722,35 @@ function rect(
   fill: string,
 ): string {
   return `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="8" fill="${fill}"/>`;
+}
+
+/**
+ * Полоса «печать на изделии клиента».
+ *
+ * Раньше это было двумя строками в столбце данных: «Изделие — Клиента»,
+ * «Работа — печать на изделии клиента». Строки верные, но лист читают
+ * не построчно: печатник берёт его со стола, смотрит на макет и на
+ * размер печати. Две строки мелким шрифтом в углу он находит уже после
+ * того, как достал из стопки чистую футболку.
+ *
+ * Цена ошибки здесь не как обычно. Испорченный наш бланк — это бланк;
+ * испорченная вещь, которую принёс человек, не заменяется ничем, и
+ * заказ из неё уже не спасти. Поэтому предупреждение вынесено в полосу
+ * во всю ширину и повторяется на каждой странице: страницы раскладывают
+ * по столу поодиночке, и та, на которой предупреждения нет, снова
+ * выглядит как обычный заказ.
+ */
+function clientItemBanner(x: number, y: number, width: number): string {
+  return [
+    `<rect x="${x}" y="${y}" width="${width}" height="${CLIENT_ITEM_H}" rx="8"`
+      + ` fill="${CLIENT_ITEM_BG}" stroke="${CLIENT_ITEM_BORDER}" stroke-width="4"/>`,
+    text(CLIENT_ITEM_TEXT, x + width / 2, y + 52, {
+      size: 38,
+      weight: 700,
+      anchor: 'middle',
+      spacing: 1,
+    }),
+  ].join('');
 }
 
 function line(x1: number, y1: number, x2: number, y2: number): string {
