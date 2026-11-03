@@ -24,6 +24,7 @@ from pathlib import Path
 
 from telethon import TelegramClient
 from telethon.errors import (
+    PasswordHashInvalidError,
     PhoneCodeExpiredError,
     PhoneCodeInvalidError,
     SessionPasswordNeededError,
@@ -65,6 +66,69 @@ def describe_next(sent) -> str:
     return f"можно переслать: {known.get(name, name)}"
 
 
+def drain_stdin() -> None:
+    """Выбросить то, что уже лежит в буфере ввода.
+
+    Лишний перевод строки — от двойного Enter, от вставки, от того, как
+    команда пришла через ssh, — лежит в буфере и мгновенно прилетает
+    в следующий input(). Человек видит приглашение и трассировку под ним,
+    не успев ничего набрать.
+    """
+    try:
+        import termios
+
+        termios.tcflush(sys.stdin, termios.TCIFLUSH)
+    except Exception:
+        # Не Unix или не терминал — тогда и буфера такого нет.
+        pass
+
+
+def ask(prompt: str) -> str:
+    """Спросить и не принять пустой ответ.
+
+    Пустая строка здесь стоит дорого. Telethon на пустой код не ругается,
+    а молча просит Telegram прислать новый; после нескольких таких просьб
+    приходит SendCodeUnavailableError — коды на этот номер кончились,
+    и следующая попытка возможна через часы. Один лишний Enter сжигает
+    попытку входа.
+    """
+    while True:
+        drain_stdin()
+        try:
+            value = input(prompt).strip()
+        except EOFError:
+            print()
+            print("Ввод закрыт. Запустите команду в интерактивном терминале:")
+            print("  ssh -i ~/.ssh/id_rsa_gulian root@195.2.75.249")
+            print("  cd /opt/raspechatka && docker compose -f docker-compose.prod.yml run --rm greeter python login.py")
+            raise SystemExit(1)
+        if value:
+            return value
+        print("Пусто — это не ответ. Наберите значение и нажмите Enter.")
+
+
+def ask_secret(prompt: str) -> str:
+    """Спросить пароль, не показывая его, и не принять пустой.
+
+    Пустой пароль здесь дороже пустого кода. Код к этому моменту уже
+    принят и израсходован: если вход сорвётся на пароле, начинать
+    придётся с нового кода, а их Telegram выдаёт считанные штуки.
+    """
+    from getpass import getpass
+
+    while True:
+        drain_stdin()
+        try:
+            value = getpass(prompt).strip()
+        except EOFError:
+            print()
+            print("Ввод закрыт — пароль ввести некуда.")
+            raise SystemExit(1)
+        if value:
+            return value
+        print("Пусто. Введите пароль (при наборе он не отображается).")
+
+
 async def main() -> int:
     if not API_ID or not API_HASH:
         print("TG_API_ID / TG_API_HASH не заданы в окружении контейнера.")
@@ -84,7 +148,7 @@ async def main() -> int:
         await client.disconnect()
         return 0
 
-    phone = input("Номер телефона (например +79199990282): ").strip()
+    phone = ask("Номер телефона (например +79199990282): ")
 
     sent = await client.send_code_request(phone)
     print()
@@ -93,23 +157,32 @@ async def main() -> int:
     print()
     print("Введите код цифрами. Если он не пришёл — напишите  смс  и нажмите Enter.")
 
-    code = input("Код: ").strip()
+    code = ask("Код: ")
 
     if code.lower() in {"смс", "sms"}:
         # Пересылаем тем способом, который Telegram предложил следующим.
         sent = await client.send_code_request(phone, force_sms=True)
         print()
         print(f"Отправлено повторно: {describe_code_type(sent)}")
-        code = input("Код: ").strip()
+        code = ask("Код: ")
 
     try:
         await client.sign_in(phone, code)
     except SessionPasswordNeededError:
-        # Двухфакторная. Пароль при вводе не отображается — это норма.
-        from getpass import getpass
-
-        password = getpass("Пароль двухфакторной защиты: ")
-        await client.sign_in(password=password)
+        # Двухфакторная защита: облачный пароль. При наборе он не
+        # отображается — это норма, а не зависший ввод.
+        #
+        # Неверный пароль переспрашиваем, а не падаем: код уже принят,
+        # и трассировка здесь означала бы начинать с нового кода.
+        print()
+        print("У аккаунта включена двухфакторная защита — нужен облачный пароль.")
+        while True:
+            password = ask_secret("Облачный пароль: ")
+            try:
+                await client.sign_in(password=password)
+                break
+            except PasswordHashInvalidError:
+                print("Пароль неверный. Попробуйте ещё раз — код вводить заново не нужно.")
     except PhoneCodeInvalidError:
         print("Код неверный. Запустите команду заново — придёт новый.")
         await client.disconnect()
