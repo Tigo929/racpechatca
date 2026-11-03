@@ -4,7 +4,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { MetrikaOrderOutboxService } from 'src/metrika/orders/metrika-order-outbox.service';
 import { MarketplaceAccountService } from './marketplace-account.service';
 import { OzonOrdersService } from './ozon/ozon-orders.service';
-import { shouldCloseAsShipped } from './ozon/ozon-shipped-close';
+import {
+  isMarketplaceDelivered,
+  shouldCloseAsShipped,
+} from './ozon/ozon-shipped-close';
 
 /**
  * Закрытие заказов, которые площадка уже отгрузила.
@@ -18,9 +21,18 @@ import { shouldCloseAsShipped } from './ozon/ozon-shipped-close';
  * отправлений по открытым заказам и переводит в «Отгружен» те, которые
  * Ozon уже везёт или доставил.
  *
+ * Заодно отмечает выкуп. Заказ закрывается уже на «везут», а забирают
+ * посылку днями позже — и только это значит, что товар у человека в руках.
+ * Дату выкупа ждёт просьба об отзыве: до неё спрашивать «как вам футболка»
+ * не о чем. Спрашиваем здесь, а не вторым опросом, потому что состояния
+ * отправлений уже получены — второй опрос расходовал бы лимит площадки
+ * ради тех же самых чисел.
+ *
  * Чего НЕ делает. Не отменяет заказы вслед за площадкой и не возвращает
  * закрытые обратно: отмена — решение с последствиями (склад, зарплата,
- * деньги), и принимать его молча автоматика не должна.
+ * деньги), и принимать его молча автоматика не должна. Не снимает отметку
+ * выкупа: Ozon меняет статус доставленного отправления при возврате, а
+ * «отзыв попросили» — уже случившийся факт.
  */
 @Injectable()
 export class OzonShippedCloseService {
@@ -55,13 +67,33 @@ export class OzonShippedCloseService {
           isMarketplacePrint: true,
           marketplacePostingNumber: { not: null },
           marketplaceAccountId: { not: null },
-          closedAt: null,
           status: { not: EnumStatus.CANCELLED },
+          /*
+           * Заказ попадает в сверку, пока от площадки нужен хотя бы один
+           * ответ: закрыть его или отметить выкуп. Второе случается позже
+           * первого — закрытые заказы поэтому тоже спрашиваем, иначе выкуп
+           * не узнать никогда.
+           */
+          OR: [{ closedAt: null }, { marketplaceDeliveredAt: null }],
+          /*
+           * Глубже площадка и не ответит: список отправлений мы просим за
+           * LOOKBACK_DAYS. Без этой границы двадцать древних заказов,
+           * которых Ozon уже не отдаёт, занимали бы весь пакет — и до
+           * свежих сверка не доходила бы вовсе.
+           */
+          createdAt: {
+            gte: new Date(
+              Date.now() -
+                OzonShippedCloseService.LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
+            ),
+          },
         },
         select: {
           id: true,
           numberOrder: true,
           status: true,
+          closedAt: true,
+          marketplaceDeliveredAt: true,
           marketplacePostingNumber: true,
           marketplaceAccountId: true,
         },
@@ -81,12 +113,26 @@ export class OzonShippedCloseService {
       }
 
       let closed = 0;
+      let delivered = 0;
       for (const [accountId, ordersOfAccount] of byAccount) {
         const groups = await this.groupsFor(accountId);
         if (!groups) continue;
         for (const order of ordersOfAccount) {
           const group = groups.get(order.marketplacePostingNumber!);
+
+          // Выкуп отмечаем раньше закрытия: если следом что-то упадёт,
+          // потеряется закрытие заказа (его поправит следующий тик), а не
+          // единственный момент, когда площадка сказала «забрали».
+          if (!order.marketplaceDeliveredAt && isMarketplaceDelivered(group)) {
+            await this.markDelivered(order.id);
+            delivered += 1;
+            this.logger.log(
+              `Заказ ${order.numberOrder}: покупатель выкупил отправление ${order.marketplacePostingNumber}`,
+            );
+          }
+
           if (
+            order.closedAt ||
             !shouldCloseAsShipped({
               status: order.status,
               marketplaceGroup: group,
@@ -103,6 +149,9 @@ export class OzonShippedCloseService {
       }
       if (closed > 0) {
         this.logger.log(`Закрыто по отгрузке площадки: ${closed}`);
+      }
+      if (delivered > 0) {
+        this.logger.log(`Отмечено выкупов: ${delivered}`);
       }
     } finally {
       this.running = false;
@@ -137,6 +186,20 @@ export class OzonShippedCloseService {
       );
       return null;
     }
+  }
+
+  /**
+   * Отметка выкупа.
+   *
+   * Только дата, без истории статусов и без Метрики: статус заказа от
+   * выкупа не меняется — он уже закрыт как отгруженный. Это факт о
+   * покупателе, а не о нашей работе, и нужен он одному: просьбе об отзыве.
+   */
+  private async markDelivered(orderId: string): Promise<void> {
+    await this.prisma.orderPhoto.update({
+      where: { id: orderId },
+      data: { marketplaceDeliveredAt: new Date() },
+    });
   }
 
   /**

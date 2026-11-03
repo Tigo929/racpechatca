@@ -10,15 +10,6 @@ export const REVIEW_REMINDER_DELAY_MS = 84 * 60 * 60 * 1000; // 3.5 days
 /** Самовывоз: клиент получил заказ сразу — просим отзыв уже на следующий день. */
 export const REVIEW_REMINDER_PICKUP_DELAY_MS = 24 * 60 * 60 * 1000; // 1 day
 
-/**
- * Маркетплейс: пять дней после отгрузки (решение владельца 02.10.2026).
- *
- * Срок больше, чем у своих заказов, и считается от другой даты. Отсчёт идёт
- * от «Отгружен» — момента, когда посылка ушла площадке, — а дальше её ещё
- * везут до пункта выдачи. Просить отзыв раньше бессмысленно: человек
- * товара в руках не держал.
- */
-export const MARKETPLACE_REVIEW_DELAY_MS = 5 * 24 * 60 * 60 * 1000; // 5 days
 
 export const REVIEW_REMINDER_CATEGORIES: EnumProductCategory[] = [
   EnumProductCategory.PHOTO,
@@ -47,9 +38,10 @@ export function isReviewReminderEligible(
     clientReviewLeft: boolean;
     reviewReminderNotifiedAt: Date | null;
     sentAt: Date | null;
-    /** Футболка с площадки: свой срок и своя дата отсчёта. */
+    /** Заказ с площадки: отсчёт не от нашей отправки, а от выкупа. */
     isMarketplacePrint?: boolean | null;
-    completedAt?: Date | null;
+    /** Когда площадка сообщила, что покупатель забрал посылку. */
+    marketplaceDeliveredAt?: Date | null;
   },
   now = new Date(),
 ): boolean {
@@ -62,15 +54,25 @@ export function isReviewReminderEligible(
    *
    * У него SENT означает «передан в производство», а не «отдан клиенту»:
    * по общему правилу просьба об отзыве уходила бы через 3,5 дня после
-   * передачи в печать — человеку, который ещё ничего не получил. Считаем
-   * от «Отгружен» и ждём пять дней, пока посылка доедет.
+   * передачи в печать — человеку, который ещё ничего не получил.
+   *
+   * До 03.11.2026 здесь стоял таймер: пять дней от «Отгружен». Он промахивался
+   * в обе стороны. Заказ закрывается, как только площадка взяла посылку, —
+   * дальше её могут везти два дня, а могут десять, и ещё столько же она лежит
+   * в пункте выдачи. Кого-то спрашивали «как вам футболка» до того, как он её
+   * забрал; кому-то писали через неделю после.
+   *
+   * Теперь ждём события, а не срока: площадка сама говорит «Доставлен» —
+   * покупатель забрал заказ. Эту дату ставит сверка с Ozon
+   * (OzonShippedCloseService), и спрашивать есть о чём ровно с неё.
+   *
+   * Цена решения: о выкупе мы узнаём только от площадки. Отозвали ключи
+   * кабинета — отметки не будет, и просьба не уйдёт вовсе. Это сознательный
+   * выбор: не спросить хуже, чем спросить не вовремя, но ненамного — а вот
+   * «как вам товар» человеку без товара стоит доверия.
    */
-  if (order.productCategory === EnumProductCategory.TSHIRT && order.isMarketplacePrint) {
-    if (order.status !== EnumStatus.COMPLETED) return false;
-    if (!order.completedAt) return false;
-    return (
-      order.completedAt <= new Date(now.getTime() - MARKETPLACE_REVIEW_DELAY_MS)
-    );
+  if (order.isMarketplacePrint) {
+    return Boolean(order.marketplaceDeliveredAt);
   }
 
   if (!REVIEW_REMINDER_STATUSES.includes(order.status)) return false;

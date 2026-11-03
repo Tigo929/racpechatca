@@ -7,13 +7,13 @@ describe('review reminder message', () => {
 
     expect(text).toContain('https://www.avito.ru/user/review?fid=');
     expect(text).not.toContain('utm_source=chatgpt.com');
-    expect(text).toContain('бесплатную доставку на следующий заказ');
+    expect(text).toContain('подарим вам бесплатную доставку');
   });
 
   it('names what the person ordered', () => {
-    expect(buildReviewRequestText('TSHIRT')).toContain('футболку с принтом');
-    expect(buildReviewRequestText('CANVAS')).toContain('печать на холсте');
-    expect(buildReviewRequestText()).toContain('печать фотографий');
+    expect(buildReviewRequestText('TSHIRT')).toContain('Как вам футболка');
+    expect(buildReviewRequestText('CANVAS')).toContain('Как вам холст');
+    expect(buildReviewRequestText()).toContain('Как вам фотографии');
   });
 });
 
@@ -81,6 +81,87 @@ describe('review reminder eligibility', () => {
           reviewReminderNotifiedAt: null,
           sentAt: new Date(now.getTime() - 83 * 60 * 60 * 1000),
         },
+        now,
+      ),
+    ).toBe(false);
+  });
+
+  it('заказ с площадки ждёт выкупа, а не срока', () => {
+    /*
+     * Раньше здесь стоял таймер: пять дней от «Отгружен». Заказ CRM
+     * закрывается, как только площадка взяла посылку, а везут её и лежит
+     * она в пункте выдачи сколько придётся — просьба уходила человеку,
+     * который товара ещё не видел.
+     */
+    const marketplace = {
+      productCategory: 'TSHIRT',
+      status: 'COMPLETED',
+      deliveryMethod: 'YANDEX_PVZ',
+      clientReviewLeft: false,
+      reviewReminderNotifiedAt: null,
+      sentAt: oldSentAt,
+      isMarketplacePrint: true,
+    } as const;
+
+    // Отгружен месяц назад, но площадка не сказала «Доставлен» — молчим.
+    expect(
+      isReviewReminderEligible(
+        { ...marketplace, marketplaceDeliveredAt: null },
+        now,
+      ),
+    ).toBe(false);
+
+    // Выкупил — спрашиваем сразу, ждать больше нечего.
+    expect(
+      isReviewReminderEligible({ ...marketplace, marketplaceDeliveredAt: now }, now),
+    ).toBe(true);
+  });
+
+  it('выкуп работает не только у футболок', () => {
+    /*
+     * Правило было написано под футболки: только их и печатали для Ozon.
+     * Фотокниги и холсты с площадки попадали под общее правило и получали
+     * просьбу через 3,5 дня после передачи в печать.
+     */
+    for (const productCategory of ['PHOTO', 'CANVAS'] as const) {
+      expect(
+        isReviewReminderEligible(
+          {
+            productCategory,
+            status: 'COMPLETED',
+            deliveryMethod: 'YANDEX_PVZ',
+            clientReviewLeft: false,
+            reviewReminderNotifiedAt: null,
+            sentAt: oldSentAt,
+            isMarketplacePrint: true,
+            marketplaceDeliveredAt: now,
+          },
+          now,
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it('выкуп не отменяет остальных запретов', () => {
+    // Отзыв уже оставлен или просьба уже уходила — второй раз не пишем.
+    const delivered = {
+      productCategory: 'TSHIRT',
+      status: 'COMPLETED',
+      deliveryMethod: 'YANDEX_PVZ',
+      sentAt: oldSentAt,
+      isMarketplacePrint: true,
+      marketplaceDeliveredAt: now,
+    } as const;
+
+    expect(
+      isReviewReminderEligible(
+        { ...delivered, clientReviewLeft: true, reviewReminderNotifiedAt: null },
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      isReviewReminderEligible(
+        { ...delivered, clientReviewLeft: false, reviewReminderNotifiedAt: now },
         now,
       ),
     ).toBe(false);

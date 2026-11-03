@@ -12,12 +12,12 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TelegramService } from 'src/telegram/telegram.service';
 import {
-  MARKETPLACE_REVIEW_DELAY_MS,
   REVIEW_REMINDER_CATEGORIES,
   REVIEW_REMINDER_DELAY_MS,
   REVIEW_REMINDER_PICKUP_DELAY_MS,
   REVIEW_REMINDER_STATUSES,
 } from './review-reminder-rules';
+import { customerChat } from './customer-chat-url';
 
 const REVIEW_REMINDER_SCAN_MS = 60 * 60 * 1000;
 /** Пауза между сообщениями ручной пересылки: Telegram даёт ~20/мин в чат. */
@@ -73,11 +73,21 @@ function categoryLabel(category: EnumProductCategory): string {
   return 'Фото';
 }
 
-/** Что человек заказывал — одной строкой, для первой фразы. */
-function whatWasOrdered(category: EnumProductCategory): string {
-  if (category === EnumProductCategory.TSHIRT) return 'футболку с принтом';
-  if (category === EnumProductCategory.CANVAS) return 'печать на холсте';
-  return 'печать фотографий';
+/**
+ * О чём спрашиваем: «как вам футболка?».
+ *
+ * Названная вещь — разница между письмом и рассылкой. «Как вам ваш заказ»
+ * человек читает как шаблон, «как вам футболка» — как вопрос о том, что он
+ * держит в руках.
+ *
+ * Называет вещь только этот вопрос. Раньше её называла и первая фраза
+ * («доверили нам футболку с принтом»), и получалось «футболку… как вам
+ * футболка» в двух строках подряд.
+ */
+function howIsIt(category: EnumProductCategory): string {
+  if (category === EnumProductCategory.TSHIRT) return 'футболка';
+  if (category === EnumProductCategory.CANVAS) return 'холст';
+  return 'фотографии';
 }
 
 /**
@@ -89,15 +99,21 @@ function whatWasOrdered(category: EnumProductCategory): string {
  * поиск, из которого клиент и пришёл. Покупателя с Ozon — в его список
  * заказов, отзыв там оставляют на товар.
  *
- * Подарок есть не везде. На Ozon его нет: площадка запрещает
- * вознаграждать за отзывы, и обещание бесплатной доставки там вдвойне
- * бессмысленно — доставку считает сама площадка.
+ * Подарок обещаем везде (решение владельца 03.11.2026), но разный и
+ * нарочно не за отзыв. У своих клиентов доставку считаем мы — её и дарим.
+ * На площадке её считает сама площадка, дарить нечего, поэтому там подарок
+ * к следующему заказу.
+ *
+ * Формулировка важнее самого подарка. Ozon запрещает вознаграждать ЗА ОТЗЫВ,
+ * поэтому подарок обещан за следующий заказ и стоит отдельной фразой после
+ * просьбы, а не условием при ней. «Оставьте отзыв и получите» нельзя писать
+ * ни на одной площадке — это и есть покупка отзыва.
  */
 interface ReviewPlace {
   url: string;
   /** Чем заканчивается фраза «оставьте отзыв …». */
   where: string;
-  /** Чем благодарим. Пусто — не обещаем ничего. */
+  /** Готовая благодарность последней фразой. Пусто — не обещаем ничего. */
   gift: string | null;
 }
 
@@ -115,7 +131,7 @@ export function reviewPlace(
     return {
       url: YANDEX_REVIEW_URL,
       where: 'на Яндекс Картах',
-      gift: 'бесплатную доставку на следующий заказ 🎁',
+      gift: 'А на следующий заказ подарим вам бесплатную доставку 🎁',
     };
   }
   if (sourceOrder === 'OZON' || sourceOrder === 'WB') {
@@ -123,13 +139,13 @@ export function reviewPlace(
     return {
       url: url.startsWith('http') ? url : OZON_REVIEW_URL,
       where: 'на Ozon',
-      gift: null,
+      gift: 'А к следующему заказу приготовим для вас подарок 🎁',
     };
   }
   return {
     url: AVITO_REVIEW_URL,
     where: 'на Авито',
-    gift: 'бесплатную доставку на следующий заказ 🎁',
+    gift: 'А на следующий заказ подарим вам бесплатную доставку 🎁',
   };
 }
 
@@ -140,10 +156,16 @@ export function reviewPlace(
  * письма расходились бы при первой же правке, и клиенты получали бы разное
  * в зависимости от того, где купили.
  *
+ * Начинается вопросом, а не просьбой. «Как вам футболка, всё понравилось?» —
+ * вопрос, на который человек отвечает; «оставьте отзыв» первой строкой —
+ * просьба, которую пролистывают. Следом приглашение написать, если что-то не
+ * так: недовольный покупатель напишет всё равно — лучше нам, пока это можно
+ * исправить, чем сразу в отзыв.
+ *
  * Порядок фраз важен. Сначала «это поможет нам и другим покупателям», и
  * только потом подарок: если начать с подарка, отзыв читается как
  * купленный — человек либо не пишет вовсе, либо пишет дежурно. Подарок
- * здесь благодарность, а не условие.
+ * здесь благодарность за следующий заказ, а не плата за отзыв.
  */
 export function buildReviewRequestText(
   productCategory: EnumProductCategory = EnumProductCategory.PHOTO,
@@ -154,17 +176,17 @@ export function buildReviewRequestText(
   return [
     'Здравствуйте! 😊',
     '',
-    `Спасибо, что доверили нам ${whatWasOrdered(productCategory)}. Надеемся, всё получилось так, как хотелось.`,
+    `Спасибо за заказ! Как вам ${howIsIt(productCategory)} — всё понравилось?`,
     '',
-    'Можно попросить вас оставить небольшой отзыв о заказе? Это очень поможет нам и позволит другим покупателям легче определиться с выбором.',
-    ...(place.gift
-      ? ['', `А в благодарность за отзыв мы подарим вам ${place.gift}`]
-      : []),
+    'Если что-то не так, напишите нам, пожалуйста: разберёмся и исправим.',
+    '',
+    'А если всё хорошо — можно попросить вас оставить небольшой отзыв? Отзывы помогают нам становиться лучше и позволяют другим покупателям легче определиться с выбором.',
     '',
     `Оставить отзыв можно по ссылке ${place.where}:`,
     place.url,
+    ...(place.gift ? ['', place.gift] : []),
     '',
-    'Заранее большое спасибо за вашу поддержку!',
+    'Спасибо, что выбрали нас!',
   ].join('\n');
 }
 @Injectable()
@@ -226,6 +248,8 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
         productCategory: true,
         sourceOrder: true,
         sentAt: true,
+        marketplaceDeliveredAt: true,
+        marketplacePostingNumber: true,
         communicationPlatform: true,
         urlCommunication: true,
       },
@@ -275,9 +299,6 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
       const pickupCutoff = new Date(
         Date.now() - REVIEW_REMINDER_PICKUP_DELAY_MS,
       );
-      const marketplaceCutoff = new Date(
-        Date.now() - MARKETPLACE_REVIEW_DELAY_MS,
-      );
       const orders = await this.prisma.orderPhoto.findMany({
         where: {
           productCategory: { in: REVIEW_REMINDER_CATEGORIES },
@@ -286,31 +307,30 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
           OR: [
             // Свои заказы: отсчёт от отправки клиенту.
             {
-              NOT: { productCategory: 'TSHIRT', isMarketplacePrint: true },
+              isMarketplacePrint: false,
               status: { in: REVIEW_REMINDER_STATUSES },
               deliveryMethod: EnumDeliveryMethod.PICKUP,
               sentAt: { lte: pickupCutoff },
             },
             {
-              NOT: { productCategory: 'TSHIRT', isMarketplacePrint: true },
+              isMarketplacePrint: false,
               status: { in: REVIEW_REMINDER_STATUSES },
               deliveryMethod: { not: EnumDeliveryMethod.PICKUP },
               sentAt: { lte: cutoff },
             },
             /*
-             * Заказ с площадки: пять дней от «Отгружен».
+             * Заказ с площадки: как только она сказала «Доставлен».
              *
              * Отдельная ветка, потому что у него SENT означает «передан
              * в производство». По общему правилу просьба уходила бы через
              * 3,5 дня после передачи в печать — человеку, который ещё
              * ничего не получил.
+             *
+             * Срока ожидания здесь нет намеренно: ждать уже нечего, товар
+             * у человека в руках. Дату выкупа ставит сверка с Ozon, и она
+             * же ограничивает поток — отметка появляется раз.
              */
-            {
-              productCategory: 'TSHIRT',
-              isMarketplacePrint: true,
-              status: 'COMPLETED',
-              completedAt: { lte: marketplaceCutoff },
-            },
+            { isMarketplacePrint: true, marketplaceDeliveredAt: { not: null } },
           ],
         },
         orderBy: { sentAt: 'asc' },
@@ -321,7 +341,8 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
           productCategory: true,
           sourceOrder: true,
           sentAt: true,
-          completedAt: true,
+          marketplaceDeliveredAt: true,
+          marketplacePostingNumber: true,
           isMarketplacePrint: true,
           communicationPlatform: true,
           urlCommunication: true,
@@ -363,13 +384,24 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Сообщение владельцу: что случилось, с кем говорить и что сказать.
+   *
+   * Отправляет просьбу человек, а не CRM. Писать покупателю из фона мы не
+   * можем и не должны: в Telegram первым пишет только живой аккаунт, а на
+   * площадке переписка модерируется, и автоматическая рассылка там — путь
+   * к блокировке. Поэтому владелец получает готовое: ссылку на диалог и
+   * текст одним куском, который копируется нажатием.
+   */
   private buildGroupNotification(order: {
     numberOrder: string;
     productCategory: EnumProductCategory;
     // Источник решает, куда звать за отзывом: сайт — на Яндекс Карты,
-    // остальные — на Авито.
+    // площадка — к себе, остальные — на Авито.
     sourceOrder: string;
     sentAt: Date | null;
+    marketplaceDeliveredAt?: Date | null;
+    marketplacePostingNumber?: string | null;
     communicationPlatform: EnumCommunication;
     urlCommunication: string;
   }): string {
@@ -377,8 +409,7 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
       order.communicationPlatform === EnumCommunication.AVITO
         ? 'Авито'
         : order.communicationPlatform;
-    const sentAt = order.sentAt ? formatRuDateTime(order.sentAt) : 'не указано';
-    const dialogUrl = escapeHtml(order.urlCommunication);
+    const chat = customerChat(order);
     const customerText = escapeHtml(
       buildReviewRequestText(
         order.productCategory,
@@ -387,14 +418,43 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
       ),
     );
 
+    /*
+     * Главная строка — дата события, по которому пришла просьба.
+     *
+     * У заказа с площадки это выкуп: покупатель забрал посылку, и именно
+     * поэтому мы спрашиваем «как вам футболка». У своего — наша отправка.
+     * Путать их нельзя: по дате владелец понимает, насколько свежо
+     * впечатление и о чём вообще речь.
+     */
+    const when = order.marketplaceDeliveredAt
+      ? `Выкуплен: ${formatRuDateTime(order.marketplaceDeliveredAt)}`
+      : `Отправлен: ${order.sentAt ? formatRuDateTime(order.sentAt) : 'не указано'}`;
+
+    /*
+     * Ссылка на диалог — либо настоящая, либо её нет.
+     *
+     * У заказа с Ozon в поле связи лежит то ссылка на чат, то просто номер
+     * отправления. Раньше номер подставлялся адресом в <a href>: Telegram
+     * рисовал ссылку, нажатие не вело никуда. Теперь либо ссылка, либо
+     * подсказка, что искать в кабинете.
+     */
+    const dialog = chat.href
+      ? `<a href="${escapeHtml(chat.href)}">открыть переписку</a>${
+          chat.hint ? ` — ${escapeHtml(chat.hint)}` : ''
+        }`
+      : `не записана${chat.hint ? ` (в заказе: ${escapeHtml(chat.hint)})` : ''}`;
+
     return [
       '⭐ <b>Пора попросить отзыв</b>',
       '',
       `Заказ: <code>${escapeHtml(order.numberOrder)}</code>`,
       `Категория: <b>${escapeHtml(categoryLabel(order.productCategory))}</b>`,
-      `Отправлен: ${escapeHtml(sentAt)}`,
+      escapeHtml(when),
       `Канал: ${escapeHtml(platform)}`,
-      `Диалог: <a href="${dialogUrl}">открыть переписку</a>`,
+      ...(order.marketplacePostingNumber
+        ? [`Отправление: <code>${escapeHtml(order.marketplacePostingNumber)}</code>`]
+        : []),
+      `Диалог: ${dialog}`,
       '',
       '<b>Сообщение клиенту для отправки:</b>',
       `<pre>${customerText}</pre>`,

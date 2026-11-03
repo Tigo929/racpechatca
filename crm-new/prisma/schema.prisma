@@ -234,6 +234,12 @@ model OrderPhoto {
   // идём в него. Без внешнего ключа намеренно — удаление кабинета не должно
   // ни удалять заказы, ни блокироваться ими.
   marketplaceAccountId String?
+  // Когда площадка сообщила, что покупатель забрал посылку («Доставлен»).
+  // Отдельно от closedAt и completedAt: заказ CRM закрывается уже на «везут»,
+  // а выкуп случается днями позже — и только он значит, что товар в руках.
+  // По этой дате уходит просьба об отзыве: до выкупа просить не о чем.
+  // Пусто — либо ещё не доставлен, либо заказ не маркетплейсный.
+  marketplaceDeliveredAt DateTime?
   // Когда заказ ушёл в «закрытые» (Оплачен/Завершён/Отменён). Пусто у активных.
   // По этому полю список сортируется: активные сверху, закрытые — вниз.
   // Сбрасывается в null при возврате заказа в работу.
@@ -305,6 +311,7 @@ model OrderPhoto {
   @@index([processedById])
   @@index([createdAt])
   @@index([closedAt])
+  @@index([isMarketplacePrint, marketplaceDeliveredAt])
   @@index([productCategory])
   @@index([status, productCategory])
   @@index([productCategory, status, reviewReminderNotifiedAt])

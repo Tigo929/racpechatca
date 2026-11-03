@@ -5,9 +5,10 @@ import { buildReviewRequestText, reviewPlace } from './review-reminder.service';
  * Просьба об отзыве: текст один, площадка и подарок зависят от источника.
  *
  * Тесты сторожат три вещи, в которых ошибка стоит дорого: площадку (зовём
- * человека туда, где он покупал), подарок на Ozon (его там быть не должно —
- * площадка запрещает вознаграждать за отзывы) и порядок фраз (подарок
- * раньше просьбы превращает отзыв в купленный).
+ * человека туда, где он покупал), формулировку подарка (вознаграждение ЗА
+ * ОТЗЫВ площадки запрещают — обещать можно только подарок к следующему
+ * заказу) и порядок фраз (подарок раньше просьбы превращает отзыв в
+ * купленный).
  */
 describe('просьба об отзыве', () => {
   const site = buildReviewRequestText(EnumProductCategory.PHOTO, 'WEBSITE');
@@ -59,38 +60,106 @@ describe('просьба об отзыве', () => {
     expect(reviewPlace('OZON').url).toContain('ozon.ru/my/orderlist');
   });
 
-  it('на Ozon подарка нет: площадка запрещает вознаграждать за отзывы', () => {
-    expect(ozon).not.toContain('благодарность');
-    expect(ozon).not.toContain('подарим');
+  it('подарок обещан везде, но нигде не ЗА отзыв', () => {
+    /*
+     * Решение владельца 03.11.2026: подарок обещаем и покупателям с
+     * площадки. До этого на Ozon его не было вовсе — из опасения, что это
+     * нарушает запрет вознаграждать за отзывы.
+     *
+     * Запрет касается платы ИМЕННО ЗА ОТЗЫВ. Поэтому текст обещает подарок
+     * к следующему заказу — это программа лояльности, которую площадки не
+     * запрещают, — и ни в одном варианте не связывает подарок с отзывом
+     * словами «за отзыв» или «в благодарность за отзыв». Эта проверка и
+     * сторожит формулировку: подарок останется, а условие появиться не
+     * должно.
+     */
+    for (const text of [site, avito, ozon]) {
+      expect(text).toContain('🎁');
+      expect(text).not.toContain('за отзыв');
+      expect(text).not.toContain('в благодарность');
+    }
+    // Доставку на площадке считает она сама — дарить её нечем.
     expect(ozon).not.toContain('доставку');
-    expect(reviewPlace('OZON').gift).toBeNull();
-    expect(reviewPlace('WB').gift).toBeNull();
+    expect(ozon).toContain('к следующему заказу приготовим');
+    expect(reviewPlace('OZON').gift).toContain('подарок');
+    expect(reviewPlace('WB').gift).toContain('подарок');
   });
 
-  it('своим клиентам подарок обещан', () => {
-    expect(site).toContain('бесплатную доставку на следующий заказ');
-    expect(avito).toContain('бесплатную доставку на следующий заказ');
+  it('своим клиентам обещана бесплатная доставка', () => {
+    expect(site).toContain('подарим вам бесплатную доставку');
+    expect(avito).toContain('подарим вам бесплатную доставку');
   });
 
   it('подарок идёт ПОСЛЕ просьбы, а не вместо неё', () => {
     // Иначе это выглядит как покупка отзыва.
-    expect(site.indexOf('оставить небольшой отзыв')).toBeLessThan(
-      site.indexOf('в благодарность'),
-    );
+    for (const text of [site, avito, ozon]) {
+      expect(text.indexOf('оставить небольшой отзыв')).toBeLessThan(
+        text.indexOf('🎁'),
+      );
+    }
+  });
+
+  it('начинается вопросом о товаре, а не просьбой', () => {
+    /*
+     * «Как вам футболка?» — вопрос, на который отвечают. «Оставьте отзыв»
+     * первой строкой — просьба, которую пролистывают. Поэтому вопрос стоит
+     * раньше, и в нём названа сама вещь.
+     */
+    expect(ozon).toContain('Как вам футболка');
+    expect(site).toContain('Как вам фотографии');
+    expect(
+      buildReviewRequestText(EnumProductCategory.CANVAS, 'AVITO'),
+    ).toContain('Как вам холст');
+
+    for (const text of [site, avito, ozon]) {
+      expect(text.indexOf('Как вам')).toBeLessThan(
+        text.indexOf('оставить небольшой отзыв'),
+      );
+    }
+  });
+
+  it('приглашает написать нам, если что-то не так', () => {
+    /*
+     * Недовольный покупатель напишет всё равно. Лучше нам, пока заказ можно
+     * переделать, чем сразу в отзыв, который останется навсегда.
+     */
+    for (const text of [site, avito, ozon]) {
+      expect(text).toContain('Если что-то не так, напишите нам');
+      expect(text.indexOf('Если что-то не так')).toBeLessThan(
+        text.indexOf('оставить небольшой отзыв'),
+      );
+    }
   });
 
   it('объясняет, зачем это покупателю, а не только нам', () => {
     expect(site).toContain('другим покупателям легче определиться');
   });
 
-  it('называет то, что человек заказывал', () => {
-    expect(
-      buildReviewRequestText(EnumProductCategory.TSHIRT, 'AVITO'),
-    ).toContain('футболку с принтом');
-    expect(
-      buildReviewRequestText(EnumProductCategory.CANVAS, 'AVITO'),
-    ).toContain('печать на холсте');
-    expect(site).toContain('печать фотографий');
+  it('не обещает того, чего мы не знаем', () => {
+    /*
+     * Своим клиентам просьба уходит по таймеру от отправки — доехала
+     * посылка или нет, мы в этот момент не знаем. «Заказ уже у вас» было бы
+     * догадкой, и у половины людей — неверной.
+     */
+    for (const text of [site, avito, ozon]) {
+      expect(text).not.toContain('уже у вас');
+      expect(text).not.toContain('получили заказ');
+    }
+  });
+
+  it('называет то, что человек заказывал, и ровно один раз', () => {
+    // Вещь называет сам вопрос. До 03.11.2026 её называла ещё и первая
+    // фраза, и выходило «доверили нам футболку… как вам футболка» подряд.
+    const tshirt = buildReviewRequestText(EnumProductCategory.TSHIRT, 'AVITO');
+    expect(tshirt).toContain('Как вам футболка');
+    expect(tshirt.match(/футболк/gi)).toHaveLength(1);
+
+    const canvas = buildReviewRequestText(EnumProductCategory.CANVAS, 'AVITO');
+    expect(canvas).toContain('Как вам холст');
+    expect(canvas.match(/холст/gi)).toHaveLength(1);
+
+    expect(site).toContain('Как вам фотографии');
+    expect(site.match(/фотограф/gi)).toHaveLength(1);
   });
 
   it('без источника — прежнее поведение: текст Авито', () => {

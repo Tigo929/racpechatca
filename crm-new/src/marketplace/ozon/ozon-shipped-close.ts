@@ -52,3 +52,19 @@ export function shouldCloseAsShipped(order: ShippedCandidate): boolean {
   if (!SHIPPED_GROUPS.has(order.marketplaceGroup)) return false;
   return CLOSABLE.has(order.status);
 }
+
+/**
+ * Выкупил ли покупатель посылку.
+ *
+ * `delivered` у Ozon означает именно это: человек забрал заказ в пункте
+ * выдачи или принял у курьера. Отличать это от `in_transit` важно, потому
+ * что заказ CRM закрывается на обоих: работа у нас кончилась, когда посылка
+ * уехала. А просить отзыв можно только после выкупа — у человека в руках
+ * должен быть товар, о котором его спрашивают.
+ *
+ * Отдельная функция рядом с правилом закрытия, чтобы два этих условия
+ * читались вместе: одно про нашу работу, другое про покупателя.
+ */
+export function isMarketplaceDelivered(group?: string | null): boolean {
+  return group === 'delivered';
+}
