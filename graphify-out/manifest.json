@@ -320,8 +320,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-photo.service.ts": {
-    "mtime": 1793287921.335286,
-    "ast_hash": "876a020c560b8d24a9948beadf2b4139",
+    "mtime": 1793614057.9002674,
+    "ast_hash": "09d039ccacbf6a4c2aa5601e16c5da5d",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-pricing.ts": {
@@ -330,18 +330,18 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/review-reminder-rules.ts": {
-    "mtime": 1790955030.2902682,
-    "ast_hash": "2bc3994568222c2a813929d2b6a02eab",
+    "mtime": 1793734265.753978,
+    "ast_hash": "5a48bf3431bfe0cc7ed08dd1f1bca731",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/review-reminder.service.ts": {
-    "mtime": 1790956114.1125607,
-    "ast_hash": "ab42319b05956f43960a29931b358b79",
+    "mtime": 1793734352.3939686,
+    "ast_hash": "b7617eaf2f386f20a1e062ad85d5fbce",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/review-reminder.spec.ts": {
-    "mtime": 1790955150.6634119,
-    "ast_hash": "c4e05f4fb961722674582b31bf9d9cf5",
+    "mtime": 1793734352.394973,
+    "ast_hash": "58e4cb020fcaca72ec358f87694346c1",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/sticker.module.ts": {
@@ -605,8 +605,8 @@
     "semantic_hash": ""
   },
   "frontend/package.json": {
-    "mtime": 1793098674.5295117,
-    "ast_hash": "b582675fca080838fb6cdb1fdcb8f055",
+    "mtime": 1793461333.0372455,
+    "ast_hash": "6428fa4f350192a6c625d54a447d4ca2",
     "semantic_hash": ""
   },
   "frontend/src/App.tsx": {
@@ -685,13 +685,13 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderDetail.tsx": {
-    "mtime": 1793363755.0313804,
-    "ast_hash": "fd203ad0f2669a72e57172f8e21dc64b",
+    "mtime": 1793614057.9032662,
+    "ast_hash": "18f5181d4879e9f14d99a7681798849d",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OrderEditForm.tsx": {
-    "mtime": 1791578994.8783965,
-    "ast_hash": "b3fbe1ad7978d5300ffa23e0a9321cc5",
+    "mtime": 1793614057.9042664,
+    "ast_hash": "eccf8e7318a0fe924e883f413a470015",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/StatusStepper.tsx": {
@@ -1415,8 +1415,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/CanvasItemsTable.tsx": {
-    "mtime": 1791578877.2888272,
-    "ast_hash": "da6a239fa2de8c4ad853286ad228ec55",
+    "mtime": 1793616536.7737367,
+    "ast_hash": "67b44673de1956a3b75ddd807f60ab1f",
     "semantic_hash": ""
   },
   "frontend/src/config/photo-formats.ts": {
@@ -1705,8 +1705,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval-render.service.ts": {
-    "mtime": 1790950410.3251882,
-    "ast_hash": "c8f8df01020d73dc92e4c79fdc243089",
+    "mtime": 1793617186.9155512,
+    "ast_hash": "0e970d41525414db425c67f221901cdc",
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval-render.spec.ts": {
@@ -1780,8 +1780,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/canvas/canvas-production.controller.ts": {
-    "mtime": 1790264005.5339463,
-    "ast_hash": "3bb1de1c8061126bd2239c8f0de7b255",
+    "mtime": 1793616433.1622524,
+    "ast_hash": "96a8b6f03fac4776b0046448683586f3",
     "semantic_hash": ""
   },
   "crm-new/src/canvas/canvas.module.ts": {
@@ -1815,8 +1815,8 @@
     "semantic_hash": ""
   },
   "frontend/src/api/canvasProduction.ts": {
-    "mtime": 1790264005.5419452,
-    "ast_hash": "d0eec43a96eec2d809c746fda25fb139",
+    "mtime": 1793616440.6505244,
+    "ast_hash": "a358bb488fba44fd566c5a453d1e63f7",
     "semantic_hash": ""
   },
   "frontend/src/components/approval/ApprovalEditor.tsx": {
@@ -2200,8 +2200,8 @@
     "semantic_hash": ""
   },
   "greeter/login.py": {
-    "mtime": 1788594987.3830411,
-    "ast_hash": "9a33209ea37b615cd7a3d1c5aa6d97c7",
+    "mtime": 1793715969.7258174,
+    "ast_hash": "b373eaa7ff3c7dcbc1fdc75bf520d679",
     "semantic_hash": ""
   },
   "greeter/proxy_config.py": {
@@ -2260,8 +2260,8 @@
     "semantic_hash": ""
   },
   "greeter/requirements.txt": {
-    "mtime": 1790072386.139507,
-    "ast_hash": "7c215531d7e6e7ddeeed4bb3319264ea",
+    "mtime": 1793717426.3675356,
+    "ast_hash": "a3b696caeb452836d4ac9373199b4bae",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/greeting-message.spec.ts": {
@@ -3925,8 +3925,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-edit-integrity.spec.ts": {
-    "mtime": 1790072386.0710993,
-    "ast_hash": "7093e882f85f5c5c785b419c3d60ed8d",
+    "mtime": 1793614138.9199128,
+    "ast_hash": "062c44bbe4817f98056166859b998233",
     "semantic_hash": ""
   },
   "crm-new/src/reports/delivery-margin.spec.ts": {
@@ -4130,8 +4130,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval-client-item.spec.ts": {
-    "mtime": 1790264005.5269504,
-    "ast_hash": "e769d620ed061a7b7c12b5384a4b6766",
+    "mtime": 1793617228.9450636,
+    "ast_hash": "b659542f732ff185654fe680f1111f91",
     "semantic_hash": ""
   },
   "crm-new/src/deploy-auto-update.spec.ts": {
@@ -4400,13 +4400,13 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/CanvasPriceMode.test.tsx": {
-    "mtime": 1790283897.7425475,
-    "ast_hash": "111e8a34c58a84949af43e7af581b824",
+    "mtime": 1793616614.1908505,
+    "ast_hash": "dff3f3566f1017cec767d0c6886191ec",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/MarketplaceSource.test.tsx": {
-    "mtime": 1790341484.9599683,
-    "ast_hash": "e9147b8309d117e4aa8d9649efa152a3",
+    "mtime": 1793614057.901266,
+    "ast_hash": "98b83c2ce8def5494d61de4ff6a14038",
     "semantic_hash": ""
   },
   "frontend/src/utils/order-number.ts": {
@@ -4655,8 +4655,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon-shipped-close.service.ts": {
-    "mtime": 1792688851.6565878,
-    "ast_hash": "795b297d496552afc6ceac37ae7dde45",
+    "mtime": 1793733923.449669,
+    "ast_hash": "9953724043f6fa752f13096925771c88",
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon/ozon-article.spec.ts": {
@@ -4690,8 +4690,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/marketplace/ozon/ozon-shipped-close.ts": {
-    "mtime": 1790955215.9716496,
-    "ast_hash": "a3b6cd0073790df57f680ffe7067899c",
+    "mtime": 1793733888.0714598,
+    "ast_hash": "d2e5a525828bf0111aa7eb9cfa6c2aea",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/client-draft.service.ts": {
@@ -4735,8 +4735,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/site-review-text.spec.ts": {
-    "mtime": 1790956130.5488143,
-    "ast_hash": "79bccc608f5d51fa5653258c23506330",
+    "mtime": 1793734352.394973,
+    "ast_hash": "20d0e480acb7253fa1dcb60c71bcc70b",
     "semantic_hash": ""
   },
   "frontend/src/components/marketplace/OzonOrderModal.test.tsx": {
@@ -5312,6 +5312,41 @@
   "frontend/src/utils/marketplace-print.ts": {
     "mtime": 1793366020.0707264,
     "ast_hash": "571f58aee538c18b0c2851ea2ffa7bdb",
+    "semantic_hash": ""
+  },
+  "crm-new/src/canvas/canvas-client-price.spec.ts": {
+    "mtime": 1793616557.514613,
+    "ast_hash": "19c50b616006b872fcdff3e6c6239c2f",
+    "semantic_hash": ""
+  },
+  "crm-new/src/marketplace/ozon/ozon-delivered.spec.ts": {
+    "mtime": 1793734244.150625,
+    "ast_hash": "17be80cc099b1d16355129c453ae0a60",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/customer-chat-url.spec.ts": {
+    "mtime": 1793734244.0716894,
+    "ast_hash": "58379e6f0cd198bd30b55d7007a9c5d6",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/customer-chat-url.ts": {
+    "mtime": 1793733973.9104,
+    "ast_hash": "77cfb82ecec680631718ea4c4ad1c3d8",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/review-notification.spec.ts": {
+    "mtime": 1793734383.152633,
+    "ast_hash": "a51a2e27612adb1d4a345eb6144e02ca",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/orders/CanvasSitePrice.test.tsx": {
+    "mtime": 1793616514.3954816,
+    "ast_hash": "f64a4261b12c7e8b3cb1a0447a1b79a9",
+    "semantic_hash": ""
+  },
+  "greeter/login_steps.py": {
+    "mtime": 1793717426.3685343,
+    "ast_hash": "e458c8c9d356077cea2a035332c11650",
     "semantic_hash": ""
   }
 }
