@@ -12,6 +12,7 @@ import { OzonCatalogTemplateService } from './ozon-catalog-template.service';
 import { OzonPrintService } from './ozon-print.service';
 import { OzonImportService } from './ozon-import.service';
 import { OzonImportPollService } from './ozon-import-poll.service';
+import { OzonAutoshipService } from './ozon-autoship.service';
 import { OzonShippedCloseService } from './ozon-shipped-close.service';
 import { OzonShippedClosePollService } from './ozon-shipped-close-poll.service';
 import { OzonCatalogController } from './ozon-catalog.controller';
@@ -29,6 +30,7 @@ import { OzonBulkStockProcessorService } from './ozon/ozon-bulk-stock-processor.
 import { OzonCrmOrderService } from './ozon-crm-order.service';
 import { OrderPhotoModule } from 'src/order-photo/order-photo.module';
 import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
+import { TelegramModule } from 'src/telegram/telegram.module';
 
 /**
  * Интеграции с маркетплейсами. Ozon — первая площадка; следующая добавляется
@@ -36,7 +38,15 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
  * (MarketplaceAccountService) переиспользуется как есть.
  */
 @Module({
-  imports: [PrismaModule, OrderPhotoModule, MetrikaOrdersModule],
+  // TelegramModule — предупредить владельца, когда площадка отказалась
+  // собирать отправление: автоматика к нему больше не вернётся, и собрать
+  // придётся руками. Обратной зависимости нет.
+  imports: [
+    PrismaModule,
+    OrderPhotoModule,
+    MetrikaOrdersModule,
+    TelegramModule,
+  ],
   // OzonPhotoController раньше OzonCatalogController: его путь
   // marketplace/ozon/photos/:file не должен попасть под :accountId-маршруты.
   controllers: [
@@ -60,6 +70,7 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
     OzonPrintService,
     OzonImportService,
     OzonImportPollService,
+    OzonAutoshipService,
     OzonShippedCloseService,
     OzonShippedClosePollService,
     OzonPhotoStorageService,

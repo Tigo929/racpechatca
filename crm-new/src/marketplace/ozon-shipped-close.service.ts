@@ -3,7 +3,12 @@ import { EnumStatus } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MetrikaOrderOutboxService } from 'src/metrika/orders/metrika-order-outbox.service';
 import { MarketplaceAccountService } from './marketplace-account.service';
-import { OzonOrdersService } from './ozon/ozon-orders.service';
+import {
+  OzonOrdersService,
+  type OzonOrderView,
+} from './ozon/ozon-orders.service';
+import { OzonAutoshipService } from './ozon-autoship.service';
+import { shouldShipToAssembly } from './ozon/ozon-autoship';
 import {
   isMarketplaceDelivered,
   shouldCloseAsShipped,
@@ -21,7 +26,15 @@ import {
  * отправлений по открытым заказам и переводит в «Отгружен» те, которые
  * Ozon уже везёт или доставил.
  *
- * Заодно отмечает выкуп. Заказ закрывается уже на «везут», а забирают
+ * Заодно делает ещё две вещи — обе на тех же, уже полученных состояниях
+ * отправлений, без лишних запросов к площадке.
+ *
+ * Отправляет на сборку. «Передан в производство» в CRM и «Собрать» в
+ * кабинете — одно решение, которое принималось дважды; второй раз
+ * забывалось, и отправление висело в «ждёт отгрузки» до сгоревшего срока.
+ * Выключено по умолчанию: сборку в Ozon не отменить (OzonAutoshipService).
+ *
+ * Отмечает выкуп. Заказ закрывается уже на «везут», а забирают
  * посылку днями позже — и только это значит, что товар у человека в руках.
  * Дату выкупа ждёт просьба об отзыве: до неё спрашивать «как вам футболка»
  * не о чем. Спрашиваем здесь, а не вторым опросом, потому что состояния
@@ -56,6 +69,7 @@ export class OzonShippedCloseService {
     private readonly accounts: MarketplaceAccountService,
     private readonly orders: OzonOrdersService,
     private readonly metrikaOutbox: MetrikaOrderOutboxService,
+    private readonly autoship: OzonAutoshipService,
   ) {}
 
   async pollOnce(): Promise<void> {
@@ -94,6 +108,7 @@ export class OzonShippedCloseService {
           status: true,
           closedAt: true,
           marketplaceDeliveredAt: true,
+          marketplaceShipRequestedAt: true,
           marketplacePostingNumber: true,
           marketplaceAccountId: true,
         },
@@ -114,11 +129,42 @@ export class OzonShippedCloseService {
 
       let closed = 0;
       let delivered = 0;
+      let shipped = 0;
       for (const [accountId, ordersOfAccount] of byAccount) {
-        const groups = await this.groupsFor(accountId);
-        if (!groups) continue;
+        const postings = await this.postingsFor(accountId);
+        if (!postings) continue;
         for (const order of ordersOfAccount) {
-          const group = groups.get(order.marketplacePostingNumber!);
+          const posting = postings.get(order.marketplacePostingNumber!);
+          const group = posting?.group;
+
+          /*
+           * Сборка — первым делом и только если включена.
+           *
+           * Раньше закрытия и выкупа потому, что это единственное
+           * действие, меняющее что-то на стороне площадки: остальные две
+           * отметки живут у нас и подождут следующего тика.
+           */
+          if (
+            this.autoship.enabled &&
+            shouldShipToAssembly({
+              status: order.status,
+              marketplaceShipRequestedAt: order.marketplaceShipRequestedAt,
+              marketplaceGroup: group,
+              items: posting?.items,
+            })
+          ) {
+            const result = await this.autoship.ship({
+              id: order.id,
+              numberOrder: order.numberOrder,
+              marketplacePostingNumber: order.marketplacePostingNumber!,
+              marketplaceAccountId: order.marketplaceAccountId!,
+              posting: posting!,
+            });
+            if (result === 'shipped') shipped += 1;
+            // Состояние отправления только что изменилось: закрывать и
+            // отмечать выкуп по устаревшему ответу нельзя.
+            continue;
+          }
 
           // Выкуп отмечаем раньше закрытия: если следом что-то упадёт,
           // потеряется закрытие заказа (его поправит следующий тик), а не
@@ -153,21 +199,24 @@ export class OzonShippedCloseService {
       if (delivered > 0) {
         this.logger.log(`Отмечено выкупов: ${delivered}`);
       }
+      if (shipped > 0) {
+        this.logger.log(`Отправлено на сборку: ${shipped}`);
+      }
     } finally {
       this.running = false;
     }
   }
 
   /**
-   * Состояния отправлений кабинета: номер → группа.
+   * Отправления кабинета: номер → отправление.
    *
    * Кабинет может не ответить — ключ отозвали, площадка прилегла. Это не
    * повод валить тик: вернём пусто, и заказы просто закроются в следующий
    * раз. Молчать об этом тоже нельзя, поэтому пишем в журнал.
    */
-  private async groupsFor(
+  private async postingsFor(
     accountId: string,
-  ): Promise<Map<string, string> | null> {
+  ): Promise<Map<string, OzonOrderView> | null> {
     try {
       const creds = await this.accounts.credentials(accountId);
       const page = await this.orders.list(creds, {
@@ -177,7 +226,7 @@ export class OzonShippedCloseService {
         // экран и фоновая сверка продолжают делить один кешированный ответ.
         limit: 1000,
       });
-      return new Map(page.orders.map((o) => [o.postingNumber, o.group]));
+      return new Map(page.orders.map((o) => [o.postingNumber, o]));
     } catch (error) {
       this.logger.warn(
         `Кабинет ${accountId}: не удалось получить отправления — ${
