@@ -1272,8 +1272,11 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           {/* Контакт клиента с действием: Telegram — кликабельный ник (сразу
               в чат), MAX — телефон + «Скопировать номер». */}
           <OrderContact
+            orderId={order.id}
             platform={order.communicationPlatform}
             url={order.urlCommunication}
+            clientTelegram={order.clientTelegram}
+            reviewRequestStatus={order.reviewRequestStatus}
           />
           {/* Приветственное сообщение. Бот шлёт его сам в Telegram; здесь
               менеджер копирует ровно тот же текст и отправляет руками — так

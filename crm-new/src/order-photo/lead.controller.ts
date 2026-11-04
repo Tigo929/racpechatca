@@ -26,6 +26,7 @@ import {
   ClientDraftService,
   isDraftStatus,
 } from './client-draft.service';
+import { ClientReviewService } from './client-review.service';
 
 /**
  * Публичный контроллер для заявок с лендинга.
@@ -56,6 +57,7 @@ export class LeadController {
     private readonly orderPhotoService: OrderPhotoService,
     private readonly greeting: ClientGreetingService,
     private readonly draft: ClientDraftService,
+    private readonly clientReview: ClientReviewService,
   ) {}
 
   @Post('lead')
@@ -167,6 +169,38 @@ export class LeadController {
       throw new BadRequestException(`Неизвестный итог: ${status}`);
     }
     await this.draft.mark(id, status);
+    return { ok: true };
+  }
+
+  /*
+   * Очередь просьб об отзыве, которые уходят клиенту сами.
+   *
+   * Тот же доверенный контур, что у приветствий и черновиков. Отдаётся
+   * минимум: номер заказа, никнейм и готовый текст — ни суммы, ни состава,
+   * ни телефона воркеру для этого не нужно.
+   */
+  @Get('review/pending')
+  async pendingReviewRequests(@Query('limit') limit?: string) {
+    const parsed = Number.parseInt(limit ?? '5', 10);
+    return {
+      items: await this.clientReview.pending(
+        Number.isFinite(parsed) ? parsed : 5,
+      ),
+    };
+  }
+
+  @Post('review/mark')
+  @HttpCode(200)
+  async markReviewRequest(@Body() body: { id?: string; status?: string }) {
+    const id = (body.id ?? '').trim();
+    const status = (body.status ?? '').trim();
+    if (!id) throw new BadRequestException('Не указан заказ.');
+    // Итоги те же, что у приветствий: это одна и та же отправка одним и тем
+    // же аккаунтом, и второй список отказов разошёлся бы с первым.
+    if (!isGreetingStatus(status)) {
+      throw new BadRequestException(`Неизвестный итог: ${status}`);
+    }
+    await this.clientReview.mark(id, status);
     return { ok: true };
   }
 }

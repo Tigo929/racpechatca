@@ -32,7 +32,7 @@ describe('автосборка Ozon', () => {
     const post = opts.post ?? jest.fn().mockResolvedValue({});
     const sendToOwner = jest.fn().mockResolvedValue(true);
     const service = new OzonAutoshipService(
-      { get: () => (opts.enabled ? 'true' : undefined) } as never,
+      { get: () => (opts.enabled ? 'true' : 'false') } as never,
       { orderPhoto: { update } } as never,
       { credentials: jest.fn().mockResolvedValue({ clientId: 'c' }) } as never,
       { post } as never,
@@ -45,6 +45,17 @@ describe('автосборка Ozon', () => {
     // Выкатка кода не должна сама начать собирать посылки.
     expect(build({ enabled: false }).service.enabled).toBe(false);
     expect(build({ enabled: true }).service.enabled).toBe(true);
+    // Переменной нет — автоматика работает: пустая настройка не должна
+    // означать «молча не собирать». Останавливает только явный false.
+    expect(
+      new OzonAutoshipService(
+        { get: () => undefined } as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+      ).enabled,
+    ).toBe(true);
   });
 
   it('собирает одной упаковкой по sku позиций', async () => {

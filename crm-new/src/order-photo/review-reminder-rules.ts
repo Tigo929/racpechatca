@@ -22,6 +22,60 @@ export const REVIEW_REMINDER_STATUSES: EnumStatus[] = [
   EnumStatus.PAID,
 ];
 
+/**
+ * Сколько ждём автоматическую отправку, прежде чем позвать человека.
+ *
+ * Просьбу об отзыве отправляет живой аккаунт (воркер), и обычно это
+ * занимает секунды. Но воркер может стоять: перевыпускают сессию, упал
+ * контейнер, Telegram ограничил частоту. Если молча ждать его вечно,
+ * просьба не уйдёт вообще, и мы даже не узнаем — поэтому через этот срок
+ * заказ попадает в обычное напоминание владельцу, и тот пишет руками.
+ */
+export const REVIEW_AUTOSEND_GRACE_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * С какого момента уместно просить отзыв.
+ *
+ * У заказа с площадки это выкуп, у своего — наша отправка. Одна функция
+ * на оба пути: по этой же дате считается и ожидание автоматики, и
+ * «пора звать человека».
+ */
+export function reviewDueAt(order: {
+  isMarketplacePrint?: boolean | null;
+  marketplaceDeliveredAt?: Date | null;
+  sentAt: Date | null;
+}): Date | null {
+  return order.isMarketplacePrint
+    ? (order.marketplaceDeliveredAt ?? null)
+    : (order.sentAt ?? null);
+}
+
+/**
+ * Ждём ли мы ещё, что просьба уйдёт клиенту сама.
+ *
+ * Пока ждём, владельца не трогаем: иначе он отправит просьбу руками, а
+ * через минуту её же отправит автоматика — и клиент получит одно и то же
+ * сообщение дважды.
+ */
+export function waitsForAutoReview(
+  order: {
+    clientTelegram?: string | null;
+    reviewRequestStatus?: string | null;
+    isMarketplacePrint?: boolean | null;
+    marketplaceDeliveredAt?: Date | null;
+    sentAt: Date | null;
+  },
+  now = new Date(),
+): boolean {
+  if (!order.clientTelegram) return false;
+  // Попытка уже была: удачная закрывает вопрос, неудачная — повод позвать
+  // человека, а не ждать дальше.
+  if (order.reviewRequestStatus) return false;
+  const due = reviewDueAt(order);
+  if (!due) return false;
+  return due.getTime() > now.getTime() - REVIEW_AUTOSEND_GRACE_MS;
+}
+
 export function reviewReminderDelayMs(
   deliveryMethod: EnumDeliveryMethod,
 ): number {

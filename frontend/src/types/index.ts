@@ -158,8 +158,19 @@ export interface OrderPhoto {
   reviewReminderNotifiedAt?: string | null;
   /** Когда оператор нажал «Отправил клиенту» под напоминанием об отзыве. */
   reviewRequestSentAt?: string | null;
-  /** Кто нажал «Отправил клиенту» (Telegram-ник/имя). */
+  /** Кто нажал «Отправил клиенту» (Telegram-ник/имя) или «auto». */
   reviewRequestSentBy?: string | null;
+  /**
+   * Итог автоматической просьбы об отзыве: sent либо причина отказа
+   * (privacy, not_found, blocked, flood, error). Пусто — не пробовали.
+   */
+  reviewRequestStatus?: string | null;
+  /**
+   * Telegram покупателя с площадки — второй канал рядом с чатом кабинета.
+   * Хранится как «@name». Пусто — клиент в Telegram не писал.
+   */
+  clientTelegram?: string | null;
+  clientTelegramAt?: string | null;
   /** Когда статус менялся в последний раз — по нему видно зависшие заказы. */
   statusChangedAt?: string | null;
   executorId?: string | null;

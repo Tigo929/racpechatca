@@ -129,7 +129,7 @@ services:
       # превращается в «Собрать» в кабинете. Выключено по умолчанию
       # намеренно — сборку в Ozon не отменить, площадка с этого момента
       # ждёт посылку у перевозчика. Включать осознанно.
-      OZON_AUTOSHIP_ENABLED: ${OZON_AUTOSHIP_ENABLED:-false}
+      OZON_AUTOSHIP_ENABLED: ${OZON_AUTOSHIP_ENABLED:-true}
       AVITO_MESSENGER_POLLING_ENABLED: ${AVITO_MESSENGER_POLLING_ENABLED:-true}
       AVITO_MESSENGER_POLLING_INTERVAL_MS: ${AVITO_MESSENGER_POLLING_INTERVAL_MS:-60000}
       UPLOAD_DIR: /app/uploads

@@ -24,6 +24,12 @@ import {
   type CanvasAddons,
 } from './canvas-addons';
 import { MANUAL_DEFAULT_ORIGIN } from './order-origin';
+import { OrderEventsService } from 'src/events/order-events.service';
+import {
+  ClientTelegramError,
+  normalizeClientTelegram,
+  type ClientTelegram,
+} from './client-telegram';
 import { MetrikaOrderOutboxService } from 'src/metrika/orders/metrika-order-outbox.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import DtoCreateOrder from './dto/create-order.dto';
@@ -262,6 +268,13 @@ export class OrderPhotoService {
     private readonly metrikaOutbox: MetrikaOrderOutboxService,
     private readonly sitePhotos: SitePhotosService,
     private readonly archive: OrderArchiveService,
+    /*
+     * Шина событий. Последним параметром и с осторожным вызовом ниже:
+     * юнит-тесты собирают сервис руками и передают не все зависимости,
+     * а падать из-за ненастроенной шины смена статуса не должна — она
+     * только ускоряет фоновую работу, которую доделает опрос.
+     */
+    private readonly orderEvents?: OrderEventsService,
   ) {}
 
   async createOrder(dto: DtoCreateOrder, adminId?: string) {
@@ -2301,6 +2314,28 @@ export class OrderPhotoService {
         .catch(() => undefined);
     }
 
+    /*
+     * «Передан в производство» у маркетплейсного заказа — то же решение,
+     * что «Собрать» в кабинете площадки. Говорим об этом сразу, а не ждём
+     * сверки: владелец нажимал кнопку в CRM, шёл в кабинет и видел, что
+     * отправление всё ещё ждёт отгрузки.
+     *
+     * Событие — ускорение, а не гарантия: оно живёт в памяти процесса.
+     * Если подписчик не отработал, отправление соберёт та же сверка,
+     * что и раньше.
+     */
+    if (
+      newStatus === EnumStatus.SENT &&
+      order.status !== newStatus &&
+      result.isMarketplacePrint
+    ) {
+      this.orderEvents?.emitSentToProduction({
+        orderId: id,
+        numberOrder: result.numberOrder,
+        isMarketplacePrint: true,
+      });
+    }
+
     return result;
   }
 
@@ -2669,6 +2704,59 @@ export class OrderPhotoService {
     return this.prisma.orderPhoto.update({
       where: { id: idOrder },
       data: { photosResolvedAt: new Date() },
+      include: {
+        items: true,
+        tshirtItems: true,
+        canvasItems: true,
+        executor: { select: { id: true, username: true } },
+      },
+    });
+  }
+
+  /**
+   * «Клиент написал нам в Telegram» — записать его ник.
+   *
+   * Маркетплейсный заказ начинается с чата кабинета, и этот чат остаётся:
+   * покупатель пишет туда, площадка видит переписку, и по номеру
+   * отправления диалог находится. Но в чате кабинета неудобно всё, кроме
+   * коротких ответов, поэтому в разговоре мы просим написать в Telegram.
+   * Написал — ник сюда, и дальше у заказа два канала.
+   *
+   * Канал связи заказа (`communicationPlatform`) при этом НЕ меняется:
+   * по нему считается, откуда заказ и куда звать за отзывом, и подмена
+   * площадки на Telegram сломала бы и то и другое.
+   */
+  async setClientTelegram(idOrder: string, value: string | null) {
+    const order = await this.getOrderById(idOrder, '', EnumRole.ADMIN);
+
+    let parsed: ClientTelegram;
+    try {
+      parsed = normalizeClientTelegram(value);
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof ClientTelegramError
+          ? error.message
+          : 'Не удалось разобрать Telegram покупателя.',
+      );
+    }
+
+    if ((order.clientTelegram ?? null) === parsed.stored) return order;
+
+    this.logger.log(
+      parsed.stored
+        ? `Заказ ${order.numberOrder}: Telegram покупателя — ${parsed.stored}`
+        : `Заказ ${order.numberOrder}: Telegram покупателя убран`,
+    );
+
+    return this.prisma.orderPhoto.update({
+      where: { id: idOrder },
+      data: {
+        clientTelegram: parsed.stored,
+        // Дата появления ника, а не последней правки: по ней видно, с
+        // какого момента с человеком можно говорить напрямую. Убрали ник —
+        // убираем и дату, иначе она врёт о канале, которого нет.
+        clientTelegramAt: parsed.stored ? new Date() : null,
+      },
       include: {
         items: true,
         tshirtItems: true,

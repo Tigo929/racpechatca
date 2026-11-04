@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { OrderPhotoService } from './order-photo.service';
 import { ClientDraftService } from './client-draft.service';
+import { ClientReviewService } from './client-review.service';
 import { ClientGreetingService } from './client-greeting.service';
 import { OrderItemService } from './order-item.service';
 import { TshirtItemService } from './tshirt-item.service';
@@ -23,6 +24,7 @@ import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service'
 import { SitePhotosService } from './site-photos.service';
 import { SiteLeadTokenGuard } from './site-lead-token.guard';
 import { PushModule } from 'src/push/push.module';
+import { OrderEventsModule } from 'src/events/order-events.module';
 import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
 
 @Module({
@@ -33,12 +35,14 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
     GulianModule,
     PushModule,
     MetrikaOrdersModule,
+    OrderEventsModule,
   ],
   controllers: [LeadController, OrderPhotoController],
   providers: [
     OrderPhotoService,
     ClientGreetingService,
     ClientDraftService,
+    ClientReviewService,
     OrderItemService,
     TshirtItemService,
     CanvasItemService,

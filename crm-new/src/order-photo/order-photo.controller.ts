@@ -47,6 +47,7 @@ import { DtoUpdateTshirtItem } from './dto/update-tshirt-item.dto';
 import { DtoCreateCanvasItem } from './dto/create-canvas-item.dto';
 import { DtoUpdateCanvasItem } from './dto/update-canvas-item.dto';
 import { DtoAssignExecutor } from './dto/assign-executor.dto';
+import { DtoSetClientTelegram } from './dto/set-client-telegram.dto';
 import { DtoSetReview } from './dto/set-review.dto';
 
 interface RequestUser {
@@ -281,6 +282,22 @@ export class OrderPhotoController {
   @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
   setReview(@Param('idOrder') idOrder: string, @Body() dto: DtoSetReview) {
     return this.orderPhotoService.setReviewLeft(idOrder, dto.reviewLeft);
+  }
+
+  /**
+   * Клиент написал нам в Telegram — записываем его ник.
+   *
+   * Отдельным маршрутом, а не полем в общей правке заказа: это действие
+   * одного нажатия прямо из карточки, в тот момент, когда менеджер видит
+   * сообщение от клиента. Пустое значение убирает запись.
+   */
+  @Patch(':idOrder/client-telegram')
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  setClientTelegram(
+    @Param('idOrder') idOrder: string,
+    @Body() dto: DtoSetClientTelegram,
+  ) {
+    return this.orderPhotoService.setClientTelegram(idOrder, dto.value ?? null);
   }
 
   // ── Admin-only: add / update / delete items ────────────────────────────────

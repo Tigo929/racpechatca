@@ -95,6 +95,23 @@ export const ordersApi = {
   },
 
   /**
+   * Клиент написал нам в Telegram — записать его ник.
+   *
+   * Пустая строка убирает запись: клиент дал не тот ник, и держать мусор
+   * в заказе хуже, чем не держать ничего.
+   */
+  setClientTelegram: async (
+    orderId: string,
+    value: string,
+  ): Promise<OrderPhoto> => {
+    const { data } = await api.patch<OrderPhoto>(
+      `/order-photo/${orderId}/client-telegram`,
+      { value },
+    );
+    return data;
+  },
+
+  /**
    * Текст первого сообщения клиенту — тот же, что отправляет воркер
    * в телеграм. Нужен там, где написать автоматически нельзя.
    */

@@ -16,8 +16,10 @@ import {
   REVIEW_REMINDER_DELAY_MS,
   REVIEW_REMINDER_PICKUP_DELAY_MS,
   REVIEW_REMINDER_STATUSES,
+  waitsForAutoReview,
 } from './review-reminder-rules';
 import { customerChat } from './customer-chat-url';
+import { telegramUsernameFromUrl } from './client-greeting';
 
 const REVIEW_REMINDER_SCAN_MS = 60 * 60 * 1000;
 /** Пауза между сообщениями ручной пересылки: Telegram даёт ~20/мин в чат. */
@@ -52,6 +54,21 @@ const OZON_REVIEW_URL = 'https://www.ozon.ru/my/orderlist';
 
 const YANDEX_REVIEW_URL =
   'https://yandex.ru/maps/org/raspechatka/169229058790/reviews/';
+
+/**
+ * Почему просьба не ушла клиенту сама — словами для человека.
+ *
+ * Коды воркера («privacy», «not_found») владельцу ничего не говорят, а
+ * знать нужно одно: писать придётся руками и почему. Удачной отправки
+ * в этом списке нет — о ней напоминание вообще не приходит.
+ */
+const AUTO_FAILURE_REASONS: Record<string, string | undefined> = {
+  not_found: 'такого ника в Telegram нет — проверьте запись в заказе',
+  privacy: 'клиент не принимает сообщения от незнакомых',
+  blocked: 'клиент заблокировал наш аккаунт',
+  flood: 'Telegram ограничил частоту — пробуем ещё, но можно и руками',
+  error: 'Telegram отказал',
+};
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -304,6 +321,8 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
           productCategory: { in: REVIEW_REMINDER_CATEGORIES },
           clientReviewLeft: false,
           reviewReminderNotifiedAt: null,
+          // Клиенту уже написали (сами или руками) — звать человека не о чем.
+          reviewRequestSentAt: null,
           OR: [
             // Свои заказы: отсчёт от отправки клиенту.
             {
@@ -346,10 +365,22 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
           isMarketplacePrint: true,
           communicationPlatform: true,
           urlCommunication: true,
+          clientTelegram: true,
+          reviewRequestStatus: true,
         },
       });
 
       for (const order of orders) {
+        /*
+         * Просьба уйдёт клиенту сама — владельца пока не трогаем.
+         *
+         * Иначе он получит напоминание, отправит текст руками, а через
+         * минуту то же сообщение отправит автоматика: клиент прочитает
+         * просьбу об отзыве дважды. Если автоматика не справилась или
+         * молчит дольше выдержки, заказ попадёт сюда следующим проходом
+         * вместе с причиной.
+         */
+        if (waitsForAutoReview(order)) continue;
         // Кнопка: оператор нажимает после отправки запроса отзыва клиенту —
         // вебхук (telegram-webhook.controller) ставит отметку в CRM.
         const replyMarkup = {
@@ -404,6 +435,10 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
     marketplacePostingNumber?: string | null;
     communicationPlatform: EnumCommunication;
     urlCommunication: string;
+    /** Telegram покупателя, если он нам писал: второй канал рядом с площадкой. */
+    clientTelegram?: string | null;
+    /** Почему просьба не ушла клиенту сама. Пусто — не пробовали. */
+    reviewRequestStatus?: string | null;
   }): string {
     const platform =
       order.communicationPlatform === EnumCommunication.AVITO
@@ -444,6 +479,12 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
         }`
       : `не записана${chat.hint ? ` (в заказе: ${escapeHtml(chat.hint)})` : ''}`;
 
+    const username = telegramUsernameFromUrl(order.clientTelegram ?? null);
+    const telegramLink = username
+      ? { href: `https://t.me/${username}`, label: `@${escapeHtml(username)}` }
+      : null;
+    const autoFailure = AUTO_FAILURE_REASONS[order.reviewRequestStatus ?? ''];
+
     return [
       '⭐ <b>Пора попросить отзыв</b>',
       '',
@@ -455,6 +496,18 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
         ? [`Отправление: <code>${escapeHtml(order.marketplacePostingNumber)}</code>`]
         : []),
       `Диалог: ${dialog}`,
+      /*
+       * Telegram покупателя — отдельной строкой со ссылкой.
+       *
+       * У заказа с площадки это второй канал: чат кабинета остаётся, но
+       * писать удобнее здесь, и именно сюда уходит автоматическая просьба.
+       */
+      ...(telegramLink
+        ? [`Telegram клиента: <a href="${telegramLink.href}">${telegramLink.label}</a>`]
+        : []),
+      // Автоматика пробовала и не смогла — говорим, почему: иначе
+      // непонятно, отчего понадобился человек.
+      ...(autoFailure ? [`⚠️ Сама не ушла: ${escapeHtml(autoFailure)}`] : []),
       '',
       '<b>Сообщение клиенту для отправки:</b>',
       `<pre>${customerText}</pre>`,

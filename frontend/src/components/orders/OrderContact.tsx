@@ -1,8 +1,11 @@
-import { Copy, ExternalLink, Phone, Send } from 'lucide-react';
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Check, Copy, ExternalLink, Phone, Send, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { ordersApi } from '../../api/orders';
 import { copyToClipboard } from '../../utils/clipboard';
 import { PlatformBadge, platformStyle } from '../ui/PlatformBadge';
-import type { EnumCommunication } from '../../types/index';
+import type { EnumCommunication, OrderPhoto } from '../../types/index';
 
 /**
  * Контакт клиента в карточке заказа — с действием под способ связи.
@@ -11,6 +14,18 @@ import type { EnumCommunication } from '../../types/index';
  * MAX: показываем телефон и даём «Скопировать номер» — менеджер создаёт по нему
  * контакт в MAX, потом копирует приветственное сообщение (кнопка рядом) и шлёт.
  * Прочие площадки: ссылка на переписку.
+ *
+ * Второй канал: Telegram покупателя с площадки.
+ *
+ * Заказ с маркетплейса начинается в чате кабинета, и этот чат остаётся
+ * главным — там заказ, там переписку видит площадка. Но чат кабинета умеет
+ * мало, поэтому в разговоре мы просим написать нам в Telegram. Написал —
+ * ник записывается здесь же, одним нажатием, и дальше у заказа два открытых
+ * канала: кабинет и личка. Туда же уходит автоматическая просьба об отзыве
+ * после выкупа.
+ *
+ * Канал связи заказа при этом не подменяется: по нему считается, откуда
+ * заказ и куда звать за отзывом.
  */
 
 /** «79991234567» → «+7 999 123-45-67». */
@@ -29,17 +44,31 @@ async function copy(text: string, ok: string) {
   toast.error('Не удалось скопировать');
 }
 
+/** Почему автоматическая просьба об отзыве не ушла — словами. */
+const AUTO_REVIEW_PROBLEM: Record<string, string | undefined> = {
+  not_found: 'такого ника в Telegram нет — проверьте запись',
+  privacy: 'клиент не принимает сообщения от незнакомых',
+  blocked: 'клиент заблокировал наш аккаунт',
+  error: 'Telegram отказал — просьбу придётся отправить руками',
+};
+
+const linkBtn =
+  'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors';
+
 export function OrderContact({
+  orderId,
   platform,
   url,
+  clientTelegram,
+  reviewRequestStatus,
 }: {
+  orderId?: string;
   platform: EnumCommunication;
   url: string | null | undefined;
+  clientTelegram?: string | null;
+  reviewRequestStatus?: string | null;
 }) {
   const value = (url ?? '').trim();
-
-  const linkBtn =
-    'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors';
 
   let action: React.ReactNode = value ? (
     <span className="text-sm text-gray-700 break-all">{value}</span>
@@ -93,9 +122,9 @@ export function OrderContact({
       </div>
     );
   } else if (platform === 'OZON' && !value.startsWith('http')) {
-    // Номер отправления вместо ссылки: чата с покупателем на Ozon нет,
-    // а по этому номеру заказ находят в кабинете — поэтому его дают
-    // скопировать, как телефон у MAX.
+    // Номер отправления вместо ссылки на чат: прямой ссылки у заказа нет,
+    // но по этому номеру переписка находится в кабинете — поэтому номер
+    // дают скопировать и сразу открывают список чатов.
     action = (
       <div className="flex items-center gap-2 flex-wrap">
         <span className="font-mono text-sm font-medium text-gray-800">{value}</span>
@@ -106,6 +135,14 @@ export function OrderContact({
         >
           <Copy size={13} aria-hidden="true" /> Скопировать номер
         </button>
+        <a
+          href="https://seller.ozon.ru/app/messenger"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${linkBtn} ${platformStyle(platform).chip} hover:brightness-95`}
+        >
+          Чаты Ozon <ExternalLink size={12} aria-hidden="true" />
+        </a>
       </div>
     );
   } else if (value.startsWith('http')) {
@@ -130,6 +167,145 @@ export function OrderContact({
         <PlatformBadge platform={platform} />
       </div>
       {action}
+      {/*
+          Telegram покупателя — рядом, а не вместо.
+
+          Показываем только там, где он имеет смысл: у заказа, который уже
+          ведётся в Telegram, второй такой же канал не нужен.
+      */}
+      {orderId && platform !== 'TELEGRAM' && (
+        <ClientTelegramRow
+          orderId={orderId}
+          clientTelegram={clientTelegram}
+          reviewRequestStatus={reviewRequestStatus}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Строка второго канала: открыть личку или записать её. */
+function ClientTelegramRow({
+  orderId,
+  clientTelegram,
+  reviewRequestStatus,
+}: {
+  orderId: string;
+  clientTelegram?: string | null;
+  reviewRequestStatus?: string | null;
+}) {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  const save = useMutation({
+    mutationFn: (value: string) => ordersApi.setClientTelegram(orderId, value),
+    onSuccess: (updated: OrderPhoto) => {
+      qc.setQueryData(['order', orderId], updated);
+      qc.invalidateQueries({ queryKey: ['orders'] });
+      setEditing(false);
+      setDraft('');
+      toast.success(
+        updated.clientTelegram
+          ? 'Telegram клиента записан'
+          : 'Telegram клиента убран',
+      );
+    },
+    onError: (error: unknown) => {
+      // Сервер объясняет, что именно не подошло («это приглашение в чат,
+      // а не аккаунт»). Своего текста здесь не придумываем.
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? 'Не удалось записать Telegram клиента';
+      toast.error(message);
+    },
+  });
+
+  const username = (clientTelegram ?? '').replace(/^@+/, '');
+  const problem = AUTO_REVIEW_PROBLEM[reviewRequestStatus ?? ''];
+
+  if (editing) {
+    return (
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') save.mutate(draft);
+            if (e.key === 'Escape') setEditing(false);
+          }}
+          placeholder="@username или ссылка t.me/…"
+          aria-label="Telegram клиента"
+          className="w-56 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+        />
+        <button
+          type="button"
+          onClick={() => save.mutate(draft)}
+          disabled={save.isPending}
+          className={`${linkBtn} text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 disabled:opacity-50`}
+        >
+          <Check size={13} aria-hidden="true" /> Записать
+        </button>
+        <button
+          type="button"
+          onClick={() => setEditing(false)}
+          aria-label="Отменить"
+          className="p-1.5 text-gray-400 hover:text-gray-600"
+        >
+          <X size={14} aria-hidden="true" />
+        </button>
+      </div>
+    );
+  }
+
+  if (!username) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setDraft('');
+          setEditing(true);
+        }}
+        className={`${linkBtn} mt-2 text-sky-800 bg-sky-50 border border-sky-200 hover:bg-sky-100`}
+      >
+        <Send size={13} aria-hidden="true" /> Клиент написал в Telegram
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <a
+        href={`https://t.me/${username}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`${linkBtn} text-sky-800 bg-sky-100 ring-1 ring-sky-300/70 hover:bg-sky-200`}
+      >
+        <Send size={13} aria-hidden="true" />@{username}
+        <ExternalLink size={12} aria-hidden="true" />
+      </a>
+      <button
+        type="button"
+        onClick={() => {
+          setDraft(`@${username}`);
+          setEditing(true);
+        }}
+        className="text-xs text-gray-500 underline underline-offset-2 hover:text-gray-700"
+      >
+        изменить
+      </button>
+      {/* Просьба об отзыве уходит в эту личку сама. Если не ушла — здесь
+          же и сказано почему: иначе владелец узнаёт об этом только из
+          напоминания в рабочем чате. */}
+      {problem && (
+        <span className="text-xs text-amber-700">
+          просьба об отзыве не ушла: {problem}
+        </span>
+      )}
+      {reviewRequestStatus === 'sent' && (
+        <span className="text-xs text-gray-400">просьба об отзыве отправлена</span>
+      )}
     </div>
   );
 }

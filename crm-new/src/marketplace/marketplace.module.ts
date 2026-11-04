@@ -13,6 +13,7 @@ import { OzonPrintService } from './ozon-print.service';
 import { OzonImportService } from './ozon-import.service';
 import { OzonImportPollService } from './ozon-import-poll.service';
 import { OzonAutoshipService } from './ozon-autoship.service';
+import { OzonAutoshipTriggerService } from './ozon-autoship-trigger.service';
 import { OzonShippedCloseService } from './ozon-shipped-close.service';
 import { OzonShippedClosePollService } from './ozon-shipped-close-poll.service';
 import { OzonCatalogController } from './ozon-catalog.controller';
@@ -31,6 +32,7 @@ import { OzonCrmOrderService } from './ozon-crm-order.service';
 import { OrderPhotoModule } from 'src/order-photo/order-photo.module';
 import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
 import { TelegramModule } from 'src/telegram/telegram.module';
+import { OrderEventsModule } from 'src/events/order-events.module';
 
 /**
  * Интеграции с маркетплейсами. Ozon — первая площадка; следующая добавляется
@@ -46,6 +48,7 @@ import { TelegramModule } from 'src/telegram/telegram.module';
     OrderPhotoModule,
     MetrikaOrdersModule,
     TelegramModule,
+    OrderEventsModule,
   ],
   // OzonPhotoController раньше OzonCatalogController: его путь
   // marketplace/ozon/photos/:file не должен попасть под :accountId-маршруты.
@@ -71,6 +74,7 @@ import { TelegramModule } from 'src/telegram/telegram.module';
     OzonImportService,
     OzonImportPollService,
     OzonAutoshipService,
+    OzonAutoshipTriggerService,
     OzonShippedCloseService,
     OzonShippedClosePollService,
     OzonPhotoStorageService,

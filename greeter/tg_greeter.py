@@ -43,6 +43,7 @@ from proxy_config import describe, parse_proxy
 from signing import sign
 from approval_delivery import ApprovalQueue
 from draft_queue import DraftQueue
+from review_queue import ReviewQueue
 
 BASE_DIR = Path(__file__).resolve().parent
 MESSAGE_DIR = Path(os.getenv("GREETER_MESSAGE_DIR", BASE_DIR))
@@ -214,6 +215,7 @@ async def main() -> int:
     crm = Crm()
     approvals = ApprovalQueue(crm._client, CRM_SIGNING_SECRET)
     drafts = DraftQueue(crm._client, CRM_SIGNING_SECRET)
+    reviews = ReviewQueue(crm._client, CRM_SIGNING_SECRET)
     client = TelegramClient(
         str(SESSION_PATH), API_ID, API_HASH, proxy=parse_proxy(PROXY_URL)
     )
@@ -243,6 +245,11 @@ async def main() -> int:
             # сообщения, Telegram за него не ограничивает, и задерживать
             # из-за него живую очередь приветствий незачем.
             await drafts.process_one(client)
+            # Просьбы об отзыве — после черновиков и до приветствий.
+            # Это обычные сообщения, и Telegram считает их так же, поэтому
+            # отправляем по одной за круг: отзыв не срочный, а очередь
+            # приветствий ждать из-за него не должна.
+            await reviews.process_one(client)
             try:
                 queue = await crm.pending(limit=1)
             except (httpx.HTTPError, OSError) as exc:
