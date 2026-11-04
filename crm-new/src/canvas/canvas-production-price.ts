@@ -506,6 +506,23 @@ export function findCanvasProductionPrice(
   return CANVAS_PRODUCTION_PRICES.find((p) => p.key === key);
 }
 
+/** Ключи всех размеров прайса — выбор в заказе ограничен ими. */
+export const CANVAS_SIZE_KEYS: string[] = CANVAS_PRODUCTION_PRICES.map(
+  (row) => row.key,
+);
+
+/**
+ * Есть ли такой размер в прайсе.
+ *
+ * Размер в позиции заказа — не подпись, а ключ: по нему берутся обе цены,
+ * розничная (её платит клиент) и оптовая (её платим мы). Размер «на словах»
+ * означает заказ, в котором цена ни с чем не сверяется, а заработок
+ * считается от числа, вписанного руками.
+ */
+export function isListedCanvasSize(key?: string | null): boolean {
+  return Boolean(key && findCanvasProductionPrice(key));
+}
+
 /** Подпись размера для человека: «20 × 30 см». */
 export function canvasSizeLabel(price: CanvasProductionPrice): string {
   return `${price.widthCm} × ${price.heightCm} см`;
@@ -525,7 +542,15 @@ export function canvasTermsFrom(settings: {
   };
 }
 
-/** Розница производства по размеру и материалу. 0 — размер неизвестен. */
+/**
+ * Розница производства по размеру и материалу. 0 — размер неизвестен.
+ *
+ * Она же — цена для клиента: по рознице производства мы и продаём, и
+ * ровно эти числа стоят в витринном прайсе (совпадение синтетики сторожит
+ * canvas-client-price.spec.ts). Поэтому «розница минус опт» и есть
+ * заработок на полотне, и оба числа берутся из одной таблицы — разъехаться
+ * им негде.
+ */
 export function canvasRetailPrice(
   key: string,
   material: CanvasMaterialKind,

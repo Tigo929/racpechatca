@@ -11,8 +11,12 @@
  * получен от заказчика 02.09.2026. Прежние цифры были заглушками по
  * рыночному коридору и оказались втрое выше реальных.
  *
- * `contractorCost` = 0: прайс подрядчика не согласован. Пока он нулевой,
- * отчёт по марже показывает прибыль 100% — это неверно, заполнить.
+ * Себестоимости здесь нет намеренно. Сколько мы должны производству,
+ * считается по его прайсу (`canvas/canvas-production-price.ts`): там две
+ * системы цен и договорная скидка, и держать рядом второе, «своё» число
+ * означало бы разъехаться с настоящим долгом. Раньше такое поле здесь
+ * было, стояло нулём — и заявка с сайта заводилась с себестоимостью 0,
+ * то есть с прибылью 100%.
  */
 
 export interface CanvasSize {
@@ -23,8 +27,6 @@ export interface CanvasSize {
   heightCm: number;
   /** Цена за холст: матовая основа, без багета, ₽. */
   price: number;
-  /** Себестоимость одного холста у подрядчика, ₽. */
-  contractorCost: number;
   /**
    * Минимальное разрешение файла для этого размера, пикселей.
    * Считано под 150 dpi — рабочая плотность для холста: его смотрят с
@@ -52,7 +54,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 20,
     heightCm: 30,
     price: 630,
-    contractorCost: 0,
     minPixels: { width: 1181, height: 1772 },
   },
   {
@@ -61,7 +62,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 20,
     heightCm: 40,
     price: 770,
-    contractorCost: 0,
     minPixels: { width: 1181, height: 2362 },
   },
   {
@@ -70,7 +70,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 30,
     heightCm: 30,
     price: 790,
-    contractorCost: 0,
     minPixels: { width: 1772, height: 1772 },
   },
   {
@@ -79,7 +78,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 30,
     heightCm: 40,
     price: 940,
-    contractorCost: 0,
     minPixels: { width: 1772, height: 2362 },
   },
   {
@@ -88,7 +86,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 30,
     heightCm: 50,
     price: 1090,
-    contractorCost: 0,
     minPixels: { width: 1772, height: 2953 },
   },
   {
@@ -97,7 +94,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 30,
     heightCm: 60,
     price: 1240,
-    contractorCost: 0,
     minPixels: { width: 1772, height: 3543 },
   },
   {
@@ -106,7 +102,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 40,
     heightCm: 40,
     price: 1110,
-    contractorCost: 0,
     minPixels: { width: 2362, height: 2362 },
   },
   {
@@ -115,7 +110,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 40,
     heightCm: 50,
     price: 1270,
-    contractorCost: 0,
     minPixels: { width: 2362, height: 2953 },
   },
   {
@@ -124,7 +118,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 40,
     heightCm: 60,
     price: 1450,
-    contractorCost: 0,
     minPixels: { width: 2362, height: 3543 },
   },
   {
@@ -133,7 +126,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 40,
     heightCm: 70,
     price: 1610,
-    contractorCost: 0,
     minPixels: { width: 2362, height: 4134 },
   },
   {
@@ -142,7 +134,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 40,
     heightCm: 80,
     price: 1780,
-    contractorCost: 0,
     minPixels: { width: 2362, height: 4724 },
   },
   {
@@ -151,7 +142,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 50,
     heightCm: 50,
     price: 1470,
-    contractorCost: 0,
     minPixels: { width: 2953, height: 2953 },
   },
   {
@@ -160,7 +150,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 50,
     heightCm: 60,
     price: 1650,
-    contractorCost: 0,
     minPixels: { width: 2953, height: 3543 },
   },
   {
@@ -169,7 +158,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 50,
     heightCm: 70,
     price: 1830,
-    contractorCost: 0,
     minPixels: { width: 2953, height: 4134 },
   },
   {
@@ -178,7 +166,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 50,
     heightCm: 80,
     price: 2030,
-    contractorCost: 0,
     minPixels: { width: 2953, height: 4724 },
   },
   {
@@ -187,7 +174,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 50,
     heightCm: 90,
     price: 2210,
-    contractorCost: 0,
     minPixels: { width: 2953, height: 5315 },
   },
   {
@@ -196,7 +182,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 60,
     heightCm: 60,
     price: 1850,
-    contractorCost: 0,
     minPixels: { width: 3543, height: 3543 },
   },
   {
@@ -205,7 +190,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 60,
     heightCm: 70,
     price: 2060,
-    contractorCost: 0,
     minPixels: { width: 3543, height: 4134 },
   },
   {
@@ -214,7 +198,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 60,
     heightCm: 80,
     price: 2260,
-    contractorCost: 0,
     minPixels: { width: 3543, height: 4724 },
   },
   {
@@ -223,7 +206,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 60,
     heightCm: 90,
     price: 2460,
-    contractorCost: 0,
     minPixels: { width: 3543, height: 5315 },
   },
   {
@@ -232,7 +214,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 60,
     heightCm: 100,
     price: 2670,
-    contractorCost: 0,
     minPixels: { width: 3543, height: 5906 },
   },
   {
@@ -241,7 +222,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 60,
     heightCm: 120,
     price: 3070,
-    contractorCost: 0,
     minPixels: { width: 3543, height: 7087 },
   },
   {
@@ -250,7 +230,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 60,
     heightCm: 150,
     price: 3680,
-    contractorCost: 0,
     minPixels: { width: 3543, height: 8858 },
   },
   {
@@ -259,7 +238,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 70,
     heightCm: 70,
     price: 2280,
-    contractorCost: 0,
     minPixels: { width: 4134, height: 4134 },
   },
   {
@@ -268,7 +246,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 70,
     heightCm: 80,
     price: 2500,
-    contractorCost: 0,
     minPixels: { width: 4134, height: 4724 },
   },
   {
@@ -277,7 +254,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 70,
     heightCm: 90,
     price: 2720,
-    contractorCost: 0,
     minPixels: { width: 4134, height: 5315 },
   },
   {
@@ -286,7 +262,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 70,
     heightCm: 100,
     price: 2940,
-    contractorCost: 0,
     minPixels: { width: 4134, height: 5906 },
   },
   {
@@ -295,7 +270,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 70,
     heightCm: 120,
     price: 3380,
-    contractorCost: 0,
     minPixels: { width: 4134, height: 7087 },
   },
   {
@@ -304,7 +278,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 70,
     heightCm: 150,
     price: 4050,
-    contractorCost: 0,
     minPixels: { width: 4134, height: 8858 },
   },
   {
@@ -313,7 +286,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 80,
     heightCm: 80,
     price: 2740,
-    contractorCost: 0,
     minPixels: { width: 4724, height: 4724 },
   },
   {
@@ -322,7 +294,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 80,
     heightCm: 90,
     price: 2970,
-    contractorCost: 0,
     minPixels: { width: 4724, height: 5315 },
   },
   {
@@ -331,7 +302,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 80,
     heightCm: 100,
     price: 3110,
-    contractorCost: 0,
     minPixels: { width: 4724, height: 5906 },
   },
   {
@@ -340,7 +310,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 80,
     heightCm: 120,
     price: 3690,
-    contractorCost: 0,
     minPixels: { width: 4724, height: 7087 },
   },
   {
@@ -349,7 +318,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 80,
     heightCm: 150,
     price: 4400,
-    contractorCost: 0,
     minPixels: { width: 4724, height: 8858 },
   },
   {
@@ -358,7 +326,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 90,
     heightCm: 90,
     price: 3230,
-    contractorCost: 0,
     minPixels: { width: 5315, height: 5315 },
   },
   {
@@ -367,7 +334,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 90,
     heightCm: 100,
     price: 3490,
-    contractorCost: 0,
     minPixels: { width: 5315, height: 5906 },
   },
   {
@@ -376,7 +342,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 90,
     heightCm: 120,
     price: 3990,
-    contractorCost: 0,
     minPixels: { width: 5315, height: 7087 },
   },
   {
@@ -385,7 +350,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 90,
     heightCm: 150,
     price: 4750,
-    contractorCost: 0,
     minPixels: { width: 5315, height: 8858 },
   },
   {
@@ -394,7 +358,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 100,
     heightCm: 100,
     price: 3760,
-    contractorCost: 0,
     minPixels: { width: 5906, height: 5906 },
   },
   {
@@ -403,7 +366,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 100,
     heightCm: 120,
     price: 4300,
-    contractorCost: 0,
     minPixels: { width: 5906, height: 7087 },
   },
   {
@@ -412,7 +374,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 100,
     heightCm: 140,
     price: 4840,
-    contractorCost: 0,
     minPixels: { width: 5906, height: 8268 },
   },
   {
@@ -421,7 +382,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 100,
     heightCm: 150,
     price: 5120,
-    contractorCost: 0,
     minPixels: { width: 5906, height: 8858 },
   },
   {
@@ -430,7 +390,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 100,
     heightCm: 170,
     price: 5650,
-    contractorCost: 0,
     minPixels: { width: 5906, height: 10039 },
   },
   {
@@ -439,7 +398,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 100,
     heightCm: 180,
     price: 5930,
-    contractorCost: 0,
     minPixels: { width: 5906, height: 10630 },
   },
   {
@@ -448,7 +406,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 100,
     heightCm: 190,
     price: 6200,
-    contractorCost: 0,
     minPixels: { width: 5906, height: 11220 },
   },
   {
@@ -457,7 +414,6 @@ export const CANVAS_SIZES: CanvasSize[] = [
     widthCm: 100,
     heightCm: 200,
     price: 6470,
-    contractorCost: 0,
     minPixels: { width: 5906, height: 11811 },
   },
 ];

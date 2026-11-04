@@ -59,17 +59,28 @@ const tshirtItemSchema = z.object({
 });
 
 /*
- * Холст: размер и материал берутся из прайса производства, и цену, которую мы
- * ему должны, считает сервер. Свободный формат остаётся для нестандартных
- * размеров — тогда sizeKey пустой, а цену подрядчика вводят руками.
+ * Холст: размер только из прайса производства. У каждого размера две цены —
+ * розничная (её платит клиент) и оптовая (её платим мы); разница и есть
+ * заработок, поэтому обе берутся из прайса, а не вписываются руками.
+ *
+ * Свободного формата здесь нет намеренно. Размер «словами» тянул за собой
+ * цену «на глаз»: сверить её было не с чем, и по заказу нельзя было сказать,
+ * заработали мы на нём или отдали больше, чем взяли. Нестандартное
+ * (модульные холсты, нарезка) заводится свободной позицией — она рядом.
  */
 const canvasItemSchema = z.object({
-  sizeKey: z.string().optional(),
+  sizeKey: z.string().min(1, 'Выберите размер из прайса'),
   material: z.enum(['SYNTHETIC', 'COTTON']).optional(),
-  formatCanvas: z.string().optional(),
   quantity: z.coerce.number().int().positive(),
-  clientPrice: z.coerce.number().int().min(0),
-  contractorPrice: z.coerce.number().int().min(0).optional(),
+  /*
+   * Нулевая цена не проходит.
+   *
+   * Цену ставит прайс, но если прайс не загрузился (его отдаёт только
+   * администратору), поле останется нулевым — и заказ уйдёт на холст
+   * за 0 ₽. Такую позицию потом не отличить от настоящей: в отчёте она
+   * выглядит проданной в убыток на всю себестоимость.
+   */
+  clientPrice: z.coerce.number().int().positive('Цена не может быть нулевой'),
   // Допы: у каждого цена поставщика и цена клиенту, обе за штуку.
   varnish: z.boolean().optional(),
   varnishClientPrice: z.coerce.number().int().min(0).optional(),
@@ -77,14 +88,6 @@ const canvasItemSchema = z.object({
   frame: z.boolean().optional(),
   frameClientPrice: z.coerce.number().int().min(0).optional(),
   frameContractorPrice: z.coerce.number().int().min(0).optional(),
-}).superRefine((row, ctx) => {
-  if (!row.sizeKey && !(row.formatCanvas ?? '').trim()) {
-    ctx.addIssue({
-      code: 'custom',
-      message: 'Выберите размер или опишите нестандартный',
-      path: ['formatCanvas'],
-    });
-  }
 });
 
 // Свободная позиция: произвольное название + цена. Имя не валидируем строго здесь
@@ -273,13 +276,13 @@ const EMPTY_ORDER_FORM = {
     color: 'Чёрный', size: 'M', printLocation: 'FRONT',
     quantity: 1, price: 1500, clientItem: false,
   }],
+  // clientPrice: 0 — цену подставит прайс, как только он загрузится.
+  // Константа здесь означала бы заказ по цене, которой в прайсе нет.
   canvasItems: [{
     sizeKey: '30x40',
     material: 'SYNTHETIC',
-    formatCanvas: '',
     quantity: 1,
-    clientPrice: 1500,
-    contractorPrice: 0,
+    clientPrice: 0,
   }],
 } as unknown as FormValues;
 
@@ -442,10 +445,8 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
         setValue('canvasItems', [{
           sizeKey: '30x40',
           material: 'SYNTHETIC',
-          formatCanvas: '',
           quantity: 1,
-          clientPrice: 1500,
-          contractorPrice: 0,
+          clientPrice: 0,
         }]);
       }
     } else {
@@ -504,6 +505,52 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
     setValue('deliveryCost', canvasPricing.delivery.price);
   }, [deliveryMethodWatch, canvasPricing, getValues, setValue]);
 
+  /**
+   * Цена клиенту по прайсу: розничная колонка выбранного материала.
+   *
+   * По рознице производства мы и продаём — это те же числа, что стоят на
+   * сайте. `null` значит «размера в прайсе нет»: подставлять тогда нечего,
+   * и ноль был бы хуже пустого поля.
+   */
+  const canvasListPrice = (
+    sizeKey?: string,
+    material?: 'SYNTHETIC' | 'COTTON',
+  ): number | null =>
+    canvasPricing?.sizes.find((x) => x.key === sizeKey)?.retail[
+      material ?? 'SYNTHETIC'
+    ] ?? null;
+
+  /** Поставить в строку цену её размера и материала. */
+  const applyCanvasPrice = (
+    idx: number,
+    sizeKey?: string,
+    material?: 'SYNTHETIC' | 'COTTON',
+  ): void => {
+    const price = canvasListPrice(sizeKey, material);
+    if (price === null) return;
+    setValue(`canvasItems.${idx}.clientPrice`, price, { shouldDirty: true });
+  };
+
+  /**
+   * Новая строка холста приходит с нулевой ценой — ставим её по прайсу.
+   *
+   * Раньше в строке стояла константа 1500 ₽: для 30×40 прайс называет 940,
+   * и заказ уходил по цене, которой нет ни на сайте, ни в прайсе. Правим
+   * только нули: вписанную руками цену (договорились иначе) не перебиваем.
+   */
+  useEffect(() => {
+    if (productCategory !== 'CANVAS' || !canvasPricing) return;
+    (canvasItemsWatch ?? []).forEach((row, idx) => {
+      if (Number(row?.clientPrice ?? 0) > 0) return;
+      const price = canvasListPrice(row?.sizeKey, row?.material);
+      if (price === null) return;
+      setValue(`canvasItems.${idx}.clientPrice`, price);
+    });
+    // canvasListPrice выводится из canvasPricing — отдельной зависимостью
+    // он только заставил бы эффект бегать на каждый рендер.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productCategory, canvasPricing, canvasItemsWatch, setValue]);
+
   /*
    * Выбрали Яндекс ПВЗ — цену клиенту ставим из настроек (по умолчанию 300).
    * Только в пустое поле: если менеджер уже вписал сумму, не перебиваем.
@@ -519,12 +566,18 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
     let cost = 0;
     for (const row of canvasItemsWatch ?? []) {
       const qty = Number(row?.quantity ?? 0) || 0;
-      revenue += (Number(row?.clientPrice ?? 0) || 0) * qty;
       const priced = canvasPricing?.sizes.find((x) => x.key === row?.sizeKey);
-      const unit = row?.sizeKey
-        ? (priced?.cost[row.material ?? 'SYNTHETIC'] ?? 0)
-        : Number(row?.contractorPrice ?? 0) || 0;
-      cost += unit * qty;
+      /*
+        Лак и багет считаем здесь же — их покупают у поставщика, как и само
+        полотно. Без них итог по заказу расходился со строками: в строке
+        маржа с допами, в итоге без них.
+      */
+      revenue +=
+        ((Number(row?.clientPrice ?? 0) || 0) + addonsClientPrice(row ?? {})) * qty;
+      cost +=
+        ((priced?.cost[row?.material ?? 'SYNTHETIC'] ?? 0) +
+          addonsContractorPrice(row ?? {})) *
+        qty;
     }
     const isProductionDelivery = deliveryMethodWatch === 'PRODUCTION_MSK';
     const deliveryOwn = isProductionDelivery ? (canvasPricing?.delivery.cost ?? 0) : 0;
@@ -655,22 +708,27 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
     }
 
     if (data.productCategory === 'CANVAS') {
-      const canvasItems = (data.canvasItems ?? []).map((r) =>
-        r.sizeKey
-          ? {
-              // Размер из прайса: подпись и цену производства ставит сервер.
-              sizeKey: r.sizeKey,
-              material: r.material ?? ('SYNTHETIC' as const),
-              quantity: r.quantity,
-              clientPrice: r.clientPrice,
-            }
-          : {
-              formatCanvas: (r.formatCanvas ?? '').trim(),
-              contractorPrice: r.contractorPrice ?? 0,
-              quantity: r.quantity,
-              clientPrice: r.clientPrice,
-            },
-      );
+      const canvasItems = (data.canvasItems ?? []).map((r) => ({
+        // Размер из прайса: подпись и цену производства ставит сервер.
+        sizeKey: r.sizeKey,
+        material: r.material ?? ('SYNTHETIC' as const),
+        quantity: r.quantity,
+        clientPrice: r.clientPrice,
+        /*
+          Допы уезжают вместе с позицией.
+
+          Раньше здесь их не было: лак и багет можно было отметить в форме,
+          увидеть с ними маржу — и создать заказ без них. Клиенту называлась
+          одна сумма, в заказе оказывалась другая, а себестоимость допа не
+          попадала в расчёт с производством вовсе.
+        */
+        varnish: r.varnish ?? false,
+        varnishClientPrice: r.varnish ? (r.varnishClientPrice ?? 0) : 0,
+        varnishContractorPrice: r.varnish ? (r.varnishContractorPrice ?? 0) : 0,
+        frame: r.frame ?? false,
+        frameClientPrice: r.frame ? (r.frameClientPrice ?? 0) : 0,
+        frameContractorPrice: r.frame ? (r.frameContractorPrice ?? 0) : 0,
+      }));
       // Свободные позиции рядом с холстами — как items (свободная цена):
       // цена = итог позиции, количество на неё не умножается.
       const extraItems = (data.extraItems ?? [])
@@ -1267,10 +1325,9 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
               onClick={() => canvasFields.append({
                 sizeKey: '30x40',
                 material: 'SYNTHETIC',
-                formatCanvas: '',
                 quantity: 1,
-                clientPrice: 1500,
-                contractorPrice: 0,
+                // 0 — цену подставит прайс (эффект ниже): у размера она своя.
+                clientPrice: 0,
               })}
               className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 font-medium">
               <Plus size={14} /> Добавить
@@ -1286,23 +1343,22 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
               const client = Number(row?.clientPrice ?? 0) || 0;
               /*
                * Цену производства берём из прайса — ту же, что посчитает
-               * сервер. Руками она задаётся только у нестандартного размера.
+               * сервер. Вписать её руками нельзя: занизить себестоимость
+               * значит уйти в минус незаметно.
                */
               const priced = canvasPricing?.sizes.find((x) => x.key === row?.sizeKey);
-              const contractor = row?.sizeKey
-                ? (priced?.cost[row.material ?? 'SYNTHETIC'] ?? 0)
-                : Number(row?.contractorPrice ?? 0) || 0;
-              // Розница подрядчика из прайса — чтобы показать, откуда берётся
-              // «должен»: это она минус договорная скидка.
+              const material = row?.material ?? 'SYNTHETIC';
+              const contractor = priced?.cost[material] ?? 0;
               // Цена прайса, от которой считается долг: в рознице от неё
               // отнимается скидка, в опте она и есть долг.
               const wholesale = canvasPricing?.mode === 'WHOLESALE';
-              const listPrice = row?.sizeKey
-                ? ((wholesale ? priced?.wholesale : priced?.retail)?.[
-                    row.material ?? 'SYNTHETIC'
-                  ] ?? 0)
-                : 0;
+              const listPrice =
+                (wholesale ? priced?.wholesale : priced?.retail)?.[material] ?? 0;
               const discountPct = Math.round((canvasPricing?.discountBasisPoints ?? 0) / 100);
+              // Цена клиенту по прайсу: с ней сверяется та, что в строке.
+              const listClient = canvasListPrice(row?.sizeKey, row?.material);
+              const sizeReg = register(`canvasItems.${idx}.sizeKey`);
+              const materialReg = register(`canvasItems.${idx}.material`);
               // Допы входят и в чек клиента, и в себестоимость: лак
               // и багет покупаются у поставщика, как и само полотно.
               const addonClient = addonsClientPrice(row ?? {});
@@ -1320,44 +1376,91 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
                       <Trash2 size={14} />
                     </button>
                   </div>
-                  <div className="grid sm:grid-cols-[1fr_130px_80px_120px] gap-3">
+                  <div className="grid sm:grid-cols-[1fr_130px_80px_140px] gap-3">
                     <div>
-                      <label className={labelCls}>Размер</label>
-                      <select className={selectCls} {...register(`canvasItems.${idx}.sizeKey`)}>
+                      <label className={labelCls} htmlFor={`canvas-size-${idx}`}>Размер</label>
+                      {/* Только размеры прайса: у каждого своя цена клиенту
+                          и своя цена производства, и обе меняются вместе
+                          с размером. Нестандартное — свободной позицией. */}
+                      <select
+                        id={`canvas-size-${idx}`}
+                        className={selectCls}
+                        {...sizeReg}
+                        onChange={(e) => {
+                          void sizeReg.onChange(e);
+                          applyCanvasPrice(idx, e.target.value, row?.material);
+                        }}
+                      >
                         {(canvasPricing?.sizes ?? []).map((size) => (
                           <option key={size.key} value={size.key}>{size.label}</option>
                         ))}
-                        <option value="">Своя цена (указать производителя)…</option>
+                        {/* Прайс отдаётся только администратору. Пустой
+                            список без объяснения выглядит поломкой. */}
+                        {!canvasPricing?.sizes.length && (
+                          <option value="">Прайс недоступен — нужен администратор</option>
+                        )}
                       </select>
-                      {!row?.sizeKey && (
-                        /* Размера нет в прайсе — описываем словами и вводим
-                           цену производства сами. */
-                        <input className={`${inputCls} mt-2`} placeholder="Модульный, нестандарт…"
-                          {...register(`canvasItems.${idx}.formatCanvas`)} />
-                      )}
-                      {errors.canvasItems?.[idx]?.formatCanvas && (
-                        <p className={errorCls}>{errors.canvasItems[idx]?.formatCanvas?.message}</p>
+                      {errors.canvasItems?.[idx]?.sizeKey && (
+                        <p className={errorCls}>{errors.canvasItems[idx]?.sizeKey?.message}</p>
                       )}
                     </div>
                     <div>
-                      <label className={labelCls}>Материал</label>
-                      {row?.sizeKey ? (
-                        <select className={selectCls} {...register(`canvasItems.${idx}.material`)}>
-                          <option value="SYNTHETIC">Синтетика</option>
-                          <option value="COTTON">Хлопок</option>
-                        </select>
-                      ) : (
-                        <input type="number" min={0} className={inputCls} placeholder="Производитель ₽/шт"
-                          {...register(`canvasItems.${idx}.contractorPrice`)} />
+                      <label className={labelCls} htmlFor={`canvas-material-${idx}`}>Материал</label>
+                      {/* Хлопок дороже и клиенту, и нам — поэтому смена
+                          материала тоже тянет за собой цену. */}
+                      <select
+                        id={`canvas-material-${idx}`}
+                        className={selectCls}
+                        {...materialReg}
+                        onChange={(e) => {
+                          void materialReg.onChange(e);
+                          applyCanvasPrice(
+                            idx,
+                            row?.sizeKey,
+                            e.target.value as 'SYNTHETIC' | 'COTTON',
+                          );
+                        }}
+                      >
+                        <option value="SYNTHETIC">Синтетика</option>
+                        <option value="COTTON">Хлопок</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls} htmlFor={`canvas-qty-${idx}`}>Кол-во</label>
+                      <input id={`canvas-qty-${idx}`} type="number" min={1} className={inputCls} {...register(`canvasItems.${idx}.quantity`)} />
+                    </div>
+                    <div>
+                      <label className={labelCls} htmlFor={`canvas-client-${idx}`}>Клиент ₽/шт</label>
+                      <input id={`canvas-client-${idx}`} type="number" min={0} className={inputCls} {...register(`canvasItems.${idx}.clientPrice`)} />
+                      {errors.canvasItems?.[idx]?.clientPrice && (
+                        <p className={errorCls}>{errors.canvasItems[idx]?.clientPrice?.message}</p>
                       )}
-                    </div>
-                    <div>
-                      <label className={labelCls}>Кол-во</label>
-                      <input type="number" min={1} className={inputCls} {...register(`canvasItems.${idx}.quantity`)} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Клиент ₽/шт</label>
-                      <input type="number" min={0} className={inputCls} {...register(`canvasItems.${idx}.clientPrice`)} />
+                      {/*
+                          Под ценой — прайс этого размера.
+
+                          Цена подставляется из прайса, но остаётся
+                          исправляемой: с конкретным клиентом договариваются
+                          иначе, и это нормально. Ненормально — не видеть,
+                          что продаём не по прайсу: поэтому расхождение
+                          названо, и прайсовую цену можно вернуть одним
+                          нажатием.
+                      */}
+                      {listClient !== null && (
+                        client === listClient ? (
+                          <p className="mt-1 text-[11px] text-gray-400">по прайсу</p>
+                        ) : (
+                          <p className="mt-1 text-[11px] text-amber-700 tabular-nums">
+                            прайс {listClient.toLocaleString('ru-RU')} ₽ ·{' '}
+                            <button
+                              type="button"
+                              onClick={() => applyCanvasPrice(idx, row?.sizeKey, row?.material)}
+                              className="underline underline-offset-2 hover:text-amber-900"
+                            >
+                              вернуть
+                            </button>
+                          </p>
+                        )
+                      )}
                     </div>
                   </div>
 
@@ -1386,21 +1489,33 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
                           </label>
                           {on && (
                             <div className="mt-2 grid grid-cols-2 gap-2">
+                              {/* Подписи в разметке общие («Клиенту ₽/шт»
+                                  у лака и у багета), поэтому каждому полю
+                                  даём своё имя: иначе ни скринридер, ни
+                                  проверка не скажут, чья это цена. */}
                               <div>
-                                <label className={labelCls}>Клиенту ₽/шт</label>
+                                <label className={labelCls} htmlFor={`canvas-${kind}-client-${idx}`}>
+                                  Клиенту ₽/шт
+                                </label>
                                 <input
+                                  id={`canvas-${kind}-client-${idx}`}
                                   type="number"
                                   min={0}
                                   className={inputCls}
+                                  aria-label={`${label}: цена клиенту`}
                                   {...register(`canvasItems.${idx}.${kind}ClientPrice`)}
                                 />
                               </div>
                               <div>
-                                <label className={labelCls}>Поставщик ₽/шт</label>
+                                <label className={labelCls} htmlFor={`canvas-${kind}-cost-${idx}`}>
+                                  Поставщик ₽/шт
+                                </label>
                                 <input
+                                  id={`canvas-${kind}-cost-${idx}`}
                                   type="number"
                                   min={0}
                                   className={inputCls}
+                                  aria-label={`${label}: цена поставщика`}
                                   {...register(`canvasItems.${idx}.${kind}ContractorPrice`)}
                                 />
                               </div>
@@ -1416,11 +1531,9 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
                       <p className="font-semibold text-gray-800 tabular-nums">{revenue.toLocaleString('ru-RU')} ₽</p>
                     </div>
                     <div className="rounded-lg bg-white border border-cyan-100 px-3 py-2">
-                      <p className="text-gray-400">
-                        {row?.sizeKey ? 'Должен производству' : 'Подрядчик'}
-                      </p>
+                      <p className="text-gray-400">Должен производству</p>
                       <p className="font-semibold text-gray-800 tabular-nums">{cost.toLocaleString('ru-RU')} ₽</p>
-                      {row?.sizeKey && listPrice > 0 && (
+                      {listPrice > 0 && (
                         <p className="mt-0.5 text-[10px] leading-tight text-gray-400 tabular-nums">
                           {wholesale
                             ? `опт ${listPrice.toLocaleString('ru-RU')} ₽`

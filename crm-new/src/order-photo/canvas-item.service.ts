@@ -16,6 +16,7 @@ import {
   canvasTermsFrom,
   resolveCanvasPosition,
 } from 'src/canvas/canvas-production-price';
+import { assertListedCanvasSize } from './canvas-size-guard';
 import {
   canvasPositionMoney,
   normalizeAddons,
@@ -58,6 +59,8 @@ export class CanvasItemService {
       }
 
       await this.financialIntegrity.assertOrderFinanciallyEditable(orderId, tx);
+
+      assertListedCanvasSize(dto.sizeKey);
 
       /*
        * Цену производства считаем, а не принимаем от клиента запроса: она
@@ -103,6 +106,19 @@ export class CanvasItemService {
         item.orderId,
         tx,
       );
+
+      /*
+       * Позицию с размером из прайса нельзя превратить в «любой формат с
+       * любой ценой» — именно так заказ и уезжал с ценой, которая ни с чем
+       * не сходится. Старые позиции без ключа размера (заявки, заведённые
+       * до прайса) правятся по-прежнему: отбивать правку задним числом
+       * значило бы запереть заказ, который уже в работе.
+       */
+      if (item.sizeKey) {
+        assertListedCanvasSize(
+          dto.sizeKey === undefined ? item.sizeKey : dto.sizeKey,
+        );
+      }
 
       const quantity = dto.quantity ?? item.quantity;
       const clientPrice = dto.clientPrice ?? item.clientPrice;

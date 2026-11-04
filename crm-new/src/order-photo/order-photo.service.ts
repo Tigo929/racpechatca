@@ -17,10 +17,7 @@ import { attributionFromLead } from './lead-attribution';
 import { clientPaidAtPatch, parseClientPaidAt } from './paid-at';
 import { clampOrderDiscount, orderTotal } from './order-total';
 import { tshirtSizeLabel } from './tshirt-size';
-import {
-  deadlineOnAccept,
-  DEFAULT_DEADLINE_MS,
-} from './deadline-start';
+import { deadlineOnAccept, DEFAULT_DEADLINE_MS } from './deadline-start';
 import {
   canvasPositionMoney,
   normalizeAddons,
@@ -46,10 +43,9 @@ import UpdateStatus from './dto/update-status.dto';
 import { DtoUpdateOrder } from './dto/update-order.dto';
 import { DtoCreateLead } from './dto/create-lead.dto';
 import { DtoPhotosShortfall } from './dto/photos-shortfall.dto';
-import {
-  CANVAS_FRAME_LABELS,
-  findCanvasSize,
-} from '../scenarios/products/canvas.pricing';
+import { CANVAS_FRAME_LABELS } from '../scenarios/products/canvas.pricing';
+import { leadCanvasPosition } from './lead-canvas-position';
+import { assertListedCanvasSize } from './canvas-size-guard';
 import { DtoAssignExecutor } from './dto/assign-executor.dto';
 import {
   EnumCommunication,
@@ -74,6 +70,7 @@ import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 import {
   canvasTermsFrom,
   resolveCanvasPosition,
+  type CanvasTerms,
 } from 'src/canvas/canvas-production-price';
 import { normalizeMarketplaceNumber } from './order-number';
 import { hasTechSpecFiles } from 'src/partner/tech-spec-paths';
@@ -226,7 +223,12 @@ function calcCanvasMoney(
   contractorPrice: number,
   addons: CanvasAddons,
 ) {
-  return canvasPositionMoney({ quantity, clientPrice, contractorPrice, addons });
+  return canvasPositionMoney({
+    quantity,
+    clientPrice,
+    contractorPrice,
+    addons,
+  });
 }
 
 /**
@@ -411,6 +413,9 @@ export class OrderPhotoService {
        */
       const canvasTerms = canvasTermsFrom(await this.partnerSettings.get(tx));
       const canvasCreate = (dto.canvasItems ?? []).map((e) => {
+        // Размер только из прайса: иначе в заказ попадает цена, посчитанная
+        // не от прайса, и заработок по позиции не с чем сверить.
+        assertListedCanvasSize(e.sizeKey);
         const priced = resolveCanvasPosition(e, canvasTerms);
         // Лак и багет: своя цена поставщика и своя цена клиенту, за штуку.
         const addons = normalizeAddons(e);
@@ -874,9 +879,11 @@ export class OrderPhotoService {
 
     try {
       await this.telegram.sendLeadAlert(
-        [`⚠️ Заказ ${order.numberOrder}: фотографии доехали не все.`, '', line].join(
-          '\n',
-        ),
+        [
+          `⚠️ Заказ ${order.numberOrder}: фотографии доехали не все.`,
+          '',
+          line,
+        ].join('\n'),
       );
     } catch (error) {
       // Молчание бота не отменяет записи в примечании — она уже на месте.
@@ -1136,7 +1143,7 @@ export class OrderPhotoService {
           // товар и тираж из примечания руками — это ошибки и потеря времени.
           // Холст заводится в свою таблицу, а не в фото-позиции: у него
           // другая экономика (себестоимость подрядчика по каждой штуке).
-          ...buildLeadPosition(dto, money),
+          ...buildLeadPosition(dto, money, canvasTermsFrom(leadSettings)),
         },
         include: { items: true, tshirtItems: true, canvasItems: true },
       });
@@ -2766,36 +2773,33 @@ export class OrderPhotoService {
 function buildLeadPosition(
   dto: DtoCreateLead,
   money: { quantity: number; unitPrice: number; pricePosition: number },
+  canvasTerms: CanvasTerms,
 ) {
   if (money.quantity <= 0) {
     return {};
   }
 
   if (dto.productCategory === EnumProductCategory.CANVAS) {
-    // Себестоимость берём из прайса — того же, из которого сайт взял цену.
-    // Ноль означает, что прайс подрядчика ещё не согласован: тогда маржа
-    // по позиции будет завышена, и это видно в отчёте.
-    const size = dto.canvasSizeKey
-      ? findCanvasSize(dto.canvasSizeKey)
-      : undefined;
-    const contractorPrice = size?.contractorCost ?? 0;
-    const contractorCostPosition = contractorPrice * money.quantity;
+    /*
+     * Долг производству считаем по его прайсу, а не по витрине: в витринном
+     * прайсе цены производства нет и быть не должно. Размер и материал
+     * ложатся в позицию ключами — по ним менеджер правит размер выбором из
+     * списка, и цена клиенту едет за размером (см. lead-canvas-position.ts).
+     */
     return {
       canvasItems: {
         create: [
-          {
-            formatCanvas:
-              dto.canvasSizeLabel?.trim() ||
-              dto.canvasSizeKey?.trim() ||
-              dto.productName?.trim() ||
-              'Холст с сайта',
-            quantity: money.quantity,
-            clientPrice: money.unitPrice,
-            contractorPrice,
-            pricePosition: money.pricePosition,
-            contractorCostPosition,
-            profitPosition: money.pricePosition - contractorCostPosition,
-          },
+          leadCanvasPosition(
+            {
+              sizeKey: dto.canvasSizeKey,
+              sizeLabel: dto.canvasSizeLabel,
+              productName: dto.productName,
+              frame: dto.canvasFrame,
+              quantity: money.quantity,
+              unitPrice: money.unitPrice,
+            },
+            canvasTerms,
+          ),
         ],
       },
     };

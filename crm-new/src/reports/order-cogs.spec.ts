@@ -1,5 +1,14 @@
-import { costSettingsFrom, orderCostOfGoods, type CostSettings } from './order-cogs';
-import { addOrder, emptyBucket, finalize, type OrderRow } from './reports.service';
+import {
+  costSettingsFrom,
+  orderCostOfGoods,
+  type CostSettings,
+} from './order-cogs';
+import {
+  addOrder,
+  emptyBucket,
+  finalize,
+  type OrderRow,
+} from './reports.service';
 
 /**
  * Себестоимость заказа: одна функция на отчёт и на Метрику (этап 06,
@@ -33,8 +42,20 @@ const PHOTO = row({
   deliveryCost: 300,
   deliveryMethod: 'YANDEX_PVZ',
   items: [
-    { formatPaper: '10x15', quantity: 37, pricePosition: 740, printOnClientItem: false, thermalCost: 0 },
-    { formatPaper: 'Polaroid', quantity: 11, pricePosition: 330, printOnClientItem: false, thermalCost: 0 },
+    {
+      formatPaper: '10x15',
+      quantity: 37,
+      pricePosition: 740,
+      printOnClientItem: false,
+      thermalCost: 0,
+    },
+    {
+      formatPaper: 'Polaroid',
+      quantity: 11,
+      pricePosition: 330,
+      printOnClientItem: false,
+      thermalCost: 0,
+    },
   ],
 });
 
@@ -42,12 +63,32 @@ const TSHIRT = row({
   productCategory: 'TSHIRT',
   totalOrder: 3400,
   tshirtItems: [
-    { pricePosition: 1700, quantity: 1, designCost: 300, thermalCost: 70, blankCost: 450, clientItem: false },
-    { pricePosition: 1200, quantity: 1, designCost: 0, thermalCost: 70, blankCost: 0, clientItem: true },
+    {
+      pricePosition: 1700,
+      quantity: 1,
+      designCost: 300,
+      thermalCost: 70,
+      blankCost: 450,
+      clientItem: false,
+    },
+    {
+      pricePosition: 1200,
+      quantity: 1,
+      designCost: 0,
+      thermalCost: 70,
+      blankCost: 0,
+      clientItem: true,
+    },
   ],
   items: [
     // Печать на изделии заказчика — тоже работа партнёра.
-    { formatPaper: '', quantity: 1, pricePosition: 500, printOnClientItem: true, thermalCost: 70 },
+    {
+      formatPaper: '',
+      quantity: 1,
+      pricePosition: 500,
+      printOnClientItem: true,
+      thermalCost: 70,
+    },
   ],
 });
 
@@ -56,7 +97,10 @@ const CANVAS = row({
   totalOrder: 6828,
   deliveryCost: 800,
   deliveryMethod: 'PRODUCTION_MSK',
-  canvasItems: [{ contractorCostPosition: 3900 }, { contractorCostPosition: 1652 }],
+  canvasItems: [
+    { contractorCostPosition: 3900 },
+    { contractorCostPosition: 1652 },
+  ],
 });
 
 describe('паритет с P&L-отчётом', () => {
@@ -123,16 +167,42 @@ describe('паритет с P&L-отчётом', () => {
 
 describe('надёжность себестоимости', () => {
   it('нет позиций — число не считается надёжным, наружу не отдаётся', () => {
-    expect(orderCostOfGoods(row({ productCategory: 'PHOTO' }), SETTINGS)).toMatchObject({
+    expect(
+      orderCostOfGoods(row({ productCategory: 'PHOTO' }), SETTINGS),
+    ).toMatchObject({
       rub: 0,
       reliable: false,
     });
-    expect(orderCostOfGoods(row({ productCategory: 'TSHIRT' }), SETTINGS).reliable).toBe(false);
-    expect(orderCostOfGoods(row({ productCategory: 'CANVAS' }), SETTINGS).reliable).toBe(false);
+    expect(
+      orderCostOfGoods(row({ productCategory: 'TSHIRT' }), SETTINGS).reliable,
+    ).toBe(false);
+    expect(
+      orderCostOfGoods(row({ productCategory: 'CANVAS' }), SETTINGS).reliable,
+    ).toBe(false);
+  });
+
+  it('холст с нулевой себестоимостью — ненадёжно', () => {
+    /*
+      Ноль по холсту означает «цена производства не досталась позиции»,
+      а не «бесплатно»: производство даром не печатает. Так приходили
+      заявки с сайта, пока себестоимость брали из витринного прайса,
+      где она стояла нулём. В отчёте такой заказ выглядел проданным
+      с маржой 100%, а в Метрику уезжала прибыль, которой не было.
+    */
+    const free = row({
+      productCategory: 'CANVAS',
+      canvasItems: [{ contractorCostPosition: 0 }],
+    });
+    expect(orderCostOfGoods(free, SETTINGS)).toMatchObject({
+      rub: 0,
+      reliable: false,
+    });
   });
 
   it('неизвестная категория — ноль и ненадёжно', () => {
-    expect(orderCostOfGoods(row({ productCategory: 'OTHER' }), SETTINGS)).toEqual({
+    expect(
+      orderCostOfGoods(row({ productCategory: 'OTHER' }), SETTINGS),
+    ).toEqual({
       rub: 0,
       photoMaterialKopecks: 0,
       tshirtContractorCost: 0,

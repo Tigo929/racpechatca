@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
@@ -27,9 +27,16 @@ interface Props {
 /**
  * Строка позиции холста.
  *
- * `sizeKey` пустой — размер нестандартный: тогда подпись и цену производства
- * вводят руками. Со стандартным размером цену считает сервер по прайсу, и
- * трогать её нельзя: занизить себестоимость значит уйти в минус незаметно.
+ * Размер выбирается из прайса производства: у каждого размера своя цена
+ * клиенту (розница) и своя цена производства (опт или розница минус скидка),
+ * и разница между ними — заработок. Поэтому цена производства считается
+ * сервером и не вводится руками: занизить себестоимость значит уйти в минус
+ * незаметно.
+ *
+ * `sizeKey` пустой бывает только у старых позиций — заведённых до прайса и
+ * у заявок с сайта, размера которых в прайсе не нашлось. Такие правятся
+ * по-прежнему, руками: отбивать правку задним числом значило бы запереть
+ * заказ, который уже в работе. Новую позицию так создать нельзя.
  */
 type EditState = {
   sizeKey: string;
@@ -58,7 +65,9 @@ const EMPTY: EditState = {
   material: 'SYNTHETIC',
   formatCanvas: '',
   quantity: '1',
-  clientPrice: '1500',
+  // 0 — цену подставит прайс, как только он загрузится. Константа здесь
+  // означала бы позицию по цене, которой в прайсе нет: у 30×40 это 940 ₽.
+  clientPrice: '0',
   contractorPrice: '0',
   varnish: false,
   varnishClientPrice: '0',
@@ -127,6 +136,42 @@ export function CanvasItemsTable({ order }: Props) {
     enabled: isAdmin,
     staleTime: 600_000,
   });
+
+  /**
+   * Цена клиенту по прайсу: розничная колонка выбранного материала.
+   *
+   * По рознице производства мы и продаём — это те же числа, что стоят на
+   * сайте, и именно от них считается заработок: розница минус опт. Хлопок
+   * дороже и клиенту, и нам, поэтому цена зависит не только от размера.
+   *
+   * `null` значит «такого размера в прайсе нет»: старая позиция или
+   * нестандарт. Тогда цену вводят руками — а подставленный ноль был бы
+   * молчаливой ошибкой.
+   */
+  const listPriceFor = (
+    sizeKey: string,
+    material: EnumCanvasMaterial,
+  ): number | null =>
+    (sizeKey
+      ? pricing?.sizes.find((x) => x.key === sizeKey)?.retail[material]
+      : null) ?? null;
+
+  /*
+   * Прайс загрузился — ставим цену в новую строку. Делаем это здесь, а не
+   * в EMPTY: прайс приходит с сервера, и на момент первого рендера его нет.
+   * Правим только нуль — вписанную руками цену не перебиваем.
+   */
+  useEffect(() => {
+    if (!pricing) return;
+    setNewItem((prev) => {
+      if (Number(prev.clientPrice) > 0) return prev;
+      const list = listPriceFor(prev.sizeKey, prev.material);
+      return list === null ? prev : { ...prev, clientPrice: String(list) };
+    });
+    // listPriceFor выводится из pricing — отдельной зависимостью он только
+    // заставил бы эффект бегать на каждый рендер.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pricing, setNewItem]);
 
   const items = order.canvasItems ?? [];
   const totals = items.reduce(
@@ -224,34 +269,62 @@ export function CanvasItemsTable({ order }: Props) {
     pricing?.sizes.find((x) => x.key === state.sizeKey)?.cost[state.material] ?? 0;
 
   /**
-   * Цена этого размера на сайте — ею и считается заявка с сайта.
+   * Деньги по строке, которую прямо сейчас правят.
    *
-   * `null` значит «сайт этот размер не продаёт»: нестандарт или размер,
-   * которого нет в витринном прайсе. Тогда цену вводят руками, и это
-   * нормально — а вот подставленный ноль был бы молчаливой ошибкой.
+   * Раньше на месте выручки, себестоимости и маржи стояли прочерки: пока
+   * строку правят, видно не было, во что она превращается, и заработок
+   * узнавали только после сохранения. Считаем ровно по той же формуле,
+   * что и сервер (цена + допы) × тираж.
    */
-  const sitePriceOf = (sizeKey: string): number | null =>
-    (sizeKey ? pricing?.sizes.find((x) => x.key === sizeKey)?.clientPrice : null) ?? null;
+  const draftMoney = (state: EditState, legacy: boolean) => {
+    const dto = toDto(state);
+    const quantity = dto.quantity;
+    const unitCost = legacy ? num(state.contractorPrice) : costOf(state);
+    const revenue = (dto.clientPrice + addonsClientPrice(dto)) * quantity;
+    const cost = (unitCost + addonsContractorPrice(dto)) * quantity;
+    return { revenue, cost, profit: revenue - cost };
+  };
+
+  /** Три денежные клетки строки в режиме правки. */
+  const renderDraftMoney = (state: EditState, legacy: boolean) => {
+    const { revenue, cost, profit } = draftMoney(state, legacy);
+    return (
+      <>
+        <td className="px-4 py-2 text-right font-medium tabular-nums">
+          {money(revenue)}
+        </td>
+        <td className="px-4 py-2 text-right text-gray-500 tabular-nums">
+          {money(cost)}
+        </td>
+        <td
+          className={`px-4 py-2 text-right font-semibold tabular-nums ${
+            profit >= 0 ? 'text-emerald-700' : 'text-red-600'
+          }`}
+        >
+          {money(profit)}
+        </td>
+      </>
+    );
+  };
 
   /**
-   * Смена размера тянет за собой цену клиента.
+   * Смена размера или материала тянет за собой цену клиента.
    *
    * Раньше менеджер правил размер в заявке с сайта, а цена оставалась от
-   * прежнего размера — и заказ уезжал в работу с суммой, которой на сайте
-   * нет. Теперь цена едет следом, а если её правили руками, под полем
-   * видно, насколько она разошлась с витриной, и одним нажатием
-   * возвращается обратно.
+   * прежнего размера — и заказ уезжал в работу с суммой за другой холст.
+   * Теперь цена едет следом, а если её правили руками, под полем видно,
+   * насколько она разошлась с прайсом, и одним нажатием возвращается.
    */
-  const changeSize = (
+  const changePriced = (
     state: EditState,
-    sizeKey: string,
+    patch: { sizeKey?: string; material?: EnumCanvasMaterial },
     onChange: (next: EditState) => void,
   ) => {
-    const site = sitePriceOf(sizeKey);
+    const next = { ...state, ...patch };
+    const list = listPriceFor(next.sizeKey, next.material);
     onChange({
-      ...state,
-      sizeKey,
-      clientPrice: site === null ? state.clientPrice : String(site),
+      ...next,
+      clientPrice: list === null ? state.clientPrice : String(list),
     });
   };
 
@@ -278,6 +351,8 @@ export function CanvasItemsTable({ order }: Props) {
   const renderInputs = (
     state: EditState,
     onChange: (state: EditState) => void,
+    /** Позиция без размера из прайса — ей оставляем ручной ввод. */
+    legacy = false,
   ) => (
     <>
       <td className="px-4 py-2">
@@ -285,7 +360,9 @@ export function CanvasItemsTable({ order }: Props) {
           <select
             className={inputCls}
             value={state.sizeKey}
-            onChange={(e) => changeSize(state, e.target.value, onChange)}
+            onChange={(e) =>
+              changePriced(state, { sizeKey: e.target.value }, onChange)
+            }
             aria-label="Размер холста"
           >
             {(pricing?.sizes ?? []).map((size) => (
@@ -293,7 +370,17 @@ export function CanvasItemsTable({ order }: Props) {
                 {size.label}
               </option>
             ))}
-            <option value={CUSTOM_SIZE}>Нестандартный размер…</option>
+            {/* Вариант «нестандартный» остаётся только у позиции, которая
+                уже такая: иначе выбранный размер молча заменил бы её
+                подпись и цену. Новую позицию заводят по прайсу. */}
+            {legacy && (
+              <option value={CUSTOM_SIZE}>{state.formatCanvas}</option>
+            )}
+            {/* Прайс отдаётся только администратору: менеджеру пустой
+                список без объяснения выглядел бы поломкой. */}
+            {!pricing?.sizes.length && !legacy && (
+              <option value={CUSTOM_SIZE}>Прайс недоступен — нужен администратор</option>
+            )}
           </select>
 
           {state.sizeKey ? (
@@ -301,7 +388,11 @@ export function CanvasItemsTable({ order }: Props) {
               className={inputCls}
               value={state.material}
               onChange={(e) =>
-                onChange({ ...state, material: e.target.value as EnumCanvasMaterial })
+                changePriced(
+                  state,
+                  { material: e.target.value as EnumCanvasMaterial },
+                  onChange,
+                )
               }
               aria-label="Материал"
             >
@@ -309,12 +400,14 @@ export function CanvasItemsTable({ order }: Props) {
               <option value="COTTON">Хлопок</option>
             </select>
           ) : (
-            /* Размера нет в прайсе — подпись и цену производства вводим сами. */
+            /* Старая позиция без размера из прайса: подпись и цену
+               производства по-прежнему вводят руками. */
             <input
               className={inputCls}
               value={state.formatCanvas}
               onChange={(e) => onChange({ ...state, formatCanvas: e.target.value })}
               placeholder="Модульный, нестандарт…"
+              aria-label="Подпись позиции"
             />
           )}
 
@@ -395,25 +488,24 @@ export function CanvasItemsTable({ order }: Props) {
         {/*
             Подпись под ценой — откуда она взялась.
 
-            Совпала с сайтом — так и написано, и менеджеру не нужно лезть
-            в соседнюю вкладку сверять. Разошлась — названы обе суммы и
-            дано вернуть витринную: скидка по договорённости бывает, а вот
-            случайная цифра в заказе на холст за две тысячи стоит дорого.
+            Совпала с прайсом — так и написано, и сверять не с чем. Разошлась
+            — названы обе суммы и дано вернуть прайсовую: скидка по
+            договорённости бывает, а вот случайная цифра в заказе на холст
+            за две тысячи стоит дорого.
         */}
         {(() => {
-          const site = sitePriceOf(state.sizeKey);
-          if (site === null) return null;
-          const same = Number(state.clientPrice) === site;
-          return same ? (
+          const list = listPriceFor(state.sizeKey, state.material);
+          if (list === null) return null;
+          return Number(state.clientPrice) === list ? (
             <span className="mt-1 block text-right text-[11px] text-gray-400">
-              цена с сайта
+              цена по прайсу
             </span>
           ) : (
             <span className="mt-1 block text-right text-[11px] text-amber-700">
-              на сайте {money(site)} ·{' '}
+              по прайсу {money(list)} ·{' '}
               <button
                 type="button"
-                onClick={() => onChange({ ...state, clientPrice: String(site) })}
+                onClick={() => onChange({ ...state, clientPrice: String(list) })}
                 className="underline underline-offset-2 hover:text-amber-900"
               >
                 вернуть
@@ -519,10 +611,8 @@ export function CanvasItemsTable({ order }: Props) {
                 <tr key={item.id} className="hover:bg-gray-50">
                   {canEdit && isEditing ? (
                     <>
-                      {renderInputs(editState, setEditState)}
-                      <td className="px-4 py-2 text-right text-gray-300">—</td>
-                      <td className="px-4 py-2 text-right text-gray-300">—</td>
-                      <td className="px-4 py-2 text-right text-gray-300">—</td>
+                      {renderInputs(editState, setEditState, !item.sizeKey)}
+                      {renderDraftMoney(editState, !item.sizeKey)}
                       <td className="px-3 py-2">
                         <div className="flex gap-1">
                           <button
@@ -615,9 +705,7 @@ export function CanvasItemsTable({ order }: Props) {
             {canEdit && adding && (
               <tr className="bg-cyan-50">
                 {renderInputs(newItem, setNewItem)}
-                <td className="px-4 py-2 text-right text-gray-300">—</td>
-                <td className="px-4 py-2 text-right text-gray-300">—</td>
-                <td className="px-4 py-2 text-right text-gray-300">—</td>
+                {renderDraftMoney(newItem, false)}
                 <td className="px-3 py-2">
                   <div className="flex gap-1">
                     <button

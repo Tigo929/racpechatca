@@ -1,5 +1,8 @@
 import { CANVAS_PRODUCTION_PRICES } from './canvas-production-price';
-import { CANVAS_SIZES, findCanvasSize } from '../scenarios/products/canvas.pricing';
+import {
+  CANVAS_SIZES,
+  findCanvasSize,
+} from '../scenarios/products/canvas.pricing';
 
 /**
  * Цена холста для клиента — одна на сайт и на CRM.
@@ -30,6 +33,20 @@ describe('витринная цена холста рядом с произво�
       (row) => !findCanvasSize(row.key),
     ).map((row) => row.key);
     expect(missing).toEqual([]);
+  });
+
+  it('витринная цена равна розничной колонке прайса', () => {
+    /*
+      На этом держится весь расчёт: клиенту мы называем розницу
+      производства, себе платим опт, и разница — заработок. Если витрина
+      разойдётся с розничной колонкой, сайт и CRM назовут за один холст
+      разные суммы, а «розница минус опт» перестанет быть заработком:
+      в одном месте будет своя розница, в другом — своя.
+    */
+    const mismatched = CANVAS_PRODUCTION_PRICES.filter(
+      (row) => findCanvasSize(row.key)?.price !== row.synthetic,
+    ).map((row) => row.key);
+    expect(mismatched).toEqual([]);
   });
 
   it('витринная цена не ноль и не ниже оптовой', () => {
