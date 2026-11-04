@@ -1,21 +1,25 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi } from 'vitest';
 import { useState } from 'react';
 import { CreateOrderForm } from './CreateOrderForm';
 import { OrderEditForm } from './OrderEditForm';
-import { marketplaceSourceOrder } from '../../constants';
 import { displayOrderNumber } from '../../utils/order-number';
 import type { UpdateOrderDto } from '../../types';
-import { ordersApi } from '../../api/orders';
 
 /**
- * Источник заказа с маркетплейса.
+ * Заказ с маркетплейса в ручной форме — и почему его там больше нет.
  *
- * Заказ на печать принта ведёт сама площадка: «местным» или авитошным он
- * быть не может. Раньше источник подставлялся молча при сохранении — в форме
- * оставалось «Авито», и сотрудник видел одно, а в заказ уходило другое.
- * Теперь отметка ставит Ozon на виду, а сохранение страхует выбор.
+ * Отправления заводит в CRM сам раздел маркетплейсов: он знает номер
+ * отправления, кабинет и состав заказа. Галочка «Заказ с маркетплейса» в
+ * ручной форме делала то же самое с чужих слов — номер набирали руками, и
+ * опечатка делала заказ ненаходимым со стороны кабинета, а кабинета и
+ * отправления у такого заказа не было вовсе: ни автосборка, ни отметка
+ * выкупа, ни просьба об отзыве его не касались.
+ *
+ * Поэтому в форме её нет (решение владельца 04.11.2026), и первая проверка
+ * здесь сторожит именно отсутствие. Правка карточки — другое дело: заказ,
+ * заведённый из кабинета, по-прежнему правят, и эти проверки остались.
  */
 
 vi.mock('../../api/orders', () => ({
@@ -56,32 +60,36 @@ describe('источник заказа с маркетплейса', () => {
     expect(source.value).toBe('AVITO');
   });
 
-  it('отметка «Заказ с маркетплейса» ставит Ozon в самой форме', () => {
+  it('галочки «Заказ с маркетплейса» в форме нет — ни у одной категории', () => {
+    /*
+     * Заказ с площадки заводится из раздела маркетплейсов: там есть номер
+     * отправления, кабинет и состав. Набранный руками он выглядел так же,
+     * но отправления за ним не стояло — и автосборка, отметка выкупа и
+     * просьба об отзыве проходили мимо него.
+     */
     renderForm();
+    expect(screen.queryByText('Заказ с маркетплейса')).not.toBeInTheDocument();
+
     fireEvent.click(screen.getByText('Футболка с принтом'));
-    fireEvent.click(screen.getByText('Заказ с маркетплейса'));
-    const source = screen.getByLabelText('Источник заказа') as HTMLSelectElement;
-    expect(source.value).toBe('OZON');
+    expect(screen.queryByText('Заказ с маркетплейса')).not.toBeInTheDocument();
+    // И поля её номера тоже: набирать его в ручной форме больше негде.
+    expect(
+      screen.queryByLabelText('Номер заказа на площадке'),
+    ).not.toBeInTheDocument();
   });
 
-  it('выбор остаётся за сотрудником: Wildberries не перебивается', () => {
+  it('у футболки остались деньги: доставка, срочность, скидка, цена', () => {
+    /*
+     * Галочка прятала всё это. Убрав её, легко было вместе с ней убрать и
+     * показ полей — тогда футболку нельзя было бы продать вообще.
+     */
     renderForm();
     fireEvent.click(screen.getByText('Футболка с принтом'));
-    fireEvent.click(screen.getByText('Заказ с маркетплейса'));
-    const source = screen.getByLabelText('Источник заказа') as HTMLSelectElement;
-    fireEvent.change(source, { target: { value: 'WB' } });
-    expect(source.value).toBe('WB');
-    expect(marketplaceSourceOrder(source.value)).toBe('WB');
-  });
-
-  it('сохранение возвращает к Ozon всё, кроме Wildberries', () => {
-    // Страховка от восстановленного черновика: там мог остаться источник,
-    // выбранный до того, как заказ пометили маркетплейсом.
-    expect(marketplaceSourceOrder('AVITO')).toBe('OZON');
-    expect(marketplaceSourceOrder('LOCAL')).toBe('OZON');
-    expect(marketplaceSourceOrder('WEBSITE')).toBe('OZON');
-    expect(marketplaceSourceOrder(undefined)).toBe('OZON');
-    expect(marketplaceSourceOrder('WB')).toBe('WB');
+    expect(screen.getByText('Способ доставки')).toBeInTheDocument();
+    expect(screen.getByLabelText('Скидка клиенту, ₽')).toBeInTheDocument();
+    expect(screen.getByText('Срочность заказа')).toBeInTheDocument();
+    expect(screen.getByText('Требуется разработать дизайн')).toBeInTheDocument();
+    expect(screen.getByText(/Цена ₽/)).toBeInTheDocument();
   });
 });
 
@@ -124,34 +132,6 @@ function renderEdit({
 describe('номер заказа на площадке', () => {
   beforeEach(() => {
     sessionStorage.clear();
-  });
-
-  it('поле появляется только у заказа с маркетплейса', () => {
-    renderForm();
-    expect(
-      screen.queryByLabelText('Номер заказа на площадке'),
-    ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('Футболка с принтом'));
-    fireEvent.click(screen.getByText('Заказ с маркетплейса'));
-    expect(screen.getByLabelText('Номер заказа на площадке')).toBeInTheDocument();
-  });
-
-  it('без номера заказ с площадки не создаётся', async () => {
-    // Иначе заказ нельзя найти в кабинете, а лист согласования уйдёт
-    // покупателю подписанным номером, которого он не знает.
-    renderForm();
-    fireEvent.click(screen.getByText('Футболка с принтом'));
-    fireEvent.click(screen.getByText('Заказ с маркетплейса'));
-    fireEvent.change(screen.getByPlaceholderText('@username'), {
-      target: { value: '@client_test' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /Создать заявку/i }));
-    expect(
-      await screen.findByText(/Укажите номер заказа на площадке/),
-    ).toBeInTheDocument();
-    await waitFor(() => {
-      expect(ordersApi.create).not.toHaveBeenCalled();
-    });
   });
 
   it('правка карточки даёт дописать номер уже созданному заказу', () => {

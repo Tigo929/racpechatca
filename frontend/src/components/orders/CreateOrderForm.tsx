@@ -17,8 +17,6 @@ import { canvasProductionApi } from '../../api/canvasProduction';
 import { PHOTO_FORMATS, sheetHint } from '../../config/photo-formats';
 import {
   COMMUNICATION_LABELS,
-  MARKETPLACE_DEFAULT_SOURCE_ORDER,
-  marketplaceSourceOrder,
   SOURCE_ORDER_LABELS,
   SOURCE_ORDER_OPTIONS,
 } from '../../constants';
@@ -148,14 +146,6 @@ const baseSchema = z.object({
   note: z.string().optional(),
   isUrgent: z.boolean().optional(),
   discountAmount: z.coerce.number().int().min(0).optional(),
-  // Режим «заказ с маркетплейса» (только футболки): печать индивидуального
-  // принта с Ozon и т.п. Прячет срочность, доставку, цену и «нужен дизайн» —
-  // деньги считаются на площадке, а CRM ведёт производство и макет.
-  marketplace: z.boolean().optional(),
-  // Номер заказа на площадке: тот, которым заказ назван в кабинете Ozon.
-  // Им заказ дальше и называется — в списке, в карточке и на листе
-  // согласования, который видит покупатель.
-  marketplaceOrderNumber: z.string().optional(),
   // Плата за срочность: входит в чек клиента, но не в базу зарплаты.
   urgencyFee: z.coerce.number().int().min(0).optional(),
   executorId: z.string().optional(),
@@ -252,20 +242,6 @@ const fullSchema = baseSchema.superRefine((data, ctx) => {
       });
     }
   }
-  // Заказ с площадки без её номера теряет смысл: по внутреннему номеру его
-  // не найти ни в кабинете, ни в переписке с покупателем, и лист согласования
-  // будет подписан номером, которого покупатель не знает.
-  if (
-    data.productCategory === 'TSHIRT' &&
-    data.marketplace &&
-    !(data.marketplaceOrderNumber ?? '').trim()
-  ) {
-    ctx.addIssue({
-      code: 'custom',
-      message: 'Укажите номер заказа на площадке — он в кабинете рядом с заказом',
-      path: ['marketplaceOrderNumber'],
-    });
-  }
   if (data.productCategory === 'CANVAS' && (!data.canvasItems || data.canvasItems.length === 0)) {
     ctx.addIssue({ code: 'custom', message: 'Добавьте хотя бы одну позицию', path: ['canvasItems'] });
   }
@@ -284,8 +260,6 @@ const EMPTY_ORDER_FORM = {
   deliveryCost: 0,
   isUrgent: false,
   discountAmount: 0,
-  marketplace: false,
-  marketplaceOrderNumber: '',
   urgencyFee: 0,
   executorId: '',
   freePrice: false,
@@ -399,11 +373,6 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
   // Скидка клиенту: вычитается из чека и из заработка сразу, пока форму
   // заполняют, — цену клиенту называют в этот же момент.
   const discountWatch = Number(useWatch({ control, name: 'discountAmount' }) ?? 0) || 0;
-  const marketplace = useWatch({ control, name: 'marketplace' }) ?? false;
-  // Режим маркетплейса действует только на футболках. В нём часть полей формы
-  // скрыта — деньги и доставку ведёт площадка, CRM отвечает за макет.
-  const marketMode = productCategory === 'TSHIRT' && marketplace;
-  const marketplaceReg = register('marketplace');
   // Переключились на MAX — сразу ставим «+7 », чтобы человек вводил с девятки.
   // Только если поле пустое или там остался телеграм-ник: готовый телефон/ссылку
   // не затираем.
@@ -608,10 +577,6 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
   });
 
   const onSubmit = (data: FormValues) => {
-    // Режим маркетплейса (футболки): деньги и доставку ведёт площадка. В CRM
-    // такой заказ без цены, без срочности, без доставки — только производство
-    // и макет. Флаг isMarketplacePrint включает статус «Разработка макета».
-    const isMarketplace = data.productCategory === 'TSHIRT' && (data.marketplace ?? false);
     if (data.freePrice) {
       // Свободные строки «название — цена» сохраняем как позиции (формат = название).
       const freeItems = (data.freeItems ?? []).filter((i) => i.name.trim());
@@ -659,15 +624,13 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
       // позиции (items с isFreePrice): цена = итог, кол-во не умножается.
       const tshirtItems = rows.filter((r) => !r.freePrice).map((r) => ({
         color: r.color, size: r.size, printLocation: r.printLocation,
-        // Маркетплейс: цены в CRM нет — позиция производственная, деньги на площадке.
-        quantity: r.quantity, price: isMarketplace ? 0 : r.price, clientItem: r.clientItem,
+        quantity: r.quantity, price: r.price, clientItem: r.clientItem,
         // Дизайн больше не часть позиции футболки — его заводят отдельной
         // свободной позицией. Пусто/0 → сервер берёт себестоимость из настроек.
         thermalCost: r.thermalCost || undefined,
         blankCost: r.blankCost || undefined,
       }));
-      // В режиме маркетплейса свободных позиций нет (поле скрыто).
-      const items = isMarketplace ? [] : rows.filter((r) => r.freePrice).map((r) => ({
+      const items = rows.filter((r) => r.freePrice).map((r) => ({
         formatPaper: (r.name ?? '').trim(),
         typePaper: 'GLOSS' as const,
         quantity: r.quantity,
@@ -684,29 +647,9 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
         tshirtItems: tshirtItems.length ? tshirtItems : undefined,
         items: items.length ? items : undefined,
         // «Разработка дизайна» — свободная сумма, входит в чек клиента.
-        // В режиме маркетплейса макет делается в «Дизайнере принта», не здесь.
-        designDevelopmentCost:
-          !isMarketplace && data.needsDesign
-            ? data.designDevelopmentCost || 0
-            : undefined,
-        // Маркетплейс: без срочности и доставки, и флаг, который включает
-        // статус «Разработка макета» на карточке заказа.
-        //
-        // Источник берут из формы: при отметке чекбокса там уже стоит Ozon,
-        // и его можно переключить на Wildberries. Всё остальное сохранение
-        // возвращает к Ozon — у заказа с площадки другого происхождения
-        // не бывает, а восстановленный черновик мог принести старое значение.
-        ...(isMarketplace
-          ? {
-              isUrgent: false,
-              urgencyFee: 0,
-              deliveryMethod: 'PICKUP' as const,
-              deliveryCost: 0,
-              sourceOrder: marketplaceSourceOrder(data.sourceOrder),
-              marketplaceOrderNumber: (data.marketplaceOrderNumber ?? '').trim(),
-              isMarketplacePrint: true,
-            }
-          : {}),
+        designDevelopmentCost: data.needsDesign
+          ? data.designDevelopmentCost || 0
+          : undefined,
       });
       return;
     }
@@ -896,69 +839,6 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
         </div>
       </div>
 
-      {/* Заказ с маркетплейса — только футболки. Включает режим печати
-          индивидуального принта (Ozon и т.п.): срочность, доставку, цену и
-          «нужен дизайн» прячем — этим занимается площадка, CRM ведёт макет. */}
-      {productCategory === 'TSHIRT' && (
-        <label
-          className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-colors ${
-            marketplace
-              ? 'border-amber-300 bg-amber-50/60'
-              : 'border-gray-200 hover:border-amber-200'
-          }`}
-        >
-          <input
-            type="checkbox"
-            {...marketplaceReg}
-            onChange={(e) => {
-              void marketplaceReg.onChange(e);
-              // Отметили маркетплейс — источник по умолчанию Ozon (основная
-              // площадка). Выбор остаётся: можно переключить на WB вручную.
-              if (e.target.checked) {
-                setValue('sourceOrder', MARKETPLACE_DEFAULT_SOURCE_ORDER, {
-                  shouldDirty: true,
-                });
-              }
-            }}
-            className="w-4 h-4 accent-amber-600"
-          />
-          <span className="text-sm font-medium text-gray-800">
-            Заказ с маркетплейса
-          </span>
-          <span className="text-xs text-gray-400 ml-auto">
-            печать принта (Ozon и т.п.)
-          </span>
-        </label>
-      )}
-
-      {/* Номер заказа на площадке. Обязателен: заказ с Ozon без номера Ozon
-          нельзя ни найти в кабинете, ни назвать покупателю — а именно этим
-          номером подписывается лист согласования, который он видит. */}
-      {marketMode && (
-        <div>
-          <label className={labelCls} htmlFor="marketplaceOrderNumber">
-            Номер заказа на площадке
-          </label>
-          <input
-            id="marketplaceOrderNumber"
-            type="text"
-            inputMode="numeric"
-            autoComplete="off"
-            className={inputCls}
-            placeholder="например 0123-4567-8901"
-            {...register('marketplaceOrderNumber')}
-          />
-          {errors.marketplaceOrderNumber ? (
-            <p className={errorCls}>{errors.marketplaceOrderNumber.message}</p>
-          ) : (
-            <p className="mt-1 text-xs text-gray-400">
-              Этим номером заказ будет называться в CRM и на листе согласования.
-            </p>
-          )}
-        </div>
-      )}
-
-      {!marketMode && (
       <div>
         <label className={labelCls}>Срочность заказа</label>
         <div className="grid grid-cols-2 gap-3">
@@ -1011,7 +891,6 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
           </p>
         </div>
       </div>
-      )}
 
       <div>
         <label className={labelCls}>
@@ -1050,7 +929,6 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
         {errors.urlCommunication && <p className={errorCls}>{errors.urlCommunication.message}</p>}
       </div>
 
-      {!marketMode && (
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelCls}>Способ доставки</label>
@@ -1076,7 +954,6 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
           {errors.deliveryCost && <p className={errorCls}>{errors.deliveryCost.message}</p>}
         </div>
       </div>
-      )}
 
       {/* Внешние продукты печатает подрядчик — своего исполнителя на них не назначаем. */}
       {productCategory === 'PHOTO' && (
@@ -1279,14 +1156,11 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
                   </button>
                 </div>
 
-                {/* Чекбокс свободной цены — первое поле позиции. В режиме
-                    маркетплейса скрыт: там цены нет вовсе. */}
-                {!marketMode && (
+                {/* Чекбокс свободной цены — первое поле позиции. */}
                 <label className="flex items-center gap-2.5 p-2.5 rounded-lg border border-gray-200 cursor-pointer hover:border-amber-300 transition-colors">
                   <input type="checkbox" {...register(`tshirtItems.${idx}.freePrice`)} className="w-4 h-4 accent-amber-600" />
                   <span className="text-sm text-gray-700">Свободная цена — произвольная позиция (название и цена)</span>
                 </label>
-                )}
 
                 {isFree ? (
                   <div className="grid grid-cols-[1fr_80px_120px] gap-3">
@@ -1361,12 +1235,10 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
                           <label className={labelCls}>Кол-во</label>
                           <input type="number" min={1} className={inputCls} {...register(`tshirtItems.${idx}.quantity`)} />
                         </div>
-                        {!marketMode && (
                         <div>
                           <label className={labelCls}>Цена ₽ (за всё)</label>
                           <input type="number" min={0} className={inputCls} {...register(`tshirtItems.${idx}.price`)} />
                         </div>
-                        )}
                       </div>
                     </div>
 
@@ -1711,9 +1583,8 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
       )}
 
       {/* Требуется разработать дизайн — футболки и холсты. Свободная сумма
-          входит в чек клиента и служит базой премии менеджера по оформлению.
-          В режиме маркетплейса скрыт: макет делается в «Дизайнере принта». */}
-      {((productCategory === 'TSHIRT' && !marketMode) || productCategory === 'CANVAS') && (
+          входит в чек клиента и служит базой премии менеджера по оформлению. */}
+      {(productCategory === 'TSHIRT' || productCategory === 'CANVAS') && (
         <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 space-y-2">
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input type="checkbox" {...register('needsDesign')} className="w-4 h-4 accent-amber-600" />
