@@ -6,12 +6,16 @@ import { canvasProductionApi } from '../../api/canvasProduction';
 import type { OrderPhoto } from '../../types';
 
 /**
- * Две системы цен производства на холст и торговля в минус.
+ * Откуда взялся долг производству и торговля в минус.
  *
  * Владелец называет цену клиенту прямо в этот момент, поэтому карточка
- * обязана говорить две вещи: по какому прайсу посчитан долг производству
- * (розница минус скидка или опт) и что заказ уходит ниже себестоимости.
- * Красная цифра со знаком этого не говорит — её читают как заработок.
+ * обязана говорить две вещи: сколько стоит размер по оптовому прайсу (это
+ * и есть долг производству) и что заказ уходит ниже себестоимости. Красная
+ * цифра со знаком второго не говорит — её читают как заработок.
+ *
+ * Прежняя система «розница минус 20%» отменена, и подпись «розница … − 20%»
+ * в интерфейсе появляться не должна: по ней себестоимость выше настоящей,
+ * а решение о цене принимается по этой самой подписи.
  */
 
 vi.mock('../../api/orders', () => ({
@@ -26,33 +30,26 @@ vi.mock('../../api/canvasProduction', () => ({
 }));
 vi.mock('../../context/useAuth', () => ({ useAuth: () => ({ user: { role: 'ADMIN' } }) }));
 
-const size = {
-  key: '20x30',
-  label: '20 × 30 см',
-  widthCm: 20,
-  heightCm: 30,
-  retail: { SYNTHETIC: 630, COTTON: 780 },
-  wholesale: { SYNTHETIC: 470, COTTON: 590 },
-  cost: { SYNTHETIC: 504, COTTON: 624 },
-  /* Витринная цена: по ней подставляется «клиент / шт» при смене размера. */
-  clientPrice: 630,
-};
-
-const pricing = (mode: 'RETAIL' | 'WHOLESALE') => ({
-  mode,
-  modeLabels: {
-    RETAIL: 'Розничный прайс со скидкой',
-    WHOLESALE: 'Оптовый прайс',
-  },
-  discountBasisPoints: 2000,
+/** 20×30 синтетика: 630 ₽ клиенту, 470 ₽ производству — строка из прайса. */
+const pricing = () => ({
   delivery: { cost: 700, price: 800 },
   materialLabels: { SYNTHETIC: 'Синтетика', COTTON: 'Хлопок' },
   sizes: [
-    mode === 'WHOLESALE' ? { ...size, cost: { SYNTHETIC: 470, COTTON: 590 } } : size,
+    {
+      key: '20x30',
+      label: '20 × 30 см',
+      widthCm: 20,
+      heightCm: 30,
+      retail: { SYNTHETIC: 630, COTTON: 780 },
+      wholesale: { SYNTHETIC: 470, COTTON: 590 },
+      cost: { SYNTHETIC: 470, COTTON: 590 },
+      /* Витринная цена: по ней подставляется «клиент / шт» при смене размера. */
+      clientPrice: 630,
+    },
   ],
 });
 
-/** Заказ с одной позицией: клиенту названо меньше, чем должны производству. */
+/** Заказ с одной позицией холста. */
 const order = (
   clientPrice: number,
   contractorPrice: number,
@@ -81,8 +78,8 @@ const order = (
     ],
   }) as unknown as OrderPhoto;
 
-function show(row: OrderPhoto, mode: 'RETAIL' | 'WHOLESALE' = 'RETAIL') {
-  vi.mocked(canvasProductionApi.pricing).mockResolvedValue(pricing(mode));
+function show(row: OrderPhoto) {
+  vi.mocked(canvasProductionApi.pricing).mockResolvedValue(pricing());
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -109,31 +106,28 @@ it('прибыльный заказ предупреждения не показ
   expect(screen.queryByText(/Заказ в минус/)).not.toBeInTheDocument();
 });
 
-it('в режиме опта цена производства подписана оптовым прайсом', async () => {
-  show(order(2500, 470), 'WHOLESALE');
+it('цена производства подписана оптовым прайсом, а не розницей со скидкой', async () => {
+  show(order(2500, 470));
   // Строку правим — в ней и видно, откуда взялся долг производству.
   fireEvent.click(await screen.findByLabelText('Редактировать позицию'));
   expect(await screen.findByText(/опт 470/)).toBeInTheDocument();
+  // 630 − 20% = 504: себестоимость по отменённой договорённости.
   expect(screen.queryByText(/розница/)).not.toBeInTheDocument();
-});
-
-it('в розничном режиме подписаны прайс и скидка', async () => {
-  show(order(2500, 504), 'RETAIL');
-  fireEvent.click(await screen.findByLabelText('Редактировать позицию'));
-  expect(await screen.findByText(/розница 630\s?₽ − 20%/)).toBeInTheDocument();
+  expect(screen.queryByText(/− 20%/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/504/)).not.toBeInTheDocument();
 });
 
 it('скидка клиенту вычитается из моего заработка', async () => {
-  // 2 500 клиенту, 504 производству, скидка 300 → заработок 1 696 ₽.
-  show(order(2500, 504, 300));
+  // 2 500 клиенту, 470 производству, скидка 300 → заработок 1 730 ₽.
+  show(order(2500, 470, 300));
   expect(await screen.findByText('Скидка клиенту')).toBeInTheDocument();
   const profitRow = (await screen.findByText('Моя прибыль')).closest('div')!;
-  expect(profitRow.textContent).toMatch(/1\s?696/);
+  expect(profitRow.textContent).toMatch(/1\s?730/);
 });
 
 it('скидка может увести заказ в минус, и это видно', async () => {
-  // 600 клиенту при долге 504 — прибыль 96 ₽; скидка 300 уводит в −204 ₽.
-  show(order(600, 504, 300));
+  // 600 клиенту при долге 470 — прибыль 130 ₽; скидка 300 уводит в −170 ₽.
+  show(order(600, 470, 300));
   expect(
     await screen.findByText(/Заказ в минус: производству отдадите на/),
   ).toBeInTheDocument();

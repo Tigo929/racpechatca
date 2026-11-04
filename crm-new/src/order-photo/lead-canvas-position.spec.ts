@@ -2,7 +2,6 @@ import { leadCanvasPosition } from './lead-canvas-position';
 import {
   canvasRetailPrice,
   canvasWholesalePrice,
-  type CanvasTerms,
 } from 'src/canvas/canvas-production-price';
 
 /**
@@ -18,9 +17,6 @@ import {
  * Поэтому проверки здесь — про деньги, а не про форму объекта.
  */
 
-const WHOLESALE: CanvasTerms = { mode: 'WHOLESALE', discountBasisPoints: 2000 };
-const RETAIL: CanvasTerms = { mode: 'RETAIL', discountBasisPoints: 2000 };
-
 /** 20×30 синтетика: розница 630, опт 470 — живой пример из прайса. */
 const SIZE = '20x30';
 const RETAIL_PRICE = canvasRetailPrice(SIZE, 'SYNTHETIC');
@@ -28,15 +24,12 @@ const WHOLESALE_PRICE = canvasWholesalePrice(SIZE, 'SYNTHETIC');
 
 describe('позиция холста из заявки с сайта', () => {
   it('себестоимость берётся из прайса, а не из нуля', () => {
-    const item = leadCanvasPosition(
-      {
-        sizeKey: SIZE,
-        sizeLabel: '20×30 см',
-        quantity: 1,
-        unitPrice: RETAIL_PRICE,
-      },
-      WHOLESALE,
-    );
+    const item = leadCanvasPosition({
+      sizeKey: SIZE,
+      sizeLabel: '20×30 см',
+      quantity: 1,
+      unitPrice: RETAIL_PRICE,
+    });
 
     expect(item.contractorPrice).toBe(WHOLESALE_PRICE);
     expect(item.contractorCostPosition).toBe(WHOLESALE_PRICE);
@@ -51,31 +44,18 @@ describe('позиция холста из заявки с сайта', () => {
       применялся, смена размера цену не меняла, и заказ уезжал в работу
       с суммой за прежний размер.
     */
-    const item = leadCanvasPosition(
-      {
-        sizeKey: SIZE,
-        sizeLabel: '20×30 см',
-        quantity: 2,
-        unitPrice: RETAIL_PRICE,
-      },
-      WHOLESALE,
-    );
+    const item = leadCanvasPosition({
+      sizeKey: SIZE,
+      sizeLabel: '20×30 см',
+      quantity: 2,
+      unitPrice: RETAIL_PRICE,
+    });
 
     expect(item.sizeKey).toBe(SIZE);
     expect(item.material).toBe('SYNTHETIC');
     expect(item.formatCanvas).toBe('20 × 30 см, синтетика');
     expect(item.pricePosition).toBe(RETAIL_PRICE * 2);
     expect(item.contractorCostPosition).toBe(WHOLESALE_PRICE * 2);
-  });
-
-  it('розничный режим: должны розницу минус договорная скидка', () => {
-    const item = leadCanvasPosition(
-      { sizeKey: SIZE, quantity: 1, unitPrice: RETAIL_PRICE },
-      RETAIL,
-    );
-    expect(item.contractorPrice).toBe(
-      Math.floor((RETAIL_PRICE * 8000) / 10000),
-    );
   });
 
   it('багет уезжает в свой доп, итог клиенту не меняется', () => {
@@ -87,10 +67,12 @@ describe('позиция холста из заявки с сайта', () => {
       на холсты цены багета не содержит.
     */
     const unitPrice = RETAIL_PRICE + 1500;
-    const item = leadCanvasPosition(
-      { sizeKey: SIZE, frame: 'WOOD', quantity: 1, unitPrice },
-      WHOLESALE,
-    );
+    const item = leadCanvasPosition({
+      sizeKey: SIZE,
+      frame: 'WOOD',
+      quantity: 1,
+      unitPrice,
+    });
 
     expect(item.clientPrice).toBe(RETAIL_PRICE);
     expect(item.frame).toBe(true);
@@ -103,10 +85,7 @@ describe('позиция холста из заявки с сайта', () => {
     // Надбавка за глянец — наш заработок: производство берёт за полотно
     // столько же, и вычитать надбавку из цены клиента нельзя.
     const unitPrice = 720;
-    const item = leadCanvasPosition(
-      { sizeKey: SIZE, quantity: 1, unitPrice },
-      WHOLESALE,
-    );
+    const item = leadCanvasPosition({ sizeKey: SIZE, quantity: 1, unitPrice });
     expect(item.clientPrice).toBe(unitPrice);
     expect(item.contractorPrice).toBe(WHOLESALE_PRICE);
     expect(item.profitPosition).toBe(unitPrice - WHOLESALE_PRICE);
@@ -118,16 +97,13 @@ describe('позиция холста из заявки с сайта', () => {
       списки разойдутся, лучше ноль и видимая подпись, чем цена соседнего
       размера: ноль в отчёте заметен, подставленная цена — нет.
     */
-    const item = leadCanvasPosition(
-      {
-        sizeKey: '33x33',
-        sizeLabel: '33×33 см',
-        productName: 'Холст 33×33',
-        quantity: 1,
-        unitPrice: 1000,
-      },
-      WHOLESALE,
-    );
+    const item = leadCanvasPosition({
+      sizeKey: '33x33',
+      sizeLabel: '33×33 см',
+      productName: 'Холст 33×33',
+      quantity: 1,
+      unitPrice: 1000,
+    });
 
     expect(item.sizeKey).toBeNull();
     expect(item.formatCanvas).toBe('33×33 см');

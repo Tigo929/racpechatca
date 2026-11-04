@@ -1310,12 +1310,9 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
               const priced = canvasPricing?.sizes.find((x) => x.key === row?.sizeKey);
               const material = row?.material ?? 'SYNTHETIC';
               const contractor = priced?.cost[material] ?? 0;
-              // Цена прайса, от которой считается долг: в рознице от неё
-              // отнимается скидка, в опте она и есть долг.
-              const wholesale = canvasPricing?.mode === 'WHOLESALE';
-              const listPrice =
-                (wholesale ? priced?.wholesale : priced?.retail)?.[material] ?? 0;
-              const discountPct = Math.round((canvasPricing?.discountBasisPoints ?? 0) / 100);
+              // Оптовая цена размера: сколько стоит по опту, столько
+              // и должны производству.
+              const listPrice = priced?.wholesale[material] ?? 0;
               // Цена клиенту по прайсу: с ней сверяется та, что в строке.
               const listClient = canvasListPrice(row?.sizeKey, row?.material);
               const sizeReg = register(`canvasItems.${idx}.sizeKey`);
@@ -1496,9 +1493,7 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
                       <p className="font-semibold text-gray-800 tabular-nums">{cost.toLocaleString('ru-RU')} ₽</p>
                       {listPrice > 0 && (
                         <p className="mt-0.5 text-[10px] leading-tight text-gray-400 tabular-nums">
-                          {wholesale
-                            ? `опт ${listPrice.toLocaleString('ru-RU')} ₽`
-                            : `прайс ${listPrice.toLocaleString('ru-RU')} ₽ − ${discountPct}%`}
+                          {`опт ${listPrice.toLocaleString('ru-RU')} ₽`}
                           {qty > 1 ? ` × ${qty}` : ''}
                         </p>
                       )}
@@ -1578,9 +1573,7 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
                     ? `${Math.round((canvasTotals.profit / canvasTotals.clientTotal) * 100)}% от того, что платит клиент`
                     : 'Укажите цену клиенту'}
                   {' · '}
-                  {canvasPricing.mode === 'WHOLESALE'
-                    ? 'оптовый прайс производства'
-                    : `розничный прайс производства − ${canvasPricing.discountBasisPoints / 100}%`}
+                  оптовый прайс производства
                 </p>
               </div>
 

@@ -60,6 +60,21 @@ describe('источник заказа с маркетплейса', () => {
     expect(source.value).toBe('AVITO');
   });
 
+  it('Ozon и Wildberries выбрать нельзя: такой заказ приходит из кабинета', () => {
+    /*
+     * Выставленный руками источник площадки заводил заказ-двойник: без
+     * отправления и кабинета, но в воронке Ozon — и сверка с кабинетом
+     * расходилась на него.
+     */
+    renderForm();
+    const source = screen.getByLabelText('Источник заказа') as HTMLSelectElement;
+    expect(Array.from(source.options).map((o) => o.value)).toEqual([
+      'AVITO',
+      'LOCAL',
+      'WEBSITE',
+    ]);
+  });
+
   it('галочки «Заказ с маркетплейса» в форме нет — ни у одной категории', () => {
     /*
      * Заказ с площадки заводится из раздела маркетплейсов: там есть номер
@@ -248,6 +263,26 @@ describe('номер заказа на площадке', () => {
     expect(
       screen.queryByLabelText('Номер заказа на площадке'),
     ).not.toBeInTheDocument();
+  });
+
+  it('у заказа из кабинета источник остался в списке правки', () => {
+    /*
+      Выбор сузился только для новых заказов. У заведённого из кабинета
+      источник Ozon остаётся в списке: иначе правка соседнего поля молча
+      переписала бы происхождение на «Авито», и заказ ушёл бы из воронки
+      площадки в авитошную.
+    */
+    renderEdit({
+      form: {
+        communicationPlatform: 'OZON',
+        deliveryMethod: 'PICKUP',
+        sourceOrder: 'OZON',
+      },
+      marketplacePostingNumber: '0121078243-0040-1',
+    });
+    const source = screen.getByLabelText('Источник заказа') as HTMLSelectElement;
+    expect(source.value).toBe('OZON');
+    expect(Array.from(source.options).map((o) => o.value)).toContain('OZON');
   });
 
   it('заказ называется номером площадки, обычный — внутренним', () => {

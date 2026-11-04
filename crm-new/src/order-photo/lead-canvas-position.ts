@@ -4,10 +4,7 @@ import {
   type CanvasAddons,
 } from './canvas-addons';
 import { FRAME_PRICE } from '../scenarios/products/canvas.pricing';
-import {
-  resolveCanvasPosition,
-  type CanvasTerms,
-} from 'src/canvas/canvas-production-price';
+import { resolveCanvasPosition } from 'src/canvas/canvas-production-price';
 
 /**
  * Позиция холста из заявки с сайта — с ценой производства, а не с нулём.
@@ -57,24 +54,18 @@ export interface LeadCanvasItem extends CanvasAddons {
   profitPosition: number;
 }
 
-export function leadCanvasPosition(
-  input: LeadCanvasInput,
-  terms: CanvasTerms,
-): LeadCanvasItem {
-  const priced = resolveCanvasPosition(
-    {
-      sizeKey: input.sizeKey?.trim() || undefined,
-      material: 'SYNTHETIC',
-      // Размера нет в прайсе — подпись берём с сайта: «Холст с сайта»
-      // в карточке не говорит менеджеру ничего.
-      formatCanvas:
-        input.sizeLabel?.trim() ||
-        input.sizeKey?.trim() ||
-        input.productName?.trim() ||
-        'Холст с сайта',
-    },
-    terms,
-  );
+export function leadCanvasPosition(input: LeadCanvasInput): LeadCanvasItem {
+  const priced = resolveCanvasPosition({
+    sizeKey: input.sizeKey?.trim() || undefined,
+    material: 'SYNTHETIC',
+    // Размера нет в прайсе — подпись берём с сайта: «Холст с сайта»
+    // в карточке не говорит менеджеру ничего.
+    formatCanvas:
+      input.sizeLabel?.trim() ||
+      input.sizeKey?.trim() ||
+      input.productName?.trim() ||
+      'Холст с сайта',
+  });
 
   /*
    * Багет вынимаем из цены холста в свой доп.

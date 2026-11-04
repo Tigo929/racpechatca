@@ -1,30 +1,29 @@
 /**
- * Прайс производства на печать по холсту — основа себестоимости.
+ * Прайс производства на печать по холсту — две колонки одной таблицы.
  *
- * Это НЕ витрина. Цены для клиента живут в canvas.pricing.ts и меняются
- * отдельно: производство даёт свои цены, от них считается только то,
- * сколько мы должны ему, а клиенту называется любая цена.
+ * Производство дало два прайса на один и тот же холст: розничный и оптовый.
+ * Розницу мы называем клиенту — витринный прайс (canvas.pricing.ts) собран
+ * из этих же чисел, и их совпадение сторожит canvas-client-price.spec.ts.
+ * Опт отдаём производству. Поэтому «розница минус опт» и есть заработок на
+ * полотне, и оба числа лежат в одной строке — разъехаться им негде.
  *
- * Работают ДВЕ системы расчёта, и действует та, что выбрана в настройках
- * (`canvasPriceMode`):
- *
- *   RETAIL    — как было с самого начала: производство прислало розничный
- *               прайс, мы должны ему розницу минус договорная скидка (20%).
- *   WHOLESALE — производство прислало оптовый прайс (фото от 24.09.2026).
- *               Оптовая цена и есть то, сколько мы должны: скидку сверху
- *               никто не даёт, она была способом посчитать опт из розницы.
+ * Долг производству равен оптовой цене, и больше из неё ничего не
+ * вычитается. Прежняя договорённость была другой: оптового прайса не
+ * существовало, производство присылало только розничный, и мы платили
+ * розницу минус 20% — так и считался опт, пока его не называли. С прайса
+ * от 24.09.2026 опт есть в явном виде, поэтому вычет отменён, а вместе с
+ * ним и переключатель систем: пока он был, долг можно было посчитать по
+ * договорённости, которой больше нет, и прибыль в отчёте завысилась бы
+ * молча.
  *
  * Обе колонки — «подрамник 2 см», единственный, который мы заказываем.
  * Колонки 3,5 см, ламинации и геля в расчёт не берём: их не заказываем.
  *
- * Проверка розничной системы на живом примере владельца: 20×30 синтетика,
- * подрамник 2 см — 630 ₽ розницы производства, со скидкой 20% должны 504 ₽.
- * Проверка оптовой: тот же размер по оптовому прайсу — 470 ₽, и это же
- * число мы должны, без вычитаний.
+ * Проверка на живом примере владельца: 20×30 синтетика, подрамник 2 см —
+ * 630 ₽ клиенту, 470 ₽ производству, заработок 160 ₽ с полотна.
  *
- * Старую систему трогать нельзя: по ней посчитаны все прежние заказы, и
- * переключение режима меняет только НОВЫЕ позиции — в уже сохранённых
- * лежат свои числа.
+ * Заказы, оформленные до отмены вычета, не пересчитываются: в их позициях
+ * лежат свои числа, по ним с производством уже рассчитались.
  */
 
 export type CanvasMaterialKind = 'SYNTHETIC' | 'COTTON';
@@ -33,39 +32,6 @@ export const CANVAS_MATERIAL_KIND_LABELS: Record<CanvasMaterialKind, string> = {
   SYNTHETIC: 'Синтетика',
   COTTON: 'Хлопок',
 };
-
-/**
- * Какой прайс производства действует сейчас.
- *
- * Меняется в настройках, а не в коде: договорённости с производством
- * меняются переговорами, и ради этого не должно быть выкладки.
- */
-export type CanvasPriceMode = 'RETAIL' | 'WHOLESALE';
-
-export const CANVAS_PRICE_MODE_LABELS: Record<CanvasPriceMode, string> = {
-  RETAIL: 'Розничный прайс со скидкой',
-  WHOLESALE: 'Оптовый прайс',
-};
-
-export function isCanvasPriceMode(value: unknown): value is CanvasPriceMode {
-  return value === 'RETAIL' || value === 'WHOLESALE';
-}
-
-/** Значение из настроек → режим. Мусор в базе не должен ломать расчёт. */
-export function canvasPriceMode(value: unknown): CanvasPriceMode {
-  return isCanvasPriceMode(value) ? value : 'RETAIL';
-}
-
-/**
- * Условия работы с производством на момент расчёта.
- *
- * Скидка нужна только розничному режиму: в оптовом прайсе она уже учтена
- * производством, и вычитать её второй раз значило бы занизить наш долг.
- */
-export interface CanvasTerms {
-  mode: CanvasPriceMode;
-  discountBasisPoints: number;
-}
 
 export interface CanvasProductionPrice {
   /** Ключ размера, он же попадает в позицию заказа: «20x30». */
@@ -529,20 +495,6 @@ export function canvasSizeLabel(price: CanvasProductionPrice): string {
 }
 
 /**
- * Условия из строки настроек. Одна точка чтения на весь проект: иначе
- * где-нибудь забудут про режим и посчитают долг по старой системе.
- */
-export function canvasTermsFrom(settings: {
-  canvasPriceMode?: string | null;
-  canvasDiscountBasisPoints?: number | null;
-}): CanvasTerms {
-  return {
-    mode: canvasPriceMode(settings.canvasPriceMode),
-    discountBasisPoints: settings.canvasDiscountBasisPoints ?? 2000,
-  };
-}
-
-/**
  * Розница производства по размеру и материалу. 0 — размер неизвестен.
  *
  * Она же — цена для клиента: по рознице производства мы и продаём, и
@@ -570,41 +522,19 @@ export function canvasWholesalePrice(
   return material === 'COTTON' ? row.wholesaleCotton : row.wholesaleSynthetic;
 }
 
-/** Цена прайса в действующем режиме — то, от чего считается долг. */
-export function canvasListPrice(
-  key: string,
-  material: CanvasMaterialKind,
-  mode: CanvasPriceMode,
-): number {
-  return mode === 'WHOLESALE'
-    ? canvasWholesalePrice(key, material)
-    : canvasRetailPrice(key, material);
-}
-
 /**
- * Сколько мы должны производству за один холст.
+ * Сколько мы должны производству за один холст — оптовая цена прайса.
  *
- * Розничный режим: розница минус договорная скидка. Скидка — в сотых
- * процента, как ставка партнёра в остальном проекте: 2000 = 20%. Округляем
- * вниз до рубля: копейки в счёте производства не фигурируют, а округление
- * вверх означало бы переплату на каждой позиции.
- *
- * Оптовый режим: цена из оптового прайса и есть долг. Скидку здесь не
- * применяем — производство уже посчитало её за нас, и второй вычет сделал
- * бы наш долг меньше настоящего, то есть завысил бы прибыль в отчётах.
+ * Ничего не вычитаем и не округляем: опт приходит готовым числом в рублях.
+ * Прежний вычет 20% из розницы отменён вместе с договорённостью, по
+ * которой он считался (см. заголовок файла). 0 — размера нет в прайсе:
+ * себестоимость такой позиции вводят руками.
  */
 export function canvasContractorCost(
   key: string,
   material: CanvasMaterialKind,
-  terms: CanvasTerms,
 ): number {
-  if (terms.mode === 'WHOLESALE') {
-    return canvasWholesalePrice(key, material);
-  }
-  const retail = canvasRetailPrice(key, material);
-  if (!retail) return 0;
-  const kept = Math.max(0, 10000 - terms.discountBasisPoints);
-  return Math.floor((retail * kept) / 10000);
+  return canvasWholesalePrice(key, material);
 }
 
 /**
@@ -624,15 +554,12 @@ export interface CanvasPositionPricing {
   contractorPrice: number;
 }
 
-export function resolveCanvasPosition(
-  input: {
-    sizeKey?: string;
-    material?: CanvasMaterialKind;
-    formatCanvas?: string;
-    contractorPrice?: number;
-  },
-  terms: CanvasTerms,
-): CanvasPositionPricing {
+export function resolveCanvasPosition(input: {
+  sizeKey?: string;
+  material?: CanvasMaterialKind;
+  formatCanvas?: string;
+  contractorPrice?: number;
+}): CanvasPositionPricing {
   const row = input.sizeKey
     ? findCanvasProductionPrice(input.sizeKey)
     : undefined;
@@ -651,6 +578,6 @@ export function resolveCanvasPosition(
     formatCanvas: `${canvasSizeLabel(row)}, ${CANVAS_MATERIAL_KIND_LABELS[material].toLowerCase()}`,
     sizeKey: row.key,
     material,
-    contractorPrice: canvasContractorCost(row.key, material, terms),
+    contractorPrice: canvasContractorCost(row.key, material),
   };
 }

@@ -329,23 +329,19 @@ export function CanvasItemsTable({ order }: Props) {
   };
 
   /**
-   * Цена действующего прайса — показываем рядом, чтобы было видно, откуда
-   * взялся долг: в рознице от неё отнимается скидка, в опте она и есть долг.
+   * Оптовая цена размера — показываем рядом, чтобы было видно, откуда
+   * взялся долг производству: сколько стоит по опту, столько и должны.
    */
   const listPriceOf = (state: EditState): number => {
     const row = pricing?.sizes.find((x) => x.key === state.sizeKey);
     if (!row) return 0;
-    return pricing?.mode === 'WHOLESALE'
-      ? row.wholesale[state.material]
-      : row.retail[state.material];
+    return row.wholesale[state.material];
   };
 
-  /** Подпись под ценой: по какому прайсу она посчитана. */
+  /** Подпись под ценой: откуда она взялась. */
   const priceHint = (state: EditState): string => {
     const list = listPriceOf(state);
-    if (!list) return '';
-    if (pricing?.mode === 'WHOLESALE') return `опт ${money(list)}`;
-    return `розница ${money(list)} − ${Math.round((pricing?.discountBasisPoints ?? 0) / 100)}%`;
+    return list ? `опт ${money(list)}` : '';
   };
 
   const renderInputs = (

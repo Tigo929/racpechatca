@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from 'src/generated/prisma/client';
 import { EnumExpenseCategory, EnumRole } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
-import type { CanvasPriceMode } from 'src/canvas/canvas-production-price';
 import { OrderSettlement, settleOrder } from './partner-settlement';
 import {
   OrderPositionsSource,
@@ -19,8 +18,6 @@ export interface UpdatePartnerSettingsDto {
   canvasContractorName?: string;
   deliveryPriceYandexPvz?: number;
   maxLinkTemplate?: string;
-  /** Какой прайс производства на холст действует сейчас. */
-  canvasPriceMode?: CanvasPriceMode;
 }
 
 /** Клиент Prisma или транзакция — методы работают в обоих контекстах. */
@@ -51,7 +48,6 @@ export class PartnerSettingsService {
         canvasContractorName: dto.canvasContractorName?.trim() || undefined,
         maxLinkTemplate: dto.maxLinkTemplate?.trim() || undefined,
         deliveryPriceYandexPvz: dto.deliveryPriceYandexPvz,
-        canvasPriceMode: dto.canvasPriceMode,
       },
     });
   }

@@ -35,9 +35,6 @@ vi.mock('../../context/useAuth', () => ({ useAuth: () => ({ user: { role: 'ADMIN
 
 /** Два размера из настоящего прайса: цены клиента и производства как есть. */
 const pricing = {
-  mode: 'WHOLESALE' as const,
-  modeLabels: { RETAIL: 'Розничный прайс со скидкой', WHOLESALE: 'Оптовый прайс' },
-  discountBasisPoints: 2000,
   delivery: { cost: 700, price: 800 },
   materialLabels: { SYNTHETIC: 'Синтетика', COTTON: 'Хлопок' },
   sizes: [

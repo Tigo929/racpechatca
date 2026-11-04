@@ -320,8 +320,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-photo.service.ts": {
-    "mtime": 1793794376.975486,
-    "ast_hash": "aa7317e1b3da1d14cfb804c45ab51dc9",
+    "mtime": 1793821737.951229,
+    "ast_hash": "36fbf0f04550eb8c50b195d5e9865981",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-pricing.ts": {
@@ -365,8 +365,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/partner/dto/update-partner-settings.dto.ts": {
-    "mtime": 1790264005.5379455,
-    "ast_hash": "39d6880c1da556c637dcbde31fafd291",
+    "mtime": 1793821726.9118872,
+    "ast_hash": "559de6e29cad6d7b86b74b9016d2d90c",
     "semantic_hash": ""
   },
   "crm-new/src/partner/partner-admin.controller.ts": {
@@ -400,8 +400,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/partner/partner-settings.service.ts": {
-    "mtime": 1790264005.5379455,
-    "ast_hash": "697ce05e634c6ac85009f37d8f9b7b50",
+    "mtime": 1793821726.9128878,
+    "ast_hash": "1ebdcfd80f1e4792989b59f15badf0ac",
     "semantic_hash": ""
   },
   "crm-new/src/partner/partner-settlement.spec.ts": {
@@ -675,8 +675,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/CreateOrderForm.tsx": {
-    "mtime": 1793795656.8869674,
-    "ast_hash": "af0417e699dfc6dd5fc76250da123763",
+    "mtime": 1793821726.9188874,
+    "ast_hash": "205b1ba7af7a69d3019b03dcbec5db63",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/ItemsTable.tsx": {
@@ -735,8 +735,8 @@
     "semantic_hash": ""
   },
   "frontend/src/constants.ts": {
-    "mtime": 1793096597.0648217,
-    "ast_hash": "a158a9be5d54d46a14bde4f8431492e5",
+    "mtime": 1793821726.9208868,
+    "ast_hash": "3057d38e09898b1dd887d1ecdffc81fe",
     "semantic_hash": ""
   },
   "frontend/src/context/AuthContext.tsx": {
@@ -790,8 +790,8 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/SettingsPage.tsx": {
-    "mtime": 1793795808.9928024,
-    "ast_hash": "56ce6086dd72ea66681428be3e6310dc",
+    "mtime": 1793821726.9218874,
+    "ast_hash": "c77126c585ba3db4e21a9eed1cb117c2",
     "semantic_hash": ""
   },
   "frontend/src/pages/TasksPage.tsx": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "frontend/src/types/index.ts": {
-    "mtime": 1793794736.2598338,
-    "ast_hash": "350ed320df6d4e29a2c5b57a7910edea",
+    "mtime": 1793821726.9238873,
+    "ast_hash": "9224661d89628f9b0f359677a626f963",
     "semantic_hash": ""
   },
   "frontend/src/utils/deadline.ts": {
@@ -1325,8 +1325,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/canvas-item.service.ts": {
-    "mtime": 1793787757.3847568,
-    "ast_hash": "ee7a4c4d90b5eb7709c69d68c13d4e5b",
+    "mtime": 1793821796.0778008,
+    "ast_hash": "5edde053e5a5735e3d23212a1a8ebb3d",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/dto/create-canvas-item.dto.ts": {
@@ -1415,8 +1415,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/CanvasItemsTable.tsx": {
-    "mtime": 1793787809.3022704,
-    "ast_hash": "ccd380278134bc6aa112b60fe42cf17c",
+    "mtime": 1793821726.9158869,
+    "ast_hash": "388ad030343f14cfcd8bb294a0305ea6",
     "semantic_hash": ""
   },
   "frontend/src/config/photo-formats.ts": {
@@ -1770,18 +1770,18 @@
     "semantic_hash": ""
   },
   "crm-new/src/canvas/canvas-production-price.spec.ts": {
-    "mtime": 1790264005.5319445,
-    "ast_hash": "619b2539c5018fd75e3f579c1cca01dc",
+    "mtime": 1793821726.902888,
+    "ast_hash": "f56d4213d04dac44cfe7bad7a225fb68",
     "semantic_hash": ""
   },
   "crm-new/src/canvas/canvas-production-price.ts": {
-    "mtime": 1793786909.6206014,
-    "ast_hash": "febe30691b23bc1548e960c85471e156",
+    "mtime": 1793821726.9038873,
+    "ast_hash": "717382e2ad03ced5f199adadd6d07d04",
     "semantic_hash": ""
   },
   "crm-new/src/canvas/canvas-production.controller.ts": {
-    "mtime": 1793616433.1622524,
-    "ast_hash": "96a8b6f03fac4776b0046448683586f3",
+    "mtime": 1793821726.9048886,
+    "ast_hash": "432fb7ae77d6d70f05c607b778dc4b50",
     "semantic_hash": ""
   },
   "crm-new/src/canvas/canvas.module.ts": {
@@ -1815,8 +1815,8 @@
     "semantic_hash": ""
   },
   "frontend/src/api/canvasProduction.ts": {
-    "mtime": 1793616440.6505244,
-    "ast_hash": "a358bb488fba44fd566c5a453d1e63f7",
+    "mtime": 1793821726.9138868,
+    "ast_hash": "50e1c5a38cd7c9556de1b8b2c5b265d2",
     "semantic_hash": ""
   },
   "frontend/src/components/approval/ApprovalEditor.tsx": {
@@ -4399,14 +4399,9 @@
     "ast_hash": "8f5f6afe1c1ebb19dd6bfced1a092877",
     "semantic_hash": ""
   },
-  "frontend/src/components/orders/CanvasPriceMode.test.tsx": {
-    "mtime": 1793616614.1908505,
-    "ast_hash": "dff3f3566f1017cec767d0c6886191ec",
-    "semantic_hash": ""
-  },
   "frontend/src/components/orders/MarketplaceSource.test.tsx": {
-    "mtime": 1793778085.1348624,
-    "ast_hash": "41ff3ae8e10e7f9c95b46c034558a836",
+    "mtime": 1793821726.9198873,
+    "ast_hash": "c97c54b5436956b98a05c726e4743c18",
     "semantic_hash": ""
   },
   "frontend/src/utils/order-number.ts": {
@@ -5375,23 +5370,23 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/lead-canvas-position.spec.ts": {
-    "mtime": 1793787757.3977568,
-    "ast_hash": "36647afee6dcef0bfc24efd3a46725f5",
+    "mtime": 1793821726.90689,
+    "ast_hash": "26ef41ea7afa6cd2caa5368ec96a03c2",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/lead-canvas-position.ts": {
-    "mtime": 1793787032.2465594,
-    "ast_hash": "7f9536b9cf86e3949117125420e4c6fb",
+    "mtime": 1793821726.9078906,
+    "ast_hash": "4ec93893b74d2d5957870302bd03e8d2",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/CanvasListPrice.test.tsx": {
-    "mtime": 1793787394.46621,
-    "ast_hash": "d6efdf255179f69d8919f87b10a52071",
+    "mtime": 1793821726.9168873,
+    "ast_hash": "31d70c30649a830e7c4c9e1bd648a25b",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/CanvasOrderPricing.test.tsx": {
-    "mtime": 1793787470.538695,
-    "ast_hash": "2285cddd1855982c8bff78dbd179b327",
+    "mtime": 1793821726.9178865,
+    "ast_hash": "ff44dc63d992ddc021af1a8daf0a8c9e",
     "semantic_hash": ""
   },
   "crm-new/src/events/order-events.module.ts": {
@@ -5457,6 +5452,11 @@
   "greeter/test_review_queue.py": {
     "mtime": 1793794623.3130715,
     "ast_hash": "8ce5f76a8c3d3285c4987f6b80bbd984",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/orders/CanvasPriceHint.test.tsx": {
+    "mtime": 1793821558.979506,
+    "ast_hash": "7f92c5f9ea0fc1a1405886988c13508b",
     "semantic_hash": ""
   }
 }

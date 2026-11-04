@@ -11,11 +11,7 @@ import { clampOrderDiscount, orderTotal } from './order-total';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
 import { DtoCreateCanvasItem } from './dto/create-canvas-item.dto';
 import { DtoUpdateCanvasItem } from './dto/update-canvas-item.dto';
-import { PartnerSettingsService } from 'src/partner/partner-settings.service';
-import {
-  canvasTermsFrom,
-  resolveCanvasPosition,
-} from 'src/canvas/canvas-production-price';
+import { resolveCanvasPosition } from 'src/canvas/canvas-production-price';
 import { assertListedCanvasSize } from './canvas-size-guard';
 import {
   canvasPositionMoney,
@@ -42,7 +38,6 @@ export class CanvasItemService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly financialIntegrity: OrderFinancialIntegrityService,
-    private readonly partnerSettings: PartnerSettingsService,
   ) {}
 
   async addCanvasItem(orderId: string, dto: DtoCreateCanvasItem) {
@@ -64,12 +59,10 @@ export class CanvasItemService {
 
       /*
        * Цену производства считаем, а не принимаем от клиента запроса: она
-       * выводится из действующего прайса (розница минус скидка или опт).
-       * Пришедшее в теле значение учитывается только для нестандартного
-       * размера, которого в прайсе нет.
+       * берётся из оптовой колонки прайса. Пришедшее в теле значение
+       * учитывается только для нестандартного размера, которого в прайсе нет.
        */
-      const settings = await this.partnerSettings.get();
-      const priced = resolveCanvasPosition(dto, canvasTermsFrom(settings));
+      const priced = resolveCanvasPosition(dto);
       // Допы считаются поверх цены полотна и за ту же штуку: два холста
       // в багете — два багета.
       const addons = normalizeAddons(dto);
@@ -136,19 +129,15 @@ export class CanvasItemService {
       let contractorPrice = dto.contractorPrice ?? item.contractorPrice;
 
       if (sizeChanged) {
-        const settings = await this.partnerSettings.get();
-        const priced = resolveCanvasPosition(
-          {
-            sizeKey: dto.sizeKey ?? item.sizeKey ?? undefined,
-            material:
-              dto.material ??
-              (item.material as 'SYNTHETIC' | 'COTTON' | null) ??
-              undefined,
-            formatCanvas: dto.formatCanvas ?? item.formatCanvas,
-            contractorPrice: dto.contractorPrice ?? item.contractorPrice,
-          },
-          canvasTermsFrom(settings),
-        );
+        const priced = resolveCanvasPosition({
+          sizeKey: dto.sizeKey ?? item.sizeKey ?? undefined,
+          material:
+            dto.material ??
+            (item.material as 'SYNTHETIC' | 'COTTON' | null) ??
+            undefined,
+          formatCanvas: dto.formatCanvas ?? item.formatCanvas,
+          contractorPrice: dto.contractorPrice ?? item.contractorPrice,
+        });
         formatCanvas = priced.formatCanvas;
         sizeKey = priced.sizeKey;
         material = priced.material;

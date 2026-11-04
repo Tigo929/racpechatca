@@ -1,36 +1,20 @@
 import {
   CANVAS_PRODUCTION_PRICES,
   canvasContractorCost,
-  canvasListPrice,
-  canvasPriceMode,
   canvasRetailPrice,
-  canvasTermsFrom,
   canvasWholesalePrice,
   findCanvasProductionPrice,
   resolveCanvasPosition,
   type CanvasMaterialKind,
-  type CanvasTerms,
 } from './canvas-production-price';
 
-/** Условия розничной системы: прайс производства минус договорная скидка. */
-const retailTerms = (discountBasisPoints: number): CanvasTerms => ({
-  mode: 'RETAIL',
-  discountBasisPoints,
-});
-
-/** Долг производству в розничной системе — как было до оптового прайса. */
-const cost = (
-  key: string,
-  material: CanvasMaterialKind,
-  discountBasisPoints: number,
-) => canvasContractorCost(key, material, retailTerms(discountBasisPoints));
-
 /**
- * Прайс производства и расчёт долга перед ним.
+ * Прайс производства на холст: розница клиенту, опт производству.
  *
- * Числа сняты с PDF автоматическим разбором, а не набраны руками, поэтому
- * проверяем не «каждую строку», а то, что таблица цела и что математика
- * совпадает с примером, который владелец посчитал сам.
+ * Числа сняты с присланного прайса автоматическим разбором, а не набраны
+ * руками, поэтому проверяем не «каждую строку», а то, что таблица цела,
+ * что колонки не разъехались и что долг производству считается ровно по
+ * оптовой цене — без вычетов, которые остались в прошлой договорённости.
  */
 describe('прайс производства на холст', () => {
   it('в таблице 46 размеров, у каждого оба материала и подрамник 2 см', () => {
@@ -49,108 +33,6 @@ describe('прайс производства на холст', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it('20×30 синтетика — 630 ₽ розницы, со скидкой 20% должны 504 ₽', () => {
-    // Ровно тот пример, которым владелец описал методику.
-    expect(canvasRetailPrice('20x30', 'SYNTHETIC')).toBe(630);
-    expect(cost('20x30', 'SYNTHETIC', 2000)).toBe(504);
-  });
-
-  it('хлопок того же размера считается по своей колонке', () => {
-    expect(canvasRetailPrice('20x30', 'COTTON')).toBe(780);
-    expect(cost('20x30', 'COTTON', 2000)).toBe(624);
-  });
-
-  it('крайние размеры прайса на месте', () => {
-    expect(canvasRetailPrice('100x200', 'COTTON')).toBe(9240);
-    expect(findCanvasProductionPrice('60x90')?.synthetic).toBe(2460);
-  });
-
-  it('неизвестный размер даёт ноль, а не случайную цену', () => {
-    // Ноль обязан быть заметен вызывающему коду: продать холст по цене
-    // «примерно такого же размера» — это молча потерять деньги.
-    expect(canvasRetailPrice('33x33', 'SYNTHETIC')).toBe(0);
-    expect(cost('33x33', 'SYNTHETIC', 2000)).toBe(0);
-    expect(findCanvasProductionPrice('33x33')).toBeUndefined();
-  });
-
-  it('без скидки должны всю розницу, при 100% — ничего', () => {
-    expect(cost('30x40', 'SYNTHETIC', 0)).toBe(940);
-    expect(cost('30x40', 'SYNTHETIC', 10000)).toBe(0);
-    // Скидка больше ста процентов не превращается в доплату нам.
-    expect(cost('30x40', 'SYNTHETIC', 12000)).toBe(0);
-  });
-
-  it('округление идёт вниз — за копейки производству не переплачиваем', () => {
-    // 790 × 0.8 = 632 ровно; 1090 × 0.8 = 872 ровно; берём размер с остатком.
-    expect(cost('30x30', 'SYNTHETIC', 2000)).toBe(632);
-    expect(cost('20x30', 'SYNTHETIC', 1500)).toBe(535); // 535.5 → 535
-  });
-
-  it('позиция по размеру и материалу собирается сама', () => {
-    const p = resolveCanvasPosition(
-      { sizeKey: '20x30', material: 'SYNTHETIC' },
-      retailTerms(2000),
-    );
-    expect(p).toEqual({
-      formatCanvas: '20 × 30 см, синтетика',
-      sizeKey: '20x30',
-      material: 'SYNTHETIC',
-      contractorPrice: 504,
-    });
-  });
-
-  it('материал по умолчанию — синтетика', () => {
-    expect(
-      resolveCanvasPosition({ sizeKey: '20x30' }, retailTerms(2000)).material,
-    ).toBe('SYNTHETIC');
-  });
-
-  it('цена производства из прайса важнее присланной руками', () => {
-    // Иначе цену себестоимости можно было бы занизить с клиента и уйти
-    // в минус незаметно: она считается, а не принимается на веру.
-    const p = resolveCanvasPosition(
-      { sizeKey: '20x30', material: 'COTTON', contractorPrice: 1 },
-      retailTerms(2000),
-    );
-    expect(p.contractorPrice).toBe(624);
-  });
-
-  it('нестандартный размер остаётся ручным', () => {
-    const p = resolveCanvasPosition(
-      { formatCanvas: 'Модульный триптих', contractorPrice: 3200 },
-      retailTerms(2000),
-    );
-    expect(p).toEqual({
-      formatCanvas: 'Модульный триптих',
-      sizeKey: null,
-      material: null,
-      contractorPrice: 3200,
-    });
-  });
-
-  it('размер не из прайса не тянет за собой чужую цену', () => {
-    const p = resolveCanvasPosition({ sizeKey: '33x33' }, retailTerms(2000));
-    expect(p.sizeKey).toBeNull();
-    expect(p.contractorPrice).toBe(0);
-    expect(p.formatCanvas).toBe('Нестандартный размер');
-  });
-});
-
-/**
- * Оптовый прайс (фото от 24.09.2026) и переключение систем расчёта.
- *
- * Две системы считают долг производству по-разному, и перепутать их значит
- * ошибиться в свою пользу на отчётах и в минус на переговорах. Поэтому здесь
- * закреплено и то, что числа взяты из нужной колонки, и то, что скидка в опте
- * второй раз не вычитается.
- */
-describe('оптовый прайс производства', () => {
-  const wholesaleTerms: CanvasTerms = {
-    mode: 'WHOLESALE',
-    // Скидка в настройках может лежать любая — в опте она не применяется.
-    discountBasisPoints: 2000,
-  };
-
   it('у каждого размера есть обе оптовые цены, и хлопок дороже синтетики', () => {
     for (const row of CANVAS_PRODUCTION_PRICES) {
       expect(row.wholesaleSynthetic).toBeGreaterThan(0);
@@ -161,6 +43,8 @@ describe('оптовый прайс производства', () => {
   it('контрольные строки прайса совпадают с присланной таблицей', () => {
     // Границы и несколько строк из середины: ошибка в разборе таблицы
     // выглядит как обычное число и всплыла бы уже в заказе.
+    expect(canvasRetailPrice('20x30', 'SYNTHETIC')).toBe(630);
+    expect(canvasRetailPrice('20x30', 'COTTON')).toBe(780);
     expect(canvasWholesalePrice('20x30', 'SYNTHETIC')).toBe(470);
     expect(canvasWholesalePrice('20x30', 'COTTON')).toBe(590);
     expect(canvasWholesalePrice('40x60', 'SYNTHETIC')).toBe(770);
@@ -170,100 +54,120 @@ describe('оптовый прайс производства', () => {
     expect(canvasWholesalePrice('100x200', 'COTTON')).toBe(5830);
   });
 
-  it('в опте должны ровно прайсовую цену — скидка второй раз не вычитается', () => {
-    expect(canvasContractorCost('20x30', 'SYNTHETIC', wholesaleTerms)).toBe(
-      470,
-    );
-    expect(canvasContractorCost('20x30', 'COTTON', wholesaleTerms)).toBe(590);
-    // та же позиция по старой системе — другая сумма, и это нормально
-    expect(canvasContractorCost('20x30', 'SYNTHETIC', retailTerms(2000))).toBe(
-      504,
+  it('опт ниже розницы на каждом размере — заработок есть на любом', () => {
+    // «Розница минус опт» и есть заработок на полотне. Если на какой-то
+    // строке опт окажется не ниже розницы, значит в таблицу попала не та
+    // колонка, и заказ по ней уйдёт в минус.
+    for (const row of CANVAS_PRODUCTION_PRICES) {
+      expect(row.wholesaleSynthetic).toBeLessThan(row.synthetic);
+      expect(row.wholesaleCotton).toBeLessThan(row.cotton);
+    }
+  });
+
+  it('неизвестный размер даёт ноль, а не соседнюю цену', () => {
+    expect(findCanvasProductionPrice('33x33')).toBeUndefined();
+    expect(canvasRetailPrice('33x33', 'SYNTHETIC')).toBe(0);
+    expect(canvasWholesalePrice('33x33', 'COTTON')).toBe(0);
+  });
+});
+
+/**
+ * Долг производству.
+ *
+ * Одна система: сколько стоит холст по оптовой колонке, столько и должны.
+ * Прежняя договорённость («розница минус 20%») отменена, и тест сторожит,
+ * что она не вернулась незаметно: 504 ₽ вместо 470 ₽ на 20×30 — это
+ * завышенная себестоимость и заниженная прибыль в отчёте.
+ */
+describe('сколько должны производству', () => {
+  it('равен оптовой цене прайса', () => {
+    expect(canvasContractorCost('20x30', 'SYNTHETIC')).toBe(470);
+    expect(canvasContractorCost('20x30', 'COTTON')).toBe(590);
+    expect(canvasContractorCost('50x70', 'SYNTHETIC')).toBe(
+      canvasWholesalePrice('50x70', 'SYNTHETIC'),
     );
   });
 
-  it('опт выгоднее прежней системы на каждом размере и материале', () => {
-    // Если однажды окажется наоборот — в таблицу попала не та колонка.
+  it('из розницы ничего не вычитается', () => {
+    // 630 − 20% = 504: ровно та цифра, которую мы платили по прежней
+    // договорённости. Её здесь быть не должно.
+    expect(canvasContractorCost('20x30', 'SYNTHETIC')).not.toBe(504);
     for (const row of CANVAS_PRODUCTION_PRICES) {
       for (const material of ['SYNTHETIC', 'COTTON'] as CanvasMaterialKind[]) {
-        const wholesale = canvasContractorCost(
-          row.key,
-          material,
-          wholesaleTerms,
+        expect(canvasContractorCost(row.key, material)).toBe(
+          canvasWholesalePrice(row.key, material),
         );
-        const retail = canvasContractorCost(
-          row.key,
-          material,
-          retailTerms(2000),
-        );
-        expect(wholesale).toBeLessThan(retail);
       }
     }
   });
 
-  it('позиция заказа собирается по действующему прайсу', () => {
+  it('заработок на полотне — розница минус опт', () => {
+    // Пример владельца: 20×30 синтетика, 630 ₽ клиенту, 470 ₽ производству.
+    const client = canvasRetailPrice('20x30', 'SYNTHETIC');
+    const owed = canvasContractorCost('20x30', 'SYNTHETIC');
+    expect(client - owed).toBe(160);
+  });
+
+  it('размера нет в прайсе — ноль, себестоимость вводят руками', () => {
+    expect(canvasContractorCost('33x33', 'COTTON')).toBe(0);
+  });
+});
+
+describe('позиция заказа по выбору размера', () => {
+  it('собирается сама: подпись, ключ, материал и цена производства', () => {
     expect(
-      resolveCanvasPosition(
-        { sizeKey: '30x40', material: 'COTTON' },
-        wholesaleTerms,
-      ),
+      resolveCanvasPosition({ sizeKey: '20x30', material: 'SYNTHETIC' }),
+    ).toEqual({
+      formatCanvas: '20 × 30 см, синтетика',
+      sizeKey: '20x30',
+      material: 'SYNTHETIC',
+      contractorPrice: 470,
+    });
+    expect(
+      resolveCanvasPosition({ sizeKey: '30x40', material: 'COTTON' }),
     ).toEqual({
       formatCanvas: '30 × 40 см, хлопок',
       sizeKey: '30x40',
       material: 'COTTON',
       contractorPrice: 590,
     });
-    expect(
-      resolveCanvasPosition(
-        { sizeKey: '30x40', material: 'COTTON' },
-        retailTerms(2000),
-      ).contractorPrice,
-    ).toBe(944);
   });
 
-  it('нестандартный размер остаётся ручным в любой системе', () => {
-    const p = resolveCanvasPosition(
-      { formatCanvas: 'Модульный триптих', contractorPrice: 3200 },
-      wholesaleTerms,
+  it('материал по умолчанию — синтетика', () => {
+    expect(resolveCanvasPosition({ sizeKey: '20x30' }).material).toBe(
+      'SYNTHETIC',
     );
-    expect(p.contractorPrice).toBe(3200);
-    expect(p.sizeKey).toBeNull();
   });
 
-  it('неизвестный размер и в опте даёт ноль, а не соседнюю цену', () => {
-    expect(canvasWholesalePrice('33x33', 'SYNTHETIC')).toBe(0);
-    expect(canvasContractorCost('33x33', 'COTTON', wholesaleTerms)).toBe(0);
-  });
-
-  it('цена действующего прайса выбирается по режиму', () => {
-    expect(canvasListPrice('50x70', 'SYNTHETIC', 'RETAIL')).toBe(1830);
-    expect(canvasListPrice('50x70', 'SYNTHETIC', 'WHOLESALE')).toBe(1000);
-  });
-});
-
-describe('режим прайса из настроек', () => {
-  it('читается как есть, когда значение известно', () => {
-    expect(canvasPriceMode('WHOLESALE')).toBe('WHOLESALE');
-    expect(canvasPriceMode('RETAIL')).toBe('RETAIL');
-  });
-
-  it('мусор и пустота означают прежнюю систему, а не отказ считать', () => {
-    // Расчёт себестоимости обязан работать всегда: заказ важнее настройки.
-    expect(canvasPriceMode(null)).toBe('RETAIL');
-    expect(canvasPriceMode('опт')).toBe('RETAIL');
-    expect(canvasPriceMode(undefined)).toBe('RETAIL');
-  });
-
-  it('условия собираются из строки настроек', () => {
-    expect(
-      canvasTermsFrom({
-        canvasPriceMode: 'WHOLESALE',
-        canvasDiscountBasisPoints: 1500,
-      }),
-    ).toEqual({ mode: 'WHOLESALE', discountBasisPoints: 1500 });
-    // Настройки старой версии, где колонки ещё нет.
-    expect(canvasTermsFrom({})).toEqual({
-      mode: 'RETAIL',
-      discountBasisPoints: 2000,
+  it('цена производства из прайса важнее присланной руками', () => {
+    // Иначе себестоимость можно было бы занизить из браузера и уйти
+    // в минус незаметно: она считается, а не принимается на веру.
+    const p = resolveCanvasPosition({
+      sizeKey: '20x30',
+      material: 'COTTON',
+      contractorPrice: 1,
     });
+    expect(p.contractorPrice).toBe(590);
+  });
+
+  it('нестандартный размер остаётся ручным', () => {
+    expect(
+      resolveCanvasPosition({
+        formatCanvas: 'Модульный триптих',
+        contractorPrice: 3200,
+      }),
+    ).toEqual({
+      formatCanvas: 'Модульный триптих',
+      sizeKey: null,
+      material: null,
+      contractorPrice: 3200,
+    });
+  });
+
+  it('размер не из прайса не тянет за собой чужую цену', () => {
+    const p = resolveCanvasPosition({ sizeKey: '33x33' });
+    expect(p.sizeKey).toBeNull();
+    expect(p.contractorPrice).toBe(0);
+    expect(p.formatCanvas).toBe('Нестандартный размер');
   });
 });

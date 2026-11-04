@@ -6,10 +6,8 @@ import { EnumRole } from 'src/generated/prisma/enums';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 import {
   CANVAS_MATERIAL_KIND_LABELS,
-  CANVAS_PRICE_MODE_LABELS,
   CANVAS_PRODUCTION_PRICES,
   canvasContractorCost,
-  canvasTermsFrom,
 } from './canvas-production-price';
 import { findCanvasSize } from '../scenarios/products/canvas.pricing';
 
@@ -20,10 +18,9 @@ import { findCanvasSize } from '../scenarios/products/canvas.pricing';
  * почём мы берём холст у производства и какая у нас скидка. Это условия
  * договора, а не публичная цена.
  *
- * Отдаём сразу цены обеих систем и то, сколько мы должны по действующей, —
- * чтобы калькулятор в браузере ничего не пересчитывал сам и не разошёлся
- * с сервером на округлении. Режим приходит здесь же: интерфейс обязан
- * называть, по какому прайсу считает, иначе цифру не с чем сверить.
+ * Отдаём обе колонки прайса и готовую себестоимость: розницу интерфейс
+ * подставляет клиенту, опт показывает рядом как долг производству, а
+ * считать её сам не должен — иначе разойдётся с сервером на округлении.
  */
 @Controller('canvas/production')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -34,12 +31,8 @@ export class CanvasProductionController {
   @Get('pricing')
   async pricing() {
     const s = await this.settings.get();
-    const terms = canvasTermsFrom(s);
 
     return {
-      mode: terms.mode,
-      modeLabels: CANVAS_PRICE_MODE_LABELS,
-      discountBasisPoints: terms.discountBasisPoints,
       delivery: {
         cost: s.canvasDeliveryCost,
         price: s.canvasDeliveryPrice,
@@ -72,8 +65,8 @@ export class CanvasProductionController {
           COTTON: row.wholesaleCotton,
         },
         cost: {
-          SYNTHETIC: canvasContractorCost(row.key, 'SYNTHETIC', terms),
-          COTTON: canvasContractorCost(row.key, 'COTTON', terms),
+          SYNTHETIC: canvasContractorCost(row.key, 'SYNTHETIC'),
+          COTTON: canvasContractorCost(row.key, 'COTTON'),
         },
       })),
     };

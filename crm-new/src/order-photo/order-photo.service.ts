@@ -73,11 +73,7 @@ import {
 } from 'src/salary/salary-calculation';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
-import {
-  canvasTermsFrom,
-  resolveCanvasPosition,
-  type CanvasTerms,
-} from 'src/canvas/canvas-production-price';
+import { resolveCanvasPosition } from 'src/canvas/canvas-production-price';
 import { normalizeMarketplaceNumber } from './order-number';
 import { hasTechSpecFiles } from 'src/partner/tech-spec-paths';
 import { GulianOutboxService } from 'src/gulian/gulian-outbox.service';
@@ -419,17 +415,16 @@ export class OrderPhotoService {
         };
       });
       /*
-       * Цена производства выводится из действующего прайса (розница минус
-       * скидка или опт), а не принимается из тела запроса: занизить
-       * себестоимость значит уйти в минус незаметно. Руками её задают только для нестандартного
-       * размера, которого в прайсе нет.
+       * Цена производства берётся из оптовой колонки прайса, а не из тела
+       * запроса: занизить себестоимость значит уйти в минус незаметно.
+       * Руками её задают только для нестандартного размера, которого
+       * в прайсе нет.
        */
-      const canvasTerms = canvasTermsFrom(await this.partnerSettings.get(tx));
       const canvasCreate = (dto.canvasItems ?? []).map((e) => {
         // Размер только из прайса: иначе в заказ попадает цена, посчитанная
         // не от прайса, и заработок по позиции не с чем сверить.
         assertListedCanvasSize(e.sizeKey);
-        const priced = resolveCanvasPosition(e, canvasTerms);
+        const priced = resolveCanvasPosition(e);
         // Лак и багет: своя цена поставщика и своя цена клиенту, за штуку.
         const addons = normalizeAddons(e);
         return {
@@ -1156,7 +1151,7 @@ export class OrderPhotoService {
           // товар и тираж из примечания руками — это ошибки и потеря времени.
           // Холст заводится в свою таблицу, а не в фото-позиции: у него
           // другая экономика (себестоимость подрядчика по каждой штуке).
-          ...buildLeadPosition(dto, money, canvasTermsFrom(leadSettings)),
+          ...buildLeadPosition(dto, money),
         },
         include: { items: true, tshirtItems: true, canvasItems: true },
       });
@@ -2861,7 +2856,6 @@ export class OrderPhotoService {
 function buildLeadPosition(
   dto: DtoCreateLead,
   money: { quantity: number; unitPrice: number; pricePosition: number },
-  canvasTerms: CanvasTerms,
 ) {
   if (money.quantity <= 0) {
     return {};
@@ -2877,17 +2871,14 @@ function buildLeadPosition(
     return {
       canvasItems: {
         create: [
-          leadCanvasPosition(
-            {
-              sizeKey: dto.canvasSizeKey,
-              sizeLabel: dto.canvasSizeLabel,
-              productName: dto.productName,
-              frame: dto.canvasFrame,
-              quantity: money.quantity,
-              unitPrice: money.unitPrice,
-            },
-            canvasTerms,
-          ),
+          leadCanvasPosition({
+            sizeKey: dto.canvasSizeKey,
+            sizeLabel: dto.canvasSizeLabel,
+            productName: dto.productName,
+            frame: dto.canvasFrame,
+            quantity: money.quantity,
+            unitPrice: money.unitPrice,
+          }),
         ],
       },
     };

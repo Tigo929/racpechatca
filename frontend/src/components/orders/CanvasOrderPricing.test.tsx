@@ -28,11 +28,8 @@ vi.mock('../../api/partnerSettings', () => ({
 }));
 vi.mock('react-hot-toast', () => ({ default: { success: vi.fn(), error: vi.fn() } }));
 
-/** Два размера настоящего прайса: 30×40 и 40×60, оптовый режим. */
+/** Два размера настоящего прайса: 30×40 и 40×60. */
 const pricing = {
-  mode: 'WHOLESALE' as const,
-  modeLabels: { RETAIL: 'Розничный прайс со скидкой', WHOLESALE: 'Оптовый прайс' },
-  discountBasisPoints: 2000,
   delivery: { cost: 700, price: 800 },
   materialLabels: { SYNTHETIC: 'Синтетика', COTTON: 'Хлопок' },
   sizes: [
@@ -148,7 +145,9 @@ it('позиция уходит на сервер с размером, мате�
   fireEvent.click(screen.getByRole('button', { name: /Создать заявку/i }));
 
   await waitFor(() => expect(ordersApi.create).toHaveBeenCalled());
-  const payload = vi.mocked(ordersApi.create).mock.calls[0]![0] as {
+  // Через unknown: CreateOrderDto — типизированный объект без индексной
+  // подписи, и привести его к Record напрямую TypeScript не даёт.
+  const payload = vi.mocked(ordersApi.create).mock.calls[0]![0] as unknown as {
     canvasItems: Record<string, unknown>[];
   };
   expect(payload.canvasItems[0]).toMatchObject({

@@ -2,29 +2,27 @@ import { api } from './client';
 import type { EnumCanvasMaterial } from '../types/index';
 
 /**
- * Прайс производства на холст: цены обеих систем и то, сколько мы должны
- * по действующей. Закрыт ролью ADMIN — это условия договора, не витрина.
+ * Прайс производства на холст: две колонки одной таблицы. Закрыт ролью
+ * ADMIN — это условия договора, не витрина.
  *
- * Систем две: розничный прайс минус договорная скидка (как было) и оптовый
- * прайс, где цена и есть наш долг. Какая действует — говорит `mode`, и
- * интерфейс обязан это называть: иначе цифру «должен» не с чем сверить.
+ * Розницу называем клиенту, опт отдаём производству: «розница минус опт» —
+ * заработок на полотне. Прежняя система (розница минус 20%) отменена,
+ * выбирать больше не из чего.
  *
- * Себестоимость считает сервер и отдаёт готовой: если пересчитывать её
- * в браузере, округление разойдётся с тем, что запишется в заказ.
+ * Себестоимость считает сервер и отдаёт готовой: пересчитывать её
+ * в браузере нельзя — разойдётся с тем, что запишется в заказ.
  */
-
-export type CanvasPriceMode = 'RETAIL' | 'WHOLESALE';
 
 export interface CanvasProductionSize {
   key: string;
   label: string;
   widthCm: number;
   heightCm: number;
-  /** Розница производства по материалам. */
+  /** Розница производства по материалам — она же цена клиенту. */
   retail: Record<EnumCanvasMaterial, number>;
-  /** Оптовые цены по материалам. */
+  /** Оптовые цены по материалам — они же наш долг. */
   wholesale: Record<EnumCanvasMaterial, number>;
-  /** Сколько должны производству по действующей системе. */
+  /** Сколько должны производству: та же оптовая цена, посчитанная сервером. */
   cost: Record<EnumCanvasMaterial, number>;
   /**
    * Цена для клиента — та, что стоит на сайте.
@@ -38,11 +36,6 @@ export interface CanvasProductionSize {
 }
 
 export interface CanvasProductionPricing {
-  /** Действующая система цен. */
-  mode: CanvasPriceMode;
-  modeLabels: Record<CanvasPriceMode, string>;
-  /** Договорная скидка; работает только в розничной системе. */
-  discountBasisPoints: number;
   delivery: { cost: number; price: number };
   materialLabels: Record<EnumCanvasMaterial, string>;
   sizes: CanvasProductionSize[];
