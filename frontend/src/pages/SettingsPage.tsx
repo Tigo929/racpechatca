@@ -409,14 +409,16 @@ export default function SettingsPage() {
                 </span>
               </label>
               <label className="block sm:col-span-2">
-                <span className="text-sm font-medium text-gray-700">Ссылка на переписку в MAX</span>
+                <span className="text-sm font-medium text-gray-700">Ссылка MAX по телефону из заявки с сайта</span>
                 <input
                   type="text" className={`mt-1 ${field}`}
                   value={form.maxLinkTemplate}
                   onChange={(e) => setForm({ ...form, maxLinkTemplate: e.target.value })}
                 />
                 <span className="block text-xs text-gray-500 mt-1">
-                  Менеджер вводит телефон — CRM подставит его в шаблон.
+                  Нужен только заявкам с сайта: там клиент оставляет номер, и
+                  ссылку собираем мы. В CRM менеджер вставляет адрес диалога
+                  из MAX — как с Авито.
                   {' '}<code>{'{phone}'}</code> — цифры (79991234567),
                   {' '}<code>{'{phone_plus}'}</code> — с плюсом.
                 </span>

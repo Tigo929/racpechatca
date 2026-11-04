@@ -11,8 +11,10 @@ import type { EnumCommunication, OrderPhoto } from '../../types/index';
  * Контакт клиента в карточке заказа — с действием под способ связи.
  *
  * Telegram: ник кликабелен, ведёт прямо в чат (боту нужно ответить руками).
- * MAX: показываем телефон и даём «Скопировать номер» — менеджер создаёт по нему
- * контакт в MAX, потом копирует приветственное сообщение (кнопка рядом) и шлёт.
+ * MAX: ссылка на переписку — как у Авито. У заказов, заведённых до этого,
+ * в контакте лежит собранная из телефона ссылка `max.ru/<номер>`: для них
+ * показываем номер и даём его скопировать, потому что сама ссылка ведёт
+ * на профиль по номеру, а не в диалог.
  * Прочие площадки: ссылка на переписку.
  *
  * Второй канал: Telegram покупателя с площадки.
@@ -27,6 +29,26 @@ import type { EnumCommunication, OrderPhoto } from '../../types/index';
  * Канал связи заказа при этом не подменяется: по нему считается, откуда
  * заказ и куда звать за отзывом.
  */
+
+/**
+ * Номер из старого контакта MAX.
+ *
+ * До перехода на ссылки контакт собирался из телефона по шаблону:
+ * `https://max.ru/79991234567`. Такие заказы остались, и номер в них —
+ * единственное, по чему менеджер находит человека в MAX. Поэтому у них
+ * сохраняем прежний вид: номер и кнопка «скопировать».
+ *
+ * Ссылку на диалог (в адресе которого номера нет) это не затрагивает:
+ * вернётся null, и контакт покажется обычной ссылкой.
+ */
+function legacyMaxPhone(value: string): string | null {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'))) {
+    return `7${digits.slice(1)}`;
+  }
+  if (digits.length === 10) return `7${digits}`;
+  return null;
+}
 
 /** «79991234567» → «+7 999 123-45-67». */
 function formatRuPhone(digits: string): string {
@@ -92,10 +114,23 @@ export function OrderContact({
         <ExternalLink size={12} aria-hidden="true" />
       </a>
     );
+  } else if (platform === 'MAX' && value && !legacyMaxPhone(value)) {
+    // Ссылка на переписку — открываем, как у Авито. Номера в ней нет,
+    // и показывать нечего, кроме самой кнопки.
+    action = (
+      <a
+        href={value}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`${linkBtn} text-violet-800 bg-violet-100 ring-1 ring-violet-300/70 hover:bg-violet-200`}
+      >
+        Открыть переписку в MAX <ExternalLink size={12} aria-hidden="true" />
+      </a>
+    );
   } else if (platform === 'MAX' && value) {
-    // Из ссылки max.ru/79991234567 достаём цифры телефона.
-    const digits = value.replace(/\D/g, '');
-    const phone = formatRuPhone(digits);
+    // Старый контакт: в ссылке лежит номер. Он и есть то, по чему
+    // менеджер находит человека в MAX, — показываем и даём скопировать.
+    const phone = formatRuPhone(legacyMaxPhone(value) ?? '');
     action = (
       <div className="flex items-center gap-2 flex-wrap">
         <span className="inline-flex items-center gap-1.5 rounded-lg bg-violet-100 px-2.5 py-1 text-sm font-semibold text-violet-800 ring-1 ring-violet-300/70">

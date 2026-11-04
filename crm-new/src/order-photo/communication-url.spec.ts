@@ -146,4 +146,40 @@ describe('contact validation shared by create and edit', () => {
       validateCommunicationValue(EnumCommunication.AVITO, '0189070451-0031-1'),
     ).not.toBeNull();
   });
+
+  it('MAX принимает ссылку на переписку — как Авито', () => {
+    for (const url of [
+      'https://max.ru/u/abc123',
+      'https://web.max.ru/chat/42',
+      // Старая, собранная из телефона: по ней заведены прежние заказы,
+      // и отбивать её при правке карточки нельзя.
+      'https://max.ru/79991234567',
+    ]) {
+      expect(validateCommunicationValue(EnumCommunication.MAX, url)).toBeNull();
+    }
+  });
+
+  it('MAX не принимает телефон и говорит, что делать', () => {
+    /*
+      Из телефона мы собирали `max.ru/<номер>`. Ссылка выглядела рабочей,
+      но вела на профиль по номеру, а не в переписку по заказу — менеджер
+      всё равно открывал MAX и искал диалог руками. Теперь контакт — адрес
+      самого диалога, а телефон отбивается с подсказкой.
+    */
+    const error = validateCommunicationValue(
+      EnumCommunication.MAX,
+      '+7 999 123-45-67',
+    );
+    expect(error).not.toBeNull();
+    expect(error).toContain('ссылка на переписку');
+    expect(error).toContain('скопируйте адрес');
+  });
+
+  it('телефон из заявки с сайта по-прежнему превращается в ссылку', () => {
+    // На сайте клиент оставляет номер, и другого контакта у нас нет:
+    // ссылку собираем мы, по шаблону из настроек.
+    expect(
+      buildCommunicationUrl(EnumCommunication.MAX, '+7 999 123-45-67'),
+    ).toBe('https://max.ru/79991234567');
+  });
 });

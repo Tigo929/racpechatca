@@ -134,7 +134,13 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, pro
         </p>
         <input
           className={inputCls}
-          placeholder={form.communicationPlatform === 'TELEGRAM' ? '@username' : 'https://www.avito.ru/...'}
+          placeholder={
+            form.communicationPlatform === 'TELEGRAM'
+              ? '@username'
+              : form.communicationPlatform === 'MAX'
+                ? 'https://max.ru/...'
+                : 'https://www.avito.ru/...'
+          }
           value={form.urlCommunication ?? ''}
           onChange={e => set({ urlCommunication: e.target.value })}
         />
