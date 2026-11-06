@@ -63,6 +63,47 @@ describe('артикул Ozon', () => {
     }
   });
 
+  it('новая линейка: цвет стоит в середине артикула', () => {
+    /*
+     * «Customer Black-1» заведён в кабинете так, что цвет оказался не
+     * предпоследним куском, а раньше номера принта. Отсчёт от конца дал бы
+     * цвет «1» — и заказ не завёлся бы вовсе: ни цвета, ни размера.
+     */
+    expect(parseOzonArticle('customer-black-1-XS')).toMatchObject({
+      printSlug: 'customer-1',
+      colorCode: 'black',
+      colorLabel: 'Чёрный',
+      size: 'XS',
+    });
+  });
+
+  it('тот же принт в другом цвете — тот же код принта', () => {
+    // «Customer Black-1» и «Customer White-1» — один макет в двух цветах,
+    // а не два разных: цвет у позиции и так свой.
+    expect(parseOzonArticle('customer-white-1-S')?.printSlug).toBe(
+      'customer-1',
+    );
+    expect(parseOzonArticle('customer-black-1-S')?.printSlug).toBe(
+      'customer-1',
+    );
+  });
+
+  it('«2XL» — это XXL, как бы ни написали в карточке', () => {
+    // Размерный ряд новых карточек — XS…2XL. Непонятый размер означает
+    // незаведённый заказ и ненапечатанную футболку.
+    expect(parseOzonArticle('customer-black-1-2XL')?.size).toBe('XXL');
+    expect(parseOzonArticle('papa-black-3xl')?.size).toBe('XXXL');
+  });
+
+  it('цвет в коде принта не путается с цветом футболки', () => {
+    // Берём тот код цвета, что ближе к размеру: слово «black» бывает и
+    // частью названия принта.
+    expect(parseOzonArticle('black-star-white-M')).toMatchObject({
+      printSlug: 'black-star',
+      colorLabel: 'Белый',
+    });
+  });
+
   it('стикер — последние цифры номера отправления', () => {
     expect(stickerCode('0189070451-0031-1')).toBe('0311');
     expect(stickerCode('12345678')).toBe('5678');

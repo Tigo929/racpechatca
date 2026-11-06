@@ -17,6 +17,7 @@ import { MarketplaceAccessGuard } from './marketplace-access.guard';
 import { EnumRole } from 'src/generated/prisma/enums';
 import { MarketplaceAccountService } from './marketplace-account.service';
 import { OzonOrdersService } from './ozon/ozon-orders.service';
+import { MARKETPLACE_ARTICLE_PREFIXES } from './ozon/article-lineup';
 import { OzonCrmOrderService } from './ozon-crm-order.service';
 import type { Response } from 'express';
 import { DtoCreateOzonCrmOrder } from './dto/create-ozon-crm-order.dto';
@@ -29,18 +30,6 @@ import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
  * цвет, размер и принт из артикула, номера заказа и отправления. Деньги
  * остаются на площадке (см. ozon/ozon-crm-order.ts).
  */
-/**
- * Какие линейки показывать в разделе маркетплейсов.
- *
- * В кабинете несколько линеек, а в CRM ведут одну — решение владельца
- * (02.10.2026). Остальные в списке только мешают искать нужное.
- *
- * Список здесь, а не в настройках, потому что меняется он раз в полгода,
- * а настройка потребовала бы экрана, хранения и миграции. Но помнить надо:
- * новая линейка не появится в списке сама — пока её префикс не добавлен
- * сюда, её заказы видно только по кнопке «Показать все».
- */
-export const MARKETPLACE_ARTICLE_PREFIXES = ['papa-'] as const;
 
 /** Что кладёт в запрос JwtAuthGuard: тот же приём, что в карточке заказа. */
 interface RequestUser {

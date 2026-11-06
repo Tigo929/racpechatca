@@ -1,4 +1,8 @@
-import { matchesLineup, normalizeArticle } from './article-lineup';
+import {
+  MARKETPLACE_ARTICLE_PREFIXES,
+  matchesLineup,
+  normalizeArticle,
+} from './article-lineup';
 
 /**
  * Узнавание своей линейки по артикулу.
@@ -76,5 +80,33 @@ describe('приведение артикула к сравнимому виду
 
   it('пусто остаётся пустым', () => {
     expect(normalizeArticle(null)).toBe('');
+  });
+});
+
+/**
+ * Линейки, которые ведут в CRM. Список живёт в контроллере — проверяем его,
+ * а не копию: префикс, не попавший туда, прячет заказы новой карточки.
+ */
+describe('линейки из настроек раздела', () => {
+  const prefixes = [...MARKETPLACE_ARTICLE_PREFIXES];
+
+  it('«Customer Black-1» попадает в список — как бы ни был собран артикул', () => {
+    for (const article of [
+      'customer-black-1-XS',
+      'custom-1-black-2XL',
+      'CUSTOMER-white-1-S',
+    ]) {
+      expect(matchesLineup(article, prefixes)).toBe(true);
+    }
+  });
+
+  it('папа никуда не делась', () => {
+    expect(matchesLineup('papa-black-XXL', prefixes)).toBe(true);
+    expect(matchesLineup('ПАПА-black-XXL', prefixes)).toBe(true);
+  });
+
+  it('чужие товары кабинета по-прежнему скрыты', () => {
+    expect(matchesLineup('labrov-nadpis-black-L', prefixes)).toBe(false);
+    expect(matchesLineup('JDM-1-1-black-S', prefixes)).toBe(false);
   });
 });

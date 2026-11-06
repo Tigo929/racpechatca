@@ -34,6 +34,20 @@ describe('артикул Ozon', () => {
     }
   });
 
+  it('новая линейка: цвет в середине артикула', () => {
+    // «Customer Black-1»: отсчёт от конца дал бы цвет «1» — оператор увидел
+    // бы «артикул не по схеме» там, где всё в порядке.
+    expect(parseOzonArticle('customer-black-1-XS')).toMatchObject({
+      printSlug: 'customer-1',
+      colorLabel: 'Чёрный',
+      size: 'XS',
+    });
+  });
+
+  it('«2XL» читается как XXL — ряд новых карточек XS…2XL', () => {
+    expect(parseOzonArticle('customer-black-1-2XL')?.size).toBe('XXL');
+  });
+
   it('стикер — последние четыре цифры номера отправления', () => {
     expect(stickerCode('0189070451-0031-1')).toBe('0311');
     expect(stickerCode('12')).toBeNull();

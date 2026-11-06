@@ -1,9 +1,10 @@
 /**
  * Что артикул Ozon говорит о футболке.
  *
- * Артикул продавца собран по схеме `<принт>-<цвет>-<размер>`:
- * `JDM-1-1-black-S`, `labrov-nadpis-white-XXL`. Её же строит buildOfferId
- * при выгрузке карточек — здесь обратный разбор.
+ * Артикул продавца собран из трёх частей: код принта, код цвета и размер —
+ * `papa-black-S`, `JDM-1-1-white-XXL`, `customer-black-1-XS`. Размер всегда
+ * последний, цвет — отдельным куском, остальное код принта. Её же строит
+ * buildOfferId при выгрузке карточек — здесь обратный разбор.
  *
  * Зачем разбирать. Заказ с площадки приходит без «цвета» и «размера»
  * отдельными полями: у Ozon это один артикул. Оператор переписывал его
@@ -25,8 +26,21 @@ const COLOR_LABEL_BY_CODE: Record<string, string> = {
 
 const SIZES = new Set<string>(Object.values(EnumTshirtSize));
 
+/**
+ * Как ещё пишут размер в артикуле.
+ *
+ * В карточке размерный ряд называют и буквами, и цифрой с буквой: «XXL»
+ * и «2XL» — один и тот же размер, и какой из двух написан в артикуле,
+ * решает тот, кто заводил карточку. Для нас это должен быть один размер:
+ * непонятый размер означает незаведённый заказ и ненапечатанную футболку.
+ */
+const SIZE_ALIASES: Record<string, EnumTshirtSize> = {
+  '2XL': EnumTshirtSize.XXL,
+  '3XL': EnumTshirtSize.XXXL,
+};
+
 export interface OzonArticle {
-  /** Код принта из артикула: «JDM-1-1», «labrov-nadpis». */
+  /** Код принта из артикула: «JDM-1-1», «labrov-nadpis», «customer-1». */
   printSlug: string;
   /** Латинский код цвета: black, white. */
   colorCode: string;
@@ -35,12 +49,36 @@ export interface OzonArticle {
   size: EnumTshirtSize;
 }
 
+/** Размер из куска артикула. null — это не размер. */
+export function parseArticleSize(part: string): EnumTshirtSize | null {
+  const value = part.trim().toUpperCase();
+  if (SIZES.has(value)) return value as EnumTshirtSize;
+  return SIZE_ALIASES[value] ?? null;
+}
+
+/**
+ * Где в артикуле код цвета — ищем с конца. −1: цвета нет.
+ *
+ * У «papa-black-S» цвет предпоследний, у «customer-black-1-XS» — раньше:
+ * в названии новой линейки цвет стоит в середине, а номер принта после
+ * него. Привязываться к месту нельзя: не узнали цвет — заказ не заведён.
+ * Ищем с конца, потому что ближе к размеру цвет и стоит, а в коде принта
+ * слово «black» может быть частью названия.
+ */
+export function colorIndexIn(parts: readonly string[]): number {
+  for (let i = parts.length - 1; i >= 0; i -= 1) {
+    if (COLOR_LABEL_BY_CODE[parts[i].trim().toLowerCase()]) return i;
+  }
+  return -1;
+}
+
 /**
  * Разобрать артикул. null — схема не та, и гадать нельзя.
  *
- * Разбираем с конца: размер последний, цвет перед ним, остальное — принт.
- * С начала было бы нельзя: в коде принта дефисов сколько угодно
- * («JDM-1-1»), и где кончается принт, знает только хвост.
+ * Размер берём последним куском, цвет — последним куском, который им
+ * выглядит, остальное по порядку — код принта. Цвет из кода принта
+ * убираем: «customer-black-1» и «customer-white-1» это один принт в двух
+ * цветах, а не два разных, и цвет едет своим полем.
  */
 export function parseOzonArticle(
   offerId: string | null | undefined,
@@ -48,19 +86,21 @@ export function parseOzonArticle(
   const parts = (offerId ?? '').trim().split('-').filter(Boolean);
   if (parts.length < 3) return null;
 
-  const size = parts[parts.length - 1].toUpperCase();
-  if (!SIZES.has(size)) return null;
+  const size = parseArticleSize(parts[parts.length - 1]);
+  if (!size) return null;
 
-  const colorCode = parts[parts.length - 2].toLowerCase();
-  const colorLabel = COLOR_LABEL_BY_CODE[colorCode];
-  // Цвет, которого нет в списке футболок CRM, — не повод угадывать: печатник
+  const head = parts.slice(0, parts.length - 1);
+  const colorAt = colorIndexIn(head);
+  // Цвета, которого нет в списке футболок CRM, — не повод угадывать: печатник
   // получит подпись, которой нет ни на одной заготовке.
-  if (!colorLabel) return null;
+  if (colorAt < 0) return null;
+  const colorCode = head[colorAt].toLowerCase();
+  const colorLabel = COLOR_LABEL_BY_CODE[colorCode];
 
-  const printSlug = parts.slice(0, parts.length - 2).join('-');
+  const printSlug = head.filter((_, index) => index !== colorAt).join('-');
   if (!printSlug) return null;
 
-  return { printSlug, colorCode, colorLabel, size: size as EnumTshirtSize };
+  return { printSlug, colorCode, colorLabel, size };
 }
 
 /** Сколько цифр стикера различают посылки на столе упаковки. */

@@ -26,6 +26,13 @@ describe('код принта из артикула', () => {
     expect(marketplacePrint('ПАПА-black-XXL')?.slug).toBe('ПАПА');
   });
 
+  it('цвет вырезается, где бы в артикуле он ни стоял', () => {
+    // «Customer Black-1»: цвет в середине. Отсчёт от конца показал бы
+    // печатнику «customer-black» — код, по которому макета нет.
+    expect(marketplacePrint('customer-black-1-XS')?.slug).toBe('customer-1');
+    expect(marketplacePrint('customer-white-1-S')?.slug).toBe('customer-1');
+  });
+
   it('алфавит различается', () => {
     expect(printScript('ПАПА')).toBe('cyrillic');
     expect(printScript('papa')).toBe('latin');

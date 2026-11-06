@@ -45,20 +45,42 @@ export interface MarketplacePrint {
   scriptLabel: string;
 }
 
+/** Коды цветов в артикуле — те же, что знает разбор (ozon-article.ts). */
+const COLOR_CODES = ['black', 'white'];
+
 /**
  * Код принта из артикула Ozon.
  *
  * Схема та же, что на сервере (crm-new/src/marketplace/ozon/ozon-article.ts):
- * `<принт>-<цвет>-<размер>`, разбираем с конца — в коде принта дефисов
- * сколько угодно. Не разобрался — возвращаем null: гадать здесь нельзя,
- * подпись «ПАПА» под чужим макетом хуже, чем её отсутствие.
+ * размер последний, цвет отдельным куском, остальное — код принта. Цвет
+ * стоит не всегда на одном месте: у «papa-black-S» он предпоследний, у
+ * «customer-black-1-XS» — в середине. Поэтому его ищем, а не отсчитываем:
+ * иначе печатник увидел бы «customer-black» вместо «customer-1».
+ *
+ * Цвет из кода убираем: «customer-black-1» и «customer-white-1» это один
+ * принт в двух цветах, а цвет у позиции и так свой.
+ *
+ * Не разобрался — возвращаем null: гадать здесь нельзя, подпись «ПАПА»
+ * под чужим макетом хуже, чем её отсутствие.
  */
 export function marketplacePrint(
   article: string | null | undefined,
 ): MarketplacePrint | null {
   const parts = (article ?? '').trim().split('-').filter(Boolean);
   if (parts.length < 3) return null;
-  const slug = parts.slice(0, parts.length - 2).join('-');
+  const head = parts.slice(0, parts.length - 1);
+  const colorAt = head.reduce(
+    (found, part, index) =>
+      COLOR_CODES.includes(part.trim().toLowerCase()) ? index : found,
+    -1,
+  );
+  // Цвет не узнали — отступаем к прежнему правилу «предпоследний кусок»:
+  // артикул чужой схемы лучше показать как есть, чем не показать вовсе.
+  const slug = (
+    colorAt >= 0
+      ? head.filter((_, index) => index !== colorAt)
+      : head.slice(0, head.length - 1)
+  ).join('-');
   if (!slug) return null;
   const script = printScript(slug);
   return { slug, script, scriptLabel: SCRIPT_LABEL[script] };
