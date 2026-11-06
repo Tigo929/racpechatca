@@ -947,6 +947,17 @@ export interface PrintApproval {
   createdAt: string;
   updatedAt: string;
   orderId: string;
+  /**
+   * Позиция заказа, к которой относится макет. Пусто — согласование
+   * создано до того, как макеты стали принадлежать позициям.
+   */
+  itemId?: string | null;
+  item?: {
+    id: string;
+    color: string;
+    size: EnumTshirtSize;
+    quantity: number;
+  } | null;
   version: number;
   status: EnumApprovalStatus;
   shirtColor: string;
@@ -987,8 +998,15 @@ export interface ApprovalTelegramDelivery {
 
 export interface CreateApprovalDto {
   orderId: string;
-  shirtColor: string;
-  shirtSize: EnumTshirtSize;
+  /**
+   * Позиция, для которой собирают макет. Не указана — сервер берёт первую
+   * позицию без макета. Цвет и размер приходят из позиции, в запросе их
+   * не передаём: размер и указывает, какой из заказанных футболок этот лист.
+   */
+  itemId?: string;
+  /** Только для заказа без позиций футболок — печати на изделии клиента. */
+  shirtColor?: string;
+  shirtSize?: EnumTshirtSize;
   copyFromId?: string;
 }
 

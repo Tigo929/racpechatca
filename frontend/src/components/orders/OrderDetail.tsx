@@ -31,6 +31,12 @@ import { DeleteOrderModal } from './DeleteOrderModal';
 import { GreetingCopyButton } from './GreetingCopyButton';
 import { OrderContact } from './OrderContact';
 import { ApprovalsBlock } from '../approval/ApprovalsBlock';
+import { approvalsApi } from '../../api/approvals';
+import {
+  approvalCoverage,
+  dispatchBlockers,
+  requiresClientSend,
+} from '../../utils/approval-coverage';
 
 /**
  * Технические строки заявки с сайта — их фиксируем в примечании (данные не
@@ -254,6 +260,21 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
   } = useQuery({
     queryKey: ["order", orderId],
     queryFn: () => ordersApi.getById(orderId),
+  });
+
+  /*
+   * Макеты заказа — тот же запрос, что в блоке согласований (ключ общий,
+   * react-query отдаёт один ответ обоим).
+   *
+   * Нужны здесь для одного: кнопка «Отправить исполнителю» должна быть
+   * закрыта, пока не согласована каждая позиция, и причина должна стоять
+   * рядом с кнопкой. Сервер откажет и сам, но узнавать об этом из
+   * всплывающей ошибки после нажатия — значит узнавать позже, чем нужно.
+   */
+  const { data: orderApprovals = [] } = useQuery({
+    queryKey: ["approvals", orderId],
+    queryFn: () => approvalsApi.list(orderId),
+    enabled: isAdmin && order?.productCategory === "TSHIRT",
   });
 
   // Ставка партнёра для разбивки в карточке (только для футболок у админа).
@@ -552,6 +573,23 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
         ? [order.techSpecPhotoPath]
         : [];
   const hasTechSpecFiles = techSpecPaths.length > 0;
+  /*
+   * Что держит отправку исполнителю.
+   *
+   * Правило то же, что на сервере (utils/approval-coverage.ts): по каждой
+   * позиции собранный лист, а там, где макет отправляет сама CRM, — ещё и
+   * отправленный клиенту; ТЗ-файлов не меньше, чем позиций. Печатник
+   * берёт из задания ровно то, что в нём есть, и одного файла на три
+   * футболки ему не хватит.
+   */
+  const dispatchHold = dispatchBlockers({
+    coverage: approvalCoverage(order.tshirtItems ?? [], orderApprovals),
+    requireSent: requiresClientSend(
+      order.communicationPlatform,
+      order.isMarketplacePrint ?? false,
+    ),
+    techSpecCount: techSpecPaths.length,
+  });
   /*
    * Заказ с площадки — другой проект внутри CRM.
    *
@@ -1224,13 +1262,28 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   поставится.
                 </p>
               )}
+              {dispatchHold.length > 0 && (
+                <ul className="mt-1 space-y-0.5">
+                  {dispatchHold.map((reason) => (
+                    <li key={reason} className="text-xs text-amber-700">
+                      {reason}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             {order.status !== "PAID" && (
               <button
                 onClick={() => setShowDispatchModal(true)}
                 disabled={
                   sendTshirtTelegramMutation.isPending ||
-                  order.partnerSyncStatus === "PENDING"
+                  order.partnerSyncStatus === "PENDING" ||
+                  dispatchHold.length > 0
+                }
+                title={
+                  dispatchHold.length > 0
+                    ? dispatchHold.join('\n')
+                    : 'Отправить задание исполнителю'
                 }
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               >

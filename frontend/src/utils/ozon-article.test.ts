@@ -34,6 +34,16 @@ describe('артикул Ozon', () => {
     }
   });
 
+  it('живой артикул линейки Customer', () => {
+    // customer-black-1-L: принт «customer», номер принта «1», цвет, размер.
+    expect(parseOzonArticle('customer-black-1-L')).toEqual({
+      printSlug: 'customer-1',
+      colorCode: 'black',
+      colorLabel: 'Чёрный',
+      size: 'L',
+    });
+  });
+
   it('новая линейка: цвет в середине артикула', () => {
     // «Customer Black-1»: отсчёт от конца дал бы цвет «1» — оператор увидел
     // бы «артикул не по схеме» там, где всё в порядке.

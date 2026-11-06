@@ -5,9 +5,13 @@ import { Download, FileImage, Pencil, Plus, Trash2, Send } from 'lucide-react';
 import { approvalsApi } from '../../api/approvals';
 import { getErrorMessage } from '../../utils/get-error-message';
 import { formatSizeCm } from '../../utils/approval-geometry';
+import {
+  approvalCoverage,
+  positionLabel,
+  requiresClientSend,
+} from '../../utils/approval-coverage';
 import type {
   EnumApprovalStatus,
-  EnumTshirtSize,
   ItemTshirt,
   PrintApproval,
 } from '../../types/index';
@@ -105,17 +109,25 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
   });
 
   const createMutation = useMutation({
-    mutationFn: (copyFromId?: string) => {
-      // Цвет и размер берём из позиции заказа: сотрудник уже ввёл их при
-      // оформлении, повторять эти данные руками незачем.
-      const item = tshirtItems[0];
-      return approvalsApi.create({
+    /*
+     * Макет создаётся под позицию заказа.
+     *
+     * Размер и цвет подставляет сервер из самой позиции: раньше их брали
+     * здесь из первой позиции заказа, и в заказе на три размера все три
+     * листа выходили одинаковыми. Выбирать их в браузере больше нельзя —
+     * размер и указывает, какой из заказанных футболок этот лист.
+     *
+     * Цвет и размер отправляем только у заказа без позиций футболок:
+     * это печать на изделии клиента, и знает их один человек.
+     */
+    mutationFn: (args: { itemId?: string; copyFromId?: string } = {}) =>
+      approvalsApi.create({
         orderId,
-        shirtColor: item?.color ?? 'Чёрный',
-        shirtSize: (item?.size ?? 'M') as EnumTshirtSize,
-        copyFromId,
-      });
-    },
+        ...args,
+        ...(tshirtItems.length === 0
+          ? { shirtColor: 'Чёрный', shirtSize: 'M' as const }
+          : {}),
+      }),
     onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: ['approvals', orderId] });
       setEditingId(created.id);
@@ -152,6 +164,18 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
 
   const latest = approvals[0];
 
+  /*
+   * Состояние макетов по позициям.
+   *
+   * Клиент заказал S, M и L — печатают по трём разным макетам, и до
+   * производства каждая позиция должна быть закрыта своим листом. Без
+   * этой таблицы незакрытый размер замечали на готовой футболке: в
+   * списке версий видно «v1, v2», но не видно, каких размеров не хватает.
+   */
+  const coverage = approvalCoverage(tshirtItems, approvals);
+  const requireSent = requiresClientSend(communicationPlatform, marketplace);
+  const done = coverage.filter((c) => c.ready && (!requireSent || c.sent));
+
   return (
     <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -161,7 +185,7 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
         <div className="flex items-center gap-2">
           {latest && (
             <button
-              onClick={() => createMutation.mutate(latest.id)}
+              onClick={() => createMutation.mutate({ copyFromId: latest.id })}
               disabled={createMutation.isPending}
               className={btn}
               title={`Скопировать размещение из версии ${latest.version}`}
@@ -171,7 +195,7 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
             </button>
           )}
           <button
-            onClick={() => createMutation.mutate(undefined)}
+            onClick={() => createMutation.mutate({})}
             disabled={createMutation.isPending}
             className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
           >
@@ -180,6 +204,79 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
           </button>
         </div>
       </div>
+
+      {coverage.length > 0 && (
+        <ul className="space-y-1">
+          {coverage.map(({ position, ready, sent, approvals: own }) => {
+            const version = own[0];
+            return (
+              <li
+                key={position.id}
+                className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs"
+              >
+                <span className="font-semibold text-gray-900">
+                  {positionLabel(position)}
+                </span>
+                {position.quantity > 1 && (
+                  <span className="text-gray-500">× {position.quantity}</span>
+                )}
+                {version && (
+                  <span className="text-gray-500">v{version.version}</span>
+                )}
+                <span
+                  className={
+                    requireSent && sent
+                      ? 'text-emerald-700'
+                      : ready
+                        ? 'text-amber-700'
+                        : 'text-red-700'
+                  }
+                >
+                  {!own.length
+                    ? 'макета нет'
+                    : !ready
+                      ? 'черновик — нажмите «Готово»'
+                      : requireSent && !sent
+                        ? 'лист готов, клиенту не отправлен'
+                        : requireSent
+                          ? 'отправлен клиенту'
+                          : 'лист готов'}
+                </span>
+                {!own.length && (
+                  <button
+                    onClick={() =>
+                      createMutation.mutate({ itemId: position.id })
+                    }
+                    disabled={createMutation.isPending}
+                    className={`${btn} ml-auto`}
+                  >
+                    <Plus size={13} aria-hidden="true" />
+                    Создать макет
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {coverage.length > 1 && (
+        <p
+          className={`text-xs ${
+            done.length === coverage.length
+              ? 'text-emerald-700'
+              : 'text-gray-500'
+          }`}
+        >
+          {done.length === coverage.length
+            ? `Все ${coverage.length} позиции готовы — заказ можно отправлять исполнителю.`
+            : `Готово ${done.length} из ${coverage.length} позиций. Производство откроется, когда ${
+                requireSent
+                  ? 'клиент увидит макеты всех позиций'
+                  : 'лист будет собран по каждой позиции'
+              }.`}
+        </p>
+      )}
 
       {isLoading ? (
         <p className="text-xs text-gray-400">Загрузка…</p>
@@ -228,8 +325,19 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
                   })}
                 </span>
                 <span className="text-xs text-gray-500">
-                  {approval.clientItem ? 'Печать на изделии клиента' : `${approval.shirtColor} · ${approval.shirtSize}`}
+                  {approval.clientItem
+                    ? 'Печать на изделии клиента'
+                    : approval.item
+                      ? positionLabel(approval.item as ItemTshirt)
+                      : `${approval.shirtColor} · ${approval.shirtSize}`}
                 </span>
+                {!approval.clientItem &&
+                  !approval.itemId &&
+                  tshirtItems.length > 1 && (
+                    <span className="text-[11px] font-medium text-red-700">
+                      не привязан к позиции — соберите макет заново
+                    </span>
+                  )}
                 {sides.map(([side, state]) => (
                   <span key={side} className="text-xs text-gray-500">
                     {side === 'FRONT' ? 'Перед' : 'Спина'}:{' '}

@@ -3,9 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi } from 'vitest';
 import { ApprovalsBlock } from './ApprovalsBlock';
 import { approvalsApi } from '../../api/approvals';
-import type { PrintApproval } from '../../types';
+import type { ItemTshirt, PrintApproval } from '../../types';
 
-vi.mock('../../api/approvals', () => ({ approvalsApi: { list: vi.fn(), sendTelegram: vi.fn() } }));
+vi.mock('../../api/approvals', () => ({ approvalsApi: { list: vi.fn(), sendTelegram: vi.fn(), create: vi.fn() } }));
 vi.mock('./ApprovalEditor', () => ({ ApprovalEditor: () => null }));
 
 const approval: PrintApproval = {
@@ -77,4 +77,63 @@ it('refreshes the order when the delivery worker confirms sending', async () => 
   act(() => qc.setQueryData(['approvals', 'order'], [{ ...pending, telegramDelivery: { ...pending.telegramDelivery, status: 'SENT' } }]));
   await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['order', 'order'] }));
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ['orders'] });
+});
+
+/**
+ * Заказ на несколько размеров: по позиции на макет.
+ *
+ * Список версий отвечал на «что собрано», но не на «чего не хватает» —
+ * и незакрытый размер замечали на готовой футболке.
+ */
+const items = [
+  { id: 'a', color: 'Чёрный', size: 'S', quantity: 2 },
+  { id: 'b', color: 'Белый', size: 'M', quantity: 1 },
+] as unknown as ItemTshirt[];
+
+function showWithItems(rows: PrintApproval[]) {
+  vi.mocked(approvalsApi.list).mockResolvedValue(rows);
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <ApprovalsBlock orderId="order" orderNumber="1" tshirtItems={items} communicationPlatform="TELEGRAM" communicationUrl="@client_test" />
+    </QueryClientProvider>,
+  );
+}
+
+it('называет позицию без макета и считает готовые', async () => {
+  showWithItems([{ ...approval, itemId: 'a', item: items[0] as never }]);
+
+  // Лист по S собран, но клиент его ещё не видел — производство закрыто.
+  expect(
+    await screen.findByText('лист готов, клиенту не отправлен'),
+  ).toBeInTheDocument();
+  // Подпись позиции стоит и в таблице позиций, и в строке её версии.
+  expect(screen.getAllByText('Чёрный S(46)')).toHaveLength(2);
+  expect(screen.getByText('Белый M(48)')).toBeInTheDocument();
+  expect(screen.getByText('макета нет')).toBeInTheDocument();
+  expect(screen.getByText(/Готово 0 из 2/)).toBeInTheDocument();
+});
+
+it('создаёт макет именно для нажатой позиции', async () => {
+  vi.mocked(approvalsApi.create).mockReturnValue(new Promise(() => {}));
+  showWithItems([{ ...approval, itemId: 'a', item: items[0] as never }]);
+  await screen.findByText('лист готов, клиенту не отправлен');
+
+  // Кнопка одна: у S макет уже есть, не хватает только M.
+  fireEvent.click(screen.getByRole('button', { name: 'Создать макет' }));
+
+  // Размер и цвет не передаём: их берёт из позиции сервер.
+  await waitFor(() =>
+    expect(approvalsApi.create).toHaveBeenCalledWith({
+      orderId: 'order',
+      itemId: 'b',
+    }),
+  );
+});
+
+it('макет без привязки в заказе на два размера помечен как непригодный', async () => {
+  showWithItems([{ ...approval, itemId: null }]);
+  expect(
+    await screen.findByText('не привязан к позиции — соберите макет заново'),
+  ).toBeInTheDocument();
 });

@@ -17,24 +17,13 @@ import {
   approvalCaption,
   approvalRecipient,
   deliverySelect,
+  CHANNEL_BY_PLATFORM,
 } from './approval-delivery-state';
 import { CompleteApprovalDeliveryDto } from './dto/approval-delivery.dto';
 import { displayOrderNumber } from '../order-photo/order-number';
 
-/**
- * Каналы, которыми уходит лист согласования.
- *
- * Telegram пишет userbot: он забирает задание из этой же таблицы. Чат Ozon
- * CRM ведёт сама — ключи от кабинета у неё, и отправка происходит прямо в
- * запросе, которым нажали кнопку. Очередь при этом одна на оба канала:
- * «отправить ровно один раз» — правило общее, и раздваивать его нельзя.
- */
-const CHANNEL_BY_PLATFORM = {
-  TELEGRAM: 'TELEGRAM',
-  OZON: 'OZON',
-} as const;
-
-type DeliveryChannel = (typeof CHANNEL_BY_PLATFORM)[keyof typeof CHANNEL_BY_PLATFORM];
+type DeliveryChannel =
+  (typeof CHANNEL_BY_PLATFORM)[keyof typeof CHANNEL_BY_PLATFORM];
 
 @Injectable()
 export class ApprovalDeliveryService {

@@ -11,10 +11,7 @@ import type {
 } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { isCalibrated } from './approval-geometry';
-import {
-  missingSides,
-  requiredApprovalSides,
-} from './approval-sides';
+import { missingSides, requiredApprovalSides } from './approval-sides';
 import {
   filledSides,
   parseSides,
@@ -46,6 +43,9 @@ const DEFAULT_WIDTH_MM = 280;
 const approvalInclude = {
   createdBy: { select: { id: true, username: true } },
   telegramDelivery: { select: deliverySelect },
+  // Позиция, к которой относится макет: по ней в списке видно, какой из
+  // заказанных размеров согласован, а какой ещё нет.
+  item: { select: { id: true, color: true, size: true, quantity: true } },
   order: {
     select: {
       items: { select: { printOnClientItem: true } },
@@ -81,10 +81,27 @@ export class ApprovalService {
     return this.toView(await this.load(id));
   }
 
+  /**
+   * Новый макет. Позицию заказа выбирает система, а не человек.
+   *
+   * Заказали S, M и L — нужно три макета, и каждый относится к своей
+   * позиции. Раньше цвет и размер приходили из браузера, где их брали из
+   * первой позиции заказа: в заказе на три размера все три листа выходили
+   * одного размера, и печатник этого не видел.
+   *
+   * Поэтому: назвали позицию — берём её, не назвали — следующую, у которой
+   * макета ещё нет. Размер и цвет — из позиции.
+   */
   async create(dto: DtoCreateApproval, userId: string | null) {
     const order = await this.prisma.orderPhoto.findUnique({
       where: { id: dto.orderId },
-      select: { id: true },
+      select: {
+        id: true,
+        tshirtItems: {
+          select: { id: true, color: true, size: true },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
 
@@ -94,24 +111,83 @@ export class ApprovalService {
       select: { version: true },
     });
 
+    const position = await this.resolvePosition(dto, order.tshirtItems);
+    const shirtColor = position?.color ?? dto.shirtColor;
+    const shirtSize = position?.size ?? dto.shirtSize;
+    if (!shirtColor || !shirtSize) {
+      /*
+       * Позиций футболок в заказе нет — так выглядит печать на изделии
+       * клиента: позиция свободная, размер и цвет знает только человек.
+       * Тогда они приходят из запроса, и без них собирать нечего.
+       */
+      throw new BadRequestException(
+        'В заказе нет позиции футболки — укажите цвет и размер',
+      );
+    }
+
     let sides: ApprovalSides = {};
     if (dto.copyFromId) {
       sides = await this.copySides(dto.copyFromId, dto.orderId);
     }
-    sides = await this.syncTemplates(sides, dto.shirtColor);
+    sides = await this.syncTemplates(sides, shirtColor);
 
     const created = await this.prisma.printApproval.create({
       data: {
         orderId: dto.orderId,
+        itemId: position?.id ?? null,
         version: (last?.version ?? 0) + 1,
-        shirtColor: dto.shirtColor,
-        shirtSize: dto.shirtSize,
+        shirtColor,
+        shirtSize,
         sides: sides as unknown as Prisma.InputJsonObject,
         createdById: userId,
       },
       include: approvalInclude,
     });
     return this.toView(created);
+  }
+
+  /**
+   * Какой позиции принадлежит новый макет.
+   *
+   * Порядок важен: названная позиция, затем позиция той версии, с которой
+   * копируем (новая версия — про тот же размер, что и прошлая), затем
+   * первая позиция без макета. Макеты есть у всех — берём первую: значит
+   * делают ещё одну версию, и выбор позиции всё равно за человеком.
+   */
+  private async resolvePosition(
+    dto: DtoCreateApproval,
+    positions: { id: string; color: string; size: EnumTshirtSize }[],
+  ) {
+    if (positions.length === 0) return null;
+    const byId = (id: string | null | undefined) =>
+      positions.find((item) => item.id === id);
+
+    if (dto.itemId) {
+      const chosen = byId(dto.itemId);
+      if (!chosen) {
+        throw new BadRequestException('Позиция не принадлежит этому заказу');
+      }
+      return chosen;
+    }
+
+    if (dto.copyFromId) {
+      const source = await this.prisma.printApproval.findUnique({
+        where: { id: dto.copyFromId },
+        select: { itemId: true },
+      });
+      const inherited = byId(source?.itemId);
+      if (inherited) return inherited;
+    }
+
+    const covered = new Set(
+      (
+        await this.prisma.printApproval.findMany({
+          where: { orderId: dto.orderId, itemId: { not: null } },
+          select: { itemId: true },
+        })
+      ).map((row) => row.itemId),
+    );
+    return positions.find((item) => !covered.has(item.id)) ?? positions[0];
   }
 
   /**
@@ -124,7 +200,19 @@ export class ApprovalService {
     const data: Prisma.PrintApprovalUpdateInput = {};
 
     if (dto.comment !== undefined) data.comment = dto.comment || null;
-    if (dto.shirtSize !== undefined) data.shirtSize = dto.shirtSize;
+    /*
+     * Размер привязанного макета берётся из позиции и руками не меняется:
+     * он и указывает, какой из заказанных футболок этот лист. Правка в
+     * редакторе оставила бы одну позицию без макета, а другую с двумя — и
+     * отправка исполнителю открылась бы по ошибке.
+     *
+     * Чужой размер не отвергаем, а оставляем без внимания: редактор
+     * сохраняется сам после каждого движения принта, и отказ здесь стоил
+     * бы потерянной работы над макетом.
+     */
+    if (dto.shirtSize !== undefined && !approval.itemId) {
+      data.shirtSize = dto.shirtSize;
+    }
     if (dto.status !== undefined) data.status = dto.status;
 
     const color = dto.shirtColor ?? approval.shirtColor;
@@ -423,7 +511,8 @@ export class ApprovalService {
       },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
-    const clientItem = order.items.some((i) => i.printOnClientItem) ||
+    const clientItem =
+      order.items.some((i) => i.printOnClientItem) ||
       order.tshirtItems.some((i) => i.clientItem);
 
     /*
@@ -517,7 +606,15 @@ export class ApprovalService {
    * updatedAt, и этого достаточно, чтобы понять — картинка уже не та.
    */
   private toView<
-    T extends { sides: unknown; updatedAt: Date; finalizedAt: Date | null; order: { items: { printOnClientItem: boolean }[]; tshirtItems: { clientItem: boolean; printLocation: string }[] } },
+    T extends {
+      sides: unknown;
+      updatedAt: Date;
+      finalizedAt: Date | null;
+      order: {
+        items: { printOnClientItem: boolean }[];
+        tshirtItems: { clientItem: boolean; printLocation: string }[];
+      };
+    },
   >(approval: T) {
     const { order, ...view } = approval;
     const required = requiredApprovalSides(
@@ -525,7 +622,9 @@ export class ApprovalService {
     );
     return {
       ...view,
-      clientItem: order.items.some((item) => item.printOnClientItem) || order.tshirtItems.some((item) => item.clientItem),
+      clientItem:
+        order.items.some((item) => item.printOnClientItem) ||
+        order.tshirtItems.some((item) => item.clientItem),
       // Стороны из заказа: интерфейс показывает их и не даёт отправить лист,
       // пока обязательная сторона пустая. Правило одно и то же здесь и на
       // отправке — считается в approval-sides.ts.

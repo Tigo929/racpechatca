@@ -63,6 +63,24 @@ describe('артикул Ozon', () => {
     }
   });
 
+  it('живой артикул линейки Customer разбирается целиком', () => {
+    // Формат из кабинета: customer-black-1-L — принт «customer», номер
+    // принта «1», цвет «black», размер последним. Номер остаётся в коде
+    // принта: Customer-1 и Customer-2 — разные макеты, и слить их в один
+    // код значило бы напечатать не тот.
+    expect(parseOzonArticle('customer-black-1-L')).toEqual({
+      printSlug: 'customer-1',
+      colorCode: 'black',
+      colorLabel: 'Чёрный',
+      size: 'L',
+    });
+    for (const size of ['s', 'm', 'l', 'xl', 'xxl']) {
+      expect(parseOzonArticle(`customer-black-1-${size}`)?.size).toBe(
+        size.toUpperCase(),
+      );
+    }
+  });
+
   it('новая линейка: цвет стоит в середине артикула', () => {
     /*
      * «Customer Black-1» заведён в кабинете так, что цвет оказался не

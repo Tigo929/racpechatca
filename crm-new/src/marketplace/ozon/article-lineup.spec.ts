@@ -92,6 +92,7 @@ describe('линейки из настроек раздела', () => {
 
   it('«Customer Black-1» попадает в список — как бы ни был собран артикул', () => {
     for (const article of [
+      'customer-black-1-L',
       'customer-black-1-XS',
       'custom-1-black-2XL',
       'CUSTOMER-white-1-S',

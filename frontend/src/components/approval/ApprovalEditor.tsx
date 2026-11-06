@@ -470,6 +470,21 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
           <div className="space-y-4">
             <Block title={approval?.clientItem ? "Изделие клиента" : "Футболка"}>
               {approval?.clientItem && <p className="text-xs text-gray-500">Цвет ниже используется для примера на макете.</p>}
+              {/*
+                Цвет остаётся выбираемым и у привязанного макета: им
+                выбирается мокап, на котором рисуется принт, а подходящего
+                шаблона под цвет позиции может не оказаться. Но расхождение
+                называем прямо — на лист уйдёт то, что выбрано здесь, и
+                печатник возьмёт заготовку по подписи.
+              */}
+              {approval?.item &&
+                approval.item.color.trim().toLowerCase() !==
+                  draft.shirtColor.trim().toLowerCase() && (
+                  <p className="text-xs font-medium text-red-700">
+                    В позиции заказа — {approval.item.color}. Лист уйдёт с
+                    подписью «{draft.shirtColor}».
+                  </p>
+                )}
               <div className="flex flex-wrap gap-2">
                 {colors.map((color) => (
                   <button
@@ -490,6 +505,19 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
                 <span className="text-sm font-medium text-gray-700">Размер</span>
                 {approval?.clientItem ? (
                   <input className={`mt-1 ${field}`} value="Печать на изделии клиента" readOnly />
+                ) : approval?.itemId ? (
+                  /*
+                   * Размер привязанного макета не выбирают: он взят из
+                   * позиции заказа и указывает, какой из заказанных
+                   * футболок этот лист. Правка здесь оставила бы одну
+                   * позицию без макета, а другую — с двумя, и заказ ушёл
+                   * бы в производство недосогласованным.
+                   */
+                  <input
+                    className={`mt-1 ${field}`}
+                    value={`${TSHIRT_SIZE_LABELS[draft.shirtSize] ?? draft.shirtSize} — из позиции заказа`}
+                    readOnly
+                  />
                 ) : <select
                   className={`mt-1 ${field}`}
                   value={draft.shirtSize}

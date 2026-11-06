@@ -76,6 +76,10 @@ import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 import { resolveCanvasPosition } from 'src/canvas/canvas-production-price';
 import { normalizeMarketplaceNumber } from './order-number';
 import { hasTechSpecFiles } from 'src/partner/tech-spec-paths';
+import {
+  orderDispatchBlockers,
+  type CoverageOrder,
+} from 'src/approval/approval-coverage';
 import { GulianOutboxService } from 'src/gulian/gulian-outbox.service';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 import { SitePhotosService } from './site-photos.service';
@@ -2404,6 +2408,37 @@ export class OrderPhotoService {
     });
   }
 
+  /**
+   * Чего не хватает заказу, чтобы уйти в производство. Пусто — можно.
+   *
+   * Отправку клиенту требуем только там, где её выполняет сама CRM:
+   * Telegram и чат Ozon. В Авито и MAX переписку ведёт человек, и
+   * подтверждения отправки у системы нет — там достаточно собранного
+   * листа. Заказ с площадки согласования не ждёт вовсе: покупатель купил
+   * то, что на карточке, а лист нужен печатнику.
+   */
+  private async approvalBlockers(
+    order: CoverageOrder & { id: string },
+  ): Promise<string[]> {
+    const approvals = await this.prisma.printApproval.findMany({
+      where: { orderId: order.id },
+      select: {
+        itemId: true,
+        previewFile: true,
+        telegramDelivery: { select: { status: true } },
+      },
+    });
+
+    return orderDispatchBlockers(
+      order,
+      approvals.map((approval) => ({
+        itemId: approval.itemId,
+        previewFile: approval.previewFile,
+        deliveryStatus: approval.telegramDelivery?.status ?? null,
+      })),
+    );
+  }
+
   async dispatchTshirtToPartner(id: string, userId: string, userRole: string) {
     const order = await this.getOrderById(id, userId, userRole);
     if (order.productCategory !== EnumProductCategory.TSHIRT) {
@@ -2418,6 +2453,23 @@ export class OrderPhotoService {
     }
     if (!hasProductionItems(order)) {
       throw new BadRequestException(NO_PRODUCTION_ITEMS_MESSAGE);
+    }
+
+    /*
+     * Макет на каждую позицию — до производства, а не после.
+     *
+     * Заказали S, M и L — печатают по трём разным макетам. Пока согласован
+     * один, остальные две футболки напечатают неизвестно по какому, и
+     * увидит это покупатель. Поэтому дверь в производство открывается
+     * только когда у каждой позиции есть собранный лист, а там, где
+     * макет клиенту отправляет сама CRM, — ещё и отправленный.
+     *
+     * Проверка здесь, а не на статусе «Отправлен»: ТЗ уходит печатнику
+     * только этой кнопкой, и держать надо её.
+     */
+    const blockers = await this.approvalBlockers(order);
+    if (blockers.length > 0) {
+      throw new BadRequestException(blockers.join(' '));
     }
 
     await this.tshirtPartnerTelegram.sendOrder(id);

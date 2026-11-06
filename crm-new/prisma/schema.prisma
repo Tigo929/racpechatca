@@ -1051,6 +1051,9 @@ model ItemTshirt {
   designUrl     String?
   designNote    String?
   clientItem    Boolean           @default(false)
+
+  /// Макеты этой позиции — по версии на каждую правку клиента.
+  approvals PrintApproval[]
 }
 
 model ItemCanvas {
@@ -1957,11 +1960,26 @@ model PrintApproval {
   order   OrderPhoto @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderId String
 
+  /// Позиция заказа, к которой относится макет.
+  ///
+  /// Заказывают несколько футболок разных размеров, и каждая печатается
+  /// по своему макету. Без этой связи было не видно, какой размер уже
+  /// согласован, а какой ещё нет: заказ уходил в производство с одним
+  /// макетом на три позиции.
+  ///
+  /// SetNull, а не Cascade: позицию из заказа могли удалить, а лист
+  /// согласования — доказательство того, что клиент подтвердил. Терять
+  /// его вместе со строкой заказа нельзя.
+  item   ItemTshirt? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  itemId String?
+
   /// Номер версии в пределах заказа, с единицы.
   version Int
   status  EnumApprovalStatus @default(DRAFT)
 
   /// Цвет и размер футболки — строкой и перечислением, как в ItemTshirt.
+  /// Размер берётся из позиции и руками не меняется: он и указывает,
+  /// какой из заказанных футболок этот макет.
   shirtColor String
   shirtSize  EnumTshirtSize
   comment    String?
@@ -1982,6 +2000,7 @@ model PrintApproval {
 
   @@unique([orderId, version])
   @@index([orderId])
+  @@index([itemId])
 }
 
 /// Куда уходит лист согласования.
