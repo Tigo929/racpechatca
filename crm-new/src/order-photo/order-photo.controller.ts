@@ -26,6 +26,8 @@ import { TshirtItemService } from './tshirt-item.service';
 import { CanvasItemService } from './canvas-item.service';
 import { ClientGreetingService } from './client-greeting.service';
 import { ClientDraftService } from './client-draft.service';
+import { ClientMessageService } from 'src/client-message/client-message.service';
+import type { ClientMessageKind } from 'src/client-message/client-message';
 import { StickerService } from './sticker.service';
 import { DailyPlanService } from './daily-plan.service';
 import { ReviewReminderService } from './review-reminder.service';
@@ -85,6 +87,7 @@ export class OrderPhotoController {
     private readonly shipmentLeadService: ShipmentLeadService,
     private readonly greeting: ClientGreetingService,
     private readonly draft: ClientDraftService,
+    private readonly clientMessage: ClientMessageService,
     private readonly archive: OrderArchiveService,
   ) {}
 
@@ -216,6 +219,29 @@ export class OrderPhotoController {
     @Param('idOrder') idOrder: string,
   ): Promise<{ text: string }> {
     const text = await this.greeting.textFor(idOrder);
+    if (text === null) {
+      throw new NotFoundException('Заказ не найден');
+    }
+    return { text };
+  }
+
+  /**
+   * Текст сообщения клиенту: подтверждение заказа или сообщение о готовности.
+   *
+   * Собирает сервер, а не браузер. Тот же текст уходит клиенту сам, когда он
+   * отвечает «да» на приветствие, — и две сборки одного письма разошлись бы
+   * при первой же правке. Здесь менеджер получает ровно то, что отправит
+   * автомат.
+   */
+  @Get(':idOrder/client-message')
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  async getClientMessage(
+    @Param('idOrder') idOrder: string,
+    @Query('kind') kind?: string,
+  ): Promise<{ text: string }> {
+    const requested: ClientMessageKind =
+      kind === 'READY' ? 'READY' : 'CONFIRMATION';
+    const text = await this.clientMessage.textFor(idOrder, requested);
     if (text === null) {
       throw new NotFoundException('Заказ не найден');
     }

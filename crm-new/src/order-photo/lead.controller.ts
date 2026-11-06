@@ -27,6 +27,8 @@ import {
   isDraftStatus,
 } from './client-draft.service';
 import { ClientReviewService } from './client-review.service';
+import { ClientReplyService } from './client-reply.service';
+import { ClientInvoiceService } from './client-invoice.service';
 
 /**
  * Публичный контроллер для заявок с лендинга.
@@ -58,6 +60,8 @@ export class LeadController {
     private readonly greeting: ClientGreetingService,
     private readonly draft: ClientDraftService,
     private readonly clientReview: ClientReviewService,
+    private readonly clientReply: ClientReplyService,
+    private readonly clientInvoice: ClientInvoiceService,
   ) {}
 
   @Post('lead')
@@ -201,6 +205,65 @@ export class LeadController {
       throw new BadRequestException(`Неизвестный итог: ${status}`);
     }
     await this.clientReview.mark(id, status);
+    return { ok: true };
+  }
+
+  /*
+   * Ответ клиента на приветствие.
+   *
+   * Воркер читает диалоги, которым мы написали и ждём ответа, и приносит
+   * сюда первый ответ клиента. Решение «согласие или разговор» принимает
+   * CRM: правило одно на проект, и держать его в воркере значило бы
+   * чинить деньги в двух местах.
+   */
+  @Get('reply/pending')
+  async pendingReplies(@Query('limit') limit?: string) {
+    const parsed = Number.parseInt(limit ?? '10', 10);
+    return {
+      items: await this.clientReply.pending(
+        Number.isFinite(parsed) ? parsed : 10,
+      ),
+    };
+  }
+
+  @Post('reply')
+  @HttpCode(200)
+  async acceptReply(@Body() body: { id?: string; text?: string }) {
+    const id = (body.id ?? '').trim();
+    const text = body.text ?? '';
+    if (!id) throw new BadRequestException('Не указан заказ.');
+    if (!text.trim()) throw new BadRequestException('Пустой ответ.');
+    return this.clientReply.accept(id, text);
+  }
+
+  /*
+   * Очередь счетов: подтверждение заказа клиенту, который сказал «да».
+   *
+   * Отдаётся готовый текст — собранный CRM, тот же, что менеджер копирует
+   * из карточки. Воркер только отправляет и отчитывается.
+   */
+  @Get('invoice/pending')
+  async pendingInvoices(@Query('limit') limit?: string) {
+    const parsed = Number.parseInt(limit ?? '5', 10);
+    return {
+      items: await this.clientInvoice.pending(
+        Number.isFinite(parsed) ? parsed : 5,
+      ),
+    };
+  }
+
+  @Post('invoice/mark')
+  @HttpCode(200)
+  async markInvoice(@Body() body: { id?: string; status?: string }) {
+    const id = (body.id ?? '').trim();
+    const status = (body.status ?? '').trim();
+    if (!id) throw new BadRequestException('Не указан заказ.');
+    // Итоги те же, что у приветствий: одна и та же отправка одним и тем же
+    // аккаунтом, и второй список отказов разошёлся бы с первым.
+    if (!isGreetingStatus(status)) {
+      throw new BadRequestException(`Неизвестный итог: ${status}`);
+    }
+    await this.clientInvoice.mark(id, status);
     return { ok: true };
   }
 }

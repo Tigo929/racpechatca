@@ -20,10 +20,7 @@ import { WaitingBadge } from "./WaitingBadge";
 import { usersApi } from "../../api/users";
 import { DELIVERY_LABELS, SOURCE_ORDER_LABELS } from "../../constants";
 import { displayOrderNumber, marketplaceNumber } from "../../utils/order-number";
-import {
-  buildClientMessage,
-  prepaymentNeedsAttention,
-} from "../../utils/client-message";
+import { prepaymentNeedsAttention } from "../../utils/prepayment";
 import { copyToClipboard } from "../../utils/clipboard";
 import { photosShortfall, pluralPhotos } from "../../utils/photos-shortfall";
 import { isMarketplaceTshirt } from "../../utils/marketplace-tshirt";
@@ -748,10 +745,16 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                 const isNew = order.status === "NEW" || order.status === "LEAD";
                 const isReady = order.status === "READY";
                 if (!isNew && !isReady) return null;
-                const text = buildClientMessage(
-                  order,
-                  isNew ? "CONFIRMATION" : "READY",
-                );
+                /*
+                  Текст собирает сервер и отдаёт по запросу. Раньше его
+                  собирал браузер, и поэтому счёт нельзя было отправить
+                  без открытой карточки: автомату негде было взять текст.
+                  Теперь источник один — и у кнопки, и у автоотправки
+                  после ответа «да».
+                */
+                const kind = isNew ? "CONFIRMATION" : "READY";
+                const loadText = () =>
+                  ordersApi.getClientMessage(orderId, kind);
                 // Короткая подпись: «Скопировать сообщение готовности» — треть
                 // ширины окна на телефоне, и ряд кнопок из-за неё ломался.
                 // Что именно копируется, договаривает подсказка при наведении.
@@ -760,7 +763,10 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   ? "Скопировать подтверждение заказа для клиента"
                   : "Скопировать сообщение о готовности для клиента";
                 const copyText = () => {
-                  void copyToClipboard(text).then((ok) => {
+                  void loadText()
+                    .then((text) => copyToClipboard(text))
+                    .catch(() => false)
+                    .then((ok) => {
                     if (!ok) {
                       toast.error("Не удалось скопировать");
                       return;
@@ -792,7 +798,13 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                         → вставить) превращаются в одно нажатие «Отправить». */}
                     {order.communicationPlatform === "TELEGRAM" && (
                       <button
-                        onClick={() => draftMutation.mutate(text)}
+                        onClick={() => {
+                          void loadText()
+                            .then((text) => draftMutation.mutate(text))
+                            .catch(() =>
+                              toast.error("Не удалось собрать текст"),
+                            );
+                        }}
                         disabled={draftMutation.isPending}
                         title="Положить этот текст в поле ввода чата клиента, не отправляя"
                         className={`${actionBtn} border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 focus-visible:ring-sky-500`}

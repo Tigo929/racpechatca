@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { OrderPhotoService } from './order-photo.service';
 import { ClientDraftService } from './client-draft.service';
+import { ClientMessageService } from 'src/client-message/client-message.service';
 import { ClientReviewService } from './client-review.service';
+import { ClientReplyService } from './client-reply.service';
+import { ClientInvoiceService } from './client-invoice.service';
 import { ClientGreetingService } from './client-greeting.service';
 import { OrderItemService } from './order-item.service';
 import { TshirtItemService } from './tshirt-item.service';
@@ -42,7 +45,10 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
     OrderPhotoService,
     ClientGreetingService,
     ClientDraftService,
+    ClientMessageService,
     ClientReviewService,
+    ClientReplyService,
+    ClientInvoiceService,
     OrderItemService,
     TshirtItemService,
     CanvasItemService,

@@ -33,6 +33,21 @@ export function computePrepayment(
   return { prepaid, balanceDue: safeTotal - prepaid, recorded: true };
 }
 
+/**
+ * Показать менеджеру, что фактическая предоплата не записана.
+ *
+ * Сообщение клиенту при этом остаётся правильным — в нём стоит ориентир
+ * 50%, обещанный при оформлении. Но проверить поступление перед выдачей
+ * нужно, и место этой проверки — карточка заказа, а не текст покупателю.
+ */
+export function prepaymentNeedsAttention(order: {
+  status?: string;
+  prepaidAmount?: number | null;
+}): boolean {
+  if (order.status === 'PAID' || order.status === 'COMPLETED') return false;
+  return order.prepaidAmount === null || order.prepaidAmount === undefined;
+}
+
 /** Amount actually due; a suggested 50% deposit is not a received payment. */
 export function actualBalanceDue(total: number, prepaidAmount: number | null | undefined, status?: string): number {
   if (status === 'PAID' || status === 'COMPLETED') return 0;

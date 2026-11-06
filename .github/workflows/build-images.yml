@@ -108,7 +108,7 @@ jobs:
         working-directory: greeter
         run: |
           pip install -r requirements.txt
-          python -m unittest test_approval_delivery test_draft_queue test_review_queue test_signing test_proxy_config test_greeting_text
+          python -m unittest test_approval_delivery test_draft_queue test_review_queue test_reply_queue test_invoice_queue test_signing test_proxy_config test_greeting_text
 
       # MCP-сервер над CRM. Тесты без базы: период, формат чисел и инварианты
       # набора инструментов (уникальные имена, описанные аргументы, границы

@@ -43,6 +43,8 @@ from proxy_config import describe, parse_proxy
 from signing import sign
 from approval_delivery import ApprovalQueue
 from draft_queue import DraftQueue
+from reply_queue import ReplyQueue
+from invoice_queue import InvoiceQueue
 from review_queue import ReviewQueue
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -216,6 +218,8 @@ async def main() -> int:
     approvals = ApprovalQueue(crm._client, CRM_SIGNING_SECRET)
     drafts = DraftQueue(crm._client, CRM_SIGNING_SECRET)
     reviews = ReviewQueue(crm._client, CRM_SIGNING_SECRET)
+    replies = ReplyQueue(crm._client, CRM_SIGNING_SECRET)
+    invoices = InvoiceQueue(crm._client, CRM_SIGNING_SECRET)
     client = TelegramClient(
         str(SESSION_PATH), API_ID, API_HASH, proxy=parse_proxy(PROXY_URL)
     )
@@ -250,6 +254,15 @@ async def main() -> int:
             # отправляем по одной за круг: отзыв не срочный, а очередь
             # приветствий ждать из-за него не должна.
             await reviews.process_one(client)
+            # Ответы клиентов на приветствие: чтение, а не отправка —
+            # Telegram за него не ограничивает, и очередь приветствий
+            # из-за него не ждёт. Идёт перед счетами: счёт появляется
+            # как раз из прочитанного «да».
+            await replies.process_one(client)
+            # Счёт тому, кто согласился. Раньше приветствий по важности:
+            # человек ждёт реквизиты прямо сейчас, а новая заявка ещё
+            # ничего не ждёт.
+            await invoices.process_one(client)
             try:
                 queue = await crm.pending(limit=1)
             except (httpx.HTTPError, OSError) as exc:

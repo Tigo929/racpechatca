@@ -1,45 +1,119 @@
 /**
  * Сообщения клиенту: подтверждение заказа и готовность.
  *
- * Раньше это были две почти одинаковые функции по сто строк каждая внутри
- * карточки заказа. Состав заказа, суммы, реквизиты и подпись собирались
- * дважды, и правка одной копии не доходила до второй: у подтверждения
- * и готовности разъехались пустые строки, формулировки про оплату и даже
- * порядок блоков. Клиент получал два письма из разных систем.
+ * Один конвейер на оба сообщения. Состав заказа, суммы, реквизиты и подпись
+ * собираются из одних и тех же блоков; отличается только то, что обязано
+ * отличаться: заголовок, блок оплаты, условия выдачи и финальная просьба.
  *
- * Теперь цепочка одна. Оба сообщения собираются одним конвейером из одних
- * и тех же блоков; отличается только то, что обязано отличаться: заголовок,
- * блок оплаты, условия выдачи и финальная просьба.
+ * ПОЧЕМУ НА СЕРВЕРЕ. Раньше текст собирался в браузере и уходил клиенту
+ * руками менеджера. Счёт после ответа «да» отправляется сам, без открытой
+ * карточки, — значит собирать текст должен сервер. Фронт теперь спрашивает
+ * готовый текст у него же (`GET /order-photo/:id/client-message`), поэтому
+ * сообщение, отправленное автоматом, и сообщение, скопированное из карточки,
+ * совпадают дословно.
  *
  * ЧТО СЮДА НЕЛЬЗЯ КЛАСТЬ. Это текст, который уходит покупателю в Telegram,
- * Авито, Ozon и MAX. Значит — никакой разметки, кроме той, что работает
+ * Авито и MAX. Значит — никакой разметки, кроме той, что работает
  * в конкретном канале (обратные кавычки только в Telegram), и ни одного
  * служебного слова из CRM. Внутренние предупреждения место имеют
  * в интерфейсе менеджера, а не в сообщении клиенту.
  */
 
+import { computePrepayment } from 'src/order-photo/prepayment';
 import {
   businessConfig,
   formatOrderNumberForClient,
   formatPaymentPhoneForClient,
   resolvePickupAddress,
-} from '../config/business';
-import { DELIVERY_LABELS, TSHIRT_SIZE_LABELS } from '../constants';
-import { computePrepayment } from './prepayment';
-import type { OrderPhoto } from '../types/index';
+} from './business';
 
 /** Какое из двух сообщений собираем. */
 export type ClientMessageKind = 'CONFIRMATION' | 'READY';
 
-type PhotoOrderItem = OrderPhoto['items'][number];
+/**
+ * Что нужно знать о заказе, чтобы собрать сообщение.
+ *
+ * Структурный тип, а не модель Prisma: так видно, какие поля действительно
+ * нужны, и запрос к базе можно сузить до них.
+ */
+export interface ClientMessageOrder {
+  numberOrder: string;
+  marketplaceOrderNumber?: string | null;
+  communicationPlatform?: string | null;
+  productCategory?: string | null;
+  status?: string | null;
+  deliveryMethod: string;
+  deliveryCost?: number | null;
+  discountAmount?: number | null;
+  designDevelopmentCost?: number | null;
+  urgencyFee?: number | null;
+  totalOrder?: number | null;
+  prepaidAmount?: number | null;
+  isUrgent?: boolean | null;
+  isFreePrice?: boolean | null;
+  createdAt?: Date | string | null;
+  executor?: { username: string } | null;
+  items?: {
+    formatPaper: string;
+    typePaper?: string | null;
+    quantity?: number | null;
+    price?: number | null;
+    pricePosition?: number | null;
+    isFreePrice?: boolean | null;
+  }[];
+  tshirtItems?: {
+    color: string;
+    size: string;
+    quantity?: number | null;
+    pricePosition?: number | null;
+  }[];
+  canvasItems?: {
+    formatCanvas: string;
+    quantity?: number | null;
+    pricePosition?: number | null;
+  }[];
+}
+
+type PhotoItem = NonNullable<ClientMessageOrder['items']>[number];
 
 const SEPARATOR = '─────────────────';
 
 /** Месяцы в родительном падеже — для «11–12 сентября». */
 const RU_MONTHS_GENITIVE = [
-  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+  'января',
+  'февраля',
+  'марта',
+  'апреля',
+  'мая',
+  'июня',
+  'июля',
+  'августа',
+  'сентября',
+  'октября',
+  'ноября',
+  'декабря',
 ];
+
+/** Подписи способов доставки — те же, что видит менеджер в панели. */
+const DELIVERY_LABELS: Record<string, string> = {
+  YANDEX_PVZ: 'Яндекс ПВЗ',
+  OZON_PVZ: 'Ozon ПВЗ',
+  PICKUP: 'Самовывоз',
+  PRODUCTION_MSK: 'Доставка в пределах МКАД',
+  OZON_SELLER: 'Ozon Продавец',
+  WB_SELLER: 'WB Продавец',
+};
+
+/** Размеры футболок так, как их называют покупателю. */
+const TSHIRT_SIZE_LABELS: Record<string, string> = {
+  XS: 'XS(44)',
+  S: 'S(46)',
+  M: 'M(48)',
+  L: 'L(50)',
+  XL: 'XL(52)',
+  XXL: 'XXL(54)',
+  XXXL: 'XXXL(56)',
+};
 
 /**
  * Неразрывный пробел — тот же, что ставит toLocaleString между разрядами.
@@ -60,17 +134,20 @@ function addDays(base: Date, days: number): Date {
   return d;
 }
 
-function isFreeFormPhotoItem(order: OrderPhoto, item: PhotoOrderItem): boolean {
+function isFreeFormPhotoItem(
+  order: ClientMessageOrder,
+  item: PhotoItem,
+): boolean {
   if (order.isFreePrice || item.isFreePrice) return true;
   return (item.pricePosition ?? 0) !== (item.price ?? 0) * (item.quantity ?? 0);
 }
 
-function photoItemLine(order: OrderPhoto, item: PhotoOrderItem): string {
+function photoItemLine(order: ClientMessageOrder, item: PhotoItem): string {
   if (isFreeFormPhotoItem(order, item)) {
-    return `• ${item.formatPaper} × ${item.quantity} шт — ${money(item.pricePosition)}`;
+    return `• ${item.formatPaper} × ${item.quantity} шт — ${money(item.pricePosition ?? 0)}`;
   }
   const type = item.typePaper === 'GLOSS' ? 'Глянец' : 'Матт';
-  return `• ${item.formatPaper} (${type}) × ${item.quantity} шт — ${money(item.pricePosition)}`;
+  return `• ${item.formatPaper} (${type}) × ${item.quantity} шт — ${money(item.pricePosition ?? 0)}`;
 }
 
 /**
@@ -79,19 +156,19 @@ function photoItemLine(order: OrderPhoto, item: PhotoOrderItem): string {
  * Дизайн и срочность идут такими же строками состава: клиент за них платит,
  * и без них «сумма по позициям» не сходится с «итого к оплате».
  */
-function compositionLines(order: OrderPhoto): string[] {
+function compositionLines(order: ClientMessageOrder): string[] {
   const lines: string[] = [];
   for (const item of order.items ?? []) {
     lines.push(photoItemLine(order, item));
   }
   for (const item of order.tshirtItems ?? []) {
     lines.push(
-      `• Футболка ${item.color}, р-р ${TSHIRT_SIZE_LABELS[item.size] ?? item.size} × ${item.quantity} шт — ${money(item.pricePosition)}`,
+      `• Футболка ${item.color}, р-р ${TSHIRT_SIZE_LABELS[item.size] ?? item.size} × ${item.quantity} шт — ${money(item.pricePosition ?? 0)}`,
     );
   }
   for (const item of order.canvasItems ?? []) {
     lines.push(
-      `• Холст ${item.formatCanvas} × ${item.quantity} шт — ${money(item.pricePosition)}`,
+      `• Холст ${item.formatCanvas} × ${item.quantity} шт — ${money(item.pricePosition ?? 0)}`,
     );
   }
   const designCost = order.designDevelopmentCost ?? 0;
@@ -106,28 +183,31 @@ function compositionLines(order: OrderPhoto): string[] {
 }
 
 /** Сумма всего, что перечислено в составе. */
-function compositionTotal(order: OrderPhoto): number {
+function compositionTotal(order: ClientMessageOrder): number {
   const positions = [
     ...(order.items ?? []),
     ...(order.tshirtItems ?? []),
     ...(order.canvasItems ?? []),
   ].reduce((sum, item) => sum + (item.pricePosition ?? 0), 0);
-  return positions + (order.designDevelopmentCost ?? 0) + (order.urgencyFee ?? 0);
+  return (
+    positions + (order.designDevelopmentCost ?? 0) + (order.urgencyFee ?? 0)
+  );
 }
 
 /** Блок денег: позиции, скидка, доставка, итог. Одинаков в обоих сообщениях. */
-function totalsLines(order: OrderPhoto): string[] {
+function totalsLines(order: ClientMessageOrder): string[] {
   const delivery = order.deliveryCost ?? 0;
   const discount = order.discountAmount ?? 0;
   const deliveryLabel =
-    DELIVERY_LABELS[order.deliveryMethod as keyof typeof DELIVERY_LABELS] ??
-    order.deliveryMethod;
+    DELIVERY_LABELS[order.deliveryMethod] ?? order.deliveryMethod;
   return [
     `💰 Сумма по позициям: ${money(compositionTotal(order))}`,
     // Скидку называем отдельной строкой: иначе клиент видит «итого» меньше
     // суммы позиций и не понимает, откуда разница.
     ...(discount > 0 ? [`🎁 Скидка: −${money(discount)}`] : []),
-    ...(delivery > 0 ? [`🚚 Доставка (${deliveryLabel}): ${money(delivery)}`] : []),
+    ...(delivery > 0
+      ? [`🚚 Доставка (${deliveryLabel}): ${money(delivery)}`]
+      : []),
     `📦 Итого к оплате: ${money(order.totalOrder ?? 0)}`,
   ];
 }
@@ -139,25 +219,13 @@ function totalsLines(order: OrderPhoto): string[] {
  * в подтверждении заказа. Если менеджер записал фактически внесённую сумму —
  * считаем от неё. Если не записал, остаётся ориентир 50%, названный при
  * оформлении, и сообщение о готовности повторяет тот же расчёт.
- *
- * Раньше сообщение о готовности в этом случае печатало клиенту
- * «Предоплата не отмечена в CRM — проверьте поступление перед выдачей»
- * и требовало полную сумму заказа. Это внутренняя реплика для менеджера,
- * а не текст покупателю: человек уже внёс предоплату (иначе заказ не дошёл
- * бы до готовности) и получал счёт на всю сумму со словами про чужую
- * систему. Предупреждение осталось, но в карточке заказа — см.
- * prepaymentNeedsAttention.
  */
-export function clientPrepayment(order: OrderPhoto): {
+export function clientPrepayment(order: ClientMessageOrder): {
   prepaid: number;
   balanceDue: number;
   recorded: boolean;
 } {
-  const { prepaid, balanceDue, recorded } = computePrepayment(
-    order.totalOrder ?? 0,
-    order.prepaidAmount,
-  );
-  return { prepaid, balanceDue, recorded };
+  return computePrepayment(order.totalOrder ?? 0, order.prepaidAmount);
 }
 
 /**
@@ -167,13 +235,16 @@ export function clientPrepayment(order: OrderPhoto): {
  * обещанный при оформлении. Но проверить поступление перед выдачей нужно,
  * и место этой проверки — карточка заказа.
  */
-export function prepaymentNeedsAttention(order: OrderPhoto): boolean {
+export function prepaymentNeedsAttention(order: ClientMessageOrder): boolean {
   if (order.status === 'PAID' || order.status === 'COMPLETED') return false;
   return order.prepaidAmount === null || order.prepaidAmount === undefined;
 }
 
 /** Блок оплаты. Единственное место, где сообщения расходятся по смыслу. */
-function paymentLines(order: OrderPhoto, kind: ClientMessageKind): string[] {
+function paymentLines(
+  order: ClientMessageOrder,
+  kind: ClientMessageKind,
+): string[] {
   const { prepaid, balanceDue, recorded } = clientPrepayment(order);
   const isPickup = order.deliveryMethod === 'PICKUP';
 
@@ -203,7 +274,7 @@ function paymentLines(order: OrderPhoto, kind: ClientMessageKind): string[] {
 }
 
 /** Реквизиты перевода — одинаково в обоих сообщениях. */
-function requisiteLines(order: OrderPhoto): string[] {
+function requisiteLines(order: ClientMessageOrder): string[] {
   return [
     `📲 Реквизиты для перевода (${businessConfig.payment.label}):`,
     // Телефон отдельной строкой без отступа: пробелы в начале мешают
@@ -217,11 +288,9 @@ function requisiteLines(order: OrderPhoto): string[] {
  * Напоминание про ПВЗ.
  *
  * Без пункта выдачи и телефона заявку на доставку не оформить, и в длинном
- * сообщении эта строка терялась. Раньше её выделяли разметкой: `**` по краям
- * и юникодная линия под каждым знаком. В Telegram это иногда срабатывало,
- * а в Авито, Ozon и MAX клиент получал строку со звёздочками и рассыпанными
- * подчёркиваниями — то самое «криво скопировалось». Слово «Важно» и пустая
- * строка выделяют не хуже и выглядят одинаково во всех каналах.
+ * сообщении эта строка терялась. Слово «Важно» и пустая строка выделяют её
+ * одинаково во всех каналах — в отличие от разметки, которая в Авито и MAX
+ * показалась бы звёздочками.
  */
 function pvzLines(deliveryMethod: string): string[] {
   const point =
@@ -245,10 +314,13 @@ function pvzLines(deliveryMethod: string): string[] {
  * и жёсткую дату здесь не обещаем. Срочный заказ тоже без формулы: его срок
  * держит на контроле менеджер.
  */
-function productionTermLines(order: OrderPhoto): string[] {
+function productionTermLines(order: ClientMessageOrder): string[] {
   if (order.productCategory === 'TSHIRT') return [];
   if (order.isUrgent) {
-    return ['', '⏱ Срочный заказ — точную дату готовности подтвердит менеджер.'];
+    return [
+      '',
+      '⏱ Срочный заказ — точную дату готовности подтвердит менеджер.',
+    ];
   }
   const base = order.createdAt ? new Date(order.createdAt) : new Date();
   if (Number.isNaN(base.getTime())) return [];
@@ -273,7 +345,10 @@ function productionTermLines(order: OrderPhoto): string[] {
  * исполнена, и повторять их — противоречить самому сообщению: остаются адрес
  * и часы работы.
  */
-function pickupLines(order: OrderPhoto, kind: ClientMessageKind): string[] {
+function pickupLines(
+  order: ClientMessageOrder,
+  kind: ClientMessageKind,
+): string[] {
   if (order.deliveryMethod !== 'PICKUP') return [];
   const address = resolvePickupAddress(order);
   if (!address) {
@@ -294,7 +369,10 @@ function pickupLines(order: OrderPhoto, kind: ClientMessageKind): string[] {
 }
 
 /** Последняя просьба: что клиенту сделать после прочтения. */
-function callToActionLines(order: OrderPhoto, kind: ClientMessageKind): string[] {
+function callToActionLines(
+  order: ClientMessageOrder,
+  kind: ClientMessageKind,
+): string[] {
   if (kind === 'CONFIRMATION') {
     return ['👉 Как только внесёте предоплату, пришлите, пожалуйста, чек.'];
   }
@@ -316,11 +394,13 @@ function callToActionLines(order: OrderPhoto, kind: ClientMessageKind): string[]
  * → просьба → подпись.
  */
 export function buildClientMessage(
-  order: OrderPhoto,
+  order: ClientMessageOrder,
   kind: ClientMessageKind,
 ): string {
   const lines = [
-    kind === 'CONFIRMATION' ? '✅ Отлично, ваш заказ подтверждён!' : '🎉 Ваш заказ готов!',
+    kind === 'CONFIRMATION'
+      ? '✅ Отлично, ваш заказ подтверждён!'
+      : '🎉 Ваш заказ готов!',
     `📌 Номер заказа: ${formatOrderNumberForClient(order)}`,
     '',
     '📋 Состав заказа:',

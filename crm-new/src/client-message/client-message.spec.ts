@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { buildClientMessage, prepaymentNeedsAttention } from './client-message';
-import type { OrderPhoto } from '../types/index';
+import {
+  buildClientMessage,
+  prepaymentNeedsAttention,
+  type ClientMessageOrder,
+} from './client-message';
 
 /**
  * Два сообщения клиенту — одна цепочка.
@@ -12,7 +14,7 @@ import type { OrderPhoto } from '../types/index';
  * не должно быть внутренних реплик CRM.
  */
 
-const order = (patch: Partial<OrderPhoto> = {}): OrderPhoto =>
+const order = (patch: Partial<ClientMessageOrder> = {}): ClientMessageOrder =>
   ({
     id: 'order-1',
     createdAt: '2026-09-20T09:00:00.000Z',
@@ -30,7 +32,6 @@ const order = (patch: Partial<OrderPhoto> = {}): OrderPhoto =>
     prepaidAmount: null,
     items: [
       {
-        id: 'item-1',
         formatPaper: '10x15',
         typePaper: 'GLOSS',
         quantity: 10,
@@ -39,7 +40,7 @@ const order = (patch: Partial<OrderPhoto> = {}): OrderPhoto =>
       },
     ],
     ...patch,
-  }) as unknown as OrderPhoto;
+  }) as ClientMessageOrder;
 
 describe('сообщение клиенту', () => {
   it('не содержит разметки, которая доходит до клиента символами', () => {
@@ -47,7 +48,11 @@ describe('сообщение клиенту', () => {
     // это и было «криво скопировалось» в Авито, Ozon и на iPhone.
     for (const kind of ['CONFIRMATION', 'READY'] as const) {
       const text = buildClientMessage(
-        order({ deliveryMethod: 'YANDEX_PVZ', deliveryCost: 400, status: 'READY' }),
+        order({
+          deliveryMethod: 'YANDEX_PVZ',
+          deliveryCost: 400,
+          status: 'READY',
+        }),
         kind,
       );
       expect(text).not.toContain('**');
@@ -106,7 +111,9 @@ describe('сообщение клиенту', () => {
       'READY',
     );
     expect(text).toContain(`Предоплата: ${(2000).toLocaleString('ru-RU')}`);
-    expect(text).toContain(`Осталось доплатить: ${(1000).toLocaleString('ru-RU')}`);
+    expect(text).toContain(
+      `Осталось доплатить: ${(1000).toLocaleString('ru-RU')}`,
+    );
   });
 
   it('переплата называется возвратом, а не доплатой с минусом', () => {
@@ -127,10 +134,15 @@ describe('сообщение клиенту', () => {
   });
 
   it('состав, суммы и реквизиты одинаковы в обоих сообщениях', () => {
-    const paid = order({ status: 'READY', prepaidAmount: 1500, deliveryCost: 0 });
+    const paid = order({
+      status: 'READY',
+      prepaidAmount: 1500,
+      deliveryCost: 0,
+    });
     const confirmation = buildClientMessage(paid, 'CONFIRMATION').split('\n');
     const ready = buildClientMessage(paid, 'READY').split('\n');
-    const composition = (lines: string[]) => lines.filter((l) => l.startsWith('•'));
+    const composition = (lines: string[]) =>
+      lines.filter((l) => l.startsWith('•'));
     expect(composition(ready)).toEqual(composition(confirmation));
     const totals = (lines: string[]) =>
       lines.filter((l) => l.startsWith('💰') || l.startsWith('📦 Итого'));
@@ -142,7 +154,9 @@ describe('сообщение клиенту', () => {
 
   it('срок изготовления обещаем только в подтверждении', () => {
     const o = order({ status: 'READY', prepaidAmount: 1500 });
-    expect(buildClientMessage(o, 'CONFIRMATION')).toContain('Срок изготовления');
+    expect(buildClientMessage(o, 'CONFIRMATION')).toContain(
+      'Срок изготовления',
+    );
     expect(buildClientMessage(o, 'READY')).not.toContain('Срок изготовления');
   });
 
@@ -160,7 +174,9 @@ describe('сообщение клиенту', () => {
       'READY',
     );
     expect(pvz).toContain('Яндекс ПВЗ и номер телефона');
-    expect(buildClientMessage(order(), 'READY')).not.toContain('номер телефона');
+    expect(buildClientMessage(order(), 'READY')).not.toContain(
+      'номер телефона',
+    );
   });
 
   it('размер футболки назван буквой и номером на бирке', () => {
@@ -171,25 +187,10 @@ describe('сообщение клиенту', () => {
       productCategory: 'TSHIRT',
       items: [],
       tshirtItems: [
-        {
-          id: 'tshirt-1',
-          createdAt: '2026-09-20T09:00:00.000Z',
-          updatedAt: '2026-09-20T09:00:00.000Z',
-          orderId: 'order-1',
-          color: 'Чёрный',
-          size: 'XXL',
-          printLocation: 'FRONT',
-          quantity: 1,
-          price: 1800,
-          pricePosition: 1800,
-          designCost: 0,
-          thermalCost: 0,
-          blankCost: 0,
-          clientItem: false,
-        },
+        { color: 'Чёрный', size: 'XXL', quantity: 1, pricePosition: 1800 },
       ],
       totalOrder: 1800,
-    } as Partial<OrderPhoto>);
+    });
 
     for (const kind of ['CONFIRMATION', 'READY'] as const) {
       const text = buildClientMessage(tshirt, kind);
