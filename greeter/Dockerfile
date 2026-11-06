@@ -8,7 +8,11 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY tg_greeter.py approval_delivery.py draft_queue.py greeting_text.py proxy_config.py signing.py login.py login_steps.py ./
+# Копируем все модули воркера, а не перечисляем их руками: забытый в этом
+# списке файл роняет контейнер при старте — «No module named reply_queue»
+# на живом сервере, и приветствия не уходят вовсе. Что в образ не попадает
+# (сессия Telegram, тесты, кэш) — сказано в .dockerignore.
+COPY *.py ./
 COPY message*.txt ./
 
 # Сессия монтируется томом снаружи и в образ не попадает.
