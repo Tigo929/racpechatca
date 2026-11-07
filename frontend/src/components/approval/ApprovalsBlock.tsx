@@ -173,8 +173,13 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
    * списке версий видно «v1, v2», но не видно, каких размеров не хватает.
    */
   const coverage = approvalCoverage(tshirtItems, approvals);
+  /*
+   * Отправлен ли лист клиенту — здесь только показываем. Производство это
+   * не держит: CRM может до клиента не дотянуться, и тогда отправляет
+   * человек (см. utils/approval-coverage.ts).
+   */
   const requireSent = requiresClientSend(communicationPlatform, marketplace);
-  const done = coverage.filter((c) => c.ready && (!requireSent || c.sent));
+  const done = coverage.filter((c) => c.ready);
 
   return (
     <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
@@ -269,12 +274,8 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
           }`}
         >
           {done.length === coverage.length
-            ? `Все ${coverage.length} позиции готовы — заказ можно отправлять исполнителю.`
-            : `Готово ${done.length} из ${coverage.length} позиций. Производство откроется, когда ${
-                requireSent
-                  ? 'клиент увидит макеты всех позиций'
-                  : 'лист будет собран по каждой позиции'
-              }.`}
+            ? `Все ${coverage.length} позиции готовы — заказ можно отправлять исполнителю (ТЗ-файлов нужно ${coverage.length}).`
+            : `Макет собран по ${done.length} из ${coverage.length} позиций. Производство откроется, когда лист будет собран по каждой.`}
         </p>
       )}
 

@@ -111,7 +111,7 @@ it('называет позицию без макета и считает гот
   expect(screen.getAllByText('Чёрный S(46)')).toHaveLength(2);
   expect(screen.getByText('Белый M(48)')).toBeInTheDocument();
   expect(screen.getByText('макета нет')).toBeInTheDocument();
-  expect(screen.getByText(/Готово 0 из 2/)).toBeInTheDocument();
+  expect(screen.getByText(/Макет собран по 1 из 2 позиций/)).toBeInTheDocument();
 });
 
 it('создаёт макет именно для нажатой позиции', async () => {

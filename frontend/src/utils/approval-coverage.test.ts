@@ -50,33 +50,38 @@ describe('макеты по позициям во фронте', () => {
     expect(orphanApprovals(positions, [sheet(null)])).toHaveLength(1);
   });
 
-  it('отправку клиенту требуем только там, где её делает CRM', () => {
+  it('отметку об отправке показываем, но производство ею не держим', () => {
+    // Подпись в таблице позиций зависит от канала: там, где отправляет
+    // сама CRM, видно «клиенту не отправлен».
     expect(requiresClientSend('TELEGRAM', false)).toBe(true);
-    expect(requiresClientSend('OZON', false)).toBe(true);
     expect(requiresClientSend('AVITO', false)).toBe(false);
-    // Заказ с площадки согласования не ждёт.
     expect(requiresClientSend('OZON', true)).toBe(false);
+    // А в причинах отказа отправки клиенту нет: CRM может до клиента не
+    // дотянуться, и тогда лист отправляет человек.
+    expect(
+      dispatchBlockers({
+        coverage: approvalCoverage(positions, [sheet('a'), sheet('b')]),
+        techSpecCount: 2,
+      }),
+    ).toEqual([]);
   });
 
   it('причины называют размер и считают ТЗ-файлы', () => {
     const blockers = dispatchBlockers({
       coverage: approvalCoverage(positions, [sheet('a')]),
-      requireSent: true,
       techSpecCount: 1,
     });
     expect(blockers).toEqual([
       'Макет не собран: Чёрный M(48)',
-      'Макет не отправлен клиенту: Чёрный S(46)',
       'ТЗ-файлов 1, а позиций 2 — нужен файл на каждую',
     ]);
   });
 
-  it('всё на месте — препятствий нет', () => {
+  it('количество в позиции в число файлов не складывается', () => {
     expect(
       dispatchBlockers({
-        coverage: approvalCoverage(positions, [sheet('a', true), sheet('b', true)]),
-        requireSent: true,
-        techSpecCount: 2,
+        coverage: approvalCoverage([position('a', 'S', 4)], [sheet('a')]),
+        techSpecCount: 1,
       }),
     ).toEqual([]);
   });

@@ -16,7 +16,6 @@
 
 import { tshirtSizeLabel } from 'src/order-photo/tshirt-size';
 import { getTechSpecPaths } from 'src/partner/tech-spec-paths';
-import { crmSendsApproval } from './approval-delivery-state';
 
 /** Позиция заказа — ровно то, что нужно для проверки. */
 export interface CoveragePosition {
@@ -88,18 +87,21 @@ export function positionLabel(position: CoveragePosition): string {
 /**
  * Что мешает отправить заказ исполнителю. Пустой список — можно.
  *
- * `requireSent` включается там, где макет клиенту отправляет сама CRM:
- * в Telegram и в чате Ozon. В Авито и MAX переписку ведёт человек, и
- * требовать от системы подтверждения отправки нечем — там достаточно
- * собранного листа. Заказ с площадки согласования не ждёт вовсе:
- * покупатель купил то, что на карточке.
+ * Условий два: по каждой позиции собран макет и ТЗ-файлов не меньше, чем
+ * позиций. Больше ничего — в том числе отметки об отправке клиенту.
+ *
+ * Отправку сюда добавлять нельзя, и это выяснилось на живом заказе: ник
+ * клиента вёл не на личный аккаунт, Telegram отказал (`not_user`), и обе
+ * доставки остались FAILED. Макеты были собраны, файлы приложены — а заказ
+ * в производство не уходил из-за того, до чего менеджеру не дотянуться.
+ * Клиент при этом всё равно получает макет: человек отправляет его сам,
+ * а в карточке по каждой позиции видно, дошёл ли лист.
  */
 export function dispatchBlockers(params: {
   coverage: readonly PositionCoverage[];
-  requireSent: boolean;
   techSpecCount: number;
 }): string[] {
-  const { coverage, requireSent, techSpecCount } = params;
+  const { coverage, techSpecCount } = params;
   const blockers: string[] = [];
 
   const noSheet = coverage.filter((c) => !c.ready);
@@ -112,24 +114,15 @@ export function dispatchBlockers(params: {
     );
   }
 
-  if (requireSent) {
-    const notSent = coverage.filter((c) => c.ready && !c.sent);
-    if (notSent.length > 0) {
-      blockers.push(
-        `Макет не отправлен клиенту: ${notSent
-          .map((c) => positionLabel(c.position))
-          .join(', ')}. ` +
-          'Производство открывается после того, как клиент увидел все макеты.',
-      );
-    }
-  }
-
   /*
    * ТЗ-файлов не меньше, чем позиций.
    *
    * Исполнитель печатает по файлам из задания, и файл на каждую позицию
-   * свой. Один файл на три футболки означает, что две напечатают
+   * свой. Один файл на три разных размера означает, что два напечатают
    * неизвестно по чему — а узнается это на готовом изделии.
+   *
+   * Считаем позиции, а не футболки: «S × 3» — три одинаковые футболки по
+   * одному файлу, и требовать три копии одного и того же бессмысленно.
    */
   const needed = Math.max(1, coverage.length);
   if (techSpecCount < needed) {
@@ -144,32 +137,18 @@ export function dispatchBlockers(params: {
 
 /** Заказ в том виде, в каком его читает допуск в производство. */
 export interface CoverageOrder {
-  /** Заказ с площадки: покупатель купил то, что на карточке. */
-  isMarketplacePrint: boolean;
-  communicationPlatform: string | null;
   tshirtItems: CoveragePosition[];
   techSpecPhotoPath?: string | null;
   techSpecPhotoPaths?: string[] | null;
 }
 
-/**
- * Чего не хватает заказу, чтобы уйти исполнителю. Пусто — можно.
- *
- * Отправку клиенту требуем только там, где её выполняет сама CRM: Telegram
- * и чат Ozon. В Авито и MAX переписку ведёт человек, и подтверждения
- * отправки у системы нет — там достаточно собранного листа. Заказ с
- * площадки согласования не ждёт вовсе: лист нужен печатнику, а не
- * покупателю.
- */
+/** Чего не хватает заказу, чтобы уйти исполнителю. Пусто — можно. */
 export function orderDispatchBlockers(
   order: CoverageOrder,
   approvals: readonly CoverageApproval[],
 ): string[] {
   return dispatchBlockers({
     coverage: approvalCoverage(order.tshirtItems, approvals),
-    requireSent:
-      !order.isMarketplacePrint &&
-      crmSendsApproval(order.communicationPlatform),
     techSpecCount: getTechSpecPaths(order).length,
   });
 }

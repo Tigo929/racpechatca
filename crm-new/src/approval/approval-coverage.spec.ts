@@ -81,11 +81,10 @@ describe('макеты по позициям', () => {
 describe('что мешает отправить заказ исполнителю', () => {
   const positions = [position('a', 'S'), position('b', 'M')];
 
-  it('все макеты собраны и отправлены, файлов хватает — дорога открыта', () => {
+  it('макеты собраны и файлов хватает — дорога открыта', () => {
     expect(
       dispatchBlockers({
-        coverage: approvalCoverage(positions, [sentSheet('a'), sentSheet('b')]),
-        requireSent: true,
+        coverage: approvalCoverage(positions, [sheet('a'), sheet('b')]),
         techSpecCount: 2,
       }),
     ).toEqual([]);
@@ -93,55 +92,54 @@ describe('что мешает отправить заказ исполнител
 
   it('несобранный макет называет размер, которого не хватает', () => {
     const [blocker] = dispatchBlockers({
-      coverage: approvalCoverage(positions, [sentSheet('a')]),
-      requireSent: true,
+      coverage: approvalCoverage(positions, [sheet('a')]),
       techSpecCount: 2,
     });
     expect(blocker).toContain('M(48)');
     expect(blocker).not.toContain('S(46)');
   });
 
-  it('собранный, но не отправленный макет держит производство', () => {
-    const blockers = dispatchBlockers({
-      coverage: approvalCoverage(positions, [sentSheet('a'), sheet('b')]),
-      requireSent: true,
-      techSpecCount: 2,
-    });
-    expect(blockers).toHaveLength(1);
-    expect(blockers[0]).toContain('не отправлен клиенту');
-    expect(blockers[0]).toContain('M(48)');
-  });
-
-  it('там, где CRM писать не умеет, хватает собранного листа', () => {
-    // Авито и MAX: переписку ведёт человек, подтверждения отправки нет.
-    // Заказ с площадки согласования не ждёт вовсе.
+  it('неотправленный клиенту макет производство не держит', () => {
+    /*
+     * Так и выяснилось на живом заказе 20261105-037: ник клиента вёл не на
+     * личный аккаунт, Telegram отказал (not_user), и заказ не уходил в
+     * печать из-за того, до чего менеджеру не дотянуться. Лист клиенту
+     * отправляет человек, а печать ждать этого не должна.
+     */
     expect(
       dispatchBlockers({
         coverage: approvalCoverage(positions, [sheet('a'), sheet('b')]),
-        requireSent: false,
         techSpecCount: 2,
-      }),
-    ).toEqual([]);
+      }).join(' '),
+    ).not.toContain('клиент');
   });
 
   it('ТЗ-файлов меньше, чем позиций — отправка закрыта', () => {
     const blockers = dispatchBlockers({
-      coverage: approvalCoverage(positions, [sentSheet('a'), sentSheet('b')]),
-      requireSent: true,
+      coverage: approvalCoverage(positions, [sheet('a'), sheet('b')]),
       techSpecCount: 1,
     });
     expect(blockers).toHaveLength(1);
     expect(blockers[0]).toContain('ТЗ-файлов 1, а позиций 2');
   });
 
+  it('количество в позиции в число файлов не складывается', () => {
+    // «S × 3» — три одинаковые футболки по одному файлу: требовать три
+    // копии одного и того же бессмысленно.
+    expect(
+      dispatchBlockers({
+        coverage: approvalCoverage([position('a', 'S', 3)], [sheet('a')]),
+        techSpecCount: 1,
+      }),
+    ).toEqual([]);
+  });
+
   it('заказ без позиций футболок по-прежнему требует хотя бы один файл', () => {
     // Печать на изделии клиента: позиция свободная, макетов нет.
     expect(
-      dispatchBlockers({ coverage: [], requireSent: true, techSpecCount: 0 }),
+      dispatchBlockers({ coverage: [], techSpecCount: 0 }),
     ).toHaveLength(1);
-    expect(
-      dispatchBlockers({ coverage: [], requireSent: true, techSpecCount: 1 }),
-    ).toEqual([]);
+    expect(dispatchBlockers({ coverage: [], techSpecCount: 1 })).toEqual([]);
   });
 });
 
@@ -153,39 +151,12 @@ describe('допуск заказа в производство', () => {
     techSpecPhotoPaths: ['one.jpg', 'two.jpg'],
   };
 
-  it('Telegram: ждём, пока клиент увидит оба макета', () => {
-    const blockers = orderDispatchBlockers(
-      { ...base, isMarketplacePrint: false, communicationPlatform: 'TELEGRAM' },
-      covered,
-    );
-    expect(blockers).toHaveLength(1);
-    expect(blockers[0]).toContain('не отправлен клиенту');
+  it('листы собраны, файлов по числу позиций — можно отправлять', () => {
+    expect(orderDispatchBlockers(base, covered)).toEqual([]);
   });
 
-  it('Авито: отправляет человек — хватает собранных листов', () => {
-    expect(
-      orderDispatchBlockers(
-        { ...base, isMarketplacePrint: false, communicationPlatform: 'AVITO' },
-        covered,
-      ),
-    ).toEqual([]);
-  });
-
-  it('заказ с площадки согласования не ждёт', () => {
-    // Покупатель купил то, что на карточке; лист нужен печатнику.
-    expect(
-      orderDispatchBlockers(
-        { ...base, isMarketplacePrint: true, communicationPlatform: 'OZON' },
-        covered,
-      ),
-    ).toEqual([]);
-  });
-
-  it('но лист нужен и там: без макета на позицию дорога закрыта', () => {
-    const blockers = orderDispatchBlockers(
-      { ...base, isMarketplacePrint: true, communicationPlatform: 'OZON' },
-      [sheet('a')],
-    );
+  it('без макета на позицию дорога закрыта', () => {
+    const blockers = orderDispatchBlockers(base, [sheet('a')]);
     expect(blockers[0]).toContain('Макет не собран');
     expect(blockers[0]).toContain('M(48)');
   });
@@ -193,12 +164,7 @@ describe('допуск заказа в производство', () => {
   it('старое поле с одним ТЗ-файлом считается наравне с новым', () => {
     // techSpecPhotoPath — одиночный файл у заказов, заведённых раньше.
     const blockers = orderDispatchBlockers(
-      {
-        tshirtItems: positions,
-        techSpecPhotoPath: 'single.jpg',
-        isMarketplacePrint: true,
-        communicationPlatform: 'OZON',
-      },
+      { tshirtItems: positions, techSpecPhotoPath: 'single.jpg' },
       covered,
     );
     expect(blockers).toHaveLength(1);

@@ -35,7 +35,6 @@ import { approvalsApi } from '../../api/approvals';
 import {
   approvalCoverage,
   dispatchBlockers,
-  requiresClientSend,
 } from '../../utils/approval-coverage';
 
 /**
@@ -577,17 +576,12 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
    * Что держит отправку исполнителю.
    *
    * Правило то же, что на сервере (utils/approval-coverage.ts): по каждой
-   * позиции собранный лист, а там, где макет отправляет сама CRM, — ещё и
-   * отправленный клиенту; ТЗ-файлов не меньше, чем позиций. Печатник
+   * позиции собранный лист и ТЗ-файлов не меньше, чем позиций. Печатник
    * берёт из задания ровно то, что в нём есть, и одного файла на три
-   * футболки ему не хватит.
+   * разных размера ему не хватит.
    */
   const dispatchHold = dispatchBlockers({
     coverage: approvalCoverage(order.tshirtItems ?? [], orderApprovals),
-    requireSent: requiresClientSend(
-      order.communicationPlatform,
-      order.isMarketplacePrint ?? false,
-    ),
     techSpecCount: techSpecPaths.length,
   });
   /*

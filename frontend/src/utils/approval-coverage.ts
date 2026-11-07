@@ -86,13 +86,20 @@ export function requiresClientSend(
   return !marketplace && CRM_SENDS_APPROVAL.includes(communicationPlatform);
 }
 
-/** Что мешает отправить заказ исполнителю. Пусто — можно. */
+/**
+ * Что мешает отправить заказ исполнителю. Пусто — можно.
+ *
+ * Условий два: макет по каждой позиции и ТЗ-файлов не меньше, чем позиций.
+ * Отметки об отправке клиенту здесь нет намеренно — CRM может до клиента
+ * не дотянуться (ник ведёт не на личный аккаунт, приватность, блокировка),
+ * и держать из-за этого производство нельзя. Дошёл ли лист, видно в
+ * таблице позиций.
+ */
 export function dispatchBlockers(params: {
   coverage: PositionCoverage[];
-  requireSent: boolean;
   techSpecCount: number;
 }): string[] {
-  const { coverage, requireSent, techSpecCount } = params;
+  const { coverage, techSpecCount } = params;
   const blockers: string[] = [];
 
   const noSheet = coverage.filter((c) => !c.ready);
@@ -102,17 +109,7 @@ export function dispatchBlockers(params: {
     );
   }
 
-  if (requireSent) {
-    const notSent = coverage.filter((c) => c.ready && !c.sent);
-    if (notSent.length > 0) {
-      blockers.push(
-        `Макет не отправлен клиенту: ${notSent
-          .map((c) => positionLabel(c.position))
-          .join(', ')}`,
-      );
-    }
-  }
-
+  // Позиции, а не футболки: «S × 3» — три одинаковые футболки по одному файлу.
   const needed = Math.max(1, coverage.length);
   if (techSpecCount < needed) {
     blockers.push(
