@@ -94,9 +94,33 @@ export function positionLabel(position: ItemTshirt): string {
 export function requiresClientSend(
   communicationPlatform: string,
   marketplace: boolean,
+  clientTelegram?: string | null,
 ): boolean {
+  /*
+   * Ник в Telegram сильнее способа связи. У заказа с площадки способ
+   * связи всегда OZON — чат кабинета есть у любой покупки, — но если
+   * покупатель написал нам в Telegram, его ник лежит в заказе отдельно,
+   * и лист уходит туда. Зеркало серверного выбора канала
+   * (crm-new/src/approval/approval-delivery-state.ts).
+   */
+  if (telegramNick(clientTelegram)) return true;
   if (communicationPlatform === 'TELEGRAM') return true;
   return !marketplace && CRM_SENDS_APPROVAL.includes(communicationPlatform);
+}
+
+/**
+ * Пригодный ник Telegram или null. Проверяем так же, как сервер: в поле
+ * попадает и то, что вписали руками, — имя, телефон, ссылка на группу.
+ */
+export function telegramNick(value?: string | null): string | null {
+  const match =
+    /^(?:(?:https?:\/\/)?(?:www\.)?(?:t\.me|telegram\.me)\/|@)?([a-zA-Z][a-zA-Z0-9_]{3,31})\/?$/.exec(
+      (value ?? '').trim(),
+    );
+  if (!match) return null;
+  if (/^(joinchat|share|addstickers|proxy|socks|login|iv)$/i.test(match[1]))
+    return null;
+  return match[1];
 }
 
 /**

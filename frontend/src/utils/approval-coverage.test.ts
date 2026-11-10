@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   approvalCoverage,
+  telegramNick,
   dispatchBlockers,
   orphanApprovals,
   requiresClientSend,
@@ -91,5 +92,31 @@ describe('макеты по позициям во фронте', () => {
         techSpecCount: 1,
       }),
     ).toEqual([]);
+  });
+});
+
+describe('ник в Telegram решает канал', () => {
+  /*
+   * Заказ с площадки: способ связи всегда OZON, но покупатель написал нам
+   * в Telegram, и его ник лежит в заказе. Лист должен уйти в личку, а не
+   * в чат кабинета — тем более что чат площадки закрывается со временем,
+   * да и доступы к нему Ozon может не принять.
+   */
+  it('ник сильнее способа связи заказа с площадки', () => {
+    expect(requiresClientSend('OZON', true, '@Aigul_Anverovna')).toBe(true);
+    expect(requiresClientSend('OZON', true, null)).toBe(false);
+  });
+
+  it('мусор вместо ника каналом не считается', () => {
+    for (const junk of ['+79990000000', 'Айгуль', 'https://t.me/joinchat/abc', '']) {
+      expect(requiresClientSend('OZON', true, junk)).toBe(false);
+    }
+  });
+
+  it('ник читается в любом написании — как на сервере', () => {
+    expect(telegramNick('@Aigul_Anverovna')).toBe('Aigul_Anverovna');
+    expect(telegramNick('https://t.me/Aigul_Anverovna')).toBe('Aigul_Anverovna');
+    expect(telegramNick('Aigul_Anverovna')).toBe('Aigul_Anverovna');
+    expect(telegramNick(null)).toBeNull();
   });
 });

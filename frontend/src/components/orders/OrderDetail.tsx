@@ -1050,6 +1050,7 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           communicationPlatform={order.communicationPlatform}
           communicationUrl={order.urlCommunication}
           marketplace={order.isMarketplacePrint ?? false}
+          clientTelegram={order.clientTelegram}
         />
       )}
 

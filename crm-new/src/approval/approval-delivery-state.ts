@@ -25,6 +25,31 @@ export function crmSendsApproval(platform: string | null | undefined): boolean {
   return Boolean(platform && platform in CHANNEL_BY_PLATFORM);
 }
 
+/**
+ * Каким каналом уйдёт лист согласования.
+ *
+ * Решает не только способ связи заказа. У заказа с площадки он всегда
+ * OZON — чат кабинета есть у любой покупки, — но если покупатель написал
+ * нам в Telegram, его ник ложится в заказ отдельным полем, и дальше у
+ * заказа два канала сразу. Тогда выбираем Telegram: там лист приходит
+ * картинкой в личку, виден статус доставки и можно спокойно ответить,
+ * а чат площадки живёт по своим правилам и закрывается со временем.
+ *
+ * Ник проверяем, а не просто смотрим на непустоту: в это поле попадает и
+ * то, что человек вписал руками, а отправлять в никуда смысла нет.
+ */
+export function approvalChannel(order: {
+  communicationPlatform: string | null;
+  clientTelegram?: string | null;
+}): 'TELEGRAM' | 'OZON' | null {
+  if (approvalRecipient(order.clientTelegram ?? null)) return 'TELEGRAM';
+  const byPlatform =
+    CHANNEL_BY_PLATFORM[
+      order.communicationPlatform as keyof typeof CHANNEL_BY_PLATFORM
+    ];
+  return byPlatform ?? null;
+}
+
 export const deliverySelect = {
   id: true,
   channel: true,

@@ -5,6 +5,7 @@ import sharp from 'sharp';
 import { ApprovalDeliveryService } from './approval-delivery.service';
 import { OzonChatError } from './approval-ozon-chat.service';
 import {
+  approvalChannel,
   approvalCaption,
   approvalRecipient,
   deliverySelect,
@@ -392,5 +393,56 @@ describe('Telegram approval delivery', () => {
       expect(storage.readSheet).not.toHaveBeenCalled();
       expect(db.approvalTelegramDelivery.upsert).not.toHaveBeenCalled();
     });
+  });
+});
+
+/**
+ * Куда уходит лист: Telegram или чат площадки.
+ *
+ * У заказа с маркетплейса способ связи всегда OZON — чат кабинета есть у
+ * любой покупки. Но если покупатель написал нам в Telegram, его ник
+ * ложится в заказ отдельным полем, и тогда писать надо туда: в личку лист
+ * приходит картинкой, видно доставку, и человек может ответить. Чат
+ * площадки живёт по своим правилам — закрывается со временем, а доступы
+ * к нему может не принять сама площадка.
+ */
+describe('выбор канала отправки', () => {
+  it('есть ник в Telegram — пишем в Telegram, даже если заказ с площадки', () => {
+    expect(
+      approvalChannel({
+        communicationPlatform: 'OZON',
+        clientTelegram: '@Aigul_Anverovna',
+      }),
+    ).toBe('TELEGRAM');
+  });
+
+  it('ника нет — остаётся чат площадки', () => {
+    expect(
+      approvalChannel({ communicationPlatform: 'OZON', clientTelegram: null }),
+    ).toBe('OZON');
+  });
+
+  it('мусор вместо ника каналом не считается', () => {
+    // В это поле попадает и то, что вписали руками: телефон или имя.
+    for (const junk of ['+79990000000', 'Айгуль', 'https://t.me/joinchat/abc', '']) {
+      expect(
+        approvalChannel({ communicationPlatform: 'OZON', clientTelegram: junk }),
+      ).toBe('OZON');
+    }
+  });
+
+  it('без ника и без пригодного способа связи писать нечем', () => {
+    expect(
+      approvalChannel({ communicationPlatform: 'AVITO', clientTelegram: null }),
+    ).toBeNull();
+    expect(
+      approvalChannel({ communicationPlatform: null, clientTelegram: null }),
+    ).toBeNull();
+  });
+
+  it('обычный заказ в Telegram не сломался', () => {
+    expect(
+      approvalChannel({ communicationPlatform: 'TELEGRAM', clientTelegram: null }),
+    ).toBe('TELEGRAM');
   });
 });

@@ -7,6 +7,7 @@ import { getErrorMessage } from '../../utils/get-error-message';
 import { formatSizeCm } from '../../utils/approval-geometry';
 import {
   approvalCoverage,
+  telegramNick,
   positionLabel,
   requiresClientSend,
 } from '../../utils/approval-coverage';
@@ -35,6 +36,8 @@ interface Props {
    * заготовки, и спросить дешевле, чем переделать.
    */
   marketplace?: boolean;
+  /** Ник клиента в Telegram, если он написал напрямую. */
+  clientTelegram?: string | null;
 }
 
 const STATUS_LABELS: Record<EnumApprovalStatus, string> = {
@@ -70,7 +73,12 @@ const SENDABLE_PLATFORMS = ['TELEGRAM', 'OZON'];
  * редактор. Старые версии не удаляются сами — по ним видно, что именно
  * подтверждал клиент, если на производстве возникнет спор.
  */
-export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicationPlatform, communicationUrl, marketplace = false }: Props) {
+export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicationPlatform, communicationUrl, marketplace = false, clientTelegram = null }: Props) {
+  /*
+   * Ник в Telegram меняет канал: лист уйдёт в личку, а не в чат площадки.
+   * Решение то же, что на сервере (approval-delivery-state.ts).
+   */
+  const nick = telegramNick(clientTelegram);
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -178,7 +186,7 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
    * не держит: CRM может до клиента не дотянуться, и тогда отправляет
    * человек (см. utils/approval-coverage.ts).
    */
-  const requireSent = requiresClientSend(communicationPlatform, marketplace);
+  const requireSent = requiresClientSend(communicationPlatform, marketplace, clientTelegram);
   const done = coverage.filter((c) => c.ready);
 
   return (
@@ -360,18 +368,20 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
                 )}
 
                 <span className="ml-auto flex flex-wrap items-center gap-1.5">
-                  {SENDABLE_PLATFORMS.includes(communicationPlatform) && (
+                  {(nick || SENDABLE_PLATFORMS.includes(communicationPlatform)) && (
                     <button
                       onClick={() => sendMutation.mutate(approval.id)}
-                      disabled={sendMutation.isPending || !communicationUrl || !approval.previewFile || approval.fileOutdated ||
+                      disabled={sendMutation.isPending || (!nick && !communicationUrl) || !approval.previewFile || approval.fileOutdated ||
                         !['READY', 'CHANGES_REQUESTED'].includes(approval.status) ||
                         (!!approval.telegramDelivery && approval.telegramDelivery.status !== 'FAILED')}
                       className={`${btn} text-indigo-700`}
-                      title={!communicationUrl
-                        ? (communicationPlatform === 'OZON'
-                          ? 'Укажите в заказе ссылку на чат с покупателем из кабинета Ozon'
-                          : 'Укажите Telegram клиента в заказе')
-                        : `Отправить макет клиенту: ${communicationUrl}`}
+                      title={nick
+                        ? `Отправить макет клиенту в Telegram: @${nick}`
+                        : !communicationUrl
+                          ? (communicationPlatform === 'OZON'
+                            ? 'Укажите в заказе ссылку на чат с покупателем из кабинета Ozon'
+                            : 'Укажите Telegram клиента в заказе')
+                          : `Отправить макет клиенту: ${communicationUrl}`}
                     >
                       <Send size={13} aria-hidden="true" />
                       {approval.telegramDelivery?.status === 'FAILED' ? 'Повторить отправку' : 'Отправить клиенту на согласование'}

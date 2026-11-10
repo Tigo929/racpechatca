@@ -15,6 +15,7 @@ import {
 } from './approval-ozon-chat.service';
 import {
   approvalCaption,
+  approvalChannel,
   approvalRecipient,
   deliverySelect,
   CHANNEL_BY_PLATFORM,
@@ -47,19 +48,17 @@ export class ApprovalDeliveryService {
             marketplaceAccountId: true,
             communicationPlatform: true,
             urlCommunication: true,
+            clientTelegram: true,
           },
         },
         telegramDelivery: { select: deliverySelect },
       },
     });
     if (!approval) throw new NotFoundException('Согласование не найдено');
-    const channel: DeliveryChannel | undefined =
-      CHANNEL_BY_PLATFORM[
-        approval.order.communicationPlatform as keyof typeof CHANNEL_BY_PLATFORM
-      ];
+    const channel: DeliveryChannel | null = approvalChannel(approval.order);
     if (!channel)
       throw new BadRequestException(
-        'Макет отправляется в Telegram или в чат Ozon — выберите в заказе один из этих способов связи',
+        'Макет отправляется в Telegram или в чат Ozon — укажите в заказе Telegram клиента или выберите один из этих способов связи',
       );
     if (
       approval.telegramDelivery &&
@@ -123,7 +122,10 @@ export class ApprovalDeliveryService {
         current.updatedAt.getTime() !== approval.updatedAt.getTime() ||
         current.order.communicationPlatform !==
           approval.order.communicationPlatform ||
-        current.order.urlCommunication !== approval.order.urlCommunication
+        current.order.urlCommunication !== approval.order.urlCommunication ||
+        // Ник мог появиться или смениться между чтением и отправкой — а от
+        // него зависит сам канал, не только адрес.
+        current.order.clientTelegram !== approval.order.clientTelegram
       ) {
         throw new ConflictException(
           'Данные изменились. Обновите карточку и повторите отправку',
@@ -213,12 +215,19 @@ export class ApprovalDeliveryService {
     channel: DeliveryChannel,
     order: {
       urlCommunication: string | null;
+      clientTelegram?: string | null;
       marketplacePostingNumber: string | null;
       marketplaceAccountId: string | null;
     },
   ): Promise<string> {
     if (channel === 'TELEGRAM') {
-      const recipient = approvalRecipient(order.urlCommunication);
+      /*
+       * Сначала ник, записанный отдельно: у заказа с площадки в «ссылке на
+       * переписку» лежит номер отправления, и Telegram ему не адрес.
+       */
+      const recipient =
+        approvalRecipient(order.clientTelegram ?? null) ??
+        approvalRecipient(order.urlCommunication);
       if (!recipient)
         throw new BadRequestException(
           'Укажите в заказе Telegram клиента: @username или https://t.me/username',
