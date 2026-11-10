@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, ArrowDown, ArrowUp, Package, RefreshCw } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, Package, RefreshCw, Search, X } from 'lucide-react';
 import { ozonOrdersApi, type OzonOrder, type OzonOrderGroup } from '../../api/ozonOrders';
 import { FilterChip } from '../ui/FilterChip';
 import { OzonOrderModal } from './OzonOrderModal';
@@ -18,6 +18,7 @@ import {
   stageCounts,
   type MarketplaceStageKey,
 } from './marketplace-stage';
+import { matchesOzonOrder, normalizeSearch } from './ozon-order-search';
 
 /**
  * Заказы Ozon. Главный вопрос оператора — «что горит по отгрузке», поэтому
@@ -228,6 +229,12 @@ export function OrdersTab({ accountId }: { accountId: string }) {
    * глазами перебирать строки, выискивая, где какой этап.
    */
   const [stage, setStage] = useState<MarketplaceStageKey | 'all'>('all');
+  /*
+   * Поиск отправления. Номер приходит отовсюду — из кабинета, из письма,
+   * из переписки с печатником, — и перелистывать двести строк глазами,
+   * чтобы найти один заказ, было единственным способом.
+   */
+  const [query, setQuery] = useState('');
 
   const { data, isLoading, isFetching, refetch, isError, error } = useQuery({
     queryKey: ['ozon-orders', accountId, showAll],
@@ -255,10 +262,20 @@ export function OrdersTab({ accountId }: { accountId: string }) {
   // Кнопки этапов считаются по выбранной группе: иначе «Готов — 3» рядом
   // с пустым списком означало бы, что эти три где-то в другой группе.
   const stages = stageCounts(byGroup);
+  /*
+   * Поиск идёт по всем отправлениям, мимо групп и этапов.
+   *
+   * Иначе заказ, найденный по номеру, прятался бы за фильтром, выбранным
+   * пять минут назад: человек ищет конкретное отправление и ждёт, что оно
+   * найдётся, где бы оно ни лежало.
+   */
+  const searching = normalizeSearch(query).length > 0;
+  const found = searching ? all.filter((o) => matchesOzonOrder(o, query)) : null;
   const visible = sortByAccepted(
-    stage === 'all'
-      ? byGroup
-      : byGroup.filter((o) => marketplaceStage(o.crm).key === stage),
+    found ??
+      (stage === 'all'
+        ? byGroup
+        : byGroup.filter((o) => marketplaceStage(o.crm).key === stage)),
     sort,
   );
 
@@ -308,6 +325,43 @@ export function OrdersTab({ accountId }: { accountId: string }) {
             </p>
           </div>
         </div>
+      )}
+
+      <div className="relative">
+        <Search
+          size={16}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          aria-hidden="true"
+        />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Номер отправления, заказа Ozon или CRM, чат площадки, ник в Telegram"
+          aria-label="Поиск отправления"
+          className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-9 text-sm placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-amber-500"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery('')}
+            aria-label="Очистить поиск"
+            className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+          >
+            <X size={14} aria-hidden="true" />
+          </button>
+        )}
+      </div>
+
+      {searching && (
+        /*
+          Поиск сильнее фильтров, и об этом надо сказать: иначе кнопка
+          «Нужно отгрузить» выглядит выбранной, а список ей не подчиняется.
+        */
+        <p className="text-xs text-gray-500">
+          Найдено отправлений: {visible.length}. Поиск идёт по всем
+          загруженным отправлениям — группа и этап не учитываются.
+        </p>
       )}
 
       <div className="flex items-center justify-between gap-3">
@@ -423,7 +477,11 @@ export function OrdersTab({ accountId }: { accountId: string }) {
         <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-8 text-center">
           <Package size={28} className="mx-auto text-gray-300" aria-hidden="true" />
           <p className="mt-3 text-sm text-gray-500">
-            {stage !== 'all'
+            {searching
+              ? showAll
+                ? 'По этому запросу ничего не нашлось. Проверьте номер: ищем по номеру отправления, номеру заказа Ozon, номеру CRM, переписке и нику в Telegram.'
+                : 'По этому запросу ничего не нашлось. Сейчас показаны только наши принты — возможно, отправление из другой линейки: нажмите «Показать все».'
+              : stage !== 'all'
               ? 'На этом этапе сейчас пусто.'
               : all.length === 0
                 ? // Пусто во всех группах — это не «всё отгружено», а «из

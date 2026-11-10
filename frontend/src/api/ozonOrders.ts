@@ -44,6 +44,12 @@ export interface OzonOrder {
     numberOrder: string;
     status: EnumStatus;
     approvalStatus: EnumApprovalStatus | null;
+    /** Способ связи по заказу: чат площадки или Telegram. */
+    communicationPlatform: string;
+    /** Переписка: ссылка на чат Ozon или номер отправления. */
+    urlCommunication: string;
+    /** Ник в Telegram, если клиент написал напрямую. */
+    clientTelegram: string | null;
   } | null;
 }
 

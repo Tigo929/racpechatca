@@ -73,6 +73,9 @@ export class OzonCrmOrderService {
         numberOrder: string;
         status: string;
         approvalStatus: string | null;
+        communicationPlatform: string;
+        urlCommunication: string;
+        clientTelegram: string | null;
       }
     >();
     if (postingNumbers.length === 0) return found;
@@ -84,6 +87,15 @@ export class OzonCrmOrderService {
         numberOrder: true,
         status: true,
         marketplacePostingNumber: true,
+        /*
+         * Контакты — для поиска по списку: отправление ищут то по номеру,
+         * то по чату площадки, то по нику в Telegram, если клиент написал
+         * напрямую. Держать под каждый случай своё поле незачем, но и
+         * найти по тому, чего в строке нет, нельзя.
+         */
+        communicationPlatform: true,
+        urlCommunication: true,
+        clientTelegram: true,
         approvals: {
           orderBy: { version: 'desc' },
           take: 1,
@@ -98,6 +110,9 @@ export class OzonCrmOrderService {
         numberOrder: row.numberOrder,
         status: row.status,
         approvalStatus: row.approvals[0]?.status ?? null,
+        communicationPlatform: row.communicationPlatform,
+        urlCommunication: row.urlCommunication,
+        clientTelegram: row.clientTelegram,
       });
     }
     return found;
