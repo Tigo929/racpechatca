@@ -10,7 +10,7 @@ import type {
   EnumTshirtSize,
 } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { isCalibrated } from './approval-geometry';
+import { isCalibrated, sizeFromView } from './approval-geometry';
 import { missingSides, requiredApprovalSides } from './approval-sides';
 import {
   filledSides,
@@ -255,7 +255,6 @@ export class ApprovalService {
     // Пропорции берём от исходника: подставить произвольную высоту значило бы
     // растянуть принт по одной оси — ровно то, чего делать нельзя.
     const ratio = saved.sourceHeight / saved.sourceWidth;
-    const widthMm = previous?.widthMm ?? DEFAULT_WIDTH_MM;
 
     /*
      * Экранный размер задаём сразу, а не оставляем нулём.
@@ -271,18 +270,32 @@ export class ApprovalService {
         ? template.printAreaWidth / template.printAreaHeight
         : 1;
 
+    // Высота в долях своей оси: доли по ширине и высоте считаются от разных
+    // сторон зоны, поэтому пропорция исходника переводится через их отношение.
+    const viewHeight = previous?.viewHeight || viewWidth * ratio * areaRatio;
+
+    /*
+     * Сантиметры считаем сразу при загрузке, из той раскладки, которую
+     * только что задали. Прежде здесь стояло умолчание в 28 см — число,
+     * не имевшее отношения ни к принту, ни к зоне печати, и его каждый раз
+     * исправляли руками. Теперь размер верен с первой секунды, и его можно
+     * назвать клиенту, не открывая редактор.
+     */
+    const size = sizeFromView(
+      { viewWidth, viewHeight, widthMm: DEFAULT_WIDTH_MM, heightMm: tenth(DEFAULT_WIDTH_MM * ratio) },
+      template,
+    );
+
     const next: ApprovalSideState = {
       templateKey: template.key,
       printFile: saved.filename,
       printOriginalName: file.originalname ?? null,
       printWidthPx: saved.sourceWidth,
       printHeightPx: saved.sourceHeight,
-      widthMm,
-      heightMm: tenth(widthMm * ratio),
+      widthMm: size.widthMm,
+      heightMm: size.heightMm,
       viewWidth,
-      // Высота в долях своей оси: доли по ширине и высоте считаются от разных
-      // сторон зоны, поэтому пропорция исходника переводится через их отношение.
-      viewHeight: previous?.viewHeight || viewWidth * ratio * areaRatio,
+      viewHeight,
       lockRatio: previous?.lockRatio ?? true,
       x: previous?.x ?? 0.5,
       y: previous?.y ?? 0.5,
@@ -427,6 +440,15 @@ export class ApprovalService {
    * Держит привязку сторон к шаблонам в согласии с выбранным цветом футболки.
    * Сотрудник переключил чёрную на белую — принты должны переехать на белый
    * мокап сами, без повторной загрузки.
+   *
+   * Здесь же пересчитывается физический размер принта: каждое перетаскивание
+   * и изменение размера приходит сюда, и сантиметры обязаны идти следом за
+   * картинкой. Иначе лист согласования называл бы клиенту одно, а печатник
+   * видел бы другое — а расходятся они молча.
+   *
+   * Зона печати у белого и чёрного мокапа может быть разного реального
+   * размера, поэтому после смены цвета размер пересчитывается по новому
+   * шаблону, а не переносится числом.
    */
   private async syncTemplates(
     sides: ApprovalSides,
@@ -437,7 +459,9 @@ export class ApprovalService {
       const state = sides[side];
       if (!state) continue;
       const template = await this.mockups.findByColorAndSide(color, side);
-      result[side] = template ? { ...state, templateKey: template.key } : state;
+      result[side] = template
+        ? { ...state, templateKey: template.key, ...sizeFromView(state, template) }
+        : state;
     }
     return result;
   }

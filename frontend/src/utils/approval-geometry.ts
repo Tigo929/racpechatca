@@ -74,6 +74,40 @@ export function printRect(
   return { left: centerX - width / 2, top: centerY - height / 2, width, height };
 }
 
+/** Пределы размера печати — те же, что на сервере (approval-state.ts). */
+const MIN_PRINT_MM = 10;
+const MAX_PRINT_MM = 2000;
+
+/**
+ * Физический размер принта — из того, как он разложен на мокапе.
+ *
+ * Зеркало серверного расчёта (crm-new/src/approval/approval-geometry.ts), и
+ * ответы обязаны совпадать: сервер этот размер сохраняет и печатает на листе,
+ * а здесь он показывается человеку до сохранения. Разойдутся — в редакторе
+ * будет одно число, на листе у клиента другое.
+ *
+ * Связь односторонняя: число идёт за картинкой, картинка за числом — нет.
+ * Пустая раскладка — согласование старше правки, размер берём записанный.
+ */
+export function sizeFromView(
+  state: Pick<ApprovalSideState, 'viewWidth' | 'viewHeight' | 'widthMm' | 'heightMm'>,
+  template: Pick<MockupTemplate, 'printAreaWidthMm' | 'printAreaHeightMm'>,
+): { widthMm: number; heightMm: number } {
+  const stored = { widthMm: state.widthMm, heightMm: state.heightMm };
+  if (!state.viewWidth || !state.viewHeight) return stored;
+  if (template.printAreaWidthMm <= 0 || template.printAreaHeightMm <= 0)
+    return stored;
+  return {
+    widthMm: clampMm(state.viewWidth * template.printAreaWidthMm),
+    heightMm: clampMm(state.viewHeight * template.printAreaHeightMm),
+  };
+}
+
+function clampMm(mm: number): number {
+  const tenth = Math.round(mm * 10) / 10;
+  return Math.min(MAX_PRINT_MM, Math.max(MIN_PRINT_MM, tenth));
+}
+
 export function rotatedBounds(rect: RectPx, rotationDeg: number): RectPx {
   if (!rotationDeg) return rect;
   const rad = (rotationDeg * Math.PI) / 180;
