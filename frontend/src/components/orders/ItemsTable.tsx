@@ -3,8 +3,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
 import { ordersApi } from '../../api/orders';
-import { TYPE_LABELS } from '../../constants';
 import { useAuth } from '../../context/useAuth';
+import {
+  PAPER_TYPE_STYLES,
+  mattePhotoCount,
+  paperTypeStyle,
+} from '../../utils/paper-type';
 import type { ItemPhoto, OrderPhoto } from '../../types/index';
 
 interface Props { order: OrderPhoto }
@@ -108,6 +112,15 @@ export function ItemsTable({ order }: Props) {
   // Кол-во колонок слева от ячейки «Итого/Цена» (для colspan футера).
   const colSpanTotal = 1 + (freePrice ? 0 : 1) + 1 + (isAdmin && !freePrice ? 1 : 0);
 
+  /*
+   * Сколько снимков печатать на матовой бумаге.
+   *
+   * Цвет строк показывает, какие именно позиции матовые, а это число —
+   * сколько всего матовой бумаги готовить, не складывая строки глазами.
+   * В заказе со свободной ценой типа бумаги нет вовсе, там и считать нечего.
+   */
+  const matteCount = freePrice ? 0 : mattePhotoCount(order.items);
+
   return (
     <div>
       {/* Ссылки на переписку здесь нет намеренно: она уже есть выше, в блоке
@@ -118,6 +131,11 @@ export function ItemsTable({ order }: Props) {
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-700">
           Позиции ({order.items.length}){freePrice && <span className="ml-2 text-xs font-normal text-amber-600">свободная цена</span>}
+          {matteCount > 0 && (
+            <span className={`ml-2 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${PAPER_TYPE_STYLES.MATTE.badge}`}>
+              {PAPER_TYPE_STYLES.MATTE.label} — {matteCount} шт
+            </span>
+          )}
         </h3>
         {isAdmin && (
           <button onClick={() => setAdding(true)}
@@ -142,8 +160,14 @@ export function ItemsTable({ order }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {order.items.map((item) => (
-              <tr key={item.id} className="hover:bg-gray-50">
+            {order.items.map((item) => {
+            /*
+             * Фон строки — по типу бумаги. Нужен именно фон, а не подпись:
+             * печатник видит строку целиком раньше, чем успевает её прочесть.
+             */
+            const paper = freePrice ? null : paperTypeStyle(item);
+            return (
+              <tr key={item.id} className={paper ? paper.row : 'hover:bg-gray-50'}>
                 {isAdmin && editingId === item.id && editState ? (
                   <>
                     <td className="px-4 py-2">
@@ -166,7 +190,9 @@ export function ItemsTable({ order }: Props) {
                         {editState.isFreePrice ? (
                           <span className="text-xs text-gray-400">произвольная</span>
                         ) : (
-                          <select className={selectCls} value={editState.typePaper}
+                          <select
+                            className={`${selectCls} ${paperTypeStyle(editState)?.field ?? ''}`}
+                            value={editState.typePaper}
                             onChange={e => setEditState({ ...editState, typePaper: e.target.value })}>
                             <option value="GLOSS">Глянец</option>
                             <option value="MATTE">Матт</option>
@@ -209,7 +235,15 @@ export function ItemsTable({ order }: Props) {
                         )}
                       </span>
                     </td>
-                    {!freePrice && <td className="px-4 py-2.5 text-gray-600">{item.isFreePrice ? '—' : TYPE_LABELS[item.typePaper]}</td>}
+                    {!freePrice && (
+                      <td className="px-4 py-2.5 text-gray-600">
+                        {paper ? (
+                          <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${paper.badge}`}>
+                            {paper.label}
+                          </span>
+                        ) : '—'}
+                      </td>
+                    )}
                     <td className="px-4 py-2.5 text-right">{item.quantity}</td>
                     {isAdmin && !freePrice && <td className="px-4 py-2.5 text-right">{item.isFreePrice ? '—' : `${item.price.toLocaleString()} ₽`}</td>}
                     {isAdmin && <td className="px-4 py-2.5 text-right font-medium">{item.pricePosition.toLocaleString()} ₽</td>}
@@ -225,7 +259,8 @@ export function ItemsTable({ order }: Props) {
                   </>
                 )}
               </tr>
-            ))}
+            );
+            })}
 
             {isAdmin && adding && !freePrice && (
               <tr className="bg-amber-50 border-t border-amber-100">
@@ -248,7 +283,9 @@ export function ItemsTable({ order }: Props) {
                     {newItemFree ? (
                       <span className="text-xs text-gray-400">произвольная</span>
                     ) : (
-                      <select className={selectCls} value={newItem.typePaper}
+                      <select
+                        className={`${selectCls} ${paperTypeStyle(newItem)?.field ?? ''}`}
+                        value={newItem.typePaper}
                         onChange={e => setNewItem({ ...newItem, typePaper: e.target.value })}>
                         <option value="GLOSS">Глянец</option>
                         <option value="MATTE">Матт</option>

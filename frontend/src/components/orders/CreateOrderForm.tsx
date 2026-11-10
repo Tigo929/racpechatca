@@ -21,6 +21,7 @@ import {
   SOURCE_ORDER_OPTIONS,
 } from '../../constants';
 import { printsPerSheet } from '../../utils/photo-material';
+import { PAPER_TYPE_STYLES } from '../../utils/paper-type';
 import { usersApi } from '../../api/users';
 import { partnerSettingsApi } from '../../api/partnerSettings';
 import {
@@ -1118,7 +1119,13 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
                   {!itemFree && (
                     <div>
                       <label className={labelCls}>Тип бумаги</label>
-                      <select className={selectCls} {...register(`items.${idx}.typePaper`)}>
+                      {/* Цвет поля — тот же, что у позиции в карточке заказа:
+                          матовую бумагу видно уже при вводе, а не только
+                          печатнику. Матовых заказов мало, и ошибка «выбрал
+                          глянец по привычке» всплывает на готовом отпечатке. */}
+                      <select
+                        className={`${selectCls} ${PAPER_TYPE_STYLES[photoItemsWatch?.[idx]?.typePaper ?? 'GLOSS']?.field ?? ''}`}
+                        {...register(`items.${idx}.typePaper`)}>
                         <option value="GLOSS">Глянец</option>
                         <option value="MATTE">Матт</option>
                       </select>
