@@ -80,6 +80,53 @@ it('refreshes the order when the delivery worker confirms sending', async () => 
 });
 
 /**
+ * Заказ с площадки, но связь — Telegram.
+ *
+ * Чат Ozon — канал по умолчанию: покупатель взял то, что на карточке, и
+ * согласовывать нечего. Но если в заказе указан Telegram, значит с
+ * человеком уже переписываются лично — и блок обязан вести себя как
+ * согласование, а не как «макет для печати»: иначе отправку клиенту не
+ * предложат и не покажут, дошла ли она.
+ */
+it('маркетплейс с Telegram — это согласование, а не просто макет', async () => {
+  vi.mocked(approvalsApi.list).mockResolvedValue([]);
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <ApprovalsBlock
+        orderId="order"
+        orderNumber="1"
+        tshirtItems={[]}
+        communicationPlatform="TELEGRAM"
+        communicationUrl="@client_test"
+        marketplace
+      />
+    </QueryClientProvider>,
+  );
+  expect(await screen.findByText('Согласование макета с клиентом')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Создать согласование/ })).toBeInTheDocument();
+  expect(screen.queryByText('Макет для печати')).toBeNull();
+});
+
+it('маркетплейс с чатом Ozon остаётся макетом для печати', async () => {
+  // Согласовывать нечего: покупатель уже выбрал товар на карточке.
+  vi.mocked(approvalsApi.list).mockResolvedValue([]);
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <ApprovalsBlock
+        orderId="order"
+        orderNumber="1"
+        tshirtItems={[]}
+        communicationPlatform="OZON"
+        communicationUrl="https://seller.ozon.ru/chat/1"
+        marketplace
+      />
+    </QueryClientProvider>,
+  );
+  expect(await screen.findByText('Макет для печати')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Создать макет/ })).toBeInTheDocument();
+});
+
+/**
  * Заказ на несколько размеров: по позиции на макет.
  *
  * Список версий отвечал на «что собрано», но не на «чего не хватает» —
@@ -114,20 +161,24 @@ it('называет позицию без макета и считает гот
   expect(screen.getByText(/Макет собран по 1 из 2 позиций/)).toBeInTheDocument();
 });
 
-it('создаёт макет именно для нажатой позиции', async () => {
+it('кнопка создания одна — позицию выбирает сервер', async () => {
   vi.mocked(approvalsApi.create).mockReturnValue(new Promise(() => {}));
   showWithItems([{ ...approval, itemId: 'a', item: items[0] as never }]);
   await screen.findByText('лист готов, клиенту не отправлен');
 
-  // Кнопка одна: у S макет уже есть, не хватает только M.
-  fireEvent.click(screen.getByRole('button', { name: 'Создать макет' }));
+  /*
+   * Вторая такая же кнопка стояла в строке позиции и делала то же самое —
+   * выбирать между двумя одинаковыми человеку не из чего.
+   */
+  const create = screen.getAllByRole('button', { name: /Создать согласование|Создать макет/ });
+  expect(create).toHaveLength(1);
 
-  // Размер и цвет не передаём: их берёт из позиции сервер.
+  fireEvent.click(create[0]);
+
+  // Позицию, цвет и размер не передаём: сервер берёт первую без макета
+  // (crm-new/src/approval/approval-position.spec.ts).
   await waitFor(() =>
-    expect(approvalsApi.create).toHaveBeenCalledWith({
-      orderId: 'order',
-      itemId: 'b',
-    }),
+    expect(approvalsApi.create).toHaveBeenCalledWith({ orderId: 'order' }),
   );
 });
 

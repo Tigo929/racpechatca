@@ -56,6 +56,13 @@ describe('макеты по позициям во фронте', () => {
     expect(requiresClientSend('TELEGRAM', false)).toBe(true);
     expect(requiresClientSend('AVITO', false)).toBe(false);
     expect(requiresClientSend('OZON', true)).toBe(false);
+    /*
+     * Заказ с площадки, но связь — Telegram: значит с покупателем уже
+     * переписываются лично, и макет идёт ему туда, а не в чат Ozon.
+     * Способ связи выбирает человек, и это его решение, а не следствие
+     * того, откуда пришёл заказ.
+     */
+    expect(requiresClientSend('TELEGRAM', true)).toBe(true);
     // А в причинах отказа отправки клиенту нет: CRM может до клиента не
     // дотянуться, и тогда лист отправляет человек.
     expect(

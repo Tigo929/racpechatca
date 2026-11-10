@@ -78,11 +78,24 @@ export function positionLabel(position: ItemTshirt): string {
   return `${position.color} ${TSHIRT_SIZE_LABELS[position.size] ?? position.size}`;
 }
 
-/** Требуется ли отметка об отправке клиенту до производства. */
+/**
+ * Ведём ли мы с этим клиентом разговор о макете.
+ *
+ * Решает способ связи, а не происхождение заказа. Чат Ozon — канал по
+ * умолчанию: он есть у любой покупки с площадки, и покупатель там взял то,
+ * что видел на карточке, — согласовывать нечего. Но если в заказе указан
+ * Telegram, значит с человеком уже переписываются лично, и макет идёт ему
+ * в Telegram: канал выбран осознанно, и он открывает то, чего чат площадки
+ * не даёт.
+ *
+ * Отсюда правило: Telegram — всегда разговор, чат Ozon — только вне
+ * площадки. В Авито и MAX переписку ведёт человек, CRM отправить не может.
+ */
 export function requiresClientSend(
   communicationPlatform: string,
   marketplace: boolean,
 ): boolean {
+  if (communicationPlatform === 'TELEGRAM') return true;
   return !marketplace && CRM_SENDS_APPROVAL.includes(communicationPlatform);
 }
 

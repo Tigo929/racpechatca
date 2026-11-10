@@ -185,7 +185,7 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
     <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-medium text-gray-500">
-          {marketplace ? 'Макет для печати' : 'Согласование макета с клиентом'}
+          {requireSent ? 'Согласование макета с клиентом' : 'Макет для печати'}
         </p>
         <div className="flex items-center gap-2">
           {latest && (
@@ -205,7 +205,7 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
             className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
           >
             <FileImage size={14} aria-hidden="true" />
-            {marketplace ? 'Создать макет' : 'Создать согласование'}
+            {requireSent ? 'Создать согласование' : 'Создать макет'}
           </button>
         </div>
       </div>
@@ -247,18 +247,12 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
                           ? 'отправлен клиенту'
                           : 'лист готов'}
                 </span>
-                {!own.length && (
-                  <button
-                    onClick={() =>
-                      createMutation.mutate({ itemId: position.id })
-                    }
-                    disabled={createMutation.isPending}
-                    className={`${btn} ml-auto`}
-                  >
-                    <Plus size={13} aria-hidden="true" />
-                    Создать макет
-                  </button>
-                )}
+                {/*
+                 * Кнопки в строке нет намеренно: синяя кнопка в шапке
+                 * делает ровно то же — сервер сам берёт первую позицию
+                 * без макета. Две одинаковые кнопки рядом заставляли
+                 * выбирать между ними, а выбирать не из чего.
+                 */}
               </li>
             );
           })}
@@ -283,9 +277,9 @@ export function ApprovalsBlock({ orderId, orderNumber, tshirtItems, communicatio
         <p className="text-xs text-gray-400">Загрузка…</p>
       ) : approvals.length === 0 ? (
         <p className="text-xs text-gray-500">
-          {marketplace
-            ? 'Макета пока нет. Соберите его, скачайте лист и приложите к заданию исполнителю: по листу печатник видит цвет, размер, размещение и номер посылки.'
-            : 'Согласований пока нет. Соберите макет, покажите клиенту и только потом отправляйте заказ исполнителю — переделка после начала печати оплачивается заготовкой.'}
+          {requireSent
+            ? 'Согласований пока нет. Соберите макет, покажите клиенту и только потом отправляйте заказ исполнителю — переделка после начала печати оплачивается заготовкой.'
+            : 'Макета пока нет. Соберите его, скачайте лист и приложите к заданию исполнителю: по листу печатник видит цвет, размер, размещение и номер посылки.'}
         </p>
       ) : (
         <ul className="space-y-2">
