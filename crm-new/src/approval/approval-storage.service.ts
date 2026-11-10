@@ -85,7 +85,30 @@ export interface SavedImage {
   /** Разрешение сохранённой копии — по нему рисуется лист. */
   width: number;
   height: number;
+  /**
+   * Настоящий размер макета в миллиметрах, если файл его называет.
+   *
+   * У PDF это размер страницы, у картинки — разрешение в DPI вместе с
+   * числом пикселей. Это физический размер будущего отпечатка, а не
+   * «размер картинки»: к тому, в каком масштабе мы потом растрируем или
+   * уменьшаем файл, он отношения не имеет.
+   *
+   * Пусто — файл о своём размере не сообщает (обычный PNG из редактора
+   * без указанного DPI). Тогда размер остаётся прежним и задаётся руками.
+   */
+  sourceWidthMm?: number;
+  sourceHeightMm?: number;
 }
+
+/**
+ * DPI, которое ставят по умолчанию, когда настоящее неизвестно.
+ *
+ * sharp возвращает 72 и для файла без записи о разрешении, и для файла,
+ * где честно записано 72. Отличить их нельзя, поэтому такому значению не
+ * верим: ошибиться в размере молча хуже, чем попросить указать его руками.
+ */
+const UNSET_DENSITY_DPI = 72;
+const MM_PER_INCH = 25.4;
 
 @Injectable()
 export class ApprovalStorageService {
@@ -108,6 +131,12 @@ export class ApprovalStorageService {
    */
   async savePrint(file: UploadedImage): Promise<SavedImage> {
     this.validate(file, ALLOWED_PRINT, 'PNG, JPEG, WEBP или PDF');
+    /*
+     * Настоящий размер спрашиваем у исходного файла, до растеризации и
+     * уменьшения. После них в пикселях остаётся наш масштаб, а не размер
+     * отпечатка, и восстановить его будет уже не из чего.
+     */
+    const declared = await this.sourceSizeMm(file);
     const source = await this.rasterIfPdf(file);
     const filename = `print-${randomUUID()}.webp`;
     const saved = await this.convert(
@@ -117,7 +146,48 @@ export class ApprovalStorageService {
       PRINT_WEBP_QUALITY,
       true,
     );
-    return { filename, ...saved };
+    return { filename, ...saved, ...declared };
+  }
+
+  /**
+   * Размер исходника в миллиметрах, если файл его называет.
+   *
+   * У PDF спрашиваем размер страницы: для макета, который идёт в печать,
+   * это и есть размер отпечатка. У картинки считаем из DPI — но только
+   * когда разрешение указано осознанно (см. UNSET_DENSITY_DPI).
+   */
+  private async sourceSizeMm(
+    file: UploadedImage,
+  ): Promise<{ sourceWidthMm?: number; sourceHeightMm?: number }> {
+    if (file.mimetype === 'application/pdf') {
+      const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'approval-size-'));
+      const pdfPath = path.join(dir, 'source.pdf');
+      try {
+        await fs.writeFile(pdfPath, file.buffer);
+        const page = await this.pdf.pageSizeMm(pdfPath);
+        if (!page) return {};
+        return { sourceWidthMm: page.widthMm, sourceHeightMm: page.heightMm };
+      } catch {
+        return {};
+      } finally {
+        await fs.rm(dir, { recursive: true, force: true }).catch(() => undefined);
+      }
+    }
+
+    try {
+      const meta = await sharp(file.buffer).metadata();
+      const density = meta.density ?? 0;
+      if (!density || density === UNSET_DENSITY_DPI) return {};
+      const turned = meta.orientation && meta.orientation >= 5;
+      const widthPx = (turned ? meta.height : meta.width) ?? 0;
+      const heightPx = (turned ? meta.width : meta.height) ?? 0;
+      if (widthPx <= 0 || heightPx <= 0) return {};
+      const toMm = (px: number) =>
+        Math.round((px / density) * MM_PER_INCH * 10) / 10;
+      return { sourceWidthMm: toMm(widthPx), sourceHeightMm: toMm(heightPx) };
+    } catch {
+      return {};
+    }
   }
 
   /**

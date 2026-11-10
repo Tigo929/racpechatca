@@ -107,12 +107,23 @@ export class ApprovalController {
     @Param('id', ParseUUIDPipe) id: string,
     @Param('side') side: string,
     @UploadedFile() file?: Express.Multer.File,
+    /*
+     * Настоящий размер макета, если его знает отправитель. PDF браузер
+     * разбирает у себя и присылает уже картинку — размер страницы после
+     * этого не восстановить, поэтому он едет отдельными полями формы.
+     * Значения приходят строками: multipart чисел не знает.
+     */
+    @Body('widthMm') widthMm?: string,
+    @Body('heightMm') heightMm?: string,
   ) {
     if (!file)
       throw new BadRequestException(
         'Не удалось загрузить принт — файл не передан',
       );
-    return this.approvals.uploadPrint(id, parseSide(side), file);
+    return this.approvals.uploadPrint(id, parseSide(side), file, {
+      widthMm: positiveNumber(widthMm),
+      heightMm: positiveNumber(heightMm),
+    });
   }
 
   @Delete(':id/print/:side')
@@ -178,4 +189,10 @@ function parseSide(value: string): EnumApprovalSide {
   const side = SIDES[value?.toUpperCase()];
   if (!side) throw new BadRequestException('Неизвестная сторона печати');
   return side;
+}
+
+/** Число из поля формы. Мусор и ноль — как будто не присылали. */
+function positiveNumber(value?: string): number | undefined {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }

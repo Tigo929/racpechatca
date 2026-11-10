@@ -10,7 +10,8 @@ import type {
   EnumTshirtSize,
 } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { isCalibrated, sizeFromView } from './approval-geometry';
+import { isCalibrated } from './approval-geometry';
+import { realPrintSize, DEFAULT_WIDTH_MM } from './approval-print-size';
 import { missingSides, requiredApprovalSides } from './approval-sides';
 import {
   filledSides,
@@ -38,7 +39,6 @@ import { randomUUID } from 'node:crypto';
 /** Насколько широким ложится только что загруженный принт — доля зоны печати. */
 const DEFAULT_VIEW_WIDTH = 0.8;
 
-const DEFAULT_WIDTH_MM = 280;
 
 const approvalInclude = {
   createdBy: { select: { id: true, username: true } },
@@ -235,7 +235,17 @@ export class ApprovalService {
   }
 
   /** Загрузка принта на сторону. Прошлый файл этой стороны удаляется. */
-  async uploadPrint(id: string, side: EnumApprovalSide, file: UploadedImage) {
+  /**
+   * Загрузка принта. `declared` — настоящий размер макета, присланный
+   * браузером: PDF он разбирает у себя и знает размер страницы точнее,
+   * чем мы по уже растрированной картинке.
+   */
+  async uploadPrint(
+    id: string,
+    side: EnumApprovalSide,
+    file: UploadedImage,
+    declared?: { widthMm?: number; heightMm?: number },
+  ) {
     const approval = await this.load(id);
     const sides = parseSides(approval.sides);
     const template = await this.mockups.findByColorAndSide(
@@ -257,6 +267,20 @@ export class ApprovalService {
     const ratio = saved.sourceHeight / saved.sourceWidth;
 
     /*
+     * Настоящий размер макета.
+     *
+     * Он приходит из самого файла и дальше не меняется: в печать уходит
+     * ровно то, что прикрепили. Подгонка принта на мокапе — это раскладка
+     * «на глаз», к сантиметрам отпечатка она отношения не имеет, и трогать
+     * их не должна.
+     *
+     * По старшинству: что сказал браузер (он разобрал PDF у себя), потом
+     * что сказал файл на сервере, потом прежний размер этой стороны, и
+     * только в последнюю очередь умолчание — его и правят руками.
+     */
+    const real = realPrintSize(declared, saved, previous, ratio);
+
+    /*
      * Экранный размер задаём сразу, а не оставляем нулём.
      *
      * Ноль означает «считать размер от миллиметров» — так открываются старые
@@ -270,32 +294,18 @@ export class ApprovalService {
         ? template.printAreaWidth / template.printAreaHeight
         : 1;
 
-    // Высота в долях своей оси: доли по ширине и высоте считаются от разных
-    // сторон зоны, поэтому пропорция исходника переводится через их отношение.
-    const viewHeight = previous?.viewHeight || viewWidth * ratio * areaRatio;
-
-    /*
-     * Сантиметры считаем сразу при загрузке, из той раскладки, которую
-     * только что задали. Прежде здесь стояло умолчание в 28 см — число,
-     * не имевшее отношения ни к принту, ни к зоне печати, и его каждый раз
-     * исправляли руками. Теперь размер верен с первой секунды, и его можно
-     * назвать клиенту, не открывая редактор.
-     */
-    const size = sizeFromView(
-      { viewWidth, viewHeight, widthMm: DEFAULT_WIDTH_MM, heightMm: tenth(DEFAULT_WIDTH_MM * ratio) },
-      template,
-    );
-
     const next: ApprovalSideState = {
       templateKey: template.key,
       printFile: saved.filename,
       printOriginalName: file.originalname ?? null,
       printWidthPx: saved.sourceWidth,
       printHeightPx: saved.sourceHeight,
-      widthMm: size.widthMm,
-      heightMm: size.heightMm,
+      widthMm: real.widthMm,
+      heightMm: real.heightMm,
       viewWidth,
-      viewHeight,
+      // Высота в долях своей оси: доли по ширине и высоте считаются от разных
+      // сторон зоны, поэтому пропорция исходника переводится через их отношение.
+      viewHeight: previous?.viewHeight || viewWidth * ratio * areaRatio,
       lockRatio: previous?.lockRatio ?? true,
       x: previous?.x ?? 0.5,
       y: previous?.y ?? 0.5,
@@ -440,15 +450,6 @@ export class ApprovalService {
    * Держит привязку сторон к шаблонам в согласии с выбранным цветом футболки.
    * Сотрудник переключил чёрную на белую — принты должны переехать на белый
    * мокап сами, без повторной загрузки.
-   *
-   * Здесь же пересчитывается физический размер принта: каждое перетаскивание
-   * и изменение размера приходит сюда, и сантиметры обязаны идти следом за
-   * картинкой. Иначе лист согласования называл бы клиенту одно, а печатник
-   * видел бы другое — а расходятся они молча.
-   *
-   * Зона печати у белого и чёрного мокапа может быть разного реального
-   * размера, поэтому после смены цвета размер пересчитывается по новому
-   * шаблону, а не переносится числом.
    */
   private async syncTemplates(
     sides: ApprovalSides,
@@ -459,9 +460,7 @@ export class ApprovalService {
       const state = sides[side];
       if (!state) continue;
       const template = await this.mockups.findByColorAndSide(color, side);
-      result[side] = template
-        ? { ...state, templateKey: template.key, ...sizeFromView(state, template) }
-        : state;
+      result[side] = template ? { ...state, templateKey: template.key } : state;
     }
     return result;
   }

@@ -1,157 +1,114 @@
-import { ApprovalService } from './approval.service';
+import { realPrintSize, DEFAULT_WIDTH_MM } from './approval-print-size';
+import { parsePageSizeMm } from '../marketplace/image-cards/pdf-raster.service';
 
 /**
- * Размер печати считается из раскладки, а не вводится руками.
+ * Настоящий размер макета.
  *
- * Размер называют клиенту до печати — «принт будет 20 × 25 см». Пока
- * сантиметры набирали в отдельном поле, они описывали не макет, а то, что
- * человек успел напечатать: разложил принт, забыл поправить число — и
- * клиенту ушёл один размер, а печатнику другой. Расходятся они молча.
- *
- * Проверяем обе двери, через которые размер попадает в базу: загрузку
- * принта и сохранение раскладки.
+ * Размер приходит из файла, с которым макет уйдёт в печать, и дальше не
+ * меняется. Принт на фотографии футболки двигают и масштабируют на глаз —
+ * это раскладка, а не размер отпечатка, и сантиметры от неё зависеть не
+ * должны. Раньше они просто стояли умолчанием в 28 см, и их правили руками
+ * после каждой загрузки.
  */
 
-/** Зона печати 720 × 900 px равна 40 × 50 см — та же калибровка, что в ТЗ. */
-const TEMPLATE = {
-  key: 'tshirt_black_front',
-  imageFile: 'mockup.webp',
-  printAreaX: 420,
-  printAreaY: 380,
-  printAreaWidth: 720,
-  printAreaHeight: 900,
-  printAreaWidthMm: 400,
-  printAreaHeightMm: 500,
-};
-
-type Saved = Record<string, unknown>;
-
-function build(stored: unknown) {
-  const update = jest.fn().mockImplementation((args: { data: Saved }) => ({
-    id: 'a1',
-    version: 1,
-    status: 'DRAFT',
-    sides: args.data.sides ?? stored,
-    shirtColor: 'Чёрный',
-    shirtSize: 'M',
-    updatedAt: new Date(),
-    finalizedAt: null,
-    order: { items: [], tshirtItems: [] },
-  }));
-  const prisma = {
-    printApproval: {
-      findUnique: jest.fn().mockResolvedValue({
-        id: 'a1',
-        orderId: 'o1',
-        itemId: null,
-        status: 'DRAFT',
-        shirtColor: 'Чёрный',
-        sides: stored,
-        updatedAt: new Date(),
-        finalizedAt: null,
-      }),
-      update,
-    },
-  };
-  const storage = {
-    savePrint: jest.fn().mockResolvedValue({
-      filename: 'print-new.webp',
-      // Исходник 2:3 — пропорции принта берутся от него.
-      sourceWidth: 1000,
-      sourceHeight: 1500,
-    }),
-    removePrint: jest.fn(),
-  };
-  const service = new ApprovalService(
-    prisma as never,
-    storage as never,
-    {} as never,
-    { findByColorAndSide: jest.fn().mockResolvedValue(TEMPLATE) } as never,
-  );
-  return { service, update };
-}
-
-/** Сторона, как она легла в базу после вызова. */
-function savedSide(update: jest.Mock, side = 'FRONT'): Record<string, number> {
-  const call = (update.mock.calls[0] as { data: Saved }[])[0];
-  return (call.data.sides as Record<string, Record<string, number>>)[side];
-}
-
-const placed = (viewWidth: number, viewHeight: number) => ({
-  FRONT: {
-    templateKey: TEMPLATE.key,
-    printFile: 'print.webp',
-    printOriginalName: 'logo.png',
-    printWidthPx: 1000,
-    printHeightPx: 1500,
-    widthMm: 280,
-    heightMm: 350,
-    viewWidth,
-    viewHeight,
-    lockRatio: true,
-    x: 0.5,
-    y: 0.5,
-    rotation: 0,
-  },
-});
-
-describe('размер при загрузке принта', () => {
-  it('считается от зоны печати, а не от умолчания в 28 см', async () => {
-    const { service, update } = build({});
-
-    await service.uploadPrint('a1', 'FRONT' as never, {
-      originalname: 'logo.png',
-    } as never);
-
-    const side = savedSide(update);
-    // Экранная доля, выставленная при загрузке, переведена в сантиметры зоны.
-    expect(side.widthMm).toBe(Math.round(side.viewWidth * 400 * 10) / 10);
-    expect(side.heightMm).toBe(Math.round(side.viewHeight * 500 * 10) / 10);
-    expect(side.widthMm).not.toBe(280);
+describe('откуда берётся размер макета', () => {
+  it('браузер разобрал PDF — верим ему', () => {
+    // Сервер в этом случае получает уже картинку: размер страницы после
+    // растеризации восстановить не из чего.
+    expect(
+      realPrintSize(
+        { widthMm: 200, heightMm: 250 },
+        { sourceWidthMm: 999, sourceHeightMm: 999 },
+        { widthMm: 300, heightMm: 300 },
+        1,
+      ),
+    ).toEqual({ widthMm: 200, heightMm: 250 });
   });
 
-  it('пропорции принта сохраняются — картинку не растягивает', async () => {
-    const { service, update } = build({});
+  it('браузер промолчал — берём то, что сказал файл на сервере', () => {
+    expect(
+      realPrintSize(undefined, { sourceWidthMm: 210, sourceHeightMm: 297 }, undefined, 1),
+    ).toEqual({ widthMm: 210, heightMm: 297 });
+  });
 
-    await service.uploadPrint('a1', 'FRONT' as never, {
-      originalname: 'logo.png',
-    } as never);
+  it('файл о размере молчит — остаётся прежний размер стороны', () => {
+    // Перезаливают обычно исправленный макет того же размера.
+    expect(realPrintSize(undefined, {}, { widthMm: 180, heightMm: 240 }, 1.5)).toEqual({
+      widthMm: 180,
+      heightMm: 240,
+    });
+  });
 
-    const side = savedSide(update);
-    // Исходник 1000 × 1500: высота в полтора раза больше ширины.
-    expect(side.heightMm / side.widthMm).toBeCloseTo(1.5, 2);
+  it('не сказал никто — умолчание в пропорциях исходника', () => {
+    expect(realPrintSize(undefined, {}, undefined, 1.5)).toEqual({
+      widthMm: DEFAULT_WIDTH_MM,
+      heightMm: DEFAULT_WIDTH_MM * 1.5,
+    });
+  });
+
+  it('нулям и мусору не верим', () => {
+    // Пустое поле формы приезжает нулём: это «не знаю», а не «ноль сантиметров».
+    expect(
+      realPrintSize({ widthMm: 0, heightMm: 0 }, {}, { widthMm: 150, heightMm: 150 }, 1),
+    ).toEqual({ widthMm: 150, heightMm: 150 });
+    expect(
+      realPrintSize(
+        { widthMm: Number.NaN, heightMm: 100 },
+        {},
+        { widthMm: 150, heightMm: 150 },
+        1,
+      ),
+    ).toEqual({ widthMm: 150, heightMm: 150 });
+  });
+
+  it('размер держится в тех же пределах, что и ручной ввод', () => {
+    // Макет на три метра — это ошибка в файле, а не задание печатнику.
+    expect(
+      realPrintSize({ widthMm: 5000, heightMm: 1 }, {}, undefined, 1),
+    ).toEqual({ widthMm: 2000, heightMm: 10 });
   });
 });
 
-describe('размер при сохранении раскладки', () => {
-  it('идёт следом за картинкой', async () => {
-    const { service, update } = build(placed(0.5, 0.4));
+describe('размер страницы PDF из вывода pdfinfo', () => {
+  const output = [
+    'Title:          layout',
+    'Pages:          1',
+    'Page size:      841.89 x 595.276 pts (A4)',
+    'File size:      120345 bytes',
+  ].join('\n');
 
-    // Принт растянули мышкой вдвое — сантиметры обязаны вырасти вместе с ним.
-    await service.update('a1', { sides: placed(1, 0.8) } as never);
-
-    expect(savedSide(update)).toMatchObject({ widthMm: 400, heightMm: 400 });
+  it('переводит точки в миллиметры', () => {
+    // A4 на боку: 297 × 210 мм.
+    expect(parsePageSizeMm(output)).toEqual({ widthMm: 297, heightMm: 210 });
   });
 
-  it('записанный размер не переопределяет раскладку', async () => {
-    const { service, update } = build(placed(0.25, 0.2));
-
-    // В присланном состоянии размер «из прошлого» — верить надо картинке.
-    const sides = placed(0.25, 0.2);
-    sides.FRONT.widthMm = 999;
-    sides.FRONT.heightMm = 999;
-    await service.update('a1', { sides } as never);
-
-    expect(savedSide(update)).toMatchObject({ widthMm: 100, heightMm: 100 });
+  it('квадратная страница макета читается как есть', () => {
+    expect(parsePageSizeMm('Page size:      566.93 x 566.93 pts')).toEqual({
+      widthMm: 200,
+      heightMm: 200,
+    });
   });
 
-  it('у согласования без раскладки размер остаётся прежним', async () => {
-    // viewWidth = 0 — макет старше правки: пересчёт обнулил бы размер,
-    // который клиент уже согласовал.
-    const { service, update } = build(placed(0, 0));
+  it('читает вывод с номером страницы — именно так отвечает наш вызов', () => {
+    /*
+     * Настоящий ответ pdfinfo 25.12 на «-f 1 -l 1», снятый с прод-сервера.
+     * Форма строки там другая: «Page    1 size:» вместо «Page size:».
+     * Разбор, написанный по второй форме, молча возвращал бы «размер
+     * неизвестен» для каждого PDF.
+     */
+    const real = [
+      'Pages:           1',
+      'Encrypted:       no',
+      'Page    1 size:  566.93 x 566.93 pts',
+      'Page    1 rot:   0',
+      'File size:       352 bytes',
+    ].join('\n');
+    expect(parsePageSizeMm(real)).toEqual({ widthMm: 200, heightMm: 200 });
+  });
 
-    await service.update('a1', { sides: placed(0, 0) } as never);
-
-    expect(savedSide(update)).toMatchObject({ widthMm: 280, heightMm: 350 });
+  it('не нашлось строки — не выдумываем размер', () => {
+    expect(parsePageSizeMm('Pages: 1')).toBeNull();
+    expect(parsePageSizeMm('')).toBeNull();
+    expect(parsePageSizeMm('Page size:      0 x 0 pts')).toBeNull();
   });
 });

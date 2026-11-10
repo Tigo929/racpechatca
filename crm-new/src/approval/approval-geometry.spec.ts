@@ -7,7 +7,6 @@ import {
   printRect,
   pxPerMm,
   rotatedBounds,
-  sizeFromView,
   type PrintAreaCalibration,
 } from './approval-geometry';
 import { parseSides, type ApprovalSideState } from './approval-state';
@@ -197,12 +196,12 @@ describe('чтение состояния из базы', () => {
   });
 });
 
-describe('картинкой двигает мышь, а не число', () => {
+describe('размер на макете и размер для отчёта разведены', () => {
   /*
-   * Связь между раскладкой и сантиметрами односторонняя: число идёт за
-   * картинкой, но не наоборот. Двусторонняя мешала обоим действиям — ввёл
-   * «28 см», картинка прыгнула; потянул за угол, поехало число, которое
-   * только что набрали.
+   * Раньше это была одна величина: ввёл «28 см» — картинка на макете прыгнула,
+   * потянул за угол — поехали сантиметры, уходящие производству. Владелец
+   * раскладывает макет глазом, а размер называет отдельно, и связь мешала
+   * обоим действиям.
    */
   it('миллиметры не двигают картинку, если экранный размер задан', () => {
     const withView = side({ viewWidth: 0.5, viewHeight: 0.4 });
@@ -233,68 +232,5 @@ describe('картинкой двигает мышь, а не число', () =>
     const a = estimateDpi(side({ viewWidth: 0.2, viewHeight: 0.2 }));
     const b = estimateDpi(side({ viewWidth: 0.9, viewHeight: 0.9 }));
     expect(a).toBe(b);
-  });
-});
-
-describe('размер печати считается из раскладки', () => {
-  /*
-   * Размер называют клиенту до печати, поэтому он обязан описывать то, что
-   * на макете. Раньше сантиметры вводили руками рядом с картинкой, и сходились
-   * они только пока про них помнили.
-   */
-
-  it('доля зоны печати переводится в сантиметры зоны', () => {
-    // Половина зоны 40 × 50 см по ширине и четверть по высоте.
-    expect(sizeFromView(side({ viewWidth: 0.5, viewHeight: 0.25 }), TEMPLATE)).toEqual({
-      widthMm: 200,
-      heightMm: 125,
-    });
-  });
-
-  it('принт во всю зону равен самой зоне', () => {
-    expect(sizeFromView(side({ viewWidth: 1, viewHeight: 1 }), TEMPLATE)).toEqual({
-      widthMm: TEMPLATE.printAreaWidthMm,
-      heightMm: TEMPLATE.printAreaHeightMm,
-    });
-  });
-
-  it('совпадает с тем, что нарисовано на мокапе', () => {
-    // Сверка двух путей: пиксели прямоугольника, переведённые масштабом
-    // калибровки, обязаны дать те же миллиметры. Разойдутся — клиенту
-    // назовут один размер, а напечатают другой.
-    const state = side({ viewWidth: 0.37, viewHeight: 0.62 });
-    const rect = printRect(state, TEMPLATE);
-    const size = sizeFromView(state, TEMPLATE);
-    expect(size.widthMm).toBeCloseTo(rect.width / pxPerMm(TEMPLATE), 1);
-  });
-
-  it('округляется до десятой миллиметра, как и ввод', () => {
-    const size = sizeFromView(side({ viewWidth: 0.333, viewHeight: 0.333 }), TEMPLATE);
-    expect(size.widthMm).toBe(133.2);
-    expect(size.heightMm).toBe(166.5);
-  });
-
-  it('у старых согласований размер остаётся записанным', () => {
-    // viewWidth = 0 — макет старше правки. Пересчитать его в ноль значило бы
-    // задним числом испортить то, что клиент уже согласовал.
-    expect(sizeFromView(side({ viewWidth: 0, viewHeight: 0 }), TEMPLATE)).toEqual({
-      widthMm: 280,
-      heightMm: 350,
-    });
-  });
-
-  it('без калибровки зоны размер не выдумываем', () => {
-    const blank = { printAreaWidthMm: 0, printAreaHeightMm: 0 };
-    expect(sizeFromView(side({ viewWidth: 0.5, viewHeight: 0.5 }), blank)).toEqual({
-      widthMm: 280,
-      heightMm: 350,
-    });
-  });
-
-  it('крошечный принт не уходит ниже сантиметра', () => {
-    // Предел тот же, что у ручного ввода: защита от нечитаемого числа.
-    expect(
-      sizeFromView(side({ viewWidth: 0.001, viewHeight: 0.001 }), TEMPLATE).widthMm,
-    ).toBe(10);
   });
 });

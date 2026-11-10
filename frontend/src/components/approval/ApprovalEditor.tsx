@@ -17,11 +17,12 @@ import { useBlobUrl } from '../../hooks/useBlobUrl';
 import { getErrorMessage } from '../../utils/get-error-message';
 import {
   QUALITY_LABEL,
+  cmToMm,
   estimateDpi,
-  sizeFromView,
   formatSizeCm,
   isCalibrated,
   isOutsidePrintArea,
+  mmToCm,
   printQuality,
 } from '../../utils/approval-geometry';
 import { TSHIRT_SIZE_LABELS } from '../../constants';
@@ -32,7 +33,7 @@ import type {
   MockupTemplate,
   PrintApproval,
 } from '../../types/index';
-import { PrintStage } from './PrintStage';
+import { MAX_MM, MIN_MM, PrintStage } from './PrintStage';
 import {
   isPdfFile,
   pdfFirstPageToImage,
@@ -313,9 +314,15 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
   const [preparing, setPreparing] = useState<PdfStage | null>(null);
 
   const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async ({
+      file,
+      size,
+    }: {
+      file: File;
+      size?: { widthMm: number; heightMm: number } | null;
+    }) => {
       await flushDraft();
-      return approvalsApi.uploadPrint(approvalId, activeSide, file);
+      return approvalsApi.uploadPrint(approvalId, activeSide, file, size);
     },
     onSuccess: (updated) => applyServer(updated, 'Принт загружен'),
     onError: (error) =>
@@ -324,20 +331,26 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
 
   const uploadPrintFile = async (file: File) => {
     if (!isPdfFile(file)) {
-      uploadMutation.mutate(file);
+      // Размер картинки читает сервер: DPI записано в самом файле.
+      uploadMutation.mutate({ file });
       return;
     }
     setPreparing('read');
     try {
       // Шаг видно на кнопке: подготовка тяжёлого макета занимает секунды,
       // и молчащая кнопка в это время выглядит как зависшая.
-      const image = await pdfFirstPageToImage(file, {
+      const raster = await pdfFirstPageToImage(file, {
         onStage: (stage) => setPreparing(stage),
       });
-      uploadMutation.mutate(image);
+      /*
+       * Размер страницы едет вместе с картинкой: на сервер уходит растр,
+       * и настоящий размер отпечатка из его пикселей уже не достать.
+       */
+      uploadMutation.mutate({ file: raster.file, size: raster.size });
     } catch (error) {
       console.warn('PDF не разобрался в браузере, отправляем как есть', error);
-      uploadMutation.mutate(file);
+      // Запасной путь: PDF целиком. Размер страницы прочитает сервер.
+      uploadMutation.mutate({ file });
     } finally {
       setPreparing(null);
     }
@@ -406,19 +419,7 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
 
   const filled = Object.values(draft?.sides ?? {}).filter((s) => s?.printFile);
 
-  /*
-   * Физический размер принта — из раскладки, а не из записанного числа.
-   *
-   * Считаем здесь же, а не ждём ответа сервера: человек тянет картинку и
-   * должен видеть сантиметры сразу. Сервер посчитает то же самое при
-   * сохранении (approval.service.ts, syncTemplates).
-   */
-  const printSize =
-    side && template
-      ? sizeFromView(side, template)
-      : { widthMm: side?.widthMm ?? 0, heightMm: side?.heightMm ?? 0 };
-  // DPI зависит от физического размера: считаем от того же числа, что видно.
-  const dpi = side ? estimateDpi({ ...side, ...printSize }) : 0;
+  const dpi = side ? estimateDpi(side) : 0;
   const quality = printQuality(dpi);
   const outside = side && template ? isOutsidePrintArea(side, template) : false;
 
@@ -601,22 +602,66 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
               {side && (
                 <>
                   {/*
-                    Размер считается сам — из того, как принт разложен на
-                    мокапе. Раньше здесь были два поля в сантиметрах, и их
-                    заполняли руками после каждой раскладки: число описывало
-                    не макет, а то, что успели набрать. Клиенту размер
-                    называют до печати, и расходиться с картинкой он не должен.
+                    Настоящий размер макета — тот, с которым он уйдёт в
+                    печать. Подставляется из самого файла: у PDF это размер
+                    страницы, у картинки — её DPI. Раскладка на мокапе его
+                    не меняет: принт на фотографии двигают на глаз, чтобы он
+                    смотрелся на месте, а печатают прикреплённый файл.
                   */}
-                  <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
-                    <p className="text-xs text-gray-500">Размер печати</p>
-                    <p className="text-lg font-semibold tabular-nums text-gray-900">
-                      {formatSizeCm(printSize.widthMm, printSize.heightMm)}
-                    </p>
-                    <p className="mt-0.5 text-xs text-gray-500">
-                      Посчитан по раскладке на мокапе. Меняется вместе с
-                      картинкой — тяните её мышкой.
-                    </p>
+                  <p className="text-xs text-gray-500">
+                    Размер макета — из файла, с ним он и уйдёт в печать.
+                    Подгонка принта на фотографии его не меняет. Поправьте
+                    руками, если файл о своём размере не сообщил.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <CmField
+                      label="Ширина, см"
+                      valueMm={side.widthMm}
+                      onCommit={(mm) => {
+                        pushHistory();
+                        const ratio = side.heightMm / side.widthMm;
+                        setSide({
+                          ...side,
+                          widthMm: mm,
+                          heightMm: side.lockRatio
+                            ? Math.round(mm * ratio)
+                            : side.heightMm,
+                        });
+                      }}
+                    />
+                    <CmField
+                      label="Высота, см"
+                      valueMm={side.heightMm}
+                      onCommit={(mm) => {
+                        pushHistory();
+                        const ratio = side.widthMm / side.heightMm;
+                        setSide({
+                          ...side,
+                          heightMm: mm,
+                          widthMm: side.lockRatio
+                            ? Math.round(mm * ratio)
+                            : side.widthMm,
+                        });
+                      }}
+                    />
                   </div>
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={side.lockRatio}
+                      onChange={(e) => {
+                        pushHistory();
+                        setSide({ ...side, lockRatio: e.target.checked });
+                      }}
+                      className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                    />
+                    Сохранять пропорции в сантиметрах
+                  </label>
+                  {!side.lockRatio && (
+                    <p className="text-xs text-amber-700">
+                      Пропорции сняты — ширину и высоту можно указать независимо.
+                    </p>
+                  )}
 
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
@@ -688,7 +733,7 @@ export function ApprovalEditor({ approvalId, orderNumber, onClose }: Props) {
                           : 'border-red-200 bg-red-50 text-red-800'
                     }`}
                   >
-                    Печать {formatSizeCm(printSize.widthMm, printSize.heightMm)} · ~{dpi} DPI
+                    Печать {formatSizeCm(side.widthMm, side.heightMm)} · ~{dpi} DPI
                     <br />
                     {QUALITY_LABEL[quality]}
                   </div>
@@ -835,6 +880,59 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
       <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
       {children}
     </section>
+  );
+}
+
+/**
+ * Поле размера в сантиметрах. Значение применяется по уходу из поля, а не на
+ * каждое нажатие: иначе «28» по дороге успевает побывать двойкой и принт
+ * прыгает.
+ */
+function CmField({
+  label,
+  valueMm,
+  onCommit,
+}: {
+  label: string;
+  valueMm: number;
+  onCommit: (mm: number) => void;
+}) {
+  const [text, setText] = useState(String(mmToCm(valueMm)));
+  // Размер меняют не только этим полем — ещё и углом принта на холсте.
+  // Подстраиваемся прямо в рендере: эффект здесь дал бы лишний проход и
+  // мигание старым числом.
+  const [shownMm, setShownMm] = useState(valueMm);
+  if (shownMm !== valueMm) {
+    setShownMm(valueMm);
+    setText(String(mmToCm(valueMm)));
+  }
+
+  const commit = () => {
+    const cm = Number(text.replace(',', '.'));
+    if (!Number.isFinite(cm) || cm <= 0) {
+      setText(String(mmToCm(valueMm)));
+      return;
+    }
+    const mm = Math.min(MAX_MM, Math.max(MIN_MM, cmToMm(cm)));
+    if (mm !== valueMm) onCommit(mm);
+    setText(String(mmToCm(mm)));
+  };
+
+  return (
+    <label className="block">
+      <span className="text-sm font-medium text-gray-700">{label}</span>
+      <input
+        type="text"
+        inputMode="decimal"
+        className={`mt-1 ${field}`}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+        }}
+      />
+    </label>
   );
 }
 

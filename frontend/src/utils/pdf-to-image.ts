@@ -31,6 +31,35 @@ export const PDF_RASTER_LONG_SIDE = 4000;
 export const PNG_LIMIT_PIXELS = 4_000_000;
 export const WEBP_QUALITY = 0.95;
 
+/** Точек PostScript в дюйме — в них PDF задаёт размер страницы. */
+const POINTS_PER_INCH = 72;
+const MM_PER_INCH = 25.4;
+
+/**
+ * Размер страницы PDF в миллиметрах.
+ *
+ * Это настоящий размер будущего отпечатка: у макета, сделанного под печать,
+ * страница и есть изделие. Считаем здесь, пока PDF ещё цел: на сервер уйдёт
+ * растр, и из его пикселей размер отпечатка уже не достать.
+ */
+export function pageSizeMm(
+  widthPt: number,
+  heightPt: number,
+): { widthMm: number; heightMm: number } | null {
+  if (!Number.isFinite(widthPt) || !Number.isFinite(heightPt)) return null;
+  if (widthPt <= 0 || heightPt <= 0) return null;
+  const toMm = (pt: number) =>
+    Math.round((pt / POINTS_PER_INCH) * MM_PER_INCH * 10) / 10;
+  return { widthMm: toMm(widthPt), heightMm: toMm(heightPt) };
+}
+
+/** Картинка из PDF вместе с настоящим размером страницы. */
+export interface RasterizedPdf {
+  file: File;
+  /** Размер страницы в миллиметрах; null — прочитать не удалось. */
+  size: { widthMm: number; heightMm: number } | null;
+}
+
 export function isPdfFile(file: File): boolean {
   return (
     file.type === 'application/pdf' || /\.pdf$/i.test(file.name ?? '')
@@ -101,7 +130,7 @@ async function canvasToBlob(
 export async function pdfFirstPageToImage(
   file: File,
   options: { longSide?: number; onStage?: (stage: PdfStage) => void } = {},
-): Promise<File> {
+): Promise<RasterizedPdf> {
   const longSide = options.longSide ?? PDF_RASTER_LONG_SIDE;
   const stage = (next: PdfStage) => options.onStage?.(next);
   // Грузим библиотеку только когда она понадобилась: в обычной работе
@@ -156,9 +185,12 @@ export async function pdfFirstPageToImage(
     canvas.width = 0;
     canvas.height = 0;
 
-    return new File([blob], rasterizedName(file.name, format), {
-      type: format === 'png' ? 'image/png' : 'image/webp',
-    });
+    return {
+      size: pageSizeMm(base.width, base.height),
+      file: new File([blob], rasterizedName(file.name, format), {
+        type: format === 'png' ? 'image/png' : 'image/webp',
+      }),
+    };
   } finally {
     await loadingTask.destroy().catch(() => undefined);
   }

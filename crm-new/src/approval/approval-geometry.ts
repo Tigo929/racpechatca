@@ -1,9 +1,4 @@
-import {
-  MAX_PRINT_MM,
-  MIN_PRINT_MM,
-  tenth,
-  type ApprovalSideState,
-} from './approval-state';
+import type { ApprovalSideState } from './approval-state';
 
 /**
  * Калибровка мокапа: зона печати в пикселях фотографии и её реальный размер.
@@ -98,51 +93,6 @@ export function printRect(
     width,
     height,
   };
-}
-
-/**
- * Физический размер принта — из того, как он разложен на мокапе.
- *
- * Зона печати откалибрована: её ширина и высота известны и в пикселях
- * фотографии, и в миллиметрах изделия. Экранный размер принта хранится
- * долей этой зоны, поэтому миллиметры из него получаются прямым умножением,
- * без промежуточного перевода через пиксели.
- *
- * Считается само и всегда: раньше сантиметры вводили руками, и они
- * описывали не то, что на макете, а то, что человек успел набрать. Клиенту
- * размер называют до печати, и расходиться с картинкой он не должен.
- *
- * Стрелка здесь одна — от раскладки к миллиметрам, и обратной нет намеренно:
- * именно двусторонняя связь когда-то заставляла картинку прыгать при вводе
- * числа. Тянут мышкой — число идёт следом.
- *
- * Пустая раскладка (viewWidth или viewHeight равны нулю) — согласование
- * старше этой правки: там размер остаётся тем, что записан, иначе у давнего
- * макета сантиметры стали бы нулевыми.
- */
-export function sizeFromView(
-  state: Pick<
-    ApprovalSideState,
-    'viewWidth' | 'viewHeight' | 'widthMm' | 'heightMm'
-  >,
-  template: Pick<
-    PrintAreaCalibration,
-    'printAreaWidthMm' | 'printAreaHeightMm'
-  >,
-): { widthMm: number; heightMm: number } {
-  const stored = { widthMm: state.widthMm, heightMm: state.heightMm };
-  if (!state.viewWidth || !state.viewHeight) return stored;
-  if (template.printAreaWidthMm <= 0 || template.printAreaHeightMm <= 0)
-    return stored;
-  return {
-    widthMm: clampMm(state.viewWidth * template.printAreaWidthMm),
-    heightMm: clampMm(state.viewHeight * template.printAreaHeightMm),
-  };
-}
-
-/** Размер печати в тех же пределах, что и при разборе состояния. */
-function clampMm(mm: number): number {
-  return Math.min(MAX_PRINT_MM, Math.max(MIN_PRINT_MM, tenth(mm)));
 }
 
 /** Габарит прямоугольника после поворота вокруг собственного центра. */

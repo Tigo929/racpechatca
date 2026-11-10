@@ -43,9 +43,19 @@ export const approvalsApi = {
     id: string,
     side: EnumApprovalSide,
     file: File,
+    /*
+     * Настоящий размер макета, если отправитель его знает. PDF браузер
+     * разбирает у себя и шлёт уже картинку — размер страницы после этого
+     * не восстановить, поэтому он едет рядом с файлом.
+     */
+    size?: { widthMm: number; heightMm: number } | null,
   ): Promise<PrintApproval> => {
     const form = new FormData();
     form.append('file', file);
+    if (size) {
+      form.append('widthMm', String(size.widthMm));
+      form.append('heightMm', String(size.heightMm));
+    }
     const { data } = await api.post<PrintApproval>(
       `/order-photo-approvals/${id}/print/${side}`,
       form,

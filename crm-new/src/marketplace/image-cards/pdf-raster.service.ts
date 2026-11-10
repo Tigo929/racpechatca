@@ -20,6 +20,12 @@ const run = promisify(execFile);
  */
 
 const BINARY = 'pdftocairo';
+/** Чтение свойств страницы — из того же пакета poppler-utils. */
+const INFO_BINARY = 'pdfinfo';
+
+/** Точек PostScript в дюйме: в них pdfinfo печатает размер страницы. */
+const POINTS_PER_INCH = 72;
+const MM_PER_INCH = 25.4;
 
 /**
  * Длинная сторона растра. Итоговая карточка — 1200 × 1600, область принта
@@ -63,6 +69,37 @@ export class PdfRasterService {
       }
     }
     return this.available;
+  }
+
+  /**
+   * Физический размер первой страницы в миллиметрах.
+   *
+   * У макета, который идёт в печать, размер задан в самом файле: страница
+   * PDF измеряется в точках, и это не «разрешение картинки», а настоящие
+   * сантиметры будущего отпечатка. Поэтому его и спрашиваем у файла, а не
+   * высчитываем из пикселей растра — растр мы делаем сами и в своём
+   * масштабе, к размеру изделия он отношения не имеет.
+   *
+   * null — размер узнать не вышло (нет poppler, битый файл, нестандартный
+   * вывод). Это не ошибка загрузки: принт сохранится, а размер останется
+   * тем, что был, и его можно указать руками.
+   */
+  async pageSizeMm(
+    pdfPath: string,
+  ): Promise<{ widthMm: number; heightMm: number } | null> {
+    if (!(await this.isAvailable())) return null;
+    try {
+      const { stdout } = await run(INFO_BINARY, ['-f', '1', '-l', '1', pdfPath], {
+        timeout: TIMEOUT_MS,
+        maxBuffer: 1024 * 1024,
+      });
+      return parsePageSizeMm(stdout);
+    } catch (error) {
+      this.logger.warn(
+        `Не удалось прочитать размер страницы PDF: ${(error as Error).message}`,
+      );
+      return null;
+    }
   }
 
   /**
@@ -129,4 +166,32 @@ export class PdfRasterService {
       await fs.rename(produced, outputPath);
     }
   }
+}
+
+/**
+ * Размер страницы из вывода `pdfinfo`.
+ *
+ * Строка у него двух видов, и зависит это от того, спросили ли мы
+ * конкретную страницу:
+ *   без диапазона — «Page size:       841.89 x 595.276 pts (A4)»
+ *   с `-f 1 -l 1` — «Page    1 size:  566.93 x 566.93 pts»
+ * Мы спрашиваем первую страницу, то есть получаем второй вид; принимаем
+ * оба, чтобы разбор не зависел от того, как позвали команду.
+ *
+ * Разделителем десятичной части всегда идёт точка — вывод не локализован.
+ * Разбор защитный: не совпало — возвращаем null, а не выдуманный размер.
+ */
+export function parsePageSizeMm(
+  stdout: string,
+): { widthMm: number; heightMm: number } | null {
+  const match = /^Page\s+(?:\d+\s+)?size:\s+([\d.]+)\s*x\s*([\d.]+)\s*pts/im.exec(
+    stdout,
+  );
+  if (!match) return null;
+  const widthPt = Number(match[1]);
+  const heightPt = Number(match[2]);
+  if (!Number.isFinite(widthPt) || !Number.isFinite(heightPt)) return null;
+  if (widthPt <= 0 || heightPt <= 0) return null;
+  const toMm = (pt: number) => Math.round((pt / POINTS_PER_INCH) * MM_PER_INCH * 10) / 10;
+  return { widthMm: toMm(widthPt), heightMm: toMm(heightPt) };
 }
