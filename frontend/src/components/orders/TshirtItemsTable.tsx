@@ -8,7 +8,14 @@ import { computePositionSettlement } from '../../utils/settlement';
 import { isMarketplaceTshirt } from '../../utils/marketplace-tshirt';
 import { useAuth } from '../../context/useAuth';
 import { usePersistentState } from '../../hooks/usePersistentState';
-import { CLIENT_ITEM_PRINT_NAME, FREE_PRICE_HINT } from './freePresets';
+import {
+  FREE_PRICE_HINT,
+  basisPointsToRatePercent,
+  payoutOf,
+  ratePercentToBasisPoints,
+  type PartnerPayout,
+} from './freePresets';
+import { PartnerPayoutPicker } from './PartnerPayoutPicker';
 import {
   TSHIRT_SIZE_LABELS,
   PRINT_LOCATION_LABELS,
@@ -51,10 +58,18 @@ type FreeState = {
   name: string;
   quantity: string;
   price: string;
-  /** Печать на изделии заказчика — включает позицию в расчёт с партнёром. */
-  printOnClientItem: boolean;
+  /** Как платим партнёру: не платим, доля от маржи или процент от суммы. */
+  partnerPayout: PartnerPayout;
+  /** Своя ставка в процентах; пусто — общая из настроек. */
+  ratePercent: string;
 };
-const EMPTY_FREE: FreeState = { name: '', quantity: '1', price: '0', printOnClientItem: false };
+const EMPTY_FREE: FreeState = {
+  name: '',
+  quantity: '1',
+  price: '0',
+  partnerPayout: 'NONE',
+  ratePercent: '',
+};
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -136,30 +151,22 @@ function FreeRows({ state, onChange }: { state: FreeState; onChange: (s: FreeSta
           {FREE_PRICE_HINT}
         </p>
       </Row>
-      <Row label="Изделие заказчика">
-        <label className="flex items-start gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            className="mt-0.5 w-4 h-4 accent-violet-600"
-            checked={state.printOnClientItem}
-            onChange={(e) =>
-              onChange({
-                ...state,
-                printOnClientItem: e.target.checked,
-                // Название подставляем только в пустое поле: затирать
-                // написанное человеком нельзя.
-                name:
-                  e.target.checked && !state.name.trim()
-                    ? CLIENT_ITEM_PRINT_NAME
-                    : state.name,
-              })
-            }
-          />
-          <span className="text-xs text-gray-600">
-            Печатаем на вещи клиента: заготовку не покупаем, но партнёру
-            платим за плёнку и его долю от маржи.
-          </span>
-        </label>
+      <Row label="Партнёру">
+        <PartnerPayoutPicker
+          value={state.partnerPayout}
+          onChange={(value, presetName) =>
+            onChange({
+              ...state,
+              partnerPayout: value,
+              // Название подставляем только в пустое поле: затирать
+              // написанное человеком нельзя.
+              name:
+                presetName && !state.name.trim() ? presetName : state.name,
+            })
+          }
+          ratePercent={state.ratePercent}
+          onRateChange={(ratePercent) => onChange({ ...state, ratePercent })}
+        />
       </Row>
     </>
   );
@@ -306,7 +313,10 @@ export function TshirtItemsTable({ order }: Props) {
         quantity: Number(newFreeItem.quantity) || 1,
         price: Number(newFreeItem.price) || 0,
         isFreePrice: true,
-        printOnClientItem: newFreeItem.printOnClientItem,
+        partnerPayout: newFreeItem.partnerPayout,
+        partnerRateBasisPoints: ratePercentToBasisPoints(
+          newFreeItem.ratePercent,
+        ),
       });
     } else {
       addMutation.mutate(toPayload(newItem));
@@ -321,7 +331,10 @@ export function TshirtItemsTable({ order }: Props) {
         formatPaper: editFreeState.name.trim(),
         quantity: Number(editFreeState.quantity) || 1,
         price: Number(editFreeState.price) || 0,
-        printOnClientItem: editFreeState.printOnClientItem,
+        partnerPayout: editFreeState.partnerPayout,
+        partnerRateBasisPoints: ratePercentToBasisPoints(
+          editFreeState.ratePercent,
+        ),
       },
     });
   };
@@ -475,7 +488,7 @@ export function TshirtItemsTable({ order }: Props) {
                     </>
                   ) : (
                     <>
-                      <button onClick={() => { setEditingFreeId(item.id); setEditFreeState({ name: item.formatPaper, quantity: String(item.quantity), price: String(item.price), printOnClientItem: item.printOnClientItem ?? false }); }}
+                      <button onClick={() => { setEditingFreeId(item.id); setEditFreeState({ name: item.formatPaper, quantity: String(item.quantity), price: String(item.price), partnerPayout: payoutOf(item), ratePercent: basisPointsToRatePercent(item.partnerRateBasisPoints) }); }}
                         className="p-1 text-gray-400 hover:text-indigo-600"><Pencil size={13} /></button>
                       <button onClick={() => deleteFreeMutation.mutate(item.id)} disabled={deleteFreeMutation.isPending}
                         className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={13} /></button>

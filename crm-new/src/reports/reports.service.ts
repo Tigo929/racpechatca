@@ -1,3 +1,4 @@
+import type { PartnerPayout } from 'src/partner/settlement-positions';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { EnumProductCategory, EnumStatus } from 'src/generated/prisma/enums';
@@ -108,6 +109,8 @@ export type OrderRow = {
     pricePosition: number;
     printOnClientItem: boolean;
     thermalCost: number;
+    partnerPayout?: PartnerPayout | null;
+    partnerRateBasisPoints?: number | null;
   }[];
   tshirtItems: {
     pricePosition: number;
@@ -460,6 +463,10 @@ export class ReportsService {
               pricePosition: true,
               printOnClientItem: true,
               thermalCost: true,
+              // Режим и ставка — иначе печать термотрансферов выпадает из
+              // расчёта, и отчёт покажет прибыль без выплаты исполнителю.
+              partnerPayout: true,
+              partnerRateBasisPoints: true,
             },
           },
           tshirtItems: {

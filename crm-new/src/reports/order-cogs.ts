@@ -3,7 +3,10 @@ import {
   sheetCostKopecks,
 } from 'src/order-photo/photo-material';
 import { settleOrder } from 'src/partner/partner-settlement';
-import { settlementPositions } from 'src/partner/settlement-positions';
+import {
+  settlementPositions,
+  type PartnerPayout,
+} from 'src/partner/settlement-positions';
 
 /**
  * Себестоимость одного заказа — та же математика, что в P&L-отчёте.
@@ -64,6 +67,8 @@ export interface OrderCogsSource {
     pricePosition: number;
     printOnClientItem: boolean;
     thermalCost: number;
+    partnerPayout?: PartnerPayout | null;
+    partnerRateBasisPoints?: number | null;
   }[];
   tshirtItems: {
     pricePosition: number;

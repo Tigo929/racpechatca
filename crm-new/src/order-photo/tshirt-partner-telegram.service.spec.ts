@@ -114,6 +114,96 @@ describe('TshirtPartnerTelegramService', () => {
     );
   });
 
+  it('печать термотрансферов: изделия нет, в сообщении номер, что печатаем и заработок', async () => {
+    /*
+     * Заказ 20261108-049: десять плёнок на 800 ₽ и ни одной футболки.
+     * Раньше исполнитель получал строку «800 ₽» и ни одного рубля своего
+     * заработка — позиция вообще не попадала в расчёт, а заголовок обещал
+     * ему изделия, которых никто не привезёт.
+     */
+    const orderId = 'order-termotransfery';
+    const jpeg = await sharp({
+      create: { width: 4, height: 4, channels: 3, background: '#fff' },
+    })
+      .jpeg()
+      .toBuffer();
+    await fs.writeFile(path.join(uploadDir, 'plenka.jpg'), jpeg);
+
+    const order = {
+      id: orderId,
+      numberOrder: '20261108-049',
+      tshirtModel: null,
+      techSpecPhotoPath: 'plenka.jpg',
+      techSpecPhotoPaths: ['plenka.jpg'],
+      tshirtItems: [],
+      items: [
+        {
+          formatPaper: 'Печать термотрансферов',
+          typePaper: 'GLOSS',
+          quantity: 10,
+          price: 800,
+          pricePosition: 800,
+          isFreePrice: true,
+          printOnClientItem: false,
+          thermalCost: 0,
+          partnerPayout: 'REVENUE_SHARE',
+          partnerRateBasisPoints: 3000,
+        },
+      ],
+    };
+
+    const prisma = {
+      orderPhoto: {
+        findUnique: jest.fn().mockResolvedValue(order),
+        update: jest.fn().mockResolvedValue(order),
+      },
+    };
+    const telegram = {
+      sendPhoto: jest.fn().mockResolvedValue({ messageId: 42 }),
+      sendDocument: jest.fn().mockResolvedValue({ messageId: 42 }),
+    };
+    const partnerSettings = {
+      get: jest.fn().mockResolvedValue({ partnerRateBasisPoints: 3000 }),
+    };
+    const stickerLinks = {
+      buildStickerUrl: jest
+        .fn()
+        .mockReturnValue('https://crm.example.test/s.pdf'),
+    };
+    const config = {
+      get: jest.fn((key: string) => {
+        const values: Record<string, string> = {
+          TSHIRT_PARTNER_TELEGRAM_CHAT_ID: '-1001',
+          UPLOAD_DIR: uploadDir,
+        };
+        return values[key];
+      }),
+    };
+
+    const service = new TshirtPartnerTelegramService(
+      prisma as never,
+      telegram as never,
+      partnerSettings as never,
+      stickerLinks as never,
+      config as never,
+    );
+
+    await service.sendOrder(orderId);
+
+    const caption = telegram.sendPhoto.mock.calls[0][4] as string;
+
+    // Номер заказа — чтобы исполнителю было с чем сверяться.
+    expect(caption).toContain('20261108-049');
+    // Что именно печатаем.
+    expect(caption).toContain('Печать термотрансферов');
+    // Сколько он на этом зарабатывает: 30% от 800, без вычета себестоимости.
+    expect(caption).toContain('240 ₽');
+    // Про изделия не обещаем ничего — их в заказе нет.
+    expect(caption).toContain('Заказ на печать термотрансферов');
+    expect(caption).not.toContain('Изделия привозит клиент');
+    expect(caption).not.toContain('Заказ на футболку');
+  });
+
   it('заказ на нанесение принта: заготовку исполнителю не считаем и говорим об этом словами', async () => {
     /*
      * Давальческая позиция — «только нанесение»: футболку привозит клиент.

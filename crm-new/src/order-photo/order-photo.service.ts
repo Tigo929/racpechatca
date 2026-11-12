@@ -73,6 +73,7 @@ import {
 } from 'src/salary/salary-calculation';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
+import { resolveItemPayout } from 'src/partner/item-payout';
 import { resolveCanvasPosition } from 'src/canvas/canvas-production-price';
 import { normalizeMarketplaceNumber } from './order-number';
 import { hasTechSpecFiles } from 'src/partner/tech-spec-paths';
@@ -362,29 +363,45 @@ export class OrderPhotoService {
       // Себестоимость печати по умолчанию — из настроек партнёра; в позиции
       // можно переопределить. Снимок хранится на позиции, чтобы расчёт не
       // «поехал» при последующем изменении настроек.
-      const partnerDefaults =
-        productCategory === EnumProductCategory.TSHIRT
-          ? await this.partnerSettings.get(tx)
-          : null;
+      /*
+       * Настройки нужны не только заказам на футболки: свободную позицию с
+       * выплатой партнёру (печать термотрансферов) заводят и в заказе другой
+       * категории, а без настроек снимок ставки взять неоткуда.
+       */
+      const needsPartnerDefaults =
+        productCategory === EnumProductCategory.TSHIRT ||
+        (dto.items ?? []).some(
+          (e) => e.printOnClientItem || e.partnerPayout != null,
+        );
+      const partnerDefaults = needsPartnerDefaults
+        ? await this.partnerSettings.get(tx)
+        : null;
       // Позиции считаем независимо от категории: заказ может содержать и обычные
       // позиции, и свободные (произвольные «название — цена»). Свободная цена
       // позиции = её цене (кол-во не умножается).
       const photoCreate = (dto.items ?? []).map((e) => {
         const itemFree = e.isFreePrice ?? freePrice;
-        // Печать на изделии заказчика — работа партнёра, просто без заготовки.
-        // Термоперенос снимаем из настроек здесь же: если взять его в момент
-        // расчёта, изменение умолчаний задним числом сдвинет уже закрытые заказы.
-        const printOnClientItem = e.printOnClientItem ?? false;
+        // Работа партнёра по свободной позиции: печать по изделию заказчика
+        // или печать термотрансферов. Себестоимость и ставку снимаем здесь же:
+        // если взять их в момент расчёта, изменение умолчаний задним числом
+        // сдвинет уже закрытые заказы.
+        const payout = resolveItemPayout(e, null, {
+          thermalTransferCost: partnerDefaults?.thermalTransferCost ?? 70,
+          partnerRateBasisPoints:
+            partnerDefaults?.partnerRateBasisPoints ?? 3000,
+          transferRateBasisPoints:
+            partnerDefaults?.transferRateBasisPoints ?? 3000,
+        });
         return {
           formatPaper: e.formatPaper,
           typePaper: e.typePaper,
           quantity: e.quantity,
           price: e.price,
           isFreePrice: itemFree,
-          printOnClientItem,
-          thermalCost: printOnClientItem
-            ? (partnerDefaults?.thermalTransferCost ?? 70)
-            : 0,
+          printOnClientItem: payout.printOnClientItem,
+          thermalCost: payout.thermalCost,
+          partnerPayout: payout.partnerPayout,
+          partnerRateBasisPoints: payout.rateBasisPoints,
           pricePosition: calcItemPricePosition(
             e.price,
             e.quantity,
@@ -2499,7 +2516,9 @@ export class OrderPhotoService {
     // Enqueue Gulian CRM event
     const dispatchedOrder = await this.prisma.orderPhoto.findUnique({
       where: { id },
-      include: { tshirtItems: true },
+      // items тоже: заказ на печать термотрансферов состоит из них целиком,
+      // и без них расчёт выплаты падал с «Нет производственных позиций».
+      include: { tshirtItems: true, items: true },
     });
     if (dispatchedOrder) {
       try {
@@ -2518,6 +2537,7 @@ export class OrderPhotoService {
             partnerTgMessageId:
               (dispatchedOrder as any).partnerTgMessageId ?? null,
             tshirtItems: dispatchedOrder.tshirtItems,
+            items: dispatchedOrder.items,
           },
           settings.partnerRateBasisPoints,
         );

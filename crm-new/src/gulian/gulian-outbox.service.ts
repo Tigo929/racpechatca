@@ -4,6 +4,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import type { GulianOrderPayload } from './gulian.service';
 import { toGulianStatus } from './gulian-status';
 import { calcGulianPayout } from './gulian-payout';
+import {
+  settlementPositions,
+  type PartnerPayout,
+} from 'src/partner/settlement-positions';
 import { EnumStatus } from 'src/generated/prisma/enums';
 import { ConfigService } from '@nestjs/config';
 
@@ -24,6 +28,19 @@ export type OrderForOutbox = {
     thermalCost: number;
     blankCost: number;
     clientItem: boolean;
+  }[];
+  /*
+   * Свободные позиции тоже работа исполнителя: печать по изделию заказчика и
+   * печать термотрансферов. Без них заказ без единой футболки не доезжал до
+   * его CRM вовсе.
+   */
+  items?: {
+    quantity: number;
+    pricePosition: number;
+    printOnClientItem: boolean;
+    thermalCost: number;
+    partnerPayout?: PartnerPayout | null;
+    partnerRateBasisPoints?: number | null;
   }[];
 };
 
@@ -46,8 +63,14 @@ export class GulianOutboxService {
     cancelledZeroPayout = false,
   ): Promise<void> {
     const payout = cancelledZeroPayout
-      ? { quantity: order.tshirtItems.reduce((s, i) => s + i.quantity, 0) || 1, totalPayoutKopecks: 0, unitPayoutKopecks: 0, mode: 'order_total' as const }
-      : calcGulianPayout(order.tshirtItems, rateBasisPoints);
+      ? {
+          quantity:
+            settlementPositions(order).reduce((s, p) => s + p.quantity, 0) || 1,
+          totalPayoutKopecks: 0,
+          unitPayoutKopecks: 0,
+          mode: 'order_total' as const,
+        }
+      : calcGulianPayout(order, rateBasisPoints);
 
     const productionStatus = toGulianStatus(order.status, order.executorSentAt);
     const eventId = randomUUID();

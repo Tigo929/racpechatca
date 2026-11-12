@@ -3,7 +3,7 @@
  * на футболки. Чистые функции без базы и сети — так их полностью
  * покрывают тесты, а «в подсчётах не ошибиться» становится проверяемым.
  *
- * Модель денег (на позицию):
+ * Режим MARGIN_SHARE — делим маржу (на позицию):
  *   выручка_печати = pricePosition − designCost        (дизайн — работа владельца)
  *   материалы      = (термо + (давальческая ? 0 : футболка)) × количество
  *   маржа          = выручка_печати − материалы
@@ -14,9 +14,23 @@
  * Дизайн вычитается до дележа и в маржу не входит — партнёр не получает
  * процент с работы владельца. Для давальческой футболки (clientItem) заготовку
  * покупает клиент, поэтому её стоимость не в материалах и не возвращается.
+ *
+ * Режим REVENUE_SHARE — процент от суммы:
+ *   материалы      = 0                                  (с нашей стороны их нет)
+ *   заработок      = pricePosition × ставка
+ *   вознаграждение = заработок                           (возвращать нечего)
+ *
+ * Так оплачивается печать термотрансферов: изделия нет, плёнку печатает сам
+ * исполнитель, и вычитать из его доли нечего. Отдельным режимом, а не нулевой
+ * себестоимостью в прежней формуле: нулевые материалы означали бы «материалы
+ * есть, но бесплатные», и любой правкой умолчаний в настройках такая позиция
+ * внезапно начала бы считаться по-другому.
  */
 
 export const DEFAULT_PARTNER_RATE_BASIS_POINTS = 3000; // 30%
+
+/** Как считается доля партнёра за позицию. */
+export type SettlementMode = 'MARGIN_SHARE' | 'REVENUE_SHARE';
 
 export interface SettlementPosition {
   pricePosition: number;
@@ -25,6 +39,10 @@ export interface SettlementPosition {
   thermalCost: number;
   blankCost: number;
   clientItem: boolean;
+  /** По умолчанию доля от маржи — так считались все позиции до появления режимов. */
+  mode?: SettlementMode;
+  /** Ставка позиции в сотых процента; null/undefined — взять общую. */
+  rateBasisPoints?: number | null;
 }
 
 export interface PositionSettlement {
@@ -60,6 +78,21 @@ export function settlePosition(
   p: SettlementPosition,
   rateBasisPoints: number,
 ): PositionSettlement {
+  // Ставка позиции важнее общей: в позиции лежит снимок на момент
+  // оформления, и правка настроек не должна двигать уже оформленный заказ.
+  const rate = p.rateBasisPoints ?? rateBasisPoints;
+
+  if (p.mode === 'REVENUE_SHARE') {
+    const partnerProfit = Math.floor((p.pricePosition * rate) / 10000);
+    return {
+      materials: 0,
+      margin: p.pricePosition,
+      reward: partnerProfit,
+      partnerProfit,
+      ownerProfit: p.pricePosition - partnerProfit,
+    };
+  }
+
   const printRevenue = p.pricePosition - p.designCost;
   const materials = positionMaterials(p);
   // Маржа не может быть отрицательной для расчёта доли: если печать в минус,
@@ -67,7 +100,7 @@ export function settlePosition(
   const margin = Math.max(0, printRevenue - materials);
   // Доля партнёра округляется до рубля вниз — так владелец не переплачивает
   // из-за копеек, а сумма остаётся детерминированной.
-  const partnerProfit = Math.floor((margin * rateBasisPoints) / 10000);
+  const partnerProfit = Math.floor((margin * rate) / 10000);
   const reward = partnerProfit + materials;
   const ownerProfit = p.pricePosition - reward;
   return { materials, margin, reward, partnerProfit, ownerProfit };

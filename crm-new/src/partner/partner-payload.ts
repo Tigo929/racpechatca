@@ -6,7 +6,12 @@ import {
 import { settleOrder } from './partner-settlement';
 import { toPartnerStatus } from './partner-status';
 import { getTechSpecPaths } from './tech-spec-paths';
-import { settlementPositions } from './settlement-positions';
+import {
+  freePayoutMode,
+  isPartnerFreePosition,
+  settlementPositions,
+  type PartnerPayout,
+} from './settlement-positions';
 import { computePrepayment } from 'src/order-photo/prepayment';
 
 // Человекочитаемые метки — дублируем к кодам, чтобы производство не ошиблось.
@@ -51,15 +56,17 @@ export interface PartnerOrderForPayload {
     // Изделие клиента (клиент принёс своё) — со склада партнёра НЕ списывается.
     clientItem: boolean;
   }[];
-  // Свободные позиции. Партнёру нужны только «печать на изделии заказчика»:
-  // футболки нашей нет, а печатать надо. Остальные свободные (кружка, багет)
-  // партнёра не касаются.
+  // Свободные позиции. Партнёру нужны те, за которые ему платят: печать по
+  // изделию заказчика и печать термотрансферов. Остальные свободные (кружка,
+  // багет) партнёра не касаются.
   items?: {
     formatPaper: string;
     quantity: number;
     pricePosition: number;
     printOnClientItem: boolean;
     thermalCost: number;
+    partnerPayout?: PartnerPayout | null;
+    partnerRateBasisPoints?: number | null;
   }[] | null;
 }
 
@@ -133,24 +140,27 @@ export function buildPartnerOrderPayload(
         line_total: i.price * i.quantity,
         client_item: i.clientItem,
       })),
-      // Печать на изделии заказчика: цвета и размера нет (изделие принёс
-      // клиент), поэтому поля футболки пустые, а client_item всегда true —
-      // со склада партнёра ничего не списывается.
-      ...(order.items ?? [])
-        .filter((i) => i.printOnClientItem)
-        .map((i) => ({
-          color: null,
-          size: null,
-          print_location: null,
-          print_location_label: 'Изделие заказчика',
-          print_type: null,
-          print_type_label: i.formatPaper,
-          quantity: i.quantity,
-          // Свободная цена: итог за позицию, на количество не умножается.
-          price_per_piece: i.pricePosition,
-          line_total: i.pricePosition,
-          client_item: true,
-        })),
+      // Работы без нашей футболки. Цвета и размера нет, поэтому поля футболки
+      // пустые, а client_item всегда true — со склада партнёра ничего не
+      // списывается. Печать термотрансферов отличается подписью: изделия там
+      // нет вовсе, и «Изделие заказчика» сбивало бы исполнителя с толку.
+      ...(order.items ?? []).filter(isPartnerFreePosition).map((i) => ({
+        color: null,
+        size: null,
+        print_location: null,
+        print_location_label:
+          freePayoutMode(i) === 'REVENUE_SHARE'
+            ? 'Термотрансфер'
+            : 'Изделие заказчика',
+        print_type: null,
+        print_type_label: i.formatPaper,
+        quantity: i.quantity,
+        // Свободная цена: итог за позицию, на количество не умножается.
+        price_per_piece: i.pricePosition,
+        line_total: i.pricePosition,
+        client_item: true,
+        payout_mode: freePayoutMode(i),
+      })),
     ],
     // Складская сводка для списания заготовок на стороне партнёра.
     stock: {

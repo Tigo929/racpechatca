@@ -1,4 +1,11 @@
 import { EnumStatus } from 'src/generated/prisma/enums';
+import { settleOrder, settlePosition } from 'src/partner/partner-settlement';
+import {
+  freePayoutMode,
+  isPartnerFreePosition,
+  settlementPositions,
+  type FreePositionSource,
+} from 'src/partner/settlement-positions';
 
 export const STATUS_LABELS: Partial<Record<EnumStatus, string>> = {
   [EnumStatus.NEW]: '🆕 Новый',
@@ -32,6 +39,13 @@ export type PartnerOrderData = {
   tshirtModel?: string | null;
   techSpecPhotoPaths?: string[];
   tshirtItems: PartnerOrderItem[];
+  /*
+   * Свободные позиции — печать по изделию заказчика и печать термотрансферов.
+   * Подпись правится при каждом нажатии кнопки статуса, и пока она собиралась
+   * из одних футболок, заказ без них после первого же нажатия терял состав
+   * и превращался в пустой бланк с номером.
+   */
+  items?: (FreePositionSource & { formatPaper: string })[] | null;
 };
 
 const PRINT_LOCATION_LABELS: Record<string, string> = {
@@ -59,24 +73,32 @@ function rub(n: number): string {
   return `${n.toLocaleString('ru-RU')} ₽`;
 }
 
+/**
+ * Итог по заказу для подписи.
+ *
+ * Считает общий модуль расчёта, а не своя формула: здесь когда-то лежала
+ * третья по счёту копия той же арифметики, и округляла она в другую сторону —
+ * в подписи исполнитель видел одну сумму, в выплате получал другую.
+ */
 export function calcSettlement(
-  items: PartnerOrderItem[],
+  order: PartnerOrderData,
   rateBasisPoints: number,
 ) {
-  const totalProduction = items.reduce(
-    (s, i) => s + i.pricePosition - i.designCost,
+  const positions = settlementPositions({
+    tshirtItems: order.tshirtItems,
+    items: order.items,
+  });
+  const settlement = settleOrder(positions, rateBasisPoints);
+  const totalProduction = positions.reduce(
+    (s, p) => s + p.pricePosition - p.designCost,
     0,
   );
-  const totalMaterials = items.reduce(
-    (s, i) =>
-      s +
-      i.thermalCost * i.quantity +
-      (i.clientItem ? 0 : i.blankCost * i.quantity),
-    0,
-  );
-  const totalShare = totalProduction - totalMaterials;
-  const reward = Math.round((totalShare * rateBasisPoints) / 10000);
-  return { totalProduction, totalMaterials, totalShare, reward };
+  return {
+    totalProduction,
+    totalMaterials: settlement.materials,
+    totalShare: settlement.margin,
+    reward: settlement.partnerProfit,
+  };
 }
 
 export function buildPartnerCaption(
@@ -101,28 +123,62 @@ export function buildPartnerCaption(
     ];
   });
 
+  // Свободные позиции, за которые исполнителю платят, — строкой с долей.
+  const freeLines = (order.items ?? [])
+    .filter(isPartnerFreePosition)
+    .flatMap((item, index) => {
+      const rate = item.partnerRateBasisPoints ?? rateBasisPoints;
+      const share = settlePosition(
+        {
+          pricePosition: item.pricePosition,
+          designCost: 0,
+          quantity: item.quantity,
+          thermalCost:
+            freePayoutMode(item) === 'REVENUE_SHARE' ? 0 : item.thermalCost,
+          blankCost: 0,
+          clientItem: true,
+          mode: freePayoutMode(item) as 'MARGIN_SHARE' | 'REVENUE_SHARE',
+          rateBasisPoints: item.partnerRateBasisPoints,
+        },
+        rateBasisPoints,
+      ).partnerProfit;
+      return [
+        `${order.tshirtItems.length + index + 1}) <b>${esc(item.formatPaper)}</b> ×${item.quantity}`,
+        `   ${rub(item.pricePosition)}  |  Ваша доля (${rate / 100}%): <b>${rub(share)}</b>`,
+      ];
+    });
+
   const { totalProduction, totalMaterials, reward } = calcSettlement(
-    order.tshirtItems,
+    order,
     rateBasisPoints,
   );
+
+  // Процент в итоге — только если он у всех позиций один: иначе одна общая
+  // цифра противоречила бы строкам выше.
+  const rates = new Set(
+    settlementPositions({
+      tshirtItems: order.tshirtItems,
+      items: order.items,
+    }).map((p) => p.rateBasisPoints ?? rateBasisPoints),
+  );
+  const rateLabel = rates.size === 1 ? ` (${[...rates][0] / 100}%)` : '';
 
   return [
     // Номер в <code>: в Telegram такой блок копируется одним нажатием.
     `🧾 <b>Заказ:</b> <code>${esc(order.numberOrder)}</code>`,
     `Статус: ${statusLabel}`,
-    ...(order.tshirtModel
-      ? [`Модель: <i>${esc(order.tshirtModel)}</i>`]
-      : []),
+    ...(order.tshirtModel ? [`Модель: <i>${esc(order.tshirtModel)}</i>`] : []),
     ...(attachmentCount > 1
       ? [`ТЗ: ${attachmentCount} файлов объединены в PDF`]
       : []),
     '',
     ...itemLines,
+    ...freeLines,
     '',
     '─────────────────────',
     `💰 <b>Итого (без дизайна): ${rub(totalProduction)}</b>`,
     `   Материалы: ${rub(totalMaterials)}`,
-    `   Ваша доля (${rateBasisPoints / 100}%): <b>${rub(reward)}</b>`,
+    `   Ваша доля${rateLabel}: <b>${rub(reward)}</b>`,
   ].join('\n');
 }
 

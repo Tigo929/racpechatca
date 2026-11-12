@@ -88,6 +88,10 @@ export interface ItemPhoto {
   isFreePrice?: boolean;
   /** Печать на изделии заказчика: заготовку не покупаем, партнёру платим. */
   printOnClientItem?: boolean;
+  /** Как платим партнёру за позицию: не платим / доля от маржи / % от суммы. */
+  partnerPayout?: 'NONE' | 'MARGIN_SHARE' | 'REVENUE_SHARE';
+  /** Ставка позиции в сотых процента; null — общая из настроек. */
+  partnerRateBasisPoints?: number | null;
 }
 
 export interface OrderExecutor {
@@ -272,6 +276,10 @@ export interface CreateItemDto {
   isFreePrice?: boolean;
   /** Печать на изделии заказчика: включает позицию в расчёт с партнёром. */
   printOnClientItem?: boolean;
+  /** Как платим партнёру за позицию: не платим / доля от маржи / % от суммы. */
+  partnerPayout?: 'NONE' | 'MARGIN_SHARE' | 'REVENUE_SHARE';
+  /** Ставка позиции в сотых процента; не передана — берём из настроек. */
+  partnerRateBasisPoints?: number;
 }
 
 export interface CreateTshirtItemDto {
@@ -405,6 +413,8 @@ export interface UpdateItemDto {
   price?: number;
   isFreePrice?: boolean;
   printOnClientItem?: boolean;
+  partnerPayout?: 'NONE' | 'MARGIN_SHARE' | 'REVENUE_SHARE';
+  partnerRateBasisPoints?: number;
 }
 
 /**
@@ -852,6 +862,8 @@ export interface PartnerSettings {
   thermalTransferCost: number;
   blankTshirtCost: number;
   partnerRateBasisPoints: number;
+  /** Процент от суммы позиции для печати термотрансферов (без вычета затрат). */
+  transferRateBasisPoints?: number;
   partnerName: string;
   /** Кто печатает холсты — показывается в отчёте. */
   canvasContractorName: string;

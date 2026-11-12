@@ -14,6 +14,7 @@ export interface UpdatePartnerSettingsDto {
   thermalTransferCost?: number;
   blankTshirtCost?: number;
   partnerRateBasisPoints?: number;
+  transferRateBasisPoints?: number;
   partnerName?: string;
   canvasContractorName?: string;
   deliveryPriceYandexPvz?: number;
@@ -44,6 +45,7 @@ export class PartnerSettingsService {
         thermalTransferCost: dto.thermalTransferCost,
         blankTshirtCost: dto.blankTshirtCost,
         partnerRateBasisPoints: dto.partnerRateBasisPoints,
+        transferRateBasisPoints: dto.transferRateBasisPoints,
         partnerName: dto.partnerName?.trim() || undefined,
         canvasContractorName: dto.canvasContractorName?.trim() || undefined,
         maxLinkTemplate: dto.maxLinkTemplate?.trim() || undefined,

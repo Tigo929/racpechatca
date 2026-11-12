@@ -130,7 +130,9 @@ export class TelegramUpdateService {
             statusChangedAt: new Date(),
             sourceRevision: { increment: 1 },
           },
-          include: { tshirtItems: true },
+          // items тоже: свободные позиции — такая же работа исполнителя,
+          // и без них выплата по заказу без футболок считалась бы нулевой.
+          include: { tshirtItems: true, items: true },
         }),
       ]);
 
@@ -138,7 +140,7 @@ export class TelegramUpdateService {
       try {
         const settings = await this.prisma.partnerSettings.findFirst();
         const rate = settings?.partnerRateBasisPoints ?? 3000;
-        const payout = calcGulianPayout(updated.tshirtItems, rate);
+        const payout = calcGulianPayout(updated, rate);
         const prodStatus = isProblem ? 'problem' : toGulianStatus(newStatus, updated.executorSentAt as Date | null);
         await this.prisma.gulianOutbox.create({
           data: {

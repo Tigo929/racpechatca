@@ -23,7 +23,11 @@ import {
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
 import { settleOrder, settlePosition } from 'src/partner/partner-settlement';
 import { getTechSpecPaths } from 'src/partner/tech-spec-paths';
-import { settlementPositions } from 'src/partner/settlement-positions';
+import {
+  freePayoutMode,
+  isPartnerFreePosition,
+  settlementPositions,
+} from 'src/partner/settlement-positions';
 import { buildMarketplacePartnerMessage } from './marketplace-partner-message';
 
 const PRINT_LOCATION_LABELS: Record<EnumPrintLocation, string> = {
@@ -396,22 +400,78 @@ export class TshirtPartnerTelegramService {
       (order.tshirtItems.length === 0 && (order.items?.length ?? 0) > 0);
 
     /*
-     * Свободные позиции — это работы без готовой футболки: печать по изделию
-     * заказчика и подобное. Их не было в отчёте вовсе: он собирался только из
-     * позиций-футболок, и такой заказ уходил исполнителю с пустым составом.
-     * Цену тут не делим — она договорная, и количество в неё не умножается.
+     * Заказ на одни термотрансферы: футболок нет и все оплачиваемые позиции —
+     * печать плёнки. Изделия в нём нет вообще, поэтому ни «заказ на футболку»,
+     * ни «изделия привозит клиент» не подходят: исполнитель по второй строке
+     * шёл бы ждать вещи, которых никто не привезёт.
      */
-    const freeItems = (order.items ?? []).map(
-      (item, index) =>
-        `${order.tshirtItems.length + index + 1}) ${escapeHtml(item.formatPaper)}` +
-        ` ×${item.quantity} — <b>${money(item.pricePosition)}</b>`,
+    const partnerFreeItems = (order.items ?? []).filter(isPartnerFreePosition);
+    const transfersOnly =
+      order.tshirtItems.length === 0 &&
+      partnerFreeItems.length > 0 &&
+      partnerFreeItems.every((i) => freePayoutMode(i) === 'REVENUE_SHARE');
+
+    // Процент в итоге показываем, только если он у всех позиций один.
+    // Иначе одна общая цифра противоречила бы строкам выше.
+    const rates = new Set(
+      settlementPositions(order).map(
+        (p) => p.rateBasisPoints ?? settings.partnerRateBasisPoints,
+      ),
     );
+    const rateLabel = rates.size === 1 ? ` (${[...rates][0] / 100}%)` : '';
+
+    /*
+     * Свободные позиции — это работы без готовой футболки: печать по изделию
+     * заказчика, печать термотрансферов и подобное. Их не было в отчёте вовсе:
+     * он собирался только из позиций-футболок, и такой заказ уходил исполнителю
+     * с пустым составом. Цену тут не делим — она договорная, и количество в
+     * неё не умножается.
+     *
+     * Долю показываем строкой рядом: без неё исполнитель видел сумму заказа и
+     * ни одного рубля своего заработка — ровно то, из-за чего печать
+     * термотрансферов выглядела работой впустую.
+     */
+    const freeItems = (order.items ?? []).map((item, index) => {
+      const number = order.tshirtItems.length + index + 1;
+      const title =
+        `${number}) ${escapeHtml(item.formatPaper)}` +
+        ` ×${item.quantity} — <b>${money(item.pricePosition)}</b>`;
+      if (!isPartnerFreePosition(item)) return title;
+      const positionSettlement = settlePosition(
+        {
+          pricePosition: item.pricePosition,
+          designCost: 0,
+          quantity: item.quantity,
+          thermalCost:
+            freePayoutMode(item) === 'REVENUE_SHARE' ? 0 : item.thermalCost,
+          blankCost: 0,
+          clientItem: true,
+          mode: freePayoutMode(item) as 'MARGIN_SHARE' | 'REVENUE_SHARE',
+          rateBasisPoints: item.partnerRateBasisPoints,
+        },
+        settings.partnerRateBasisPoints,
+      );
+      const rate =
+        item.partnerRateBasisPoints ?? settings.partnerRateBasisPoints;
+      return [
+        title,
+        `   Ваша доля (${rate / 100}%): <b>${money(positionSettlement.partnerProfit)}</b>`,
+      ].join('\n');
+    });
 
     return [
-      `🧾 <b>${allClientItems ? 'Заказ на нанесение принта' : 'Заказ на футболку'}</b>`,
-      ...(allClientItems
-        ? ['<i>Изделия привозит клиент — заготовки со склада не нужны.</i>']
-        : []),
+      `🧾 <b>${
+        transfersOnly
+          ? 'Заказ на печать термотрансферов'
+          : allClientItems
+            ? 'Заказ на нанесение принта'
+            : 'Заказ на футболку'
+      }</b>`,
+      ...(transfersOnly
+        ? ['<i>Печатаем только плёнку — изделий в заказе нет.</i>']
+        : allClientItems
+          ? ['<i>Изделия привозит клиент — заготовки со склада не нужны.</i>']
+          : []),
       `Заказ: <code>${escapeHtml(order.numberOrder)}</code>`,
       ...(order.tshirtModel
         ? [`Модель: ${escapeHtml(order.tshirtModel)}`]
@@ -422,7 +482,13 @@ export class TshirtPartnerTelegramService {
       '',
       ...items,
       ...(freeItems.length
-        ? ['', '<b>Работы без нашей футболки</b>', ...freeItems]
+        ? [
+            '',
+            transfersOnly
+              ? '<b>Что печатаем</b>'
+              : '<b>Работы без нашей футболки</b>',
+            ...freeItems,
+          ]
         : []),
       '',
       '<b>Расчёт для исполнителя</b>',
@@ -431,7 +497,7 @@ export class TshirtPartnerTelegramService {
           order.tshirtItems.reduce((s, i) => s + i.designCost, 0),
       )}</b>`,
       `Материалы: ${money(settlement.materials)}`,
-      `Доля (${settings.partnerRateBasisPoints / 100}%): <b>${money(settlement.partnerProfit)}</b>`,
+      `Доля${rateLabel}: <b>${money(settlement.partnerProfit)}</b>`,
       `К выплате: <b>${money(settlement.reward)}</b>`,
     ].join('\n');
   }

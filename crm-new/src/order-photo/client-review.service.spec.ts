@@ -26,7 +26,7 @@ const delivered = {
   urlCommunication: '1234-0001-1',
 };
 
-function build(rows: Record<string, unknown>[]) {
+function build(rows: Record<string, unknown>[], asked: string[] = []) {
   const findMany = jest.fn().mockResolvedValue(rows);
   const update = jest.fn().mockResolvedValue({
     numberOrder: '20261104-001',
@@ -34,9 +34,13 @@ function build(rows: Record<string, unknown>[]) {
     productCategory: 'TSHIRT',
   });
   const sendToOwner = jest.fn().mockResolvedValue(true);
+  // Кому про отзыв уже писали — отдельный сервис: очередь только
+  // просеивает своих кандидатов его набором.
+  const audience = { askedIdentities: jest.fn().mockResolvedValue(new Set(asked)) };
   const service = new ClientReviewService(
     { orderPhoto: { findMany, update } } as never,
     { sendToOwner } as never,
+    audience as never,
   );
   return { service, findMany, update, sendToOwner };
 }
@@ -53,6 +57,18 @@ describe('просьба об отзыве уходит клиенту сама'
     // отправки. Воркер ничего не придумывает.
     expect(items[0]!.text).toContain('Как вам футболка');
     expect(items[0]!.text).toContain('ozon.ru/my/orderlist');
+  });
+
+  it('повторный заказ клиента, которому уже писали, в очередь не попадает', async () => {
+    /*
+     * Он заказал второй раз. Отзыв (или просьба) закреплён за человеком,
+     * а не за покупкой: отметка стоит на прошлом заказе, узнаём его по
+     * нику. Без этого постоянный заказчик получал просьбу после каждой
+     * покупки — первый раз вежливость, третий выглядит как рассылка.
+     */
+    const { service } = build([delivered], ['tg:client_name']);
+
+    expect(await service.pending(5)).toHaveLength(0);
   });
 
   it('не выкупленный заказ не берём: товара у человека нет', async () => {

@@ -11,6 +11,8 @@ import {
   REVIEW_REMINDER_CATEGORIES,
 } from './review-reminder-rules';
 import { buildReviewRequestText } from './review-reminder.service';
+import { skipAlreadyAsked } from './client-identity';
+import { ReviewAudienceService } from './review-audience.service';
 
 /**
  * Очередь просьб об отзыве, которые уходят клиенту сами.
@@ -53,6 +55,7 @@ export class ClientReviewService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly telegram: TelegramService,
+    private readonly audience: ReviewAudienceService,
   ) {}
 
   /**
@@ -104,8 +107,17 @@ export class ClientReviewService {
       },
     });
 
+    /*
+     * Тому, кому про отзыв уже писали, не пишем снова.
+     *
+     * Отметка стоит на прошлом заказе, а человек тот же — узнаём его по
+     * нику в Telegram. Для постоянного заказчика это разница между
+     * «спросили один раз» и рассылкой после каждой покупки.
+     */
+    const asked = await this.audience.askedIdentities();
+
     const items: PendingReviewRequest[] = [];
-    for (const order of rows) {
+    for (const order of skipAlreadyAsked(rows, asked)) {
       /*
        * Срок проверяем в коде, а не запросом: правило «когда уместно
        * просить» одно на весь проект (review-reminder-rules), и повторять

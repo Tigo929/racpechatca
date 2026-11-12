@@ -221,6 +221,7 @@ interface FormState {
   thermalTransferCost: string;
   blankTshirtCost: string;
   ratePercent: string;
+  transferRatePercent: string;
   partnerName: string;
   canvasContractorName: string;
   maxLinkTemplate: string;
@@ -233,6 +234,7 @@ function toForm(s: PartnerSettings): FormState {
     thermalTransferCost: String(s.thermalTransferCost),
     blankTshirtCost: String(s.blankTshirtCost),
     ratePercent: (s.partnerRateBasisPoints / 100).toString(),
+    transferRatePercent: ((s.transferRateBasisPoints ?? 3000) / 100).toString(),
     partnerName: s.partnerName,
     canvasContractorName: s.canvasContractorName,
     maxLinkTemplate: s.maxLinkTemplate,
@@ -266,12 +268,17 @@ export default function SettingsPage() {
     const thermal = Math.round(Number(form.thermalTransferCost));
     const blank = Math.round(Number(form.blankTshirtCost));
     const pct = Number(form.ratePercent.replace(',', '.'));
+    const transferPct = Number(form.transferRatePercent.replace(',', '.'));
     if ([thermal, blank].some((n) => !Number.isFinite(n) || n < 0)) {
       toast.error('Себестоимость должна быть числом ≥ 0');
       return;
     }
     if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
       toast.error('Ставка партнёра — от 0 до 100%');
+      return;
+    }
+    if (!Number.isFinite(transferPct) || transferPct < 0 || transferPct > 100) {
+      toast.error('Процент за термотрансферы — от 0 до 100%');
       return;
     }
     if (!form.maxLinkTemplate.includes('{phone}') && !form.maxLinkTemplate.includes('{phone_plus}')) {
@@ -286,6 +293,7 @@ export default function SettingsPage() {
       thermalTransferCost: thermal,
       blankTshirtCost: blank,
       partnerRateBasisPoints: Math.round(pct * 100),
+      transferRateBasisPoints: Math.round(transferPct * 100),
       partnerName: form.partnerName.trim(),
       canvasContractorName: form.canvasContractorName.trim(),
       maxLinkTemplate: form.maxLinkTemplate.trim(),
@@ -344,6 +352,22 @@ export default function SettingsPage() {
                   value={form.ratePercent}
                   onChange={(e) => setForm({ ...form, ratePercent: e.target.value })}
                 />
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Процент за термотрансферы, %</span>
+                <input
+                  type="number" min={0} max={100} step="0.01" className={`mt-1 ${field}`}
+                  value={form.transferRatePercent}
+                  onChange={(e) => setForm({ ...form, transferRatePercent: e.target.value })}
+                />
+                {/* База у этого процента другая — сумма позиции целиком,
+                    без вычета себестоимости. Подпись нужна, чтобы два поля
+                    с одинаковым «30%» не путали между собой. */}
+                <span className="mt-1 block text-xs text-gray-400">
+                  Считается от суммы позиции, себестоимость не вычитается.
+                  Подставляется в новые позиции; в оформленных остаётся та,
+                  что зафиксирована при создании.
+                </span>
               </label>
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">Имя партнёра</span>

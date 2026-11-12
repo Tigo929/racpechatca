@@ -12,6 +12,7 @@ import DtoCreateItemOrder from './dto/create-item-order.dto';
 import { OrderFinancialIntegrityService } from './order-financial-integrity.service';
 import { calcItemPricePosition } from './order-pricing';
 import { PartnerSettingsService } from 'src/partner/partner-settings.service';
+import { resolveItemPayout } from 'src/partner/item-payout';
 
 @Injectable()
 export class OrderItemService {
@@ -61,16 +62,16 @@ export class OrderItemService {
       const quantity = dto.quantity ?? item.quantity;
       const price = dto.price ?? item.price;
 
-      // Признак печати на изделии заказчика меняет состав расчёта с партнёром,
-      // поэтому вместе с ним пересматриваем и снимок себестоимости плёнки:
-      // включили — берём текущую из настроек, выключили — обнуляем.
-      const printOnClientItem = dto.printOnClientItem ?? item.printOnClientItem;
-      let thermalCost = item.thermalCost;
-      if (printOnClientItem !== item.printOnClientItem) {
-        thermalCost = printOnClientItem
-          ? (await this.partnerSettings.get(tx)).thermalTransferCost
-          : 0;
-      }
+      // Режим выплаты партнёру меняет состав расчёта, поэтому вместе с ним
+      // пересматриваем снимки себестоимости и ставки: сменили режим — берём
+      // актуальные значения из настроек, ушли в «не платим» — обнуляем.
+      const payout = resolveItemPayout(
+        dto,
+        item,
+        await this.partnerSettings.get(tx),
+      );
+      const { printOnClientItem, thermalCost, partnerPayout } = payout;
+      const partnerRateBasisPoints = payout.rateBasisPoints;
 
       await tx.itemPhoto.update({
         where: { id: idItem },
@@ -82,6 +83,8 @@ export class OrderItemService {
           isFreePrice: itemFreePrice,
           printOnClientItem,
           thermalCost,
+          partnerPayout,
+          partnerRateBasisPoints,
           pricePosition: calcItemPricePosition(price, quantity, 0, freePrice),
         },
       });
@@ -117,13 +120,16 @@ export class OrderItemService {
       const itemFreePrice = dto.isFreePrice ?? false;
       const effectiveFreePrice = orderExists.isFreePrice || itemFreePrice;
 
-      // Печать на изделии заказчика: заготовку не покупаем, но термоперенос
-      // и доля партнёра остаются. Себестоимость снимаем сейчас — тем же
-      // правилом, что при создании заказа.
-      const printOnClientItem = dto.printOnClientItem ?? false;
-      const thermalCost = printOnClientItem
-        ? (await this.partnerSettings.get(tx)).thermalTransferCost
-        : 0;
+      // Работа партнёра: печать по изделию заказчика (доля от маржи) или
+      // печать термотрансферов (процент от суммы). Себестоимость и ставку
+      // снимаем сейчас — тем же правилом, что при создании заказа.
+      const payout = resolveItemPayout(
+        dto,
+        null,
+        await this.partnerSettings.get(tx),
+      );
+      const { printOnClientItem, thermalCost, partnerPayout } = payout;
+      const partnerRateBasisPoints = payout.rateBasisPoints;
 
       await tx.itemPhoto.create({
         data: {
@@ -134,6 +140,8 @@ export class OrderItemService {
           isFreePrice: itemFreePrice,
           printOnClientItem,
           thermalCost,
+          partnerPayout,
+          partnerRateBasisPoints,
           pricePosition: calcItemPricePosition(
             dto.price,
             dto.quantity,

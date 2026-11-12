@@ -30,7 +30,13 @@ import {
   PRINT_LOCATION_LABELS,
 } from '../../constants';
 import type { AppUser, CreateOrderDto } from '../../types/index';
-import { CLIENT_ITEM_PRINT_NAME, FREE_PRICE_HINT } from './freePresets';
+import {
+  FREE_PRICE_HINT,
+  payoutOption,
+  ratePercentToBasisPoints,
+  type PartnerPayout,
+} from './freePresets';
+import { PartnerPayoutPicker } from './PartnerPayoutPicker';
 
 const photoItemSchema = z.object({
   isFreePrice: z.boolean().optional(),
@@ -44,10 +50,11 @@ const tshirtItemSchema = z.object({
   // Позиция со свободной ценой: вместо цвета/размера — произвольное название.
   freePrice: z.boolean().optional(),
   name: z.string().optional(),
-  // Печать на изделии заказчика: заготовку не покупаем, но партнёру платим
-  // за плёнку и его долю — расчёт без этого признака считает такую работу
-  // чистой прибылью владельца.
-  printOnClientItem: z.boolean().optional(),
+  // Как платим партнёру за свободную позицию. Без режима расчёт считал бы
+  // такую работу чистой прибылью владельца, а исполнитель видел ноль.
+  partnerPayout: z.enum(['NONE', 'MARGIN_SHARE', 'REVENUE_SHARE']).optional(),
+  // Своя ставка в процентах; пусто — общая из настроек партнёра.
+  partnerRatePercent: z.string().optional(),
   color: z.string().min(1, 'Укажите цвет'),
   size: z.enum(['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']),
   printLocation: z.enum(['FRONT', 'BACK', 'FRONT_BACK', 'BY_TZ']),
@@ -97,7 +104,8 @@ const freeItemSchema = z.object({
   name: z.string(),
   quantity: z.coerce.number().int().positive(),
   price: z.coerce.number().int().min(0),
-  printOnClientItem: z.boolean().optional(),
+  partnerPayout: z.enum(['NONE', 'MARGIN_SHARE', 'REVENUE_SHARE']).optional(),
+  partnerRatePercent: z.string().optional(),
   clientItem: z.boolean().optional(),
 });
 
@@ -626,7 +634,10 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
           typePaper: 'GLOSS',
           quantity: i.quantity,
           price: i.price,
-          printOnClientItem: i.printOnClientItem ?? false,
+          partnerPayout: i.partnerPayout ?? 'NONE',
+          partnerRateBasisPoints: ratePercentToBasisPoints(
+            i.partnerRatePercent ?? '',
+          ),
         })),
       });
       return;
@@ -662,7 +673,10 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
         quantity: r.quantity,
         price: r.price,
         isFreePrice: true,
-        printOnClientItem: r.printOnClientItem ?? false,
+        partnerPayout: r.partnerPayout ?? 'NONE',
+        partnerRateBasisPoints: ratePercentToBasisPoints(
+          r.partnerRatePercent ?? '',
+        ),
       }));
       mutation.mutate({
         ...base,
@@ -1208,32 +1222,42 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
                           количестве 3 и цене 900 в заказ уйдёт 900, не 2700. */}
                       <p className="mt-1 text-xs text-gray-500">{FREE_PRICE_HINT}</p>
                     </div>
-                    <label className="col-span-3 flex items-center gap-2.5 p-2.5 rounded-lg border border-gray-200 cursor-pointer hover:border-violet-300 transition-colors">
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 accent-violet-600"
-                        {...register(`tshirtItems.${idx}.printOnClientItem`, {
-                          onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-                            // Название подставляем только в пустое поле:
-                            // затирать написанное человеком нельзя.
-                            if (
-                              e.target.checked &&
-                              !(getValues(`tshirtItems.${idx}.name`) ?? '').trim()
-                            ) {
-                              setValue(
-                                `tshirtItems.${idx}.name`,
-                                CLIENT_ITEM_PRINT_NAME,
-                                { shouldValidate: true, shouldDirty: true },
-                              );
-                            }
-                          },
-                        })}
+                    <div className="col-span-3 p-2.5 rounded-lg border border-gray-200">
+                      <label className={labelCls}>Партнёру</label>
+                      <PartnerPayoutPicker
+                        value={
+                          (watch(`tshirtItems.${idx}.partnerPayout`) ??
+                            'NONE') as PartnerPayout
+                        }
+                        onChange={(value) => {
+                          setValue(`tshirtItems.${idx}.partnerPayout`, value, {
+                            shouldDirty: true,
+                          });
+                          // Название подставляем только в пустое поле:
+                          // затирать написанное человеком нельзя.
+                          const preset = payoutOption(value).presetName;
+                          if (
+                            preset &&
+                            !(getValues(`tshirtItems.${idx}.name`) ?? '').trim()
+                          ) {
+                            setValue(`tshirtItems.${idx}.name`, preset, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                            });
+                          }
+                        }}
+                        ratePercent={
+                          watch(`tshirtItems.${idx}.partnerRatePercent`) ?? ''
+                        }
+                        onRateChange={(value) =>
+                          setValue(
+                            `tshirtItems.${idx}.partnerRatePercent`,
+                            value,
+                            { shouldDirty: true },
+                          )
+                        }
                       />
-                      <span className="text-sm text-gray-700">
-                        Печать на изделии заказчика — заготовку не покупаем,
-                        партнёру платим за плёнку и его долю
-                      </span>
-                    </label>
+                    </div>
                   </div>
                 ) : (
                   <>

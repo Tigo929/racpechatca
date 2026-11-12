@@ -19,6 +19,8 @@ import {
   waitsForAutoReview,
 } from './review-reminder-rules';
 import { customerChat } from './customer-chat-url';
+import { skipAlreadyAsked } from './client-identity';
+import { ReviewAudienceService } from './review-audience.service';
 import { telegramUsernameFromUrl } from './client-greeting';
 
 const REVIEW_REMINDER_SCAN_MS = 60 * 60 * 1000;
@@ -216,6 +218,7 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly telegram: TelegramService,
+    private readonly audience: ReviewAudienceService,
   ) {}
 
   onModuleInit() {
@@ -370,7 +373,15 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
         },
       });
 
-      for (const order of orders) {
+      /*
+       * Постоянного заказчика не трогаем, если про отзыв ему уже писали.
+       *
+       * Отметка стоит на том заказе, по которому писали, а человек — тот
+       * же: опознаём его по способу связи. Без этого второй и третий заказ
+       * одного клиента снова звали владельца писать «оставьте отзыв».
+       */
+      const asked = await this.audience.askedIdentities();
+      for (const order of skipAlreadyAsked(orders, asked)) {
         /*
          * Просьба уйдёт клиенту сама — владельца пока не трогаем.
          *
