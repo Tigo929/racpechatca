@@ -2299,6 +2299,39 @@ model PushConfig {
   createdAt       DateTime @default(now())
 }
 
+/// Очередь уведомлений о заявках с сайта в Telegram.
+///
+/// Строка появляется в ТОЙ ЖЕ транзакции, что и заказ, — ровно как у Web Push
+/// (LeadPushDelivery). Повод завести её нашёлся 13 ноября 2026: перестал
+/// отвечать посредник, через которого сервер ходит в Telegram (прямой запрос
+/// к api.telegram.org фильтруется по пути), бот молчал сутки с лишним, и
+/// уведомления о четырёх заявках ушли в лог и пропали навсегда — заказы
+/// лежали в CRM, а владелец о них не знал.
+///
+/// Внешнего ключа на заказ нет, как и у LeadPushDelivery: удаление заказа не
+/// должно ронять отправку, а ненужную строку воркер закрывает сам, не найдя
+/// заказа.
+model LeadTelegramDelivery {
+  id String @id @default(uuid())
+  /// Одно уведомление на заказ: сайт досылает недоставленную заявку по кругу.
+  orderId String @unique
+  /// Номер — для логов и отчётов, чтобы не ходить за ним в заказ.
+  numberOrder String
+  /// Готовый текст сообщения, собранный в момент заявки.
+  body String
+  createdAt DateTime @default(now())
+  /// PENDING → SENT | FAILED | CANCELLED (заказ удалён).
+  status String @default("PENDING")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  claimedUntil DateTime?
+  claimToken String?
+  sentAt DateTime?
+  lastError String?
+
+  @@index([status, nextAttemptAt])
+}
+
 // ── Аналитика: рост и изменения (этап 11) ─────────────────────────────────────
 // Реестр изменений продукта/сайта/CRM и версии их оценок «до / после».
 // Без PII: только внутренние описания для администратора и аналитические

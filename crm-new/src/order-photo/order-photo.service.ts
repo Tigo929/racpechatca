@@ -89,11 +89,7 @@ import {
   hasProductionItems,
   NO_PRODUCTION_ITEMS_MESSAGE,
 } from './tshirt-production-items';
-import {
-  buildLeadNotification,
-  leadContactLine,
-  pickLeadResponders,
-} from './lead-notification';
+import { LeadAlertService } from './lead-alert.service';
 import { PushService } from '../push/push.service';
 
 // Сборка ссылки на переписку живёт в communication-url.ts — там же тесты
@@ -276,6 +272,12 @@ export class OrderPhotoService {
      * только ускоряет фоновую работу, которую доделает опрос.
      */
     private readonly orderEvents?: OrderEventsService,
+    /*
+     * Очередь уведомлений о заявках. Необязательная по той же причине, что
+     * и шина событий выше: юнит-тесты собирают сервис руками. В бою её
+     * подставляет контейнер, и заявка без уведомления не остаётся.
+     */
+    private readonly leadAlerts?: LeadAlertService,
   ) {}
 
   async createOrder(dto: DtoCreateOrder, adminId?: string) {
@@ -638,9 +640,14 @@ export class OrderPhotoService {
         );
         return created;
       }
-      // Уведомление вне транзакции и без await на ошибку: Telegram может
-      // молчать (блокировки, прокси), но заявка от этого пропасть не должна.
-      void this.notifyLead(created, dto);
+      /*
+       * Уведомление уже в очереди — оно поставлено в той же транзакции, что
+       * и заказ. Здесь только подталкиваем отправку, чтобы в обычном случае
+       * сообщение ушло в эту же секунду, а не на следующем тике воркера.
+       * Ошибку не ждём: заявка принята, и молчание Telegram её не отменяет —
+       * очередь повторит сама.
+       */
+      void this.leadAlerts?.flush();
       return created;
     } catch (error) {
       // Страховка на случай, если доставки пришли в разные процессы и
@@ -656,58 +663,6 @@ export class OrderPhotoService {
       }
       throw error;
     }
-  }
-
-  /**
-   * Сообщает в общий чат о заявке с сайта и тегает того, кто должен ответить.
-   *
-   * Без этого заявка лежит в разделе обращений молча, пока кто-нибудь не
-   * заглянет туда сам, — а клиент в это время ждёт. Упоминание в Telegram
-   * даёт push даже при заглушенном чате.
-   */
-  private async notifyLead(
-    created: { numberOrder: string },
-    dto: DtoCreateLead,
-  ): Promise<void> {
-    try {
-      const [users, settings] = await Promise.all([
-        this.prisma.user.findMany({
-          where: { isActive: true },
-          select: {
-            username: true,
-            telegramUsername: true,
-            role: true,
-            isActive: true,
-          },
-        }),
-        this.prisma.partnerSettings.findUnique({
-          where: { id: 'default' },
-          select: { leadMentionUsernames: true },
-        }),
-      ]);
-      const text = buildLeadNotification(
-        {
-          numberOrder: created.numberOrder,
-          name: dto.name,
-          productName: dto.productName,
-          quantity: dto.quantity,
-          total: dto.total,
-          comment: dto.comment ?? dto.description,
-          contact: leadContactLine(dto),
-        },
-        pickLeadResponders(users, settings?.leadMentionUsernames ?? ''),
-      );
-      // Заявку с сайта разбирают в личке, а не в общей группе, где она
-      // тонет среди задач: владельцу и всем, кто её ведёт.
-      await this.telegram.sendLeadAlert(text);
-    } catch (error) {
-      // Заявка уже принята и лежит в CRM — молчание бота её не отменяет.
-      this.logger.warn(
-        `Не удалось уведомить о заявке ${created.numberOrder}: ${String(error)}`,
-      );
-    }
-    // Web Push has its own durable queue, populated in createLeadTx. Telegram
-    // retries cannot delay it and a process restart cannot lose a committed job.
   }
 
   /**
@@ -1177,6 +1132,14 @@ export class OrderPhotoService {
         include: { items: true, tshirtItems: true, canvasItems: true },
       });
       await this.push.enqueueLead(tx, created, dto.productName);
+      /*
+       * Уведомление в Telegram — в той же транзакции, рядом с push.
+       * Раньше оно отправлялось «на удачу» сразу после коммита, и когда
+       * Telegram был недоступен (а он недоступен каждый раз, когда падает
+       * посредник), заявка оставалась незамеченной навсегда. Теперь текст
+       * лежит в базе и уходит, как только канал отвечает.
+       */
+      await this.leadAlerts?.enqueue(tx, created, dto);
       return created;
     });
   }
