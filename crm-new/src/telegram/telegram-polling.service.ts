@@ -54,24 +54,53 @@ export class TelegramPollingService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn('TELEGRAM_BOT_TOKEN не задан — поллинг не запускается');
       return;
     }
-    // Не блокируем старт приложения: цикл живёт своей жизнью.
-    void this.start();
+    /*
+     * Не блокируем старт приложения: цикл живёт своей жизнью.
+     *
+     * `catch` здесь — последний рубеж, и он не формальность. 14.11.2026
+     * бэкенд ушёл в бесконечный рестарт: `start()` падал на первом же
+     * запросе к Telegram (умер прокси), обещание никто не ловил, и Node
+     * убивал процесс целиком. Вся CRM оказалась недоступна из-за молчания
+     * мессенджера — притом что заказы, деньги и отчёты от него не зависят.
+     */
+    void this.start().catch((err) =>
+      this.logger.error(
+        `Telegram polling остановлен: ${err instanceof Error ? err.message : String(err)}`,
+      ),
+    );
   }
 
   onModuleDestroy() {
     this.stopped = true;
   }
 
-  private async start(): Promise<void> {
-    // getUpdates не работает, пока установлен вебхук. Накопленные апдейты не
-    // сбрасываем — нажатия, сделанные до старта, тоже обработаем.
-    await this.call('deleteWebhook', { drop_pending_updates: false });
+  /**
+   * Цикл опроса. Публичный ради тестов: именно его падение на первом запросе
+   * уронило CRM 14.11.2026, и проверять это нужно без обхода приватности.
+   */
+  async start(): Promise<void> {
     this.logger.log('Telegram polling запущен');
 
     let failuresInARow = 0;
+    /*
+     * Вебхук снимаем внутри цикла, а не до него.
+     *
+     * getUpdates не работает, пока установлен вебхук, поэтому снять его
+     * нужно — но раньше этот запрос стоял до цикла и без защиты: если
+     * Telegram в момент старта недоступен (а он недоступен каждый раз,
+     * когда падает посредник), падал весь процесс. Теперь попытка
+     * повторяется вместе с опросом и прекращается, как только удалась.
+     */
+    let webhookCleared = false;
 
     while (!this.stopped) {
       try {
+        if (!webhookCleared) {
+          // Накопленные апдейты не сбрасываем — нажатия, сделанные до
+          // старта, тоже обработаем.
+          await this.call('deleteWebhook', { drop_pending_updates: false });
+          webhookCleared = true;
+        }
         const res = await this.call<TgUpdateWithId[]>('getUpdates', {
           offset: this.offset || undefined,
           timeout: LONG_POLL_SECONDS,
