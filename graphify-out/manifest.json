@@ -235,8 +235,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/main.ts": {
-    "mtime": 1787209109.870533,
-    "ast_hash": "64c37dba92a9a7f4027508708a4a0730",
+    "mtime": 1794677049.0719519,
+    "ast_hash": "35b55efc4ae0d4961f1fa8cec6b47589",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/dto/all-oreders-for-query.dto.ts": {
@@ -730,8 +730,8 @@
     "semantic_hash": ""
   },
   "frontend/src/config/business.ts": {
-    "mtime": 1790416670.8835917,
-    "ast_hash": "8390d963a866ceeec337258ffc73b226",
+    "mtime": 1794843111.829032,
+    "ast_hash": "7f5a0e4dae1627c5262ab89c0ebafd72",
     "semantic_hash": ""
   },
   "frontend/src/constants.ts": {
@@ -1215,8 +1215,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/telegram/telegram-polling.service.ts": {
-    "mtime": 1793787922.0298285,
-    "ast_hash": "c84e7a808f6596d0c038a9c6de413913",
+    "mtime": 1794677146.5404649,
+    "ast_hash": "428d9fef1330501658b586dfffa49a3f",
     "semantic_hash": ""
   },
   "crm-new/src/telegram/telegram-sticker-link.service.spec.ts": {
@@ -5450,8 +5450,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/client-message/business.ts": {
-    "mtime": 1793951796.6340477,
-    "ast_hash": "8ed66ca09a0dca966f74c5a9ec687e3d",
+    "mtime": 1794843111.8280158,
+    "ast_hash": "e7e8fadf959871c43c62ca47456e63e6",
     "semantic_hash": ""
   },
   "crm-new/src/client-message/client-message.service.ts": {
@@ -5637,6 +5637,16 @@
   "crm-new/src/order-photo/lead-alert.ts": {
     "mtime": 1794675253.2582707,
     "ast_hash": "1b5d33ed05ee637addffe48e633ebdf8",
+    "semantic_hash": ""
+  },
+  "crm-new/src/client-message/pickup-address.spec.ts": {
+    "mtime": 1794843160.915974,
+    "ast_hash": "76e782174878223387d23a68e46261cf",
+    "semantic_hash": ""
+  },
+  "crm-new/src/telegram/telegram-polling.spec.ts": {
+    "mtime": 1794677160.3003435,
+    "ast_hash": "f4a5daafaaf22dfe52300ef2988f9679",
     "semantic_hash": ""
   }
 }

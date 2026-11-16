@@ -77,19 +77,32 @@ export function formatPaymentPhoneForClient(order: {
 }
 
 const izmailovskySevenPickupAddress = 'Измайловский проезд, 7к2, подъезд 1';
+const sirenevyPickupAddress = 'Сиреневый бульвар, 4/1, подъезд 1';
 
 /**
- * Исполнители, чьи клиенты забирают заказ по адресу «Измайловский 7к2».
+ * Персональные адреса самовывоза исполнителей.
+ *
  * Логин в базе пишут по-разному — «Maxim_Kuzmin», «Максим Кузьмин»,
- * «Самогов», — поэтому сверяем не строкой целиком, а набором частей имени:
- * правило срабатывает, если логин содержит все части набора.
+ * «Самогов», «Tigran», — поэтому сверяем не строкой целиком, а набором
+ * частей имени: правило срабатывает, если логин содержит все части.
+ * Правила из двух частей стоят выше правил из одной: совпадает первое,
+ * и более точное должно получить свой шанс раньше общего.
  */
-const izmailovskySevenExecutors: readonly (readonly string[])[] = [
-  ['максим', 'кузьмин'],
-  ['maxim', 'kuzmin'],
-  ['maksim', 'kuzmin'],
-  ['самогов'],
-  ['samogov'],
+const executorPickupRules: readonly {
+  parts: readonly string[];
+  address: string;
+}[] = [
+  { parts: ['максим', 'кузьмин'], address: izmailovskySevenPickupAddress },
+  { parts: ['maxim', 'kuzmin'], address: izmailovskySevenPickupAddress },
+  { parts: ['maksim', 'kuzmin'], address: izmailovskySevenPickupAddress },
+  { parts: ['гулян', 'тигран'], address: sirenevyPickupAddress },
+  { parts: ['gulyan', 'tigran'], address: sirenevyPickupAddress },
+  { parts: ['gulian', 'tigran'], address: sirenevyPickupAddress },
+  { parts: ['самогов'], address: izmailovskySevenPickupAddress },
+  { parts: ['samogov'], address: izmailovskySevenPickupAddress },
+  // В базе исполнитель заведён одним словом — «Tigran».
+  { parts: ['тигран'], address: sirenevyPickupAddress },
+  { parts: ['tigran'], address: sirenevyPickupAddress },
 ];
 
 /** Логины целиком (в нормализованном виде) → персональный адрес. */
@@ -131,11 +144,11 @@ export function resolvePickupAddress(order: {
   }
   const executorName = normalizeUsername(order.executor?.username ?? '');
   if (executorName) {
-    const matched = izmailovskySevenExecutors.some((parts) =>
-      parts.every((part) => executorName.includes(part)),
+    const matched = executorPickupRules.find((rule) =>
+      rule.parts.every((part) => executorName.includes(part)),
     );
     if (matched) {
-      return izmailovskySevenPickupAddress;
+      return matched.address;
     }
     if (executorPickupAddresses[executorName]) {
       return executorPickupAddresses[executorName];
