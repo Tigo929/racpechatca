@@ -69,4 +69,22 @@ describe('окно удаления заявки', () => {
     expect(onCancel).toHaveBeenCalled();
     expect(onConfirm).not.toHaveBeenCalled();
   });
+  it('Enter удаляет, Shift+Enter — новая строка, Esc — отмена', () => {
+    const { onConfirm, onCancel } = show();
+    // Курсор сразу в поле причины, а не на крестике — иначе Enter закрыл бы окно.
+    expect(reasonField()).toHaveFocus();
+    fireEvent.change(reasonField(), { target: { value: 'дубль' } });
+    fireEvent.keyDown(reasonField(), { key: 'Enter', shiftKey: true });
+    expect(onConfirm).not.toHaveBeenCalled();
+    fireEvent.keyDown(reasonField(), { key: 'Enter' });
+    expect(onConfirm).toHaveBeenCalledWith('дубль');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('Enter без причины не удаляет', () => {
+    const { onConfirm } = show();
+    fireEvent.keyDown(reasonField(), { key: 'Enter' });
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
 });

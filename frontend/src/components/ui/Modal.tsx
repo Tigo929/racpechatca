@@ -55,11 +55,15 @@ export function Modal({ open, onClose, title, children, size = 'md', headerExtra
   useEffect(() => {
     if (open) {
       previousFocus.current = document.activeElement as HTMLElement;
-      closeRef.current?.focus();
+      // Если содержимое само поставило курсор (autoFocus в поле причины,
+      // на кнопке «Подтвердить»), не отбираем его крестиком: иначе Enter
+      // закрывал бы окно вместо того, чтобы сделать дело.
+      const dialog = document.getElementById('modal-content-' + titleId);
+      if (!dialog?.contains(document.activeElement)) closeRef.current?.focus();
     } else {
       previousFocus.current?.focus();
     }
-  }, [open]);
+  }, [open, titleId]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

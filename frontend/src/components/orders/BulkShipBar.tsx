@@ -102,6 +102,8 @@ export function BulkShipBar({ selected, onClear, onFinished }: Props) {
               type="button"
               onClick={() => ship.mutate()}
               disabled={ship.isPending}
+              // Курсор на «Да»: Enter подтверждает, Esc отменяет.
+              autoFocus
               className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
             >
               <Send size={14} aria-hidden="true" />

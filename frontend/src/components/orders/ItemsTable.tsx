@@ -9,6 +9,7 @@ import {
   mattePhotoCount,
   paperTypeStyle,
 } from '../../utils/paper-type';
+import { photoBorderStyle } from '../../utils/photo-border';
 import type { ItemPhoto, OrderPhoto } from '../../types/index';
 
 interface Props { order: OrderPhoto }
@@ -229,7 +230,12 @@ export function ItemsTable({ order }: Props) {
                   <>
                     <td className="px-4 py-2.5 font-medium text-gray-800">
                       <span className="inline-flex items-center gap-2">
-                        {item.formatPaper}
+                        {(() => {
+                          const border = photoBorderStyle(item.formatPaper, item.isFreePrice || freePrice);
+                          return border ? (
+                            <span className={`rounded px-1.5 py-0.5 ${border.badge}`}>{item.formatPaper}</span>
+                          ) : item.formatPaper;
+                        })()}
                         {item.isFreePrice && !freePrice && (
                           <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">своб.</span>
                         )}

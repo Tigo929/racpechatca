@@ -22,6 +22,7 @@ import {
 } from '../../constants';
 import { printsPerSheet } from '../../utils/photo-material';
 import { PAPER_TYPE_STYLES } from '../../utils/paper-type';
+import { photoBorderStyle } from '../../utils/photo-border';
 import { usersApi } from '../../api/users';
 import { partnerSettingsApi } from '../../api/partnerSettings';
 import {
@@ -1111,7 +1112,9 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
                         форматы вписываются руками, расход по ним считается
                         геометрией. Без единых написаний бумагу не посчитать. */}
                     <input
-                      className={inputCls}
+                      // Цвет — как у формата в карточке заказа: «с полями»
+                      // и «без полей» различаются уже при вводе.
+                      className={`${inputCls} ${photoBorderStyle(photoItemsWatch?.[idx]?.formatPaper ?? '', itemFree)?.field ?? ''}`}
                       list={itemFree ? undefined : 'photo-formats'}
                       placeholder={itemFree ? 'Фотоальбом, рамка, доп. услуга…' : 'Выберите или впишите свой'}
                       {...register(`items.${idx}.formatPaper`)}

@@ -62,6 +62,16 @@ export function DeleteOrderModal({
             id="delete-reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
+            // Enter — удалить, Shift+Enter — новая строка. Причину пишут
+            // в одну фразу, а тянуться к мышке ради кнопки неудобно.
+            // isComposing: пока набирается слово через подсказки клавиатуры,
+            // Enter выбирает слово, а не отправляет.
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                e.currentTarget.form?.requestSubmit();
+              }
+            }}
             rows={3}
             autoFocus
             maxLength={500}
@@ -69,7 +79,8 @@ export function DeleteOrderModal({
             className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
           />
           <p className="mt-1 text-xs text-gray-400">
-            Своими словами — так, как объяснили бы коллеге.
+            Своими словами — так, как объяснили бы коллеге. Enter — удалить,
+            Esc — отмена.
           </p>
         </div>
 
