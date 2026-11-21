@@ -15,6 +15,7 @@ import type {
   UpdateTshirtItemDto,
   CreateCanvasItemDto,
   UpdateCanvasItemDto,
+  BulkShipResult,
 } from '../types/index';
 import { api } from './client';
 
@@ -242,6 +243,16 @@ export const ordersApi = {
 
   updateStatus: async (id: string, dto: UpdateStatusDto): Promise<OrderPhoto> => {
     const { data } = await api.patch<OrderPhoto>(`/order-photo/${id}/status`, dto);
+    return data;
+  },
+
+  /**
+   * Отметить «Отправлен» сразу у нескольких фотозаказов из «Отгрузка создана».
+   * Сервер отвечает по каждому заказу: часть может не пройти, остальные
+   * при этом отмечаются (crm-new/src/order-photo/bulk-ship.ts).
+   */
+  bulkShip: async (ids: string[]): Promise<BulkShipResult> => {
+    const { data } = await api.post<BulkShipResult>('/order-photo/bulk/ship', { ids });
     return data;
   },
 

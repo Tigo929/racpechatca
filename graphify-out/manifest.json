@@ -310,13 +310,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-photo.controller.ts": {
-    "mtime": 1793951938.2412786,
-    "ast_hash": "49132d4db559dba2b9d0e3b9b329cadc",
+    "mtime": 1795239654.6766021,
+    "ast_hash": "ef45cde305c3f75f22a2e9de077a2837",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-photo.module.ts": {
-    "mtime": 1794674988.7714334,
-    "ast_hash": "ff1743bf43c83ed9dffd877f5da7963e",
+    "mtime": 1795239654.6776042,
+    "ast_hash": "3c3b9a98eb999a966f6958f8bf0d4242",
     "semantic_hash": ""
   },
   "crm-new/src/order-photo/order-photo.service.ts": {
@@ -630,8 +630,8 @@
     "semantic_hash": ""
   },
   "frontend/src/api/orders.ts": {
-    "mtime": 1793952015.637317,
-    "ast_hash": "c19bccfa015f96f0aaf9fd8b4ccf0eaf",
+    "mtime": 1795239654.6776042,
+    "ast_hash": "12c1896f7d1515a9d29e75f829c7a016",
     "semantic_hash": ""
   },
   "frontend/src/api/partnerSettings.ts": {
@@ -775,8 +775,8 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/OrdersPage.tsx": {
-    "mtime": 1793288011.0670888,
-    "ast_hash": "1d30f2ad2395e450a2d6b062e0e43a5c",
+    "mtime": 1795239654.6796055,
+    "ast_hash": "cbe4d08ff77586af9b0f93edfc1e6d26",
     "semantic_hash": ""
   },
   "frontend/src/pages/ReportsPage.tsx": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "frontend/src/types/index.ts": {
-    "mtime": 1794496207.887372,
-    "ast_hash": "d73f5178d7d56e2010041c5a9a417e10",
+    "mtime": 1795239654.6806052,
+    "ast_hash": "3613506fea5d2055e692bc733b6e13ce",
     "semantic_hash": ""
   },
   "frontend/src/utils/deadline.ts": {
@@ -5647,6 +5647,46 @@
   "crm-new/src/telegram/telegram-polling.spec.ts": {
     "mtime": 1794677160.3003435,
     "ast_hash": "f4a5daafaaf22dfe52300ef2988f9679",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/bulk-ship.service.ts": {
+    "mtime": 1795239638.0224109,
+    "ast_hash": "960a76abd04df2ed7ea32429fc5e08bc",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/bulk-ship.spec.ts": {
+    "mtime": 1795239638.0424104,
+    "ast_hash": "97203b982e6e5261d76a37f67f1f3ff7",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/bulk-ship.ts": {
+    "mtime": 1795239637.9994123,
+    "ast_hash": "12014035f7e7bfc843f4c35d215eb1f6",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/dto/bulk-ship.dto.ts": {
+    "mtime": 1795239438.5674894,
+    "ast_hash": "e340be3d446454976690deac1073b54f",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/orders/BulkShipBar.test.tsx": {
+    "mtime": 1795239679.238796,
+    "ast_hash": "95cca8236ccc6d70e4e5a0c9c3dda766",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/orders/BulkShipBar.tsx": {
+    "mtime": 1795239535.459945,
+    "ast_hash": "a20b5466463719b73a9302735f9b82ef",
+    "semantic_hash": ""
+  },
+  "frontend/src/utils/bulk-ship.test.ts": {
+    "mtime": 1795239508.1679246,
+    "ast_hash": "b2e1e9467524db8084ffdc10a66d1ca5",
+    "semantic_hash": ""
+  },
+  "frontend/src/utils/bulk-ship.ts": {
+    "mtime": 1795239502.9976275,
+    "ast_hash": "9ffae56787a04143e41a86184a8c6502",
     "semantic_hash": ""
   }
 }

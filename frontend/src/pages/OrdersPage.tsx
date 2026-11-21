@@ -24,6 +24,8 @@ import { FilterChip } from '../components/ui/FilterChip';
 import { SortableHeader } from '../components/orders/SortableHeader';
 import { nextSort, type OrdersSortField } from '../utils/orders-sort';
 import { DeliveryBadge } from '../components/ui/DeliveryBadge';
+import { BulkShipBar } from '../components/orders/BulkShipBar';
+import { BULK_SHIP_LIMIT, bulkShipBlocker, isAwaitingShipment } from '../utils/bulk-ship';
 import {
   CANVAS_STATUS_FLOW,
   CANVAS_STATUS_LABELS,
@@ -193,8 +195,50 @@ export function OrdersPage({ section }: Props) {
     busy: nav.busy,
   });
 
+  /*
+   * Пачка «Отправлен» — у фотозаказов из «Отгрузка создана».
+   *
+   * Посылки сдают в пункт выдачи разом, и отмечать их по одной через
+   * карточку было долго. Галочки видит тот, кто может создавать отгрузки:
+   * администратор и менеджер по оформлению (правила — utils/bulk-ship.ts).
+   */
+  const bulkEnabled = isAdmin && section === 'PHOTO';
+  // Выбор привязан к отбору: другой фильтр или страница — другой список,
+  // и галочки из прежнего здесь только запутают. Поэтому без эффекта-сброса:
+  // выбор с чужим ключом просто не читается.
+  const queryKey = JSON.stringify(query);
+  const [pickState, setPickState] = useState<{ key: string; ids: Set<string> }>(
+    () => ({ key: queryKey, ids: new Set() }),
+  );
+  const picked = pickState.key === queryKey ? pickState.ids : new Set<string>();
+  const setPicked = (update: Set<string> | ((prev: Set<string>) => Set<string>)) =>
+    setPickState(prev => {
+      const base = prev.key === queryKey ? prev.ids : new Set<string>();
+      return { key: queryKey, ids: typeof update === 'function' ? update(base) : update };
+    });
+  const shippable = bulkEnabled ? orders.filter(o => bulkShipBlocker(o) === null) : [];
+  const pickedOrders = shippable.filter(o => picked.has(o.id));
+  const allPicked = shippable.length > 0 && pickedOrders.length === shippable.length;
+  const togglePick = (id: string) =>
+    setPicked(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const toggleAll = () =>
+    setPicked(allPicked ? new Set() : new Set(shippable.map(o => o.id)));
+  const pageSize = query.limit ?? PAGE_SIZE;
+
   const setStatus = (status: EnumStatus | undefined) =>
-    setQuery(q => ({ ...q, status, page: 1 }));
+    setQuery(q => ({
+      ...q,
+      status,
+      page: 1,
+      // Все ждущие отправки — на одной странице: их отмечают пачкой,
+      // и листать ради этого по десять было бы тем же хождением по одному.
+      limit: bulkEnabled && status === 'SHIPMENT_CREATED' ? BULK_SHIP_LIMIT : PAGE_SIZE,
+    }));
 
   const setProductCategory = (productCategory: EnumProductCategory | undefined) =>
     setQuery(q => ({ ...q, productCategory, page: 1 }));
@@ -424,9 +468,28 @@ export function OrdersPage({ section }: Props) {
                 const stalledDays = getStalledDays(order);
                 // Что с макетом: вопрос отдельный от статуса заказа.
                 const approval = approvalChip(order.approvals);
+                const pickable = bulkEnabled && isAwaitingShipment(order);
+                const pickBlocker = pickable ? bulkShipBlocker(order) : null;
                 return (
+                  <div key={order.id} className="flex items-stretch">
+                  {pickable && (
+                    // Галочка вне кнопки карточки: вложенный элемент управления
+                    // внутри кнопки — неверная разметка, и нажатие уходило бы в обе.
+                    <label
+                      className={`flex items-center pl-3 pr-1 ${pickBlocker ? 'opacity-40' : 'cursor-pointer'}`}
+                      title={pickBlocker ?? 'Выбрать для отметки «Отправлен»'}
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-5 w-5 accent-emerald-600"
+                        checked={picked.has(order.id)}
+                        disabled={!!pickBlocker}
+                        onChange={() => togglePick(order.id)}
+                        aria-label={`Выбрать заказ ${displayOrderNumber(order)}`}
+                      />
+                    </label>
+                  )}
                   <button
-                    key={order.id}
                     onClick={() => setSelectedId(order.id)}
                     /*
                       Полоса слева — цвет этапа: по ней видно, где заказ,
@@ -434,13 +497,13 @@ export function OrdersPage({ section }: Props) {
                       а не полосой: иначе два разных смысла дрались бы за
                       одно место, и этап у срочного заказа пропадал бы.
                     */
-                    className={`w-full text-left px-4 py-3.5 active:bg-indigo-50 transition-colors border-l-[3px] ${statusStripe(order.status)} ${
+                    className={`flex-1 min-w-0 text-left px-4 py-3.5 active:bg-indigo-50 transition-colors border-l-[3px] ${statusStripe(order.status)} ${
                       isPaid ? 'opacity-50' : showUrgent ? 'bg-red-50' : ''
                     }`}
                   >
                     <div className="flex items-start gap-3">
                     <span className="text-sm text-gray-400 tabular-nums pt-0.5 w-5 text-right shrink-0">
-                      {(query.page ? query.page - 1 : 0) * PAGE_SIZE + idx + 1}
+                      {(query.page ? query.page - 1 : 0) * pageSize + idx + 1}
                     </span>
                     <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -510,6 +573,7 @@ export function OrdersPage({ section }: Props) {
                     </div>
                     </div>
                   </button>
+                  </div>
                 );
               })}
             </div>
@@ -518,6 +582,20 @@ export function OrdersPage({ section }: Props) {
               <table className="w-full">
                 <thead>
                   <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                    {bulkEnabled && (
+                      <th scope="col" className="pl-4 py-3 w-8">
+                        {shippable.length > 0 && (
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 accent-emerald-600 cursor-pointer"
+                            checked={allPicked}
+                            onChange={toggleAll}
+                            aria-label="Выбрать все заказы, готовые к отметке «Отправлен»"
+                            title="Выбрать все готовые к отправке на этой странице"
+                          />
+                        )}
+                      </th>
+                    )}
                     <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider w-12">№</th>
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Номер</th>
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Тип</th>
@@ -578,8 +656,27 @@ export function OrdersPage({ section }: Props) {
                       className={`cursor-pointer group border-l-[3px] ${statusStripe(order.status)} ${rowBg} ${showUrgent ? 'bg-red-50' : ''}`}
                       style={{ borderBottom: '1px solid #F8FAFC' }}
                     >
+                      {bulkEnabled && (
+                        <td
+                          className="pl-4 py-3.5"
+                          // Клик по ячейке с галочкой не открывает карточку.
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {isAwaitingShipment(order) && (
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 accent-emerald-600 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                              checked={picked.has(order.id)}
+                              disabled={bulkShipBlocker(order) !== null}
+                              onChange={() => togglePick(order.id)}
+                              aria-label={`Выбрать заказ ${displayOrderNumber(order)}`}
+                              title={bulkShipBlocker(order) ?? 'Выбрать для отметки «Отправлен»'}
+                            />
+                          )}
+                        </td>
+                      )}
                       <td className="px-4 py-3.5 text-right text-sm text-gray-400 tabular-nums">
-                        {(query.page ? query.page - 1 : 0) * PAGE_SIZE + idx + 1}
+                        {(query.page ? query.page - 1 : 0) * pageSize + idx + 1}
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2">
@@ -689,6 +786,14 @@ export function OrdersPage({ section }: Props) {
             </>
           )}
         </div>
+
+        {bulkEnabled && (
+          <BulkShipBar
+            selected={pickedOrders}
+            onClear={() => setPicked(new Set())}
+            onFinished={(failedIds) => setPicked(new Set(failedIds))}
+          />
+        )}
 
         {/* Пагинация */}
         {meta && meta.totalPages > 1 && (

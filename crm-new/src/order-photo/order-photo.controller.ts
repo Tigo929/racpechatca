@@ -33,6 +33,8 @@ import { DailyPlanService } from './daily-plan.service';
 import { ReviewReminderService } from './review-reminder.service';
 import { ShipmentLeadService } from './shipment-lead.service';
 import { DtoSetShipmentLead } from './dto/set-shipment-lead.dto';
+import { BulkShipService } from './bulk-ship.service';
+import { DtoBulkShip } from './dto/bulk-ship.dto';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 import { DtoDeleteOrder } from './dto/delete-order.dto';
 import { OrderArchiveService } from './order-archive.service';
@@ -89,7 +91,20 @@ export class OrderPhotoController {
     private readonly draft: ClientDraftService,
     private readonly clientMessage: ClientMessageService,
     private readonly archive: OrderArchiveService,
+    private readonly bulkShip: BulkShipService,
   ) {}
+
+  /**
+   * Отметить «Отправлен» сразу у нескольких фотозаказов из «Отгрузка
+   * создана». Ответ — итог по каждому заказу: часть может не пройти
+   * (нет исполнителя, статус успел поменяться), остальные при этом
+   * отмечаются. Правила — в bulk-ship.ts.
+   */
+  @Post('bulk/ship')
+  @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
+  shipMany(@Body() dto: DtoBulkShip, @CurrentUser() me: RequestUser) {
+    return this.bulkShip.ship(dto.ids, me.id, me.role);
+  }
 
   // ── Admin: отправить «план дня» в рабочий чат прямо сейчас ──────────────────
   // Плановая рассылка идёт автоматически в 10:00 по Москве; этот эндпоинт — для

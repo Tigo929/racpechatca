@@ -473,6 +473,13 @@ export interface ShipmentLead {
   } | null;
 }
 
+/** Итог пачки «Отправлен» — по каждому заказу отдельно. */
+export interface BulkShipResult {
+  results: { id: string; numberOrder: string | null; ok: boolean; error?: string }[];
+  shipped: number;
+  failed: number;
+}
+
 export interface OrdersQuery {
   /**
    * Заказы с маркетплейсов: только они, без них или все подряд.
