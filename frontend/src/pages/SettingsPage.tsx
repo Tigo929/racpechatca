@@ -227,6 +227,7 @@ interface FormState {
   maxLinkTemplate: string;
   leadMentionUsernames: string;
   deliveryPriceYandexPvz: string;
+  deliveryPriceOzonPvz: string;
 }
 
 function toForm(s: PartnerSettings): FormState {
@@ -240,6 +241,7 @@ function toForm(s: PartnerSettings): FormState {
     maxLinkTemplate: s.maxLinkTemplate,
     leadMentionUsernames: s.leadMentionUsernames ?? '',
     deliveryPriceYandexPvz: String(s.deliveryPriceYandexPvz),
+    deliveryPriceOzonPvz: String(s.deliveryPriceOzonPvz ?? 300),
   };
 }
 
@@ -299,6 +301,7 @@ export default function SettingsPage() {
       maxLinkTemplate: form.maxLinkTemplate.trim(),
       leadMentionUsernames: form.leadMentionUsernames.trim(),
       deliveryPriceYandexPvz: Math.max(0, Math.round(Number(form.deliveryPriceYandexPvz)) || 0),
+      deliveryPriceOzonPvz: Math.max(0, Math.round(Number(form.deliveryPriceOzonPvz)) || 0),
     });
   };
 
@@ -344,6 +347,15 @@ export default function SettingsPage() {
                   onChange={(e) => setForm({ ...form, deliveryPriceYandexPvz: e.target.value })}
                 />
                 <span className="mt-1 block text-xs text-gray-400">Ставится по умолчанию и в заявке с сайта, и при ручном выборе Яндекс ПВЗ.</span>
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Доставка «ПВЗ Ozon» для клиента, ₽</span>
+                <input
+                  type="number" min={0} className={`mt-1 ${field}`}
+                  value={form.deliveryPriceOzonPvz}
+                  onChange={(e) => setForm({ ...form, deliveryPriceOzonPvz: e.target.value })}
+                />
+                <span className="mt-1 block text-xs text-gray-400">Столько платит клиент. Сколько взял Ozon, видно в каждом заказе и в отчётах — разница ваш заработок на доставке.</span>
               </label>
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">Ставка партнёра, %</span>

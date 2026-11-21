@@ -31,6 +31,10 @@ import { SiteLeadTokenGuard } from './site-lead-token.guard';
 import { BulkShipService } from './bulk-ship.service';
 import { ClientContactService } from './client-contact.service';
 import { ClientContactController } from './client-contact.controller';
+import { OzonDeliveryClient } from 'src/ozon-delivery/ozon-delivery.client';
+import { OzonShipmentService } from 'src/ozon-delivery/ozon-shipment.service';
+import { OzonShipmentSyncService } from 'src/ozon-delivery/ozon-shipment-sync.service';
+import { OzonShipmentController } from 'src/ozon-delivery/ozon-shipment.controller';
 import { PushModule } from 'src/push/push.module';
 import { OrderEventsModule } from 'src/events/order-events.module';
 import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
@@ -45,7 +49,13 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
     MetrikaOrdersModule,
     OrderEventsModule,
   ],
-  controllers: [LeadController, OrderPhotoController, ClientContactController],
+  controllers: [
+    LeadController,
+    // Раньше OrderPhotoController: его ':idOrder' не должен перехватить bulk/ozon-labels.
+    OzonShipmentController,
+    OrderPhotoController,
+    ClientContactController,
+  ],
   providers: [
     OrderPhotoService,
     ClientGreetingService,
@@ -76,6 +86,10 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
     BulkShipService,
     // Контакты клиентов — остаются после удаления заказа.
     ClientContactService,
+    // Ozon Доставка для бизнеса: отправления, этикетки, статусы.
+    OzonDeliveryClient,
+    OzonShipmentService,
+    OzonShipmentSyncService,
   ],
   // Заведение заказа из кабинета Ozon собирает заказ тем же методом, что
   // и оформление руками: второй ветки создания заказов быть не должно.

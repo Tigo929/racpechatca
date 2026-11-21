@@ -538,9 +538,9 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
    * Только в пустое поле: если менеджер уже вписал сумму, не перебиваем.
    */
   useEffect(() => {
-    if (deliveryMethodWatch !== 'YANDEX_PVZ' || !settings) return;
+    if (!settings || (deliveryMethodWatch !== 'YANDEX_PVZ' && deliveryMethodWatch !== 'OZON_PVZ')) return;
     if (Number(getValues('deliveryCost')) > 0) return;
-    setValue('deliveryCost', settings.deliveryPriceYandexPvz);
+    setValue('deliveryCost', deliveryMethodWatch === 'OZON_PVZ' ? (settings.deliveryPriceOzonPvz ?? 300) : settings.deliveryPriceYandexPvz);
   }, [deliveryMethodWatch, settings, getValues, setValue]);
 
   const canvasTotals = (() => {
@@ -969,7 +969,7 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
           <label className={labelCls}>Способ доставки</label>
           <select className={selectCls} {...register('deliveryMethod', { onChange: (event) => {
             const method = event.target.value;
-            setValue('deliveryCost', method === 'YANDEX_PVZ' ? (settings?.deliveryPriceYandexPvz ?? 0) : method === 'PRODUCTION_MSK' ? (canvasPricing?.delivery.price ?? 0) : 0, { shouldDirty: true });
+            setValue('deliveryCost', method === 'YANDEX_PVZ' ? (settings?.deliveryPriceYandexPvz ?? 0) : method === 'OZON_PVZ' ? (settings?.deliveryPriceOzonPvz ?? 300) : method === 'PRODUCTION_MSK' ? (canvasPricing?.delivery.price ?? 0) : 0, { shouldDirty: true });
           } })}>
             <option value="PICKUP">Самовывоз</option>
             <option value="YANDEX_PVZ">Яндекс ПВЗ</option>

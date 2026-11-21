@@ -147,8 +147,30 @@ export class DtoCreateLead {
 
   @IsOptional()
   // courier_msk — холст до двери по Москве (сайт, с 15.10.2026).
-  @IsIn(['yandex_pvz', 'pickup', 'courier_msk'])
-  delivery?: 'yandex_pvz' | 'pickup' | 'courier_msk';
+  // ozon_pvz — пункт Ozon, выбранный на карте (с 22.11.2026).
+  @IsIn(['yandex_pvz', 'pickup', 'courier_msk', 'ozon_pvz'])
+  delivery?: 'yandex_pvz' | 'pickup' | 'courier_msk' | 'ozon_pvz';
+
+  /** Пункт Ozon с карты сайта: delivery_point_id и то, что видел клиент. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  pickupPointId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  pickupPointNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(400)
+  pickupPointAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  pickupPointSchedule?: string;
 
   /**
    * Бумага, выбранная клиентом на сайте.

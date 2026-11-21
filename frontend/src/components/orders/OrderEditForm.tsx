@@ -53,7 +53,7 @@ export function OrderEditForm({ form, onChange, onSave, onCancel, isPending, pro
   // При смене способа получения применяем его тариф; старую сумму не переносим.
   const { data: canvasPricing } = useQuery({ queryKey: ['canvas-production-pricing'], queryFn: canvasProductionApi.pricing, enabled: productCategory === 'CANVAS' });
   const changeDelivery = (method: UpdateOrderDto['deliveryMethod']) => {
-    set({ deliveryMethod: method, deliveryCost: method === 'YANDEX_PVZ' ? (settings?.deliveryPriceYandexPvz ?? 0) : method === 'PRODUCTION_MSK' ? (canvasPricing?.delivery.price ?? 0) : 0 });
+    set({ deliveryMethod: method, deliveryCost: method === 'YANDEX_PVZ' ? (settings?.deliveryPriceYandexPvz ?? 0) : method === 'OZON_PVZ' ? (settings?.deliveryPriceOzonPvz ?? 300) : method === 'PRODUCTION_MSK' ? (canvasPricing?.delivery.price ?? 0) : 0 });
   };
   // «Нужен дизайн» — включён, если у заказа уже есть сумма дизайна. Выключение
   // обнуляет сумму, чтобы дизайн ушёл из чека.

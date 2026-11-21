@@ -102,6 +102,13 @@ export type OrderRow = {
   totalOrder: number | null;
   deliveryCost: number | null;
   deliveryMethod: string;
+  /** Отправление Ozon: фактическая или оценочная стоимость. */
+  ozonShipment?: {
+    actualCost: number | null;
+    estimatedCost: number | null;
+    estimatedInsurance: number | null;
+    status?: string;
+  } | null;
   productCategory: string;
   items: {
     formatPaper: string;
@@ -136,6 +143,26 @@ function deliveryPaidFor(method: string, s: CostSettings): number {
   if (method === 'PRODUCTION_MSK') return s.canvasDeliveryCost;
   return 0;
 }
+/** Стоимость отправления Ozon: факт, иначе оценка (доставка + страховка). */
+export function ozonShipmentCost(
+  sh:
+    | {
+        actualCost: number | null;
+        estimatedCost: number | null;
+        estimatedInsurance: number | null;
+        status?: string;
+      }
+    | null
+    | undefined,
+): number | null {
+  if (!sh) return null;
+  // Отменённое до сдачи отправление денег не стоило.
+  if (sh.status === 'CANCELLED') return null;
+  if (sh.actualCost !== null) return sh.actualCost;
+  if (sh.estimatedCost === null && sh.estimatedInsurance === null) return null;
+  return (sh.estimatedCost ?? 0) + (sh.estimatedInsurance ?? 0);
+}
+
 export type ExpenseRow = { createdAt: Date; amount: number; category: string };
 type SalaryRow = { createdAt: Date; amount: number };
 
@@ -222,7 +249,11 @@ export function addOrder(b: PnlRaw, order: OrderRow, s: CostSettings): void {
   const total = order.totalOrder ?? 0;
   const deliveryCharged = order.deliveryCost ?? 0;
   // Платим перевозчику только если доставка была: у самовывоза списывать не с чего.
-  const deliveryPaid = deliveryPaidFor(order.deliveryMethod, s);
+  // Отправление Ozon знает свою настоящую цену — она важнее усреднённой
+  // из настроек: по ней видно, сколько заработали на доставке.
+  const deliveryPaid =
+    ozonShipmentCost(order.ozonShipment) ??
+    deliveryPaidFor(order.deliveryMethod, s);
   const salary = order.accruals.reduce((sum, a) => sum + a.salaryAmount, 0);
   // Выручка за товар — без доставки: на ней зарабатывают отдельной строкой.
   const goodsRevenue = total - deliveryCharged;
@@ -451,6 +482,14 @@ export class ReportsService {
           totalOrder: true,
           deliveryCost: true,
           deliveryMethod: true,
+          ozonShipment: {
+            select: {
+              actualCost: true,
+              estimatedCost: true,
+              estimatedInsurance: true,
+              status: true,
+            },
+          },
           productCategory: true,
           // Позиции нужны для себестоимости: бумага по формату, партнёр по
           // футболкам, подрядчик по холстам. Без них считать нечем.

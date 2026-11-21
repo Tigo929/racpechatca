@@ -883,6 +883,8 @@ export interface PartnerSettings {
   deliveryCostYandexPvz: number;
   /** Цена доставки Яндекс ПВЗ для клиента (по умолчанию 300). */
   deliveryPriceYandexPvz: number;
+  /** Цена «ПВЗ Ozon» для клиента. */
+  deliveryPriceOzonPvz?: number;
   deliveryCostOzonPvz: number;
   /** Кого всегда тегать в общем чате при заявке с сайта (через запятую). */
   leadMentionUsernames: string;

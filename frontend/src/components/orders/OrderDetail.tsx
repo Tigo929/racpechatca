@@ -130,6 +130,7 @@ import { computePaperUsage } from "../../utils/photo-material";
 import { StatusStepper } from "./StatusStepper";
 import { PaidAtBlock } from "./PaidAtBlock";
 import { ItemsTable } from "./ItemsTable";
+import { OzonDeliveryBlock } from "./OzonDeliveryBlock";
 import { StatusBadge, statusStripe } from '../ui/StatusBadge';
 import { InfoRow } from "../ui/InfoRow";
 import { OrderEditForm } from "./OrderEditForm";
@@ -1367,6 +1368,10 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
               value={DELIVERY_LABELS[order.deliveryMethod]}
               onEdit={isAdmin ? startEdit : undefined}
             />
+          )}
+          {/* ПВЗ Ozon: пункт, получатель, отправление и этикетка — без кабинета Ozon. */}
+          {isAdmin && !marketplace && order.deliveryMethod === "OZON_PVZ" && (
+            <OzonDeliveryBlock orderId={order.id} />
           )}
           {isAdmin && (
             <>

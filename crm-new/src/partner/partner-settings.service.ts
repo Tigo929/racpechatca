@@ -18,6 +18,7 @@ export interface UpdatePartnerSettingsDto {
   partnerName?: string;
   canvasContractorName?: string;
   deliveryPriceYandexPvz?: number;
+  deliveryPriceOzonPvz?: number;
   maxLinkTemplate?: string;
 }
 
@@ -50,6 +51,7 @@ export class PartnerSettingsService {
         canvasContractorName: dto.canvasContractorName?.trim() || undefined,
         maxLinkTemplate: dto.maxLinkTemplate?.trim() || undefined,
         deliveryPriceYandexPvz: dto.deliveryPriceYandexPvz,
+        deliveryPriceOzonPvz: dto.deliveryPriceOzonPvz,
       },
     });
   }

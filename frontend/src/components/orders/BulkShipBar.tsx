@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Send, X } from 'lucide-react';
+import { Printer, Send, X } from 'lucide-react';
+import { ozonDeliveryApi, openPdf } from '../../api/ozonDelivery';
 import { ordersApi } from '../../api/orders';
 import { Modal } from '../ui/Modal';
 import { displayOrderNumber } from '../../utils/order-number';
@@ -41,6 +42,17 @@ export function BulkShipBar({ selected, onClear, onFinished }: Props) {
     onError: () => toast.error('Не удалось отметить заказы — ничего не изменилось, попробуйте ещё раз'),
   });
 
+  // Этикетки Ozon одним PDF — только по заказам с доставкой «ПВЗ Ozon».
+  const ozonIds = selected.filter((o) => o.deliveryMethod === 'OZON_PVZ').map((o) => o.id);
+  const labels = useMutation({
+    mutationFn: () => ozonDeliveryApi.labels(ozonIds),
+    onSuccess: ({ blob, failed }) => {
+      openPdf(blob);
+      if (failed.length) toast(`Без этикетки: ${failed.join('; ')}`, { icon: '⚠️', duration: 10_000 });
+    },
+    onError: () => toast.error('Этикетки не получены — проверьте, что отправления созданы и подтверждены'),
+  });
+
   return (
     <>
       {selected.length > 0 && (
@@ -59,6 +71,17 @@ export function BulkShipBar({ selected, onClear, onFinished }: Props) {
           >
             <X size={14} aria-hidden="true" /> Снять
           </button>
+          {ozonIds.length > 0 && (
+            <button
+              type="button"
+              onClick={() => labels.mutate()}
+              disabled={labels.isPending}
+              title="Этикетки Ozon по выбранным заказам — одним файлом"
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg bg-blue-500 px-3 text-sm font-semibold text-white hover:bg-blue-600 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+            >
+              <Printer size={14} aria-hidden="true" /> {labels.isPending ? '…' : `Этикетки (${ozonIds.length})`}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setConfirmOpen(true)}

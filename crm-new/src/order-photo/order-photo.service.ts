@@ -1,6 +1,7 @@
 import { fulfillmentError } from './fulfillment';
 import { automaticStatusError } from './status-automatic';
 import { withShortfallLine } from './photos-shortfall';
+import { normalizePhone } from './client-contact';
 import {
   BadRequestException,
   ConflictException,
@@ -966,6 +967,9 @@ export class OrderPhotoService {
         maxLinkTemplate,
       );
       const isYandexPvz = dto.delivery === 'yandex_pvz';
+      // ПВЗ Ozon: клиент выбрал конкретный пункт на карте сайта. Без пункта
+      // это не Ozon, а «уточнить в переписке» — заводим самовывозом.
+      const isOzonPvz = dto.delivery === 'ozon_pvz' && Boolean(dto.pickupPointId);
       /*
         Доставка до двери по Москве — своя машина производства, то есть
         PRODUCTION_MSK. Бывает только у холста: другой товар с ней пришёл
@@ -976,7 +980,9 @@ export class OrderPhotoService {
         dto.productCategory === EnumProductCategory.CANVAS;
       const deliveryMethod = isYandexPvz
         ? EnumDeliveryMethod.YANDEX_PVZ
-        : isCourierMsk
+        : isOzonPvz
+          ? EnumDeliveryMethod.OZON_PVZ
+          : isCourierMsk
           ? EnumDeliveryMethod.PRODUCTION_MSK
           : EnumDeliveryMethod.PICKUP;
       // Цену считает сайт (в его форме поля цены нет — клиент её не задаёт),
@@ -1015,9 +1021,13 @@ export class OrderPhotoService {
       const leadDeliveryCost = isCourierMsk
         ? CANVAS_COURIER_MSK_PRICE
         : deliveryCostForLead({
-            yandexPvz: isYandexPvz,
+            yandexPvz: isYandexPvz || isOzonPvz,
             positionsTotal: total,
-            price: leadSettings.deliveryPriceYandexPvz,
+            // Клиенту — фиксированная цена из настроек; сколько взял Ozon,
+            // видно в отправлении (OzonShipment), разница — наш заработок.
+            price: isOzonPvz
+              ? leadSettings.deliveryPriceOzonPvz
+              : leadSettings.deliveryPriceYandexPvz,
           });
       // Пожелания клиента — вверху: их читают в первую очередь, а не ищут
       // среди технических строк вроде yclid и ссылок на архив.
@@ -1047,7 +1057,9 @@ export class OrderPhotoService {
           ? `Получение: ${
               dto.delivery === 'yandex_pvz'
                 ? 'Яндекс ПВЗ'
-                : isCourierMsk
+                : isOzonPvz
+                  ? `ПВЗ Ozon ${dto.pickupPointNumber ?? dto.pickupPointId} — ${dto.pickupPointAddress ?? ''}`
+                  : isCourierMsk
                   ? `доставка до двери по Москве — ${CANVAS_COURIER_MSK_PRICE} ₽`
                   : 'Самовывоз'
             }`
@@ -1114,6 +1126,17 @@ export class OrderPhotoService {
           urlCommunication,
           deliveryMethod,
           deliveryCost: leadDeliveryCost,
+          // Пункт и получатель — полями: по ним CRM сама создаёт отправление.
+          ...(isOzonPvz
+            ? {
+                pickupPointId: dto.pickupPointId,
+                pickupPointNumber: dto.pickupPointNumber ?? null,
+                pickupPointAddress: dto.pickupPointAddress ?? null,
+                pickupPointSchedule: dto.pickupPointSchedule ?? null,
+              }
+            : {}),
+          recipientName: dto.name?.trim() || null,
+          recipientPhone: normalizePhone(phone),
           // Сумма заказа = позиции + доставка: иначе отчёт вычтет доставку
           // из суммы, где её нет, и «выручка за товар» уйдёт в минус.
           totalOrder: total + leadDeliveryCost,

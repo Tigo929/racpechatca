@@ -323,6 +323,19 @@ model OrderPhoto {
   // визита не меняется (этап 04). Пусто у заявок до сентября 2026.
   firstTouchUrl     String?
 
+  // ── Пункт выдачи и получатель ─────────────────────────────────────────
+  // Раньше адрес пункта жил строкой в note («Пункт выдачи: …»): его нельзя
+  // было ни проверить, ни передать в службу доставки. Теперь — поля.
+  // pickupPointId — delivery_point_id Ozon Доставки (у других служб пусто).
+  pickupPointId       String?
+  pickupPointNumber   String?
+  pickupPointAddress  String?
+  pickupPointSchedule String?
+  // Кому вручать посылку. Отдельно от способа связи: телефон получателя
+  // Ozon сверяет со своим аккаунтом покупателя, ник в Telegram ему не нужен.
+  recipientName  String?
+  recipientPhone String?
+
   // Telegram partner message reference
   partnerTgMessageId Int?
   partnerTgChatId    String?
@@ -350,6 +363,7 @@ model OrderPhoto {
   expenses       ExpenseOrder[]
   avitoChats     AvitoChat[]
   approvals      PrintApproval[]
+  ozonShipment   OzonShipment?
 
   metrikaOutbox MetrikaOrderOutbox[]
 
@@ -1377,6 +1391,8 @@ model PartnerSettings {
   // Отличается от deliveryCostYandexPvz (99) — то, что платим перевозчику.
   deliveryPriceYandexPvz Int @default(300)
   deliveryCostOzonPvz    Int @default(140)
+  // Цена «ПВЗ Ozon» для клиента на сайте. Сколько взял Ozon — в OzonShipment.
+  deliveryPriceOzonPvz   Int @default(300)
 
   // Условия производства по холсту. Прайс лежит в коде
   // (canvas/canvas-production-price.ts) — он приходит файлом и меняется целиком.
@@ -2694,4 +2710,64 @@ model ClientContactOrder {
   deleted         Boolean  @default(false)
 
   @@index([contactId])
+}
+
+/// Отправление Ozon Доставки по заказу (сайт/CRM, не маркетплейс).
+///
+/// Одна строка на заказ. Создаёт её кнопка «Создать отправление» в карточке:
+/// CRM сама передаёт в Ozon получателя, пункт и габариты, подтверждает
+/// отправление и забирает этикетку — руками в кабинете Ozon ничего не
+/// набирается. Дальше статус подтягивается сам (OzonShipmentSyncService).
+model OzonShipment {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderId String     @unique
+  order   OrderPhoto @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  /// request_id для Ozon (int64): по нему сопоставляем ответ с запросом.
+  requestId Int @unique @default(autoincrement())
+
+  ozonOrderNumber String?
+  postingNumber   String? @unique
+
+  /// Наш статус: CREATED → APPROVED → IN_TRANSIT → AT_PICKUP_POINT →
+  /// DELIVERED; CANCELLED, RETURNING, RETURNED, ERROR (см. ozon-shipment.ts).
+  status       String    @default("CREATED")
+  /// Статус как его назвал Ozon — показываем рядом, чтобы не гадать.
+  ozonStatus   String?
+  ozonStatusAt DateTime?
+
+  weightG       Int
+  lengthMm      Int
+  widthMm       Int
+  heightMm      Int
+  /// Объявленная стоимость, ₽ — от неё страховка.
+  declaredValue Int
+
+  /// Оценка Ozon при создании, ₽.
+  estimatedCost      Int?
+  estimatedInsurance Int?
+  estimatedDays      Int?
+  /// Фактически списано Ozon, ₽ (когда станет известно). Пока пусто —
+  /// в отчётах берём оценку.
+  actualCost         Int?
+
+  createdById String?
+
+  approvedAt      DateTime?
+  shippedAt       DateTime?
+  arrivedAt       DateTime?
+  deliveredAt     DateTime?
+  returnedAt      DateTime?
+  cancelledAt     DateTime?
+  lastSyncedAt    DateTime?
+  ownerRemindedAt DateTime?
+
+  lastError String?
+  /// Последний ответ Ozon по отправлению — для разбора, если что-то не так.
+  raw       Json?
+
+  @@index([status])
 }
