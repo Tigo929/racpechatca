@@ -29,6 +29,8 @@ import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service'
 import { SitePhotosService } from './site-photos.service';
 import { SiteLeadTokenGuard } from './site-lead-token.guard';
 import { BulkShipService } from './bulk-ship.service';
+import { ClientContactService } from './client-contact.service';
+import { ClientContactController } from './client-contact.controller';
 import { PushModule } from 'src/push/push.module';
 import { OrderEventsModule } from 'src/events/order-events.module';
 import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
@@ -43,7 +45,7 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
     MetrikaOrdersModule,
     OrderEventsModule,
   ],
-  controllers: [LeadController, OrderPhotoController],
+  controllers: [LeadController, OrderPhotoController, ClientContactController],
   providers: [
     OrderPhotoService,
     ClientGreetingService,
@@ -72,6 +74,8 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
     SitePhotosService,
     SiteLeadTokenGuard,
     BulkShipService,
+    // Контакты клиентов — остаются после удаления заказа.
+    ClientContactService,
   ],
   // Заведение заказа из кабинета Ozon собирает заказ тем же методом, что
   // и оформление руками: второй ветки создания заказов быть не должно.

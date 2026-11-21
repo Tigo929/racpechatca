@@ -8,6 +8,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from 'src/generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { saveClientContact } from './client-contact.service';
 import {
   buildOrderSnapshot,
   daysLeft,
@@ -87,6 +88,10 @@ export class OrderArchiveService {
       include: SNAPSHOT_INCLUDE,
     });
     if (!order) throw new NotFoundException('Заказ не найден');
+
+    // Контакт клиента — до удаления и в той же транзакции: заказ уходит,
+    // а человек, который к нам обращался, остаётся в «Клиентах».
+    await saveClientContact(tx, order, { deleted: true });
 
     const deletedAt = new Date();
     const snapshot = buildOrderSnapshot(order);

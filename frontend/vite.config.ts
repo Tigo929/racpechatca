@@ -36,6 +36,7 @@ export default defineConfig({
         '/approvals',
         '/mockup-templates',
         '/analytics',
+        '/client-contacts',
       ].map((prefix) => [
         prefix,
         { target: 'http://localhost:3000', changeOrigin: true },

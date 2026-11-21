@@ -11,6 +11,7 @@ import { features } from './config/features';
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const OrdersPage = lazy(() => import('./pages/OrdersPage').then((m) => ({ default: m.OrdersPage })));
 const UsersPage = lazy(() => import('./pages/UsersPage').then((m) => ({ default: m.UsersPage })));
+const ClientsPage = lazy(() => import('./pages/ClientsPage').then((m) => ({ default: m.ClientsPage })));
 const DeletedOrdersPage = lazy(() => import('./pages/DeletedOrdersPage').then((m) => ({ default: m.DeletedOrdersPage })));
 const SalaryPage = lazy(() => import('./pages/SalaryPage'));
 const MySalaryPage = lazy(() => import('./pages/MySalaryPage'));
@@ -121,6 +122,7 @@ function AppRoutes() {
         <Route path="/crm" element={<CrmGate><HomeRedirect /></CrmGate>} />
         <Route path="/crm/users" element={<CrmGate><AdminRoute><UsersPage /></AdminRoute></CrmGate>} />
         {/* Корзина удалённых заказов: удаляет и возвращает только админ. */}
+        <Route path="/crm/clients" element={<CrmGate><AdminRoute><ClientsPage /></AdminRoute></CrmGate>} />
         <Route path="/crm/deleted" element={<CrmGate><AdminRoute><DeletedOrdersPage /></AdminRoute></CrmGate>} />
         <Route path="/crm/salary" element={<CrmGate><AdminRoute><SalaryPage /></AdminRoute></CrmGate>} />
         {/* Личный кабинет по деньгам — доступен любому вошедшему, сервер

@@ -2619,3 +2619,79 @@ model OrderDeletion {
   /// Для приёма заявок: проверка «эту заявку уже удалили» на каждом лиде.
   @@index([externalRequestId])
 }
+
+/// Контакт клиента — то, что остаётся, даже когда заказ удалён.
+///
+/// Карточки клиента у CRM не было: имя, телефон и ник жили внутри заказа
+/// и уходили вместе с ним. После удаления (дубль, передумал) человек
+/// пропадал совсем — а это тот, кто уже интересовался, и к празднику ему
+/// есть что предложить.
+///
+/// Одна строка — один человек, опознанный по способу связи (см.
+/// order-photo/client-contact.ts). Заполняется сама из заказов и корзины;
+/// руками правятся только согласие на рассылку и пометка владельца.
+///
+/// Реклама (акции, скидки) по закону «О рекламе», ст. 18, — только тем,
+/// кто заранее согласился. Поэтому согласие — отдельное поле, по умолчанию
+/// «нет», с датой и откуда оно взялось: при проверке спросят именно это.
+model ClientContact {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Ключ опознания: tg:ник, max:7…, avito:…, phone:7…, email:… .
+  identityKey String @unique
+
+  name       String?
+  /// +7XXXXXXXXXX
+  phone      String?
+  /// Ник без @.
+  telegram   String?
+  /// Номер или ссылка MAX.
+  maxContact String?
+  email      String?
+  /// Ссылка на переписку (Авито, Telegram, MAX) — куда писать.
+  contactUrl String?
+  /// Канал, по которому человек писал последним: TELEGRAM, MAX, AVITO…
+  channel    String?
+  /// Откуда пришёл последний заказ: WEBSITE, AVITO, LOCAL…
+  lastSource String?
+
+  firstOrderAt DateTime?
+  lastOrderAt  DateTime?
+
+  marketingConsent       Boolean   @default(false)
+  marketingConsentAt     DateTime?
+  /// Где получено: «сайт», «в переписке», «лично» — свободным текстом.
+  marketingConsentSource String?
+  /// Отписался — больше не писать, даже если согласие было.
+  unsubscribedAt         DateTime?
+
+  ownerNote String?
+
+  orders ClientContactOrder[]
+
+  @@index([lastOrderAt])
+  @@index([marketingConsent])
+}
+
+/// Заказ клиента — без внешнего ключа на OrderPhoto намеренно: заказ
+/// удаляют, а история покупок человека должна остаться.
+model ClientContactOrder {
+  orderId   String   @id
+  updatedAt DateTime @updatedAt
+
+  contactId String
+  contact   ClientContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  numberOrder     String
+  status          String
+  sourceOrder     String
+  productCategory String
+  totalOrder      Int      @default(0)
+  orderCreatedAt  DateTime
+  /// Заказ удалён (лежит в корзине или уже стёрт).
+  deleted         Boolean  @default(false)
+
+  @@index([contactId])
+}

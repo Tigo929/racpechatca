@@ -2,6 +2,7 @@ import {
   BarChart3,
   Bell,
   Bot,
+  Contact,
   LineChart,
   Camera,
   CheckSquare,
@@ -135,6 +136,8 @@ export const NAV_GROUPS: NavGroup[] = [
       // Разговор с агентом: он читает базу и код проектов и объясняет,
       // как система работает на самом деле.
       { to: '/crm/ai', label: 'ИИ-агент', icon: Bot, roles: ADMIN },
+      // Контакты всех, кто обращался, — остаются и после удаления заказа.
+      { to: '/crm/clients', label: 'Клиенты', icon: Contact, roles: ADMIN },
       { to: '/crm/users', label: 'Сотрудники', icon: Users, roles: ADMIN },
       // Удалённые заказы ждут здесь 30 дней, и вернуть их может только тот,
       // кто удаляет, — администратор.
