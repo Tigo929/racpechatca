@@ -578,16 +578,36 @@ export class OzonShipmentService {
         this.wrap(e);
       }
     }
-    // Ещё у нас — просто отменено; уже у Ozon — поедет обратно.
-    const travelling = ['IN_TRANSIT', 'AT_PICKUP_POINT'].includes(
-      shipment.status,
-    );
-    await this.prisma.ozonShipment.update({
+    /*
+     * Ozon принимает отмену асинхронно: 22.11.2026 запрос в «forming» вернул
+     * {}, а отправление всё равно дошло до «ready_for_shipping». Поэтому
+     * не верим ответу на слово — сразу спрашиваем статус.
+     */
+    if (!shipment.postingNumber) {
+      await this.prisma.ozonShipment.update({
+        where: { id: shipment.id },
+        data: { status: 'CANCELLED', cancelledAt: new Date(), lastError: null },
+      });
+      return this.view(orderId);
+    }
+    await new Promise((r) => setTimeout(r, 3000));
+    const change = await this.sync(orderId).catch(() => null);
+    const after = await this.prisma.ozonShipment.findUnique({
       where: { id: shipment.id },
-      data: travelling
-        ? { status: 'RETURNING', lastError: null }
-        : { status: 'CANCELLED', cancelledAt: new Date(), lastError: null },
     });
+    if (
+      !change &&
+      after &&
+      !['CANCELLED', 'RETURNING', 'RETURNED'].includes(after.status)
+    ) {
+      await this.prisma.ozonShipment.update({
+        where: { id: shipment.id },
+        data: {
+          lastError:
+            'Отмена отправлена в Ozon, но он её пока не подтвердил. Нажмите «Обновить статус» через минуту; если не отменится — не сдавайте посылку и отмените в кабинете Ozon Доставки.',
+        },
+      });
+    }
     return this.view(orderId);
   }
 

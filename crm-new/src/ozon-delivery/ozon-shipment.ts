@@ -98,7 +98,7 @@ export function mapOzonStatus(
   )
     return 'IN_TRANSIT';
   if (
-    /approved|ready_for_shipping|awaiting_(registration|shipment|handover)|подтвержд/.test(
+    /approved|forming|ready_for_shipping|awaiting_(registration|shipment|handover)|подтвержд/.test(
       s,
     )
   )
