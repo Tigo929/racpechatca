@@ -35,6 +35,8 @@ import { OzonDeliveryClient } from 'src/ozon-delivery/ozon-delivery.client';
 import { OzonShipmentService } from 'src/ozon-delivery/ozon-shipment.service';
 import { OzonShipmentSyncService } from 'src/ozon-delivery/ozon-shipment-sync.service';
 import { OzonShipmentController } from 'src/ozon-delivery/ozon-shipment.controller';
+import { OzonSiteController } from 'src/ozon-delivery/ozon-site.controller';
+import { OzonPointsService } from 'src/ozon-delivery/ozon-points.service';
 import { PushModule } from 'src/push/push.module';
 import { OrderEventsModule } from 'src/events/order-events.module';
 import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
@@ -52,6 +54,7 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
   controllers: [
     LeadController,
     // Раньше OrderPhotoController: его ':idOrder' не должен перехватить bulk/ozon-labels.
+    OzonSiteController,
     OzonShipmentController,
     OrderPhotoController,
     ClientContactController,
@@ -90,6 +93,7 @@ import { MetrikaOrdersModule } from 'src/metrika/orders/metrika-orders.module';
     OzonDeliveryClient,
     OzonShipmentService,
     OzonShipmentSyncService,
+    OzonPointsService,
   ],
   // Заведение заказа из кабинета Ozon собирает заказ тем же методом, что
   // и оформление руками: второй ветки создания заказов быть не должно.

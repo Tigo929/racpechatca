@@ -2771,3 +2771,27 @@ model OzonShipment {
 
   @@index([status])
 }
+
+/// Пункт выдачи Ozon — копия справочника Ozon Доставки для карты на сайте.
+///
+/// Ozon отдаёт список по 1000 и подробности по 100 пунктов за запрос, а
+/// пунктов около 90 тысяч: ходить в Ozon на каждое движение карты нельзя.
+/// Раз в сутки OzonPointsService скачивает справочник сюда, сайт ищет здесь.
+model OzonPickupPoint {
+  id         Int      @id
+  number     String?
+  name       String?
+  type       String?
+  address    String
+  /// Нижний регистр адреса — для поиска без учёта регистра.
+  search     String
+  lat        Float
+  lng        Float
+  schedule   String?
+  storageDays Int?
+  maxWeightG Int?
+  isActive   Boolean  @default(true)
+  updatedAt  DateTime @updatedAt
+
+  @@index([lat, lng])
+}
