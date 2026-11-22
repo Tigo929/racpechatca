@@ -59,6 +59,10 @@ services:
       # при этом Авито и Яндекс отвечают). Пусто — ходим напрямую.
       # Формат: http://user:pass@host:port
       TELEGRAM_PROXY_URL: ${TELEGRAM_PROXY_URL:-}
+      # Ozon Доставка для бизнеса (кабинет «фотки-доставка»): отправления из CRM.
+      OZON_DELIVERY_CLIENT_ID: ${OZON_DELIVERY_CLIENT_ID:-}
+      OZON_DELIVERY_CLIENT_SECRET: ${OZON_DELIVERY_CLIENT_SECRET:-}
+      OZON_DELIVERY_SHIPMENT_METHOD_ID: ${OZON_DELIVERY_SHIPMENT_METHOD_ID:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_GROUP_CHAT_ID: ${TELEGRAM_GROUP_CHAT_ID}
       TELEGRAM_EXECUTOR_CHAT_ID: ${TELEGRAM_EXECUTOR_CHAT_ID:--1003723576278}
