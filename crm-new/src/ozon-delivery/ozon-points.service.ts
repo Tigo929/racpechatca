@@ -21,7 +21,15 @@ import { scheduleText } from './ozon-shipment';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const STARTUP_DELAY_MS = 3 * 60 * 1000;
-const PARALLEL = 3;
+const PARALLEL = 2;
+/** Меньше — справочник скачался не весь (в России ~90 тысяч пунктов). */
+const MIN_COMPLETE = 60_000;
+/**
+ * Паузы перед повторами пачки. 22.11.2026 при трёх параллельных запросах
+ * Ozon отказал примерно в половине пачек (пустой ответ — ограничение
+ * частоты): из ~90 тысяч сохранилось 34 400. Повторяем с нарастающей паузой.
+ */
+const RETRY_DELAYS_MS = [2_000, 5_000, 15_000, 30_000];
 
 interface ListResponse {
   delivery_points?: { delivery_point_id: number }[];
@@ -86,6 +94,7 @@ export class OzonPointsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(OzonPointsService.name);
   private timers: NodeJS.Timeout[] = [];
   private syncing = false;
+  private lastAttempt = 0;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -110,7 +119,14 @@ export class OzonPointsService implements OnModuleInit, OnModuleDestroy {
       orderBy: { updatedAt: 'desc' },
       select: { updatedAt: true },
     });
-    if (latest && Date.now() - latest.updatedAt.getTime() < DAY_MS) return;
+    // Справочник неполный (часть пачек Ozon не отдал) — догружаем, не ждём суток.
+    const count = await this.prisma.ozonPickupPoint.count();
+    const fresh = latest && Date.now() - latest.updatedAt.getTime() < DAY_MS;
+    if (fresh && count >= MIN_COMPLETE) return;
+    // Неполный — пробуем снова, но не чаще раза в 6 часов: если пунктов у
+    // Ozon на самом деле меньше порога, не гоняем справочник каждый час.
+    if (fresh && Date.now() - this.lastAttempt < 6 * 60 * 60 * 1000) return;
+    this.lastAttempt = Date.now();
     await this.sync();
   }
 
@@ -138,16 +154,27 @@ export class OzonPointsService implements OnModuleInit, OnModuleDestroy {
       for (let i = 0; i < ids.length; i += 100)
         chunks.push(ids.slice(i, i + 100));
       let saved = 0;
+      let failed = 0;
       let next = 0;
       const worker = async () => {
         while (next < chunks.length) {
           const chunk = chunks[next++];
-          try {
-            saved += await this.saveChunk(chunk);
-          } catch (e) {
-            this.logger.warn(
-              `Пункты Ozon: пачка не сохранена: ${(e as Error).message}`,
-            );
+          for (let attempt = 0; ; attempt++) {
+            try {
+              saved += await this.saveChunk(chunk);
+              break;
+            } catch (e) {
+              const delay = RETRY_DELAYS_MS[attempt];
+              if (delay === undefined) {
+                failed++;
+                const err = e as Error & { status?: number };
+                this.logger.warn(
+                  `Пункты Ozon: пачка не сохранена после повторов (HTTP ${err.status ?? '?'}): ${err.message || 'пустой ответ'}`,
+                );
+                break;
+              }
+              await new Promise((r) => setTimeout(r, delay));
+            }
           }
         }
       };
@@ -161,7 +188,7 @@ export class OzonPointsService implements OnModuleInit, OnModuleDestroy {
         });
       }
       this.logger.log(
-        `Пункты Ozon: в списке ${ids.length}, сохранено ${saved}`,
+        `Пункты Ozon: в списке ${ids.length}, сохранено ${saved}, не загружено пачек ${failed}`,
       );
       return { total: ids.length, saved };
     } catch (e) {
