@@ -1371,7 +1371,10 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           )}
           {/* ПВЗ Ozon: пункт, получатель, отправление и этикетка — без кабинета Ozon. */}
           {isAdmin && !marketplace && order.deliveryMethod === "OZON_PVZ" && (
-            <OzonDeliveryBlock orderId={order.id} />
+            // Во всю ширину сетки: в узкой колонке поля и цифры обрезались.
+            <div className="sm:col-span-2 lg:col-span-3">
+              <OzonDeliveryBlock orderId={order.id} />
+            </div>
           )}
           {isAdmin && (
             <>

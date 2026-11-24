@@ -140,9 +140,10 @@ export function shipmentBlocker(order: ShipmentCandidate): string | null {
   if (order.deliveryMethod !== 'OZON_PVZ') {
     return 'Способ доставки в заказе — не «Ozon ПВЗ».';
   }
-  if (['LEAD', 'CANCELLED'].includes(order.status)) {
-    return 'Заказ ещё заявка или отменён.';
+  if (order.status === 'LEAD') {
+    return 'Это ещё заявка — сначала переведите её в заказ.';
   }
+  if (order.status === 'CANCELLED') return 'Заказ отменён.';
   if (!order.pickupPointId) return 'Не выбран пункт выдачи Ozon.';
   if (!normalizePhone(order.recipientPhone)) {
     return 'Нет телефона получателя — по нему Ozon выдаёт посылку.';
