@@ -21,7 +21,6 @@ import { scheduleText } from './ozon-shipment';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const STARTUP_DELAY_MS = 3 * 60 * 1000;
-const PARALLEL = 2;
 /** Меньше — справочник скачался не весь (в России ~90 тысяч пунктов). */
 const MIN_COMPLETE = 60_000;
 /**
@@ -102,6 +101,14 @@ export class OzonPointsService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
+    /*
+     * Внутри CRM справочник по умолчанию НЕ качаем. 24.11.2026 загрузка
+     * ~90 тысяч пунктов в процессе CRM упиралась в лимит памяти контейнера,
+     * CRM падала каждые ~9 минут и после перезапуска начинала заново —
+     * не работали задачи, поиск, всё. Теперь справочник качает отдельная
+     * программа в своём контейнере (ozon-points-cli.ts, cron на сервере).
+     */
+    if (process.env.OZON_POINTS_SYNC_IN_APP !== 'true') return;
     if (process.env.NODE_ENV === 'test' || !this.ozon.configured) return;
     this.timers.push(
       setTimeout(() => void this.syncIfStale(), STARTUP_DELAY_MS),
@@ -130,72 +137,80 @@ export class OzonPointsService implements OnModuleInit, OnModuleDestroy {
     await this.sync();
   }
 
-  async sync(): Promise<{ total: number; saved: number }> {
-    if (this.syncing) return { total: 0, saved: 0 };
+  /**
+   * Скачать справочник: страница списка (1000 id) → подробности по 100 →
+   * сразу в базу. Список целиком в памяти не держим, пачки идут по одной.
+   */
+  async sync(): Promise<{ total: number; saved: number; failed: number }> {
+    if (this.syncing) return { total: 0, saved: 0, failed: 0 };
     this.syncing = true;
     const started = new Date();
+    let total = 0;
+    let saved = 0;
+    let failed = 0;
+    let complete = false;
     try {
-      const ids: number[] = [];
       let cursor: string | undefined;
       for (let page = 0; page < 500; page++) {
-        const res = await this.ozon.post<ListResponse>(
-          '/v1/delivery-point/list',
-          {
+        const res = await this.withRetry(() =>
+          this.ozon.post<ListResponse>('/v1/delivery-point/list', {
             pagination: { limit: 1000, ...(cursor ? { cursor } : {}) },
-          },
+          }),
         );
-        const batch = res.delivery_points ?? [];
-        ids.push(...batch.map((p) => p.delivery_point_id));
-        if (!res.next_cursor || batch.length < 1000) break;
+        const ids = (res.delivery_points ?? []).map((p) => p.delivery_point_id);
+        total += ids.length;
+        for (let k = 0; k < ids.length; k += 100) {
+          const chunk = ids.slice(k, k + 100);
+          try {
+            saved += await this.withRetry(() => this.saveChunk(chunk));
+          } catch (e) {
+            failed++;
+            const err = e as Error & { status?: number };
+            this.logger.warn(
+              `Пункты Ozon: пачка не сохранена (HTTP ${err.status ?? '?'}): ${err.message || 'пустой ответ'}`,
+            );
+          }
+        }
+        if (page % 10 === 9) {
+          this.logger.log(
+            `Пункты Ozon: обработано ${total}, сохранено ${saved}`,
+          );
+        }
+        if (!res.next_cursor || ids.length < 1000) {
+          complete = true;
+          break;
+        }
         cursor = res.next_cursor;
       }
 
-      const chunks: number[][] = [];
-      for (let i = 0; i < ids.length; i += 100)
-        chunks.push(ids.slice(i, i + 100));
-      let saved = 0;
-      let failed = 0;
-      let next = 0;
-      const worker = async () => {
-        while (next < chunks.length) {
-          const chunk = chunks[next++];
-          for (let attempt = 0; ; attempt++) {
-            try {
-              saved += await this.saveChunk(chunk);
-              break;
-            } catch (e) {
-              const delay = RETRY_DELAYS_MS[attempt];
-              if (delay === undefined) {
-                failed++;
-                const err = e as Error & { status?: number };
-                this.logger.warn(
-                  `Пункты Ozon: пачка не сохранена после повторов (HTTP ${err.status ?? '?'}): ${err.message || 'пустой ответ'}`,
-                );
-                break;
-              }
-              await new Promise((r) => setTimeout(r, delay));
-            }
-          }
-        }
-      };
-      await Promise.all(Array.from({ length: PARALLEL }, worker));
-
-      // Пропавшие из списка — гасим. Только если список пришёл целиком.
-      if (ids.length > 1000 && saved > ids.length * 0.9) {
+      // Пропавшие из списка — гасим, только если список пройден целиком.
+      if (complete && total > 1000 && saved > total * 0.9) {
         await this.prisma.ozonPickupPoint.updateMany({
           where: { updatedAt: { lt: started } },
           data: { isActive: false },
         });
       }
       this.logger.log(
-        `Пункты Ozon: в списке ${ids.length}, сохранено ${saved}, не загружено пачек ${failed}`,
+        `Пункты Ozon: в списке ${total}, сохранено ${saved}, не загружено пачек ${failed}`,
       );
-      return { total: ids.length, saved };
+      return { total, saved, failed };
     } catch (e) {
       this.logger.error('Пункты Ozon: загрузка не удалась', e as Error);
-      return { total: 0, saved: 0 };
+      return { total, saved, failed };
     } finally {
       this.syncing = false;
+    }
+  }
+
+  private async withRetry<T>(job: () => Promise<T>): Promise<T> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await job();
+      } catch (e) {
+        const delay = RETRY_DELAYS_MS[attempt];
+        if (delay === undefined) throw e;
+        await new Promise((r) => setTimeout(r, delay));
+      }
     }
   }
 

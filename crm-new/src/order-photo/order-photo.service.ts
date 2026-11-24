@@ -969,7 +969,8 @@ export class OrderPhotoService {
       const isYandexPvz = dto.delivery === 'yandex_pvz';
       // ПВЗ Ozon: клиент выбрал конкретный пункт на карте сайта. Без пункта
       // это не Ozon, а «уточнить в переписке» — заводим самовывозом.
-      const isOzonPvz = dto.delivery === 'ozon_pvz' && Boolean(dto.pickupPointId);
+      const isOzonPvz =
+        dto.delivery === 'ozon_pvz' && Boolean(dto.pickupPointId);
       /*
         Доставка до двери по Москве — своя машина производства, то есть
         PRODUCTION_MSK. Бывает только у холста: другой товар с ней пришёл
@@ -983,8 +984,8 @@ export class OrderPhotoService {
         : isOzonPvz
           ? EnumDeliveryMethod.OZON_PVZ
           : isCourierMsk
-          ? EnumDeliveryMethod.PRODUCTION_MSK
-          : EnumDeliveryMethod.PICKUP;
+            ? EnumDeliveryMethod.PRODUCTION_MSK
+            : EnumDeliveryMethod.PICKUP;
       // Цену считает сайт (в его форме поля цены нет — клиент её не задаёт),
       // но CRM не принимает числа на веру: сверяем «цена × тираж = итог» и
       // сумму позиции считаем сами. Расхождение — отказ, потому что дальше по
@@ -1060,8 +1061,8 @@ export class OrderPhotoService {
                 : isOzonPvz
                   ? `ПВЗ Ozon ${dto.pickupPointNumber ?? dto.pickupPointId} — ${dto.pickupPointAddress ?? ''}`
                   : isCourierMsk
-                  ? `доставка до двери по Москве — ${CANVAS_COURIER_MSK_PRICE} ₽`
-                  : 'Самовывоз'
+                    ? `доставка до двери по Москве — ${CANVAS_COURIER_MSK_PRICE} ₽`
+                    : 'Самовывоз'
             }`
           : null,
         dto.paperType
@@ -1492,7 +1493,13 @@ export class OrderPhotoService {
             status: query.status
               ? query.status
               : searchTerm
-                ? { not: EnumStatus.SENT }
+                ? // У футболок и холстов SENT — «передан в производство»,
+                  // рабочая стадия: при поиске по номеру его прятать нельзя
+                  // (24.11.2026 номера футболок «не находились»).
+                  query.productCategory &&
+                  isExternalProductionCategory(query.productCategory)
+                  ? undefined
+                  : { not: EnumStatus.SENT }
                 : query.reviewLeft !== undefined
                   ? undefined
                   : { notIn: defaultHiddenStatuses },
@@ -1516,7 +1523,13 @@ export class OrderPhotoService {
        * Прячем по признаку заказа, а не по источнику: признак ставит
        * сервер при заведении с площадки, и подменить его нельзя.
        */
-      ...marketplaceWhere(query.marketplace, query.productCategory, options),
+      // Ищут по номеру — ищем среди всех футболок, и с площадки тоже:
+      // таких больше половины, и номер человек вводит любой.
+      ...marketplaceWhere(
+        searchTerm ? (query.marketplace ?? 'all') : query.marketplace,
+        query.productCategory,
+        options,
+      ),
       /*
        * Самовывоз или доставка.
        *
@@ -1565,6 +1578,13 @@ export class OrderPhotoService {
                 urlCommunication: { contains: searchTerm, mode: 'insensitive' },
               },
               { note: { contains: searchTerm, mode: 'insensitive' } },
+              // Номер отправления Ozon — им подписан стикер на посылке.
+              {
+                marketplacePostingNumber: {
+                  contains: searchTerm,
+                  mode: 'insensitive',
+                },
+              },
             ],
           }
         : {}),

@@ -31,7 +31,8 @@
     "analytics:report": "node dist/src/analytics/analytics-report-cli.js",
     "origin:backfill": "node dist/src/analytics/order-origin-cli.js",
     "ads:sync": "node dist/src/analytics/direct-spend-cli.js",
-    "ads:import": "node dist/src/analytics/ad-spend-cli.js"
+    "ads:import": "node dist/src/analytics/ad-spend-cli.js",
+    "ozon:points": "node dist/src/ozon-delivery/ozon-points-cli.js"
   },
   "comment:overrides": "multer 2.4.0 прибит внутри @nestjs/platform-express и уязвим (GHSA-q7qp-rjg7-q26m, отказ в обслуживании). Исправленной сборки NestJS пока нет, поэтому поднимаем сам multer до 2.5.0 — версии, названной в самом уведомлении. Убрать, когда NestJS обновит свою закреплённую версию. effect 3.20.0 так же прибит внутри @prisma/config (даже в prisma 7.10.1) и уязвим (GHSA-7589-6fvf-x4pw, ReDoS, исправлено в 3.22.1) — поднимаем до 3.22.5 в той же третьей линейке. Убрать, когда Prisma обновит свою закреплённую версию.",
   "overrides": {
