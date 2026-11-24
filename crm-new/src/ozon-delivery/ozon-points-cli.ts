@@ -34,7 +34,20 @@ async function main(): Promise<void> {
       prisma as unknown as PrismaService,
       client,
     );
-    const result = await service.sync();
+    /*
+     * По умолчанию — полный проход с нуля (с гашением пропавших пунктов).
+     * --resume: продолжить после самого большого id, сохранённого за
+     * последние 20 часов — если прошлый запуск оборвался.
+     */
+    let from: string | undefined;
+    if (process.argv.includes('--resume')) {
+      const rows = await prisma.$queryRaw<{ max: number | null }[]>`
+        SELECT MAX("id") AS max FROM "OzonPickupPoint"
+        WHERE "updatedAt" > NOW() - INTERVAL '20 hours'`;
+      const max = rows[0]?.max;
+      if (max) from = String(max);
+    }
+    const result = await service.sync({ from });
     console.log(JSON.stringify(result));
     process.exitCode = result.total > 0 ? 0 : 1;
   } finally {

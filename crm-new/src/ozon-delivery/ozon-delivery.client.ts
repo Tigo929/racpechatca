@@ -149,9 +149,12 @@ export class OzonDeliveryClient {
     // Анти-бот: 307 с cookie — повторяем с ней (до двух раз).
     for (let i = 0; i < 2 && (res.status === 307 || res.status === 302); i++) {
       this.rememberCookie(res);
+      // Тело перенаправления дочитываем: иначе соединение и буфер висят.
+      await res.arrayBuffer().catch(() => undefined);
       res = await this.send(path, payload, token);
     }
     if (res.status === 401) {
+      await res.arrayBuffer().catch(() => undefined);
       token = await this.getToken(true);
       res = await this.send(path, payload, token);
     }

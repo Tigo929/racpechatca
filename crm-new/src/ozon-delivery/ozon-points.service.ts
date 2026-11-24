@@ -141,7 +141,9 @@ export class OzonPointsService implements OnModuleInit, OnModuleDestroy {
    * Скачать справочник: страница списка (1000 id) → подробности по 100 →
    * сразу в базу. Список целиком в памяти не держим, пачки идут по одной.
    */
-  async sync(): Promise<{ total: number; saved: number; failed: number }> {
+  async sync(
+    opts: { from?: string } = {},
+  ): Promise<{ total: number; saved: number; failed: number }> {
     if (this.syncing) return { total: 0, saved: 0, failed: 0 };
     this.syncing = true;
     const started = new Date();
@@ -150,7 +152,10 @@ export class OzonPointsService implements OnModuleInit, OnModuleDestroy {
     let failed = 0;
     let complete = false;
     try {
-      let cursor: string | undefined;
+      // Список идёт по возрастанию id, курсор — последний id: с него и
+      // продолжаем, если прошлый запуск оборвался.
+      let cursor: string | undefined = opts.from;
+      if (cursor) this.logger.log(`Пункты Ozon: продолжаю после id ${cursor}`);
       for (let page = 0; page < 500; page++) {
         const res = await this.withRetry(() =>
           this.ozon.post<ListResponse>('/v1/delivery-point/list', {
@@ -173,7 +178,7 @@ export class OzonPointsService implements OnModuleInit, OnModuleDestroy {
         }
         if (page % 10 === 9) {
           this.logger.log(
-            `Пункты Ozon: обработано ${total}, сохранено ${saved}`,
+            `Пункты Ozon: обработано ${total}, сохранено ${saved}, память ${Math.round(process.memoryUsage().heapUsed / 1048576)} МБ`,
           );
         }
         if (!res.next_cursor || ids.length < 1000) {
@@ -184,7 +189,7 @@ export class OzonPointsService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Пропавшие из списка — гасим, только если список пройден целиком.
-      if (complete && total > 1000 && saved > total * 0.9) {
+      if (!opts.from && complete && total > 1000 && saved > total * 0.9) {
         await this.prisma.ozonPickupPoint.updateMany({
           where: { updatedAt: { lt: started } },
           data: { isActive: false },
@@ -224,31 +229,25 @@ export class OzonPointsService implements OnModuleInit, OnModuleDestroy {
         p.full_address && p.coordinates?.latitude && p.coordinates?.longitude,
     );
     if (!rows.length) return 0;
-    await this.prisma.$transaction(
-      rows.map((p) => {
-        const address = shortAddress(p.full_address!);
-        const data = {
-          number: p.delivery_point_number ?? null,
-          name: p.name ?? null,
-          type: p.type ?? null,
-          address,
-          search: `${address} ${p.delivery_point_number ?? ''}`
-            .toLowerCase()
-            .replace(/ё/g, 'е'),
-          lat: p.coordinates!.latitude!,
-          lng: p.coordinates!.longitude!,
-          schedule: scheduleText(p.schedule),
-          storageDays: p.storage_period_days ?? null,
-          maxWeightG: p.restrictions?.max_weight_g ?? null,
-          isActive: p.is_active !== false,
-        };
-        return this.prisma.ozonPickupPoint.upsert({
-          where: { id: p.delivery_point_id },
-          create: { id: p.delivery_point_id, ...data },
-          update: data,
-        });
-      }),
-    );
+    /*
+     * Одним запросом на пачку, а не сотней upsert в транзакции: на ~400
+     * пачках Prisma-транзакции копили память (24.11.2026 программа дошла до
+     * 820 МБ и упала на ~35 тысячах пунктов).
+     */
+    const values = rows.map((p) => {
+      const address = shortAddress(p.full_address!);
+      return Prisma.sql`(${p.delivery_point_id}, ${p.delivery_point_number ?? null}, ${p.name ?? null}, ${p.type ?? null}, ${address}, ${`${address} ${p.delivery_point_number ?? ''}`.toLowerCase().replace(/ё/g, 'е')}, ${p.coordinates!.latitude!}, ${p.coordinates!.longitude!}, ${scheduleText(p.schedule)}, ${p.storage_period_days ?? null}, ${p.restrictions?.max_weight_g ?? null}, ${p.is_active !== false}, NOW())`;
+    });
+    await this.prisma.$executeRaw`
+      INSERT INTO "OzonPickupPoint"
+        ("id", "number", "name", "type", "address", "search", "lat", "lng", "schedule", "storageDays", "maxWeightG", "isActive", "updatedAt")
+      VALUES ${Prisma.join(values)}
+      ON CONFLICT ("id") DO UPDATE SET
+        "number" = EXCLUDED."number", "name" = EXCLUDED."name", "type" = EXCLUDED."type",
+        "address" = EXCLUDED."address", "search" = EXCLUDED."search", "lat" = EXCLUDED."lat",
+        "lng" = EXCLUDED."lng", "schedule" = EXCLUDED."schedule", "storageDays" = EXCLUDED."storageDays",
+        "maxWeightG" = EXCLUDED."maxWeightG", "isActive" = EXCLUDED."isActive", "updatedAt" = NOW()
+    `;
     return rows.length;
   }
 
