@@ -941,7 +941,16 @@ export class OrderPhotoService {
       )
         .trim()
         .replace(/^@/, '');
-      const contactMethod = dto.contactMethod ?? (tgRaw ? 'telegram' : 'max');
+      /*
+       * Telegram без ника — не Telegram. Клиент выбрал «Telegram» способом
+       * связи, но оставил только телефон: раньше заявка заводилась с пустой
+       * ссылкой https://t.me/, и карточку потом нельзя было сохранить вовсе
+       * (25.11.2026, заказ 20261123-176). Связь — по телефону.
+       */
+      const contactMethod =
+        dto.contactMethod === 'telegram' && !tgRaw
+          ? 'max'
+          : (dto.contactMethod ?? (tgRaw ? 'telegram' : 'max'));
       const communicationPlatform =
         contactMethod === 'telegram'
           ? EnumCommunication.TELEGRAM
@@ -2637,10 +2646,21 @@ export class OrderPhotoService {
         : dto.urgencyFee !== undefined
           ? Math.max(0, dto.urgencyFee)
           : order.urgencyFee;
-      if (
-        dto.urlCommunication !== undefined ||
-        dto.communicationPlatform !== undefined
-      ) {
+      /*
+       * Контакт проверяем, только если его поменяли. Форма карточки
+       * присылает его всегда, и заявка с уже записанным кривым контактом
+       * (пустой Telegram) не давала сохранить ничего — даже предоплату.
+       */
+      const contactChanged =
+        (dto.communicationPlatform !== undefined &&
+          dto.communicationPlatform !== order.communicationPlatform) ||
+        (dto.urlCommunication !== undefined &&
+          buildCommunicationUrl(
+            dto.communicationPlatform ?? order.communicationPlatform,
+            dto.urlCommunication,
+          ) !== order.urlCommunication &&
+          dto.urlCommunication.trim() !== order.urlCommunication);
+      if (contactChanged) {
         const contactError = validateCommunicationValue(
           dto.communicationPlatform ?? order.communicationPlatform,
           dto.urlCommunication ?? order.urlCommunication,
