@@ -399,7 +399,6 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
     }
   };
 
-  const [clientStickerLoading, setClientStickerLoading] = useState(false);
   // Подсветка зоны, когда над ней тащат файл.
   const [techDragOver, setTechDragOver] = useState(false);
 
@@ -415,25 +414,6 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
       (f) => f.type.startsWith('image/') || f.type === 'application/pdf',
     );
     if (files.length > 0) uploadPhotoMutation.mutate(files);
-  };
-  const handlePrintClientSticker = async () => {
-    try {
-      setClientStickerLoading(true);
-      const { blob, ozonLabel } = await ordersApi.getClientStickerPdf(orderId);
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      // Доставка Ozon: этикетка с QR вклеена второй страницей — или почему нет.
-      if (ozonLabel === "added") {
-        toast.success("Этикетка Ozon добавлена второй страницей");
-      } else if (ozonLabel) {
-        toast(`Этикетки Ozon в PDF нет: ${ozonLabel}`, { icon: "⚠️", duration: 8_000 });
-      }
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Не удалось сформировать стикер"));
-    } finally {
-      setClientStickerLoading(false);
-    }
   };
 
   /**
@@ -756,21 +736,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
               {order.isUrgent ? "Снять срочность" : "Срочно"}
             </button>
           )}
-          {/* Клиентский стикер на пакет — печатают и админ, и исполнитель,
-              как только заказ готов. */}
-            {order.productCategory === "PHOTO" &&
-            ["READY", "SHIPMENT_CREATED", "DONE", "SENT", "PAID", "COMPLETED"].includes(
-              order.status,
-            ) && (
-              <button
-                onClick={handlePrintClientSticker}
-                disabled={clientStickerLoading}
-                className={`${actionBtn} border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus-visible:ring-indigo-500`}
-              >
-                <Printer size={13} aria-hidden="true" />
-                {clientStickerLoading ? "Готовим…" : "Печать PDF"}
-              </button>
-            )}
+          {/* «Печать PDF» (наклейка на пакет) убрана 26.11.2026 по просьбе
+              владельца. Этикетка Ozon печатается из блока «Доставка Ozon». */}
           {isAdmin && (
             <>
               {/* Копирование текста клиенту: подтверждение при NEW, сообщение
