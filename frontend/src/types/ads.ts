@@ -11,6 +11,15 @@ export interface AdStats {
   costPerOrder: number | null;
   /** Расход / выручка, %. */
   spendShare: number | null;
+  /** Выручка / расход, %. */
+  roas: number | null;
+  /** Прибыль заказов по методике P&L до вычета рекламы; null — нет себестоимости части оплат. */
+  marginBeforeAds: number | null;
+  /** То же минус расход с НДС. */
+  marginAfterAds: number | null;
+  /** Маржа после рекламы / расход, %. */
+  romi: number | null;
+  paidWithoutCogs: number;
 }
 export interface AdKeywordRow extends AdStats {
   key: string;
@@ -38,4 +47,20 @@ export interface AdPerformance {
     adLeadsWithGroup: number;
   };
   campaigns: AdCampaignRow[];
+  quality: AdDataQuality;
+}
+export interface AdDataQuality {
+  spendLastDate: string | null;
+  spendDays: number;
+  periodDays: number;
+  metrikaSyncedAt: string | null;
+  siteLeads: number;
+  adLeads: number;
+  leadsClientIdOnly: number;
+  leadsNoIdentity: number;
+  adLeadsWithoutKeyword: number;
+  adLeadsWithoutGroup: number;
+  paidWithoutCogs: number;
+  outboxPending: number;
+  outboxFailed: number;
 }

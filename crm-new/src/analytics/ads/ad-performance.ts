@@ -12,19 +12,21 @@
  * Деньги: Метрика отдаёт расход без НДС, кабинет и счёт — с НДС. Цены
  * заявки и заказа считаются с НДС — столько реально уходит с карты.
  *
- * Оплата: по решению владельца (26.11.2026) статус «Отправлен» означает,
- * что деньги уже получены. Поэтому оплачен = дата оплаты стоит ИЛИ статус
- * не ниже «Отправлен».
+ * Оплата — то же правило, что у P&L (isRevenueRealized в reports.service):
+ * у фото «Отправлен» значит «отдан клиенту, деньги получены» (владелец,
+ * 26.11.2026), у футболок и холстов — только «передан производителю», и
+ * выручкой это ещё не является. Плюс стоит дата оплаты или «Ждём отзыв».
+ *
+ * Маржинальный доход до рекламы — прибыль заказа по методике P&L (addOrder):
+ * выручка − себестоимость (order-cogs.ts) − начисленная зарплата + заработок
+ * на доставке. Своей формулы здесь нет. Если себестоимость заказа неизвестна,
+ * маржа строки не считается вовсе (null), а не берётся «как есть»: иначе
+ * холст без цены подрядчика показал бы маржу 100 %.
  */
 
-export const VAT_RATE = 0.2;
+import { isRevenueRealized } from '../../reports/reports.service';
 
-export const PAID_STATUSES = new Set([
-  'SENT',
-  'PAID',
-  'READY_FOR_REVIEW',
-  'COMPLETED',
-]);
+export const VAT_RATE = 0.2;
 
 export interface SpendDetailInput {
   campaignId: string;
@@ -40,6 +42,9 @@ export interface SpendDetailInput {
 
 export interface LeadInput {
   status: string;
+  productCategory: string;
+  /** Прибыль заказа по методике P&L, ₽; null — себестоимость неизвестна. */
+  margin: number | null;
   clientPaidAt: Date | null;
   totalOrder: number;
   hasYclid: boolean;
@@ -65,6 +70,16 @@ export interface AdStats {
   costPerOrder: number | null;
   /** Расход / выручка, %; null — выручки нет. */
   spendShare: number | null;
+  /** Выручка / расход, %. */
+  roas: number | null;
+  /** Маржинальный доход до рекламы, ₽; null — у части оплат нет себестоимости. */
+  marginBeforeAds: number | null;
+  /** Маржинальный доход после рекламы (минус расход с НДС), ₽. */
+  marginAfterAds: number | null;
+  /** Маржа после рекламы / расход, %. */
+  romi: number | null;
+  /** Оплаченных заказов без надёжной себестоимости. */
+  paidWithoutCogs: number;
 }
 
 export interface KeywordRow extends AdStats {
@@ -126,8 +141,43 @@ export function isAdLead(l: LeadInput): boolean {
   );
 }
 
-export function isPaid(l: LeadInput): boolean {
-  return l.clientPaidAt !== null || PAID_STATUSES.has(l.status);
+export function isPaid(
+  l: Pick<LeadInput, 'status' | 'productCategory' | 'clientPaidAt'>,
+): boolean {
+  if (l.status === 'CANCELLED') return false;
+  return (
+    l.clientPaidAt !== null ||
+    l.status === 'READY_FOR_REVIEW' ||
+    isRevenueRealized(l.status, l.productCategory)
+  );
+}
+
+/**
+ * Экономика по готовым суммам — одна функция на строку, итог и тест ТЗ
+ * (25 000 расхода, 80 000 выручки, 30 000 себестоимости → маржа после
+ * рекламы 25 000, ROAS 320 %, ДРР 31,25 %, ROMI 100 %).
+ */
+export function economics(
+  spend: number,
+  revenue: number,
+  marginBeforeAds: number | null,
+): Pick<
+  AdStats,
+  'spendShare' | 'roas' | 'marginBeforeAds' | 'marginAfterAds' | 'romi'
+> {
+  const pct = (n: number) => Math.round(n * 100) / 100;
+  const marginAfterAds =
+    marginBeforeAds === null ? null : marginBeforeAds - spend;
+  return {
+    spendShare: spend && revenue ? pct((spend / revenue) * 100) : null,
+    roas: spend ? pct((revenue / spend) * 100) : null,
+    marginBeforeAds,
+    marginAfterAds,
+    romi:
+      spend && marginAfterAds !== null
+        ? pct((marginAfterAds / spend) * 100)
+        : null,
+  };
 }
 
 interface Acc {
@@ -137,6 +187,8 @@ interface Acc {
   paidOrders: number;
   cancelled: number;
   revenue: number;
+  margin: number;
+  paidWithoutCogs: number;
 }
 const acc = (): Acc => ({
   spendNet: 0,
@@ -145,6 +197,8 @@ const acc = (): Acc => ({
   paidOrders: 0,
   cancelled: 0,
   revenue: 0,
+  margin: 0,
+  paidWithoutCogs: 0,
 });
 
 const round = (n: number) => Math.round(n);
@@ -162,8 +216,12 @@ function finish(a: Acc): AdStats {
     // не деньги — «0 ₽ за заявку» читалось бы как бесплатная реклама.
     costPerLead: spend && a.leads ? round(spend / a.leads) : null,
     costPerOrder: spend && a.paidOrders ? round(spend / a.paidOrders) : null,
-    spendShare:
-      spend && a.revenue ? Math.round((spend / a.revenue) * 1000) / 10 : null,
+    ...economics(
+      round(spend),
+      round(a.revenue),
+      a.paidWithoutCogs ? null : round(a.margin),
+    ),
+    paidWithoutCogs: a.paidWithoutCogs,
   };
 }
 
@@ -173,6 +231,8 @@ function addLead(a: Acc, l: LeadInput) {
   else if (isPaid(l)) {
     a.paidOrders += 1;
     a.revenue += l.totalOrder || 0;
+    if (l.margin === null) a.paidWithoutCogs += 1;
+    else a.margin += l.margin;
   }
 }
 

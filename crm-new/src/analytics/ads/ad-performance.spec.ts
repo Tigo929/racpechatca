@@ -1,5 +1,6 @@
 import {
   computeAdPerformance,
+  economics,
   isAdLead,
   normalizeKeyword,
   type LeadInput,
@@ -20,6 +21,8 @@ const spend = (p: Partial<SpendDetailInput>): SpendDetailInput => ({
 });
 const lead = (p: Partial<LeadInput>): LeadInput => ({
   status: 'SENT',
+  productCategory: 'PHOTO',
+  margin: 700,
   clientPaidAt: null,
   totalOrder: 1500,
   hasYclid: true,
@@ -173,5 +176,53 @@ describe('Direct spend detail parsing', () => {
         ['713923503'],
       ),
     ).toThrow();
+  });
+});
+
+describe('economics (контрольный пример ТЗ)', () => {
+  it('25 000 расхода, 80 000 выручки, 30 000 себестоимости', () => {
+    expect(economics(25000, 80000, 80000 - 30000)).toEqual({
+      marginBeforeAds: 50000,
+      marginAfterAds: 25000,
+      roas: 320,
+      spendShare: 31.25,
+      romi: 100,
+    });
+  });
+  it('null на нулевом знаменателе и без себестоимости', () => {
+    expect(economics(0, 0, null)).toEqual({
+      marginBeforeAds: null,
+      marginAfterAds: null,
+      roas: null,
+      spendShare: null,
+      romi: null,
+    });
+  });
+});
+
+describe('оплата и маржа как в P&L', () => {
+  it('«Отправлен» — оплата у фото, но не у футболок и холстов', () => {
+    const r = computeAdPerformance(
+      [spend({})],
+      [
+        lead({}),
+        lead({ productCategory: 'TSHIRT' }),
+        lead({ productCategory: 'CANVAS' }),
+        lead({ productCategory: 'TSHIRT', status: 'PAID', margin: 1600 }),
+      ],
+    );
+    expect(r.totals.paidOrders).toBe(2);
+    expect(r.totals.marginBeforeAds).toBe(2300);
+    expect(r.totals.marginAfterAds).toBe(2300 - 1200);
+  });
+  it('нет себестоимости у оплаты — маржа строки не считается', () => {
+    const r = computeAdPerformance(
+      [spend({})],
+      [lead({}), lead({ margin: null })],
+    );
+    expect(r.totals.paidOrders).toBe(2);
+    expect(r.totals.marginBeforeAds).toBeNull();
+    expect(r.totals.romi).toBeNull();
+    expect(r.totals.paidWithoutCogs).toBe(1);
   });
 });
