@@ -5863,5 +5863,10 @@
     "mtime": 1795641970.621214,
     "ast_hash": "bfa1ba32b17993cae65358293aaaaf62",
     "semantic_hash": ""
+  },
+  "docs/marketing-mcp-audit.md": {
+    "mtime": 1795645885.586357,
+    "ast_hash": "f48504465d361a205722a5da3e28bb5c",
+    "semantic_hash": ""
   }
 }
