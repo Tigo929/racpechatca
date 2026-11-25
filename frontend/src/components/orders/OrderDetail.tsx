@@ -21,7 +21,8 @@ import { usersApi } from "../../api/users";
 import { DELIVERY_LABELS, SOURCE_ORDER_LABELS } from "../../constants";
 import { displayOrderNumber, marketplaceNumber } from "../../utils/order-number";
 import { prepaymentNeedsAttention } from "../../utils/prepayment";
-import { copyToClipboard } from "../../utils/clipboard";
+import { copyPendingText } from "../../utils/clipboard";
+import { ClientTextFallback } from "./ClientTextFallback";
 import { photosShortfall, pluralPhotos } from "../../utils/photos-shortfall";
 import { isMarketplaceTshirt } from "../../utils/marketplace-tshirt";
 import { MarketplacePrintStrip } from "./MarketplacePrintStrip";
@@ -246,6 +247,8 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
   const { user } = useAuth();
   // Менеджер по оформлению управляет заказами как админ (и видит суммы заказа).
   const isAdmin = user?.role === "ADMIN" || user?.role === "ORDER_MANAGER";
+  // Текст клиенту, который не удалось скопировать: показываем окном.
+  const [fallback, setFallback] = useState<{ text: string; title: string } | null>(null);
   // Разбивку прибыли владельца (расчёт с партнёром) видит только сам владелец.
   const isOwner = user?.role === "ADMIN";
 
@@ -796,12 +799,19 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
                   ? "Скопировать подтверждение заказа для клиента"
                   : "Скопировать сообщение о готовности для клиента";
                 const copyText = () => {
-                  void loadText()
-                    .then((text) => copyToClipboard(text))
+                  // Копируем «обещанием» текста, прямо в нажатии: на iPhone
+                  // право на буфер живёт только внутри жеста, и прежнее
+                  // «сначала загрузить, потом копировать» на телефоне
+                  // не работало (25.11.2026). Не вышло — окно с текстом.
+                  void copyPendingText(loadText)
                     .catch(() => false)
                     .then((ok) => {
                     if (!ok) {
-                      toast.error("Не удалось скопировать");
+                      void loadText()
+                        .then((text) =>
+                          setFallback({ text, title: isNew ? "Подтверждение для клиента" : "Готовность для клиента" }),
+                        )
+                        .catch(() => toast.error("Не удалось получить текст — откройте заказ ещё раз"));
                       return;
                     }
                     toast.success("Текст скопирован!");
@@ -894,6 +904,10 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
           )}
         </div>
       </div>
+
+      {fallback && (
+        <ClientTextFallback text={fallback.text} title={fallback.title} onClose={() => setFallback(null)} />
+      )}
 
       {deleteOpen && (
         <DeleteOrderModal

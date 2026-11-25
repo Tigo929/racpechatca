@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import toast from 'react-hot-toast';
-import { ordersApi } from '../../api/orders';
-import { copyPendingText } from '../../utils/clipboard';
+import { useState } from "react";
+import toast from "react-hot-toast";
+import { ordersApi } from "../../api/orders";
+import { copyPendingText } from "../../utils/clipboard";
+import { ClientTextFallback } from "./ClientTextFallback";
 
 /**
  * Кнопка «Скопировать сообщение клиенту».
@@ -17,6 +18,7 @@ import { copyPendingText } from '../../utils/clipboard';
  */
 export function GreetingCopyButton({ orderId }: { orderId: string }) {
   const [busy, setBusy] = useState(false);
+  const [fallback, setFallback] = useState<string | null>(null);
 
   async function copy() {
     setBusy(true);
@@ -25,27 +27,37 @@ export function GreetingCopyButton({ orderId }: { orderId: string }) {
       // право на запись в буфер живёт только внутри нажатия, и обычный
       // await его тратит (см. copyPendingText).
       if (!(await copyPendingText(() => ordersApi.getGreetingText(orderId)))) {
-        toast.error('Не удалось скопировать — попробуйте ещё раз');
+        // Буфер не дался — показываем текст окном с «Поделиться».
+        setFallback(await ordersApi.getGreetingText(orderId));
         return;
       }
-      toast.success('Сообщение скопировано');
+      toast.success("Сообщение скопировано");
     } catch {
       // Буфер недоступен или запрос не прошёл. Молчать нельзя: менеджер
       // решит, что скопировалось, и отправит пустоту.
-      toast.error('Не удалось скопировать — откройте заказ ещё раз');
+      toast.error("Не удалось скопировать — откройте заказ ещё раз");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <button
-      type="button"
-      onClick={copy}
-      disabled={busy}
-      className="inline-flex h-9 items-center rounded-md border border-gray-300 px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-60"
-    >
-      {busy ? 'Готовлю…' : 'Скопировать сообщение клиенту'}
-    </button>
+    <>
+      {fallback && (
+        <ClientTextFallback
+          text={fallback}
+          title="Сообщение клиенту"
+          onClose={() => setFallback(null)}
+        />
+      )}
+      <button
+        type="button"
+        onClick={copy}
+        disabled={busy}
+        className="inline-flex h-9 items-center rounded-md border border-gray-300 px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-60"
+      >
+        {busy ? "Готовлю…" : "Скопировать сообщение клиенту"}
+      </button>
+    </>
   );
 }
