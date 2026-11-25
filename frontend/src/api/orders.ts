@@ -183,12 +183,20 @@ export const ordersApi = {
   },
 
   /** Клиентский PDF-стикер на пакет (58×40 мм). Доступен и исполнителю. */
-  getClientStickerPdf: async (orderId: string): Promise<Blob> => {
-    const { data } = await api.get<Blob>(
+  /**
+   * Наклейка на пакет. У заказа с доставкой Ozon в тот же PDF следующей
+   * страницей вклеена этикетка Ozon; ozonLabel — 'added', причина, почему
+   * не вклеена, или null, если у заказа нет отправления Ozon.
+   */
+  getClientStickerPdf: async (
+    orderId: string,
+  ): Promise<{ blob: Blob; ozonLabel: string | null }> => {
+    const res = await api.get<Blob>(
       `/order-photo/${orderId}/client-sticker`,
       { responseType: 'blob' },
     );
-    return data;
+    const header = res.headers['x-ozon-label'] as string | undefined;
+    return { blob: res.data, ozonLabel: header ? decodeURIComponent(header) : null };
   },
 
   /** Прикрепить ТЗ-файлы (согласованный макет + уточнения) к заказу. */

@@ -536,6 +536,33 @@ export class OzonShipmentService {
     }
   }
 
+  /**
+   * Этикетка Ozon для вклейки в «Печать PDF» (наклейка на пакет).
+   *
+   * null — по заказу нет отправления Ozon, вклеивать нечего. missing —
+   * отправление есть, но этикетку получить нельзя (ещё не подтверждено,
+   * Ozon готовит, сбой) — печать наклейки от этого не ломается, человеку
+   * говорим причину.
+   */
+  async labelForSticker(
+    orderId: string,
+  ): Promise<{ buffer: Buffer } | { missing: string } | null> {
+    const shipment = await this.prisma.ozonShipment.findUnique({
+      where: { orderId },
+      select: { status: true, postingNumber: true },
+    });
+    if (!shipment?.postingNumber) return null;
+    if (['CANCELLED', 'RETURNED', 'DELIVERED'].includes(shipment.status)) {
+      return null;
+    }
+    try {
+      const { buffer } = await this.label(orderId);
+      return { buffer };
+    } catch (e) {
+      return { missing: (e as Error).message };
+    }
+  }
+
   /** Этикетки пачкой — одним PDF, по порядку заказов. */
   async labels(orderIds: string[]) {
     const merged = await PDFDocument.create();

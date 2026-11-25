@@ -419,10 +419,16 @@ export function OrderDetail({ orderId, onDeleted }: Props) {
   const handlePrintClientSticker = async () => {
     try {
       setClientStickerLoading(true);
-      const blob = await ordersApi.getClientStickerPdf(orderId);
+      const { blob, ozonLabel } = await ordersApi.getClientStickerPdf(orderId);
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank");
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      // Доставка Ozon: этикетка с QR вклеена второй страницей — или почему нет.
+      if (ozonLabel === "added") {
+        toast.success("Этикетка Ozon добавлена второй страницей");
+      } else if (ozonLabel) {
+        toast(`Этикетки Ozon в PDF нет: ${ozonLabel}`, { icon: "⚠️", duration: 8_000 });
+      }
     } catch (error) {
       toast.error(getErrorMessage(error, "Не удалось сформировать стикер"));
     } finally {

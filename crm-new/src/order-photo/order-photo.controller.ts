@@ -34,6 +34,8 @@ import { ReviewReminderService } from './review-reminder.service';
 import { ShipmentLeadService } from './shipment-lead.service';
 import { DtoSetShipmentLead } from './dto/set-shipment-lead.dto';
 import { BulkShipService } from './bulk-ship.service';
+import { OzonShipmentService } from 'src/ozon-delivery/ozon-shipment.service';
+import { appendPdf } from 'src/ozon-delivery/append-pdf';
 import { DtoBulkShip } from './dto/bulk-ship.dto';
 import { TshirtPartnerTelegramService } from './tshirt-partner-telegram.service';
 import { DtoDeleteOrder } from './dto/delete-order.dto';
@@ -92,6 +94,7 @@ export class OrderPhotoController {
     private readonly clientMessage: ClientMessageService,
     private readonly archive: OrderArchiveService,
     private readonly bulkShip: BulkShipService,
+    private readonly ozonShipments: OzonShipmentService,
   ) {}
 
   /**
@@ -176,7 +179,11 @@ export class OrderPhotoController {
 
   @Patch(':idOrder')
   @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
-  updateOrder(@Param('idOrder') idOrder: string, @Body() dto: DtoUpdateOrder, @CurrentUser() me: RequestUser) {
+  updateOrder(
+    @Param('idOrder') idOrder: string,
+    @Body() dto: DtoUpdateOrder,
+    @CurrentUser() me: RequestUser,
+  ) {
     return this.orderPhotoService.updateOrder(idOrder, dto, me.id);
   }
 
@@ -291,10 +298,31 @@ export class OrderPhotoController {
     @CurrentUser() me: RequestUser,
     @Res() res: Response,
   ): Promise<void> {
-    const { buffer, filename } =
-      await this.stickerService.generateClientSticker(idOrder, me.id, me.role);
+    const sticker = await this.stickerService.generateClientSticker(
+      idOrder,
+      me.id,
+      me.role,
+    );
+    let buffer = sticker.buffer;
+    /*
+     * Доставка Ozon: этикетка с QR-кодом для приёмки — следующей страницей
+     * того же PDF. Одно нажатие «Печать PDF» — и наклейка на пакет, и
+     * этикетка Ozon. Этикетка в своём размере: сжатый штрихкод пункт
+     * приёма не прочитает.
+     */
+    const label = await this.ozonShipments.labelForSticker(idOrder);
+    if (label && 'buffer' in label) {
+      buffer = await appendPdf(buffer, label.buffer);
+      res.setHeader('X-Ozon-Label', 'added');
+    } else if (label) {
+      res.setHeader('X-Ozon-Label', encodeURIComponent(label.missing));
+    }
+    res.setHeader('Access-Control-Expose-Headers', 'X-Ozon-Label');
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${sticker.filename}"`,
+    );
     res.end(buffer);
   }
 
