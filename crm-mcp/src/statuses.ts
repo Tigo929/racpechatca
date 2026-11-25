@@ -15,16 +15,21 @@
  */
 
 /**
- * Статусы, до которых заказ уже оплачен клиентом. «Отправлен» входит сюда
- * по слову владельца (26.11.2026): к отправке деньги уже получены, а дату
- * оплаты на таких заказах почти никогда не ставят.
+ * Статусы, в которых заказ оплачен у любого товара. Совпадает с правилом
+ * P&L (isRevenueRealized в crm-new/src/reports/reports.service.ts) плюс
+ * «Ждём отзыв», который идёт после оплаты.
  */
-export const PAID_STATUSES = ['SENT', 'PAID', 'READY_FOR_REVIEW', 'COMPLETED'] as const;
+export const PAID_STATUSES = ['PAID', 'READY_FOR_REVIEW', 'COMPLETED', 'DONE', 'SHIPMENT_CREATED'] as const;
 
-/** SQL-условие «этот заказ оплачен». Подставляется с псевдонимом таблицы. */
+/**
+ * SQL-условие «этот заказ оплачен». Подставляется с псевдонимом таблицы.
+ * «Отправлен» — оплата только у фото: там это отдача клиенту, деньги уже
+ * получены (владелец, 26.11.2026). У футболок и холстов «Отправлен» значит
+ * «передан производителю» и оплатой не является — так же считает P&L.
+ */
 export function paidSql(alias = 'o'): string {
   const list = PAID_STATUSES.map((s) => `'${s}'`).join(',');
-  return `(${alias}."clientPaidAt" IS NOT NULL OR ${alias}.status IN (${list}))`;
+  return `(${alias}."clientPaidAt" IS NOT NULL OR ${alias}.status IN (${list}) OR (${alias}.status = 'SENT' AND ${alias}."productCategory" = 'PHOTO'))`;
 }
 
 /**
