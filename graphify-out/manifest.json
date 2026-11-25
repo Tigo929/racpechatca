@@ -4520,13 +4520,13 @@
     "semantic_hash": ""
   },
   "crm-mcp/src/statuses.ts": {
-    "mtime": 1790787304.770432,
-    "ast_hash": "b5c5f725026f7bcc536c18b9226db848",
+    "mtime": 1795640902.4432845,
+    "ast_hash": "47ccb859bf878fb5d96e39446e805be7",
     "semantic_hash": ""
   },
   "crm-mcp/src/tools/ads.ts": {
-    "mtime": 1790801346.3221593,
-    "ast_hash": "4d2d207b367271fb6eba6a7aa4fc3c9c",
+    "mtime": 1795640902.442284,
+    "ast_hash": "d2b9f5f20bb4e811d3e2c338922a0108",
     "semantic_hash": ""
   },
   "crm-mcp/src/tools/channels.ts": {
@@ -5825,13 +5825,13 @@
     "semantic_hash": ""
   },
   "crm-new/src/analytics/ads/ad-performance.spec.ts": {
-    "mtime": 1795640660.9647374,
-    "ast_hash": "9c77ad70602c8e966b5f990faac0e393",
+    "mtime": 1795641892.8900304,
+    "ast_hash": "7bf1159325add41ece9e417380cb40b6",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/ads/ad-performance.ts": {
-    "mtime": 1795640661.0074883,
-    "ast_hash": "c93372a29d1895edd2b2433f8cf5cf3d",
+    "mtime": 1795641892.9380343,
+    "ast_hash": "3f72676da8198078eebbb5ca4ac50a95",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/ads/direct-spend-detail-sync.ts": {

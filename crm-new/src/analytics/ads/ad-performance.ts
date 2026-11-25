@@ -158,9 +158,12 @@ function finish(a: Acc): AdStats {
     paidOrders: a.paidOrders,
     cancelled: a.cancelled,
     revenue: round(a.revenue),
-    costPerLead: a.leads ? round(spend / a.leads) : null,
-    costPerOrder: a.paidOrders ? round(spend / a.paidOrders) : null,
-    spendShare: a.revenue ? Math.round((spend / a.revenue) * 1000) / 10 : null,
+    // Без расхода цены нет вовсе: строка «не определено» несёт заявки, но
+    // не деньги — «0 ₽ за заявку» читалось бы как бесплатная реклама.
+    costPerLead: spend && a.leads ? round(spend / a.leads) : null,
+    costPerOrder: spend && a.paidOrders ? round(spend / a.paidOrders) : null,
+    spendShare:
+      spend && a.revenue ? Math.round((spend / a.revenue) * 1000) / 10 : null,
   };
 }
 

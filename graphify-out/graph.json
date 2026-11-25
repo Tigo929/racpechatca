@@ -1096,19 +1096,6 @@
       "norm_label": "dtodetectproduct"
     },
     {
-      "label": "DtoSaveDraft",
-      "file_type": "code",
-      "source_file": "crm-new/src/scenarios/dto/save-draft.dto.ts",
-      "source_location": "L3",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_scenarios_dto_save_draft_dto_dtosavedraft",
-      "community": 101,
-      "community_name": "ScenarioController",
-      "norm_label": "dtosavedraft"
-    },
-    {
       "label": "DtoScenarioAnswers",
       "file_type": "code",
       "source_file": "crm-new/src/scenarios/dto/scenario-answers.dto.ts",
@@ -1809,71 +1796,6 @@
       "community": 119,
       "community_name": "AnalyticsPage.tsx",
       "norm_label": "tab"
-    },
-    {
-      "label": "CrmSlice",
-      "file_type": "code",
-      "source_file": "frontend/src/types/analytics.ts",
-      "source_location": "L363",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "frontend_src_types_analytics_crmslice",
-      "community": 119,
-      "community_name": "AnalyticsPage.tsx",
-      "norm_label": "crmslice"
-    },
-    {
-      "label": "PeriodPreset",
-      "file_type": "code",
-      "source_file": "frontend/src/types/analytics.ts",
-      "source_location": "L7",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "frontend_src_types_analytics_periodpreset",
-      "community": 119,
-      "community_name": "AnalyticsPage.tsx",
-      "norm_label": "periodpreset"
-    },
-    {
-      "label": "PeriodQuery",
-      "file_type": "code",
-      "source_file": "frontend/src/types/analytics.ts",
-      "source_location": "L377",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "frontend_src_types_analytics_periodquery",
-      "community": 119,
-      "community_name": "AnalyticsPage.tsx",
-      "norm_label": "periodquery"
-    },
-    {
-      "label": "SalesChannelRow",
-      "file_type": "code",
-      "source_file": "frontend/src/types/analytics.ts",
-      "source_location": "L342",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "frontend_src_types_analytics_saleschannelrow",
-      "community": 119,
-      "community_name": "AnalyticsPage.tsx",
-      "norm_label": "saleschannelrow"
-    },
-    {
-      "label": "Slice",
-      "file_type": "code",
-      "source_file": "frontend/src/types/analytics.ts",
-      "source_location": "L321",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "frontend_src_types_analytics_slice",
-      "community": 119,
-      "community_name": "AnalyticsPage.tsx",
-      "norm_label": "slice"
     },
     {
       "label": "Trend",
@@ -3384,19 +3306,6 @@
       "norm_label": "strippricesinterceptor"
     },
     {
-      "label": "DtoCreateOzonCrmOrder",
-      "file_type": "code",
-      "source_file": "crm-new/src/marketplace/dto/create-ozon-crm-order.dto.ts",
-      "source_location": "L11",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_marketplace_dto_create_ozon_crm_order_dto_dtocreateozoncrmorder",
-      "community": 138,
-      "community_name": "order-photo.controller.ts",
-      "norm_label": "dtocreateozoncrmorder"
-    },
-    {
       "label": "MarketplaceAccessGuard",
       "file_type": "code",
       "source_file": "crm-new/src/marketplace/marketplace-access.guard.ts",
@@ -3499,6 +3408,19 @@
       "community": 138,
       "community_name": "order-photo.controller.ts",
       "norm_label": "requestuser"
+    },
+    {
+      "label": "DtoSaveDraft",
+      "file_type": "code",
+      "source_file": "crm-new/src/scenarios/dto/save-draft.dto.ts",
+      "source_location": "L3",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_scenarios_dto_save_draft_dto_dtosavedraft",
+      "community": 138,
+      "community_name": "order-photo.controller.ts",
+      "norm_label": "dtosavedraft"
     },
     {
       "label": "RequestUser",
@@ -5243,19 +5165,6 @@
       "norm_label": "dtocreatemarketplaceaccount"
     },
     {
-      "label": "DtoUpdateMarketplaceAccount",
-      "file_type": "code",
-      "source_file": "crm-new/src/marketplace/dto/update-marketplace-account.dto.ts",
-      "source_location": "L9",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_marketplace_dto_update_marketplace_account_dto_dtoupdatemarketplaceaccount",
-      "community": 162,
-      "community_name": "MarketplaceController",
-      "norm_label": "dtoupdatemarketplaceaccount"
-    },
-    {
       "label": "MarketplaceController",
       "file_type": "code",
       "source_file": "crm-new/src/marketplace/marketplace.controller.ts",
@@ -6036,58 +5945,6 @@
       "norm_label": "slot"
     },
     {
-      "label": "Confounder",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/growth/growth-contract.ts",
-      "source_location": "L307",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_growth_growth_contract_confounder",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "confounder"
-    },
-    {
-      "label": "DataQualityFlag",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/growth/growth-contract.ts",
-      "source_location": "L278",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_growth_growth_contract_dataqualityflag",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "dataqualityflag"
-    },
-    {
-      "label": "MetricEvaluation",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/growth/growth-contract.ts",
-      "source_location": "L318",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_growth_growth_contract_metricevaluation",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "metricevaluation"
-    },
-    {
-      "label": "Verdict",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/growth/growth-contract.ts",
-      "source_location": "L270",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_growth_growth_contract_verdict",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "verdict"
-    },
-    {
       "label": "AnalyticsInsightsService",
       "file_type": "code",
       "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
@@ -6097,164 +5954,8 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": "analyticsinsightsservice"
-    },
-    {
-      "label": "FeedFilter",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
-      "source_location": "L82",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_analytics_insights_service_feedfilter",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "feedfilter"
-    },
-    {
-      "label": "InsightRow",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
-      "source_location": "L89",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_analytics_insights_service_insightrow",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insightrow"
-    },
-    {
-      "label": "RunRow",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
-      "source_location": "L90",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_analytics_insights_service_runrow",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "runrow"
-    },
-    {
-      "label": "FeedQueryDto",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/dto/insight-action.dto.ts",
-      "source_location": "L30",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_dto_insight_action_dto_feedquerydto",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "feedquerydto"
-    },
-    {
-      "label": "DetectedInsight",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L224",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_detectedinsight",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "detectedinsight"
-    },
-    {
-      "label": "InsightCategory",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L21",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_insightcategory",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insightcategory"
-    },
-    {
-      "label": "InsightEvidence",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L157",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_insightevidence",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insightevidence"
-    },
-    {
-      "label": "InsightFact",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L106",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_insightfact",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insightfact"
-    },
-    {
-      "label": "InsightHypothesis",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L133",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_insighthypothesis",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insighthypothesis"
-    },
-    {
-      "label": "InsightPayload",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L192",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_insightpayload",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insightpayload"
-    },
-    {
-      "label": "InsightQuality",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L185",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_insightquality",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insightquality"
-    },
-    {
-      "label": "InsightRecommendation",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L141",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_insightrecommendation",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insightrecommendation"
     },
     {
       "label": "InsightRecord",
@@ -6266,7 +5967,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_contract_insightrecord",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": "insightrecord"
     },
     {
@@ -6279,7 +5980,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_contract_insightrunkind",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": "insightrunkind"
     },
     {
@@ -6292,47 +5993,8 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_contract_insightrunrecord",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": "insightrunrecord"
-    },
-    {
-      "label": "InsightRunStatus",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L292",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_insightrunstatus",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insightrunstatus"
-    },
-    {
-      "label": "InsightScope",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L69",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_insightscope",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insightscope"
-    },
-    {
-      "label": "InsightSeverity",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L53",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_insightseverity",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insightseverity"
     },
     {
       "label": "InsightsFeed",
@@ -6344,21 +6006,8 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_contract_insightsfeed",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": "insightsfeed"
-    },
-    {
-      "label": "InsightSource",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L72",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_insightsource",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insightsource"
     },
     {
       "label": "InsightsQuality",
@@ -6370,7 +6019,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_contract_insightsquality",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": "insightsquality"
     },
     {
@@ -6383,21 +6032,8 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_contract_insightsstatus",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": "insightsstatus"
-    },
-    {
-      "label": "InsightStatus",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L60",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_insightstatus",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insightstatus"
     },
     {
       "label": "InsightVersionRecord",
@@ -6409,47 +6045,8 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_contract_insightversionrecord",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": "insightversionrecord"
-    },
-    {
-      "label": "LimitationCode",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L94",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_limitationcode",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "limitationcode"
-    },
-    {
-      "label": "SuppressedResult",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L229",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_suppressedresult",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "suppressedresult"
-    },
-    {
-      "label": "SuppressionReason",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L78",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_suppressionreason",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "suppressionreason"
     },
     {
       "label": "DeliveryView",
@@ -8476,8 +8073,60 @@
       "_origin": "ast",
       "id": "crm_new_src_partner_dto_update_partner_settings_dto_dtoupdatepartnersettings",
       "community": 295,
-      "community_name": "DtoUpdatePartnerSettings",
+      "community_name": "LocalAgentTaskService",
       "norm_label": "dtoupdatepartnersettings"
+    },
+    {
+      "label": "DtoLocalAgentTaskAction",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/dto/local-agent-task.dto.ts",
+      "source_location": "L9",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_dto_local_agent_task_dto_dtolocalagenttaskaction",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "dtolocalagenttaskaction"
+    },
+    {
+      "label": "DtoLocalAgentTaskQuery",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/dto/local-agent-task.dto.ts",
+      "source_location": "L4",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_dto_local_agent_task_dto_dtolocalagenttaskquery",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "dtolocalagenttaskquery"
+    },
+    {
+      "label": "DtoLocalAgentTaskReport",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/dto/local-agent-task.dto.ts",
+      "source_location": "L14",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_dto_local_agent_task_dto_dtolocalagenttaskreport",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "dtolocalagenttaskreport"
+    },
+    {
+      "label": "LocalAgentTaskService",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
+      "source_location": "L26",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "localagenttaskservice"
     },
     {
       "label": "DtoCreateUser",
@@ -8571,19 +8220,6 @@
       "norm_label": "imagecardstorageservice"
     },
     {
-      "label": "CanvasModule",
-      "file_type": "code",
-      "source_file": "crm-new/src/canvas/canvas.module.ts",
-      "source_location": "L14",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_canvas_canvas_module_canvasmodule",
-      "community": 307,
-      "community_name": "partner-settings.module.ts",
-      "norm_label": "canvasmodule"
-    },
-    {
       "label": "CanvasProductionController",
       "file_type": "code",
       "source_file": "crm-new/src/canvas/canvas-production.controller.ts",
@@ -8593,34 +8229,8 @@
       "_origin": "ast",
       "id": "crm_new_src_canvas_canvas_production_controller_canvasproductioncontroller",
       "community": 307,
-      "community_name": "partner-settings.module.ts",
+      "community_name": "CanvasProductionController",
       "norm_label": "canvasproductioncontroller"
-    },
-    {
-      "label": "PartnerSettingsController",
-      "file_type": "code",
-      "source_file": "crm-new/src/partner/partner-settings.controller.ts",
-      "source_location": "L13",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_partner_partner_settings_controller_partnersettingscontroller",
-      "community": 307,
-      "community_name": "partner-settings.module.ts",
-      "norm_label": "partnersettingscontroller"
-    },
-    {
-      "label": "PartnerSettingsModule",
-      "file_type": "code",
-      "source_file": "crm-new/src/partner/partner-settings.module.ts",
-      "source_location": "L15",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_partner_partner_settings_module_partnersettingsmodule",
-      "community": 307,
-      "community_name": "partner-settings.module.ts",
-      "norm_label": "partnersettingsmodule"
     },
     {
       "label": "ClientIdentitySource",
@@ -8736,7 +8346,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_period_period",
       "community": 312,
-      "community_name": "production.ts",
+      "community_name": "tools/marketplace.ts",
       "norm_label": "period"
     },
     {
@@ -8749,7 +8359,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_period_perioderror",
       "community": 312,
-      "community_name": "production.ts",
+      "community_name": "tools/marketplace.ts",
       "norm_label": "perioderror"
     },
     {
@@ -8894,19 +8504,6 @@
       "community": 32,
       "community_name": "tasks.controller.ts",
       "norm_label": "dtoupdatetaskstatus"
-    },
-    {
-      "label": "LocalAgentTaskService",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
-      "source_location": "L26",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": "localagenttaskservice"
     },
     {
       "label": "RequestUser",
@@ -9780,19 +9377,6 @@
       "norm_label": "sendtest"
     },
     {
-      "label": "PartnerOzonController",
-      "file_type": "code",
-      "source_file": "crm-new/src/partner/partner-ozon.controller.ts",
-      "source_location": "L38",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_partner_partner_ozon_controller_partnerozoncontroller",
-      "community": 366,
-      "community_name": "PartnerOzonController",
-      "norm_label": "partnerozoncontroller"
-    },
-    {
       "label": "Layers",
       "file_type": "code",
       "source_file": "crm-new/src/approval/approval-client-item.spec.ts",
@@ -10079,6 +9663,19 @@
       "norm_label": "prepayment"
     },
     {
+      "label": "DtoUpdateMarketplaceAccount",
+      "file_type": "code",
+      "source_file": "crm-new/src/marketplace/dto/update-marketplace-account.dto.ts",
+      "source_location": "L9",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_marketplace_dto_update_marketplace_account_dto_dtoupdatemarketplaceaccount",
+      "community": 370,
+      "community_name": "DtoUpdateMarketplaceAccount",
+      "norm_label": "dtoupdatemarketplaceaccount"
+    },
+    {
       "label": "CanvasProductionPricing",
       "file_type": "code",
       "source_file": "frontend/src/api/canvasProduction.ts",
@@ -10296,7 +9893,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_db_queryresult",
       "community": 379,
-      "community_name": "tools/marketplace.ts",
+      "community_name": "tools/salary.ts",
       "norm_label": "queryresult"
     },
     {
@@ -10911,6 +10508,19 @@
       "norm_label": "appmodule"
     },
     {
+      "label": "CanvasModule",
+      "file_type": "code",
+      "source_file": "crm-new/src/canvas/canvas.module.ts",
+      "source_location": "L14",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_canvas_canvas_module_canvasmodule",
+      "community": 393,
+      "community_name": "app.module.ts",
+      "norm_label": "canvasmodule"
+    },
+    {
       "label": "MetrikaAnalyticsModule",
       "file_type": "code",
       "source_file": "crm-new/src/metrika/analytics/metrika-analytics.module.ts",
@@ -10948,6 +10558,19 @@
       "community": 393,
       "community_name": "app.module.ts",
       "norm_label": "orderphotomodule"
+    },
+    {
+      "label": "PartnerSettingsModule",
+      "file_type": "code",
+      "source_file": "crm-new/src/partner/partner-settings.module.ts",
+      "source_location": "L15",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_partner_partner_settings_module_partnersettingsmodule",
+      "community": 393,
+      "community_name": "app.module.ts",
+      "norm_label": "partnersettingsmodule"
     },
     {
       "label": "ReportsModule",
@@ -11535,6 +11158,123 @@
       "norm_label": "dtoupdateapproval"
     },
     {
+      "label": "Confounder",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/growth/growth-contract.ts",
+      "source_location": "L307",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_growth_growth_contract_confounder",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "confounder"
+    },
+    {
+      "label": "DataQualityFlag",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/growth/growth-contract.ts",
+      "source_location": "L278",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_growth_growth_contract_dataqualityflag",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "dataqualityflag"
+    },
+    {
+      "label": "MetricEvaluation",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/growth/growth-contract.ts",
+      "source_location": "L318",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_growth_growth_contract_metricevaluation",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "metricevaluation"
+    },
+    {
+      "label": "Verdict",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/growth/growth-contract.ts",
+      "source_location": "L270",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_growth_growth_contract_verdict",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "verdict"
+    },
+    {
+      "label": "FeedFilter",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
+      "source_location": "L82",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_analytics_insights_service_feedfilter",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "feedfilter"
+    },
+    {
+      "label": "InsightRow",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
+      "source_location": "L89",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_analytics_insights_service_insightrow",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insightrow"
+    },
+    {
+      "label": "RunRow",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
+      "source_location": "L90",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_analytics_insights_service_runrow",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "runrow"
+    },
+    {
+      "label": "FeedQueryDto",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/dto/insight-action.dto.ts",
+      "source_location": "L30",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_dto_insight_action_dto_feedquerydto",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "feedquerydto"
+    },
+    {
+      "label": "DetectedInsight",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L224",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_detectedinsight",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "detectedinsight"
+    },
+    {
       "label": "DetectorRunResult",
       "file_type": "code",
       "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
@@ -11546,6 +11286,201 @@
       "community": 42,
       "community_name": "insights-engine.ts",
       "norm_label": "detectorrunresult"
+    },
+    {
+      "label": "InsightCategory",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L21",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_insightcategory",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insightcategory"
+    },
+    {
+      "label": "InsightEvidence",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L157",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_insightevidence",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insightevidence"
+    },
+    {
+      "label": "InsightFact",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L106",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_insightfact",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insightfact"
+    },
+    {
+      "label": "InsightHypothesis",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L133",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_insighthypothesis",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insighthypothesis"
+    },
+    {
+      "label": "InsightPayload",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L192",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_insightpayload",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insightpayload"
+    },
+    {
+      "label": "InsightQuality",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L185",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_insightquality",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insightquality"
+    },
+    {
+      "label": "InsightRecommendation",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L141",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_insightrecommendation",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insightrecommendation"
+    },
+    {
+      "label": "InsightRunStatus",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L292",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_insightrunstatus",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insightrunstatus"
+    },
+    {
+      "label": "InsightScope",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L69",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_insightscope",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insightscope"
+    },
+    {
+      "label": "InsightSeverity",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L53",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_insightseverity",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insightseverity"
+    },
+    {
+      "label": "InsightSource",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L72",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_insightsource",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insightsource"
+    },
+    {
+      "label": "InsightStatus",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L60",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_insightstatus",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insightstatus"
+    },
+    {
+      "label": "LimitationCode",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L94",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_limitationcode",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "limitationcode"
+    },
+    {
+      "label": "SuppressedResult",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L229",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_suppressedresult",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "suppressedresult"
+    },
+    {
+      "label": "SuppressionReason",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L78",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_suppressionreason",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "suppressionreason"
     },
     {
       "label": "EntityRow",
@@ -11600,6 +11535,19 @@
       "norm_label": "row"
     },
     {
+      "label": "DtoCreateOzonCrmOrder",
+      "file_type": "code",
+      "source_file": "crm-new/src/marketplace/dto/create-ozon-crm-order.dto.ts",
+      "source_location": "L11",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_marketplace_dto_create_ozon_crm_order_dto_dtocreateozoncrmorder",
+      "community": 421,
+      "community_name": "DtoCreateOzonCrmOrder",
+      "norm_label": "dtocreateozoncrmorder"
+    },
+    {
       "label": "PartnerAdminController",
       "file_type": "code",
       "source_file": "crm-new/src/partner/partner-admin.controller.ts",
@@ -11611,6 +11559,19 @@
       "community": 422,
       "community_name": "PartnerAdminController",
       "norm_label": "partneradmincontroller"
+    },
+    {
+      "label": "PartnerOzonController",
+      "file_type": "code",
+      "source_file": "crm-new/src/partner/partner-ozon.controller.ts",
+      "source_location": "L38",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "crm_new_src_partner_partner_ozon_controller_partnerozoncontroller",
+      "community": 422,
+      "community_name": "PartnerAdminController",
+      "norm_label": "partnerozoncontroller"
     },
     {
       "label": "DtoPartnerStatus",
@@ -12068,6 +12029,19 @@
       "norm_label": "crmfunnelmetrics"
     },
     {
+      "label": "CrmSlice",
+      "file_type": "code",
+      "source_file": "frontend/src/types/analytics.ts",
+      "source_location": "L363",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "frontend_src_types_analytics_crmslice",
+      "community": 44,
+      "community_name": "types/analytics.ts",
+      "norm_label": "crmslice"
+    },
+    {
       "label": "DashboardStatus",
       "file_type": "code",
       "source_file": "frontend/src/types/analytics.ts",
@@ -12211,6 +12185,32 @@
       "norm_label": "overviewmetadata"
     },
     {
+      "label": "PeriodPreset",
+      "file_type": "code",
+      "source_file": "frontend/src/types/analytics.ts",
+      "source_location": "L7",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "frontend_src_types_analytics_periodpreset",
+      "community": 44,
+      "community_name": "types/analytics.ts",
+      "norm_label": "periodpreset"
+    },
+    {
+      "label": "PeriodQuery",
+      "file_type": "code",
+      "source_file": "frontend/src/types/analytics.ts",
+      "source_location": "L377",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "frontend_src_types_analytics_periodquery",
+      "community": 44,
+      "community_name": "types/analytics.ts",
+      "norm_label": "periodquery"
+    },
+    {
       "label": "ProductRow",
       "file_type": "code",
       "source_file": "frontend/src/types/analytics.ts",
@@ -12250,6 +12250,19 @@
       "norm_label": "realizedfinancials"
     },
     {
+      "label": "SalesChannelRow",
+      "file_type": "code",
+      "source_file": "frontend/src/types/analytics.ts",
+      "source_location": "L342",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "frontend_src_types_analytics_saleschannelrow",
+      "community": 44,
+      "community_name": "types/analytics.ts",
+      "norm_label": "saleschannelrow"
+    },
+    {
       "label": "SiteFunnelMetrics",
       "file_type": "code",
       "source_file": "frontend/src/types/analytics.ts",
@@ -12261,6 +12274,19 @@
       "community": 44,
       "community_name": "types/analytics.ts",
       "norm_label": "sitefunnelmetrics"
+    },
+    {
+      "label": "Slice",
+      "file_type": "code",
+      "source_file": "frontend/src/types/analytics.ts",
+      "source_location": "L321",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "frontend_src_types_analytics_slice",
+      "community": 44,
+      "community_name": "types/analytics.ts",
+      "norm_label": "slice"
     },
     {
       "label": "SourceRow",
@@ -16696,43 +16722,17 @@
       "norm_label": "orderphotocontroller"
     },
     {
-      "label": "DtoLocalAgentTaskAction",
+      "label": "PartnerSettingsController",
       "file_type": "code",
-      "source_file": "crm-new/src/tasks/dto/local-agent-task.dto.ts",
-      "source_location": "L9",
+      "source_file": "crm-new/src/partner/partner-settings.controller.ts",
+      "source_location": "L13",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
-      "id": "crm_new_src_tasks_dto_local_agent_task_dto_dtolocalagenttaskaction",
+      "id": "crm_new_src_partner_partner_settings_controller_partnersettingscontroller",
       "community": 9,
       "community_name": "Roles",
-      "norm_label": "dtolocalagenttaskaction"
-    },
-    {
-      "label": "DtoLocalAgentTaskQuery",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/dto/local-agent-task.dto.ts",
-      "source_location": "L4",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_dto_local_agent_task_dto_dtolocalagenttaskquery",
-      "community": 9,
-      "community_name": "Roles",
-      "norm_label": "dtolocalagenttaskquery"
-    },
-    {
-      "label": "DtoLocalAgentTaskReport",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/dto/local-agent-task.dto.ts",
-      "source_location": "L14",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_dto_local_agent_task_dto_dtolocalagenttaskreport",
-      "community": 9,
-      "community_name": "Roles",
-      "norm_label": "dtolocalagenttaskreport"
+      "norm_label": "partnersettingscontroller"
     },
     {
       "label": "LocalAgentTasksController",
@@ -19769,18 +19769,6 @@
       "norm_label": "settlementpositions()"
     },
     {
-      "label": ".convert()",
-      "file_type": "code",
-      "source_file": "crm-new/src/scenarios/scenario.controller.ts",
-      "source_location": "L100",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_scenarios_scenario_controller_scenariocontroller_convert",
-      "community": 101,
-      "community_name": "ScenarioController",
-      "norm_label": ".convert()"
-    },
-    {
       "label": ".detect()",
       "file_type": "code",
       "source_file": "crm-new/src/scenarios/scenario.controller.ts",
@@ -19839,18 +19827,6 @@
       "community": 101,
       "community_name": "ScenarioController",
       "norm_label": ".progress()"
-    },
-    {
-      "label": ".saveDraft()",
-      "file_type": "code",
-      "source_file": "crm-new/src/scenarios/scenario.controller.ts",
-      "source_location": "L90",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_scenarios_scenario_controller_scenariocontroller_savedraft",
-      "community": 101,
-      "community_name": "ScenarioController",
-      "norm_label": ".savedraft()"
     },
     {
       "label": "findScenario()",
@@ -21632,7 +21608,7 @@
       "label": "closedSql()",
       "file_type": "code",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L36",
+      "source_location": "L40",
       "_callable": true,
       "_origin": "ast",
       "id": "crm_mcp_src_statuses_closedsql",
@@ -21644,7 +21620,7 @@
       "label": "label()",
       "file_type": "code",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L95",
+      "source_location": "L99",
       "_callable": true,
       "_origin": "ast",
       "id": "crm_mcp_src_statuses_label",
@@ -21656,7 +21632,7 @@
       "label": "orderedSql()",
       "file_type": "code",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L31",
+      "source_location": "L35",
       "_callable": true,
       "_origin": "ast",
       "id": "crm_mcp_src_statuses_orderedsql",
@@ -21668,13 +21644,25 @@
       "label": "paidSql()",
       "file_type": "code",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L21",
+      "source_location": "L25",
       "_callable": true,
       "_origin": "ast",
       "id": "crm_mcp_src_statuses_paidsql",
       "community": 118,
       "community_name": "tools/orders.ts",
       "norm_label": "paidsql()"
+    },
+    {
+      "label": "periodKey()",
+      "file_type": "code",
+      "source_file": "frontend/src/api/analytics.ts",
+      "source_location": "L134",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "frontend_src_api_analytics_periodkey",
+      "community": 119,
+      "community_name": "AnalyticsPage.tsx",
+      "norm_label": "periodkey()"
     },
     {
       "label": "AdsTab()",
@@ -21941,16 +21929,16 @@
       "norm_label": "behaviorheadline()"
     },
     {
-      "label": "DirectionFunnels()",
+      "label": "DevicesBlock()",
       "file_type": "code",
       "source_file": "frontend/src/features/analytics/behavior-sections.tsx",
-      "source_location": "L145",
+      "source_location": "L242",
       "_callable": true,
       "_origin": "ast",
-      "id": "frontend_src_features_analytics_behavior_sections_directionfunnels",
+      "id": "frontend_src_features_analytics_behavior_sections_devicesblock",
       "community": 119,
       "community_name": "AnalyticsPage.tsx",
-      "norm_label": "directionfunnels()"
+      "norm_label": "devicesblock()"
     },
     {
       "label": "FormErrorsBlock()",
@@ -21989,18 +21977,6 @@
       "norm_label": "pathlist()"
     },
     {
-      "label": "PathsBlock()",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/behavior-sections.tsx",
-      "source_location": "L353",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_behavior_sections_pathsblock",
-      "community": 119,
-      "community_name": "AnalyticsPage.tsx",
-      "norm_label": "pathsblock()"
-    },
-    {
       "label": "Stat()",
       "file_type": "code",
       "source_file": "frontend/src/features/analytics/behavior-sections.tsx",
@@ -22013,16 +21989,16 @@
       "norm_label": "stat()"
     },
     {
-      "label": "PeriodSelector()",
+      "label": "StepRow()",
       "file_type": "code",
-      "source_file": "frontend/src/features/analytics/PeriodSelector.tsx",
-      "source_location": "L10",
+      "source_file": "frontend/src/features/analytics/behavior-sections.tsx",
+      "source_location": "L56",
       "_callable": true,
       "_origin": "ast",
-      "id": "frontend_src_features_analytics_periodselector_periodselector",
+      "id": "frontend_src_features_analytics_behavior_sections_steprow",
       "community": 119,
       "community_name": "AnalyticsPage.tsx",
-      "norm_label": "periodselector()"
+      "norm_label": "steprow()"
     },
     {
       "label": "AttentionCards()",
@@ -22205,18 +22181,6 @@
       "norm_label": "slicecard()"
     },
     {
-      "label": "SourcesTable()",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/sections.tsx",
-      "source_location": "L265",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_sections_sourcestable",
-      "community": 119,
-      "community_name": "AnalyticsPage.tsx",
-      "norm_label": "sourcestable()"
-    },
-    {
       "label": "TotalsRow()",
       "file_type": "code",
       "source_file": "frontend/src/features/analytics/sections.tsx",
@@ -22239,18 +22203,6 @@
       "community": 119,
       "community_name": "AnalyticsPage.tsx",
       "norm_label": "utmtable()"
-    },
-    {
-      "label": "row()",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/__tests__/order-origins.test.tsx",
-      "source_location": "L16",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_tests_order_origins_test_row",
-      "community": 119,
-      "community_name": "AnalyticsPage.tsx",
-      "norm_label": "row()"
     },
     {
       "label": "shortDate()",
@@ -29333,18 +29285,6 @@
       "norm_label": ".remove()"
     },
     {
-      "label": ".update()",
-      "file_type": "code",
-      "source_file": "crm-new/src/marketplace/marketplace.controller.ts",
-      "source_location": "L53",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_marketplace_marketplace_controller_marketplacecontroller_update",
-      "community": 162,
-      "community_name": "MarketplaceController",
-      "norm_label": ".update()"
-    },
-    {
       "label": "answer()",
       "file_type": "code",
       "source_file": "crm-mcp/src/format.ts",
@@ -29353,7 +29293,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_format_answer",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "answer()"
     },
     {
@@ -29365,7 +29305,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_format_int",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "int()"
     },
     {
@@ -29377,7 +29317,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_format_money",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "money()"
     },
     {
@@ -29389,7 +29329,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_format_per",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "per()"
     },
     {
@@ -29401,7 +29341,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_format_share",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "share()"
     },
     {
@@ -29413,19 +29353,19 @@
       "_origin": "ast",
       "id": "crm_mcp_src_format_table",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "table()"
     },
     {
       "label": "vatNote()",
       "file_type": "code",
       "source_file": "crm-mcp/src/tools/ads.ts",
-      "source_location": "L37",
+      "source_location": "L39",
       "_callable": true,
       "_origin": "ast",
       "id": "crm_mcp_src_tools_ads_vatnote",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "vatnote()"
     },
     {
@@ -29437,7 +29377,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_tools_types_readlimit",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "readlimit()"
     },
     {
@@ -30365,18 +30305,6 @@
       "norm_label": "params()"
     },
     {
-      "label": "periodKey()",
-      "file_type": "code",
-      "source_file": "frontend/src/api/analytics.ts",
-      "source_location": "L134",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "frontend_src_api_analytics_periodkey",
-      "community": 173,
-      "community_name": "api/analytics.ts",
-      "norm_label": "periodkey()"
-    },
-    {
       "label": "moscow()",
       "file_type": "code",
       "source_file": "frontend/src/features/analytics/reports-sections.tsx",
@@ -31261,7 +31189,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_acknowledge",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".acknowledge()"
     },
     {
@@ -31273,7 +31201,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_aftersync",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".aftersync()"
     },
     {
@@ -31285,7 +31213,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_changecontexts",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".changecontexts()"
     },
     {
@@ -31297,7 +31225,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_constructor",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".constructor()"
     },
     {
@@ -31309,7 +31237,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_feed",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".feed()"
     },
     {
@@ -31321,7 +31249,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_finishrun",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".finishrun()"
     },
     {
@@ -31333,7 +31261,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_get",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".get()"
     },
     {
@@ -31345,7 +31273,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_lastrun",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".lastrun()"
     },
     {
@@ -31357,7 +31285,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_quality",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".quality()"
     },
     {
@@ -31369,7 +31297,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_recordrun",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".recordrun()"
     },
     {
@@ -31381,7 +31309,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_resolve",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".resolve()"
     },
     {
@@ -31393,7 +31321,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_run",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".run()"
     },
     {
@@ -31405,7 +31333,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_runlocked",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".runlocked()"
     },
     {
@@ -31417,7 +31345,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_status",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".status()"
     },
     {
@@ -31429,7 +31357,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_torecord",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".torecord()"
     },
     {
@@ -31441,20 +31369,8 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_torunrecord",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".torunrecord()"
-    },
-    {
-      "label": ".upsertInsight()",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
-      "source_location": "L522",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_upsertinsight",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": ".upsertinsight()"
     },
     {
       "label": ".versions()",
@@ -31465,7 +31381,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_versions",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".versions()"
     },
     {
@@ -31477,7 +31393,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_compareforfeed",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": "compareforfeed()"
     },
     {
@@ -31489,7 +31405,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_summarize",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": "summarize()"
     },
     {
@@ -31501,7 +31417,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_dashboard_controller_insightsdashboardcontroller_acknowledge",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".acknowledge()"
     },
     {
@@ -31513,7 +31429,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_dashboard_controller_insightsdashboardcontroller_feed",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".feed()"
     },
     {
@@ -31525,7 +31441,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_dashboard_controller_insightsdashboardcontroller_one",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".one()"
     },
     {
@@ -31537,7 +31453,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_dashboard_controller_insightsdashboardcontroller_quality",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".quality()"
     },
     {
@@ -31549,7 +31465,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_dashboard_controller_insightsdashboardcontroller_resolve",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".resolve()"
     },
     {
@@ -31561,7 +31477,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_dashboard_controller_insightsdashboardcontroller_run",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".run()"
     },
     {
@@ -31573,7 +31489,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_dashboard_controller_insightsdashboardcontroller_versions",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": ".versions()"
     },
     {
@@ -36305,6 +36221,162 @@
       "norm_label": "automaticstatuserror()"
     },
     {
+      "label": ".assertAgentKind()",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
+      "source_location": "L34",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_assertagentkind",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": ".assertagentkind()"
+    },
+    {
+      "label": ".claim()",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
+      "source_location": "L84",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_claim",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": ".claim()"
+    },
+    {
+      "label": ".complete()",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
+      "source_location": "L130",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_complete",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": ".complete()"
+    },
+    {
+      "label": ".fail()",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
+      "source_location": "L149",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_fail",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": ".fail()"
+    },
+    {
+      "label": ".findQueue()",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
+      "source_location": "L51",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_findqueue",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": ".findqueue()"
+    },
+    {
+      "label": ".findTask()",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
+      "source_location": "L42",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_findtask",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": ".findtask()"
+    },
+    {
+      "label": ".heartbeat()",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
+      "source_location": "L118",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_heartbeat",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": ".heartbeat()"
+    },
+    {
+      "label": ".note()",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
+      "source_location": "L102",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_note",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": ".note()"
+    },
+    {
+      "label": ".notifyReport()",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
+      "source_location": "L168",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_notifyreport",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": ".notifyreport()"
+    },
+    {
+      "label": ".recoverStale()",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
+      "source_location": "L61",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_recoverstale",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": ".recoverstale()"
+    },
+    {
+      "label": ".constructor()",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-tasks.controller.ts",
+      "source_location": "L22",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_tasks_controller_localagenttaskscontroller_constructor",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": ".constructor()"
+    },
+    {
+      "label": ".findQueue()",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-tasks.controller.ts",
+      "source_location": "L25",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_tasks_controller_localagenttaskscontroller_findqueue",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": ".findqueue()"
+    },
+    {
+      "label": "assigneeKindLabel()",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/task-assignee-kind.ts",
+      "source_location": "L3",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_task_assignee_kind_assigneekindlabel",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "assigneekindlabel()"
+    },
+    {
       "label": ".constructor()",
       "file_type": "code",
       "source_file": "crm-new/src/users/users.controller.ts",
@@ -36793,19 +36865,7 @@
       "_origin": "ast",
       "id": "crm_new_src_canvas_canvas_production_controller_canvasproductioncontroller_constructor",
       "community": 307,
-      "community_name": "partner-settings.module.ts",
-      "norm_label": ".constructor()"
-    },
-    {
-      "label": ".constructor()",
-      "file_type": "code",
-      "source_file": "crm-new/src/partner/partner-settings.controller.ts",
-      "source_location": "L14",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_partner_partner_settings_controller_partnersettingscontroller_constructor",
-      "community": 307,
-      "community_name": "partner-settings.module.ts",
+      "community_name": "CanvasProductionController",
       "norm_label": ".constructor()"
     },
     {
@@ -37345,7 +37405,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_period_resolveperiod",
       "community": 312,
-      "community_name": "production.ts",
+      "community_name": "tools/marketplace.ts",
       "norm_label": "resolveperiod()"
     },
     {
@@ -37357,7 +37417,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_period_shiftdays",
       "community": 312,
-      "community_name": "production.ts",
+      "community_name": "tools/marketplace.ts",
       "norm_label": "shiftdays()"
     },
     {
@@ -37369,7 +37429,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_period_sqlrange",
       "community": 312,
-      "community_name": "production.ts",
+      "community_name": "tools/marketplace.ts",
       "norm_label": "sqlrange()"
     },
     {
@@ -37381,7 +37441,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_period_toisodate",
       "community": 312,
-      "community_name": "production.ts",
+      "community_name": "tools/marketplace.ts",
       "norm_label": "toisodate()"
     },
     {
@@ -37791,150 +37851,6 @@
       "community": 318,
       "community_name": "webpush.ts",
       "norm_label": "testwebpush()"
-    },
-    {
-      "label": ".assertAgentKind()",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
-      "source_location": "L34",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_assertagentkind",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": ".assertagentkind()"
-    },
-    {
-      "label": ".claim()",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
-      "source_location": "L84",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_claim",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": ".claim()"
-    },
-    {
-      "label": ".complete()",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
-      "source_location": "L130",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_complete",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": ".complete()"
-    },
-    {
-      "label": ".fail()",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
-      "source_location": "L149",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_fail",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": ".fail()"
-    },
-    {
-      "label": ".findQueue()",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
-      "source_location": "L51",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_findqueue",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": ".findqueue()"
-    },
-    {
-      "label": ".findTask()",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
-      "source_location": "L42",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_findtask",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": ".findtask()"
-    },
-    {
-      "label": ".heartbeat()",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
-      "source_location": "L118",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_heartbeat",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": ".heartbeat()"
-    },
-    {
-      "label": ".note()",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
-      "source_location": "L102",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_note",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": ".note()"
-    },
-    {
-      "label": ".notifyReport()",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
-      "source_location": "L168",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_notifyreport",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": ".notifyreport()"
-    },
-    {
-      "label": ".recoverStale()",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
-      "source_location": "L61",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_task_service_localagenttaskservice_recoverstale",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": ".recoverstale()"
-    },
-    {
-      "label": ".constructor()",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-tasks.controller.ts",
-      "source_location": "L22",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_tasks_controller_localagenttaskscontroller_constructor",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": ".constructor()"
-    },
-    {
-      "label": "assigneeKindLabel()",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/task-assignee-kind.ts",
-      "source_location": "L3",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_task_assignee_kind_assigneekindlabel",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": "assigneekindlabel()"
     },
     {
       "label": ".constructor()",
@@ -39869,66 +39785,6 @@
       "norm_label": ".test_unknown_username()"
     },
     {
-      "label": ".findByPosting()",
-      "file_type": "code",
-      "source_file": "crm-new/src/partner/partner-ozon.controller.ts",
-      "source_location": "L46",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_partner_partner_ozon_controller_partnerozoncontroller_findbyposting",
-      "community": 366,
-      "community_name": "PartnerOzonController",
-      "norm_label": ".findbyposting()"
-    },
-    {
-      "label": ".orderFor()",
-      "file_type": "code",
-      "source_file": "crm-new/src/partner/partner-ozon.controller.ts",
-      "source_location": "L106",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_partner_partner_ozon_controller_partnerozoncontroller_orderfor",
-      "community": 366,
-      "community_name": "PartnerOzonController",
-      "norm_label": ".orderfor()"
-    },
-    {
-      "label": ".streamTechSpec()",
-      "file_type": "code",
-      "source_file": "crm-new/src/partner/partner-ozon.controller.ts",
-      "source_location": "L80",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_partner_partner_ozon_controller_partnerozoncontroller_streamtechspec",
-      "community": 366,
-      "community_name": "PartnerOzonController",
-      "norm_label": ".streamtechspec()"
-    },
-    {
-      "label": ".techSpecPhoto()",
-      "file_type": "code",
-      "source_file": "crm-new/src/partner/partner-ozon.controller.ts",
-      "source_location": "L59",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_partner_partner_ozon_controller_partnerozoncontroller_techspecphoto",
-      "community": 366,
-      "community_name": "PartnerOzonController",
-      "norm_label": ".techspecphoto()"
-    },
-    {
-      "label": ".techSpecPhotoByIndex()",
-      "file_type": "code",
-      "source_file": "crm-new/src/partner/partner-ozon.controller.ts",
-      "source_location": "L68",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_partner_partner_ozon_controller_partnerozoncontroller_techspecphotobyindex",
-      "community": 366,
-      "community_name": "PartnerOzonController",
-      "norm_label": ".techspecphotobyindex()"
-    },
-    {
       "label": "sheet()",
       "file_type": "code",
       "source_file": "crm-new/src/approval/approval-client-item.spec.ts",
@@ -41029,7 +40885,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_db_getpool",
       "community": 379,
-      "community_name": "tools/marketplace.ts",
+      "community_name": "tools/salary.ts",
       "norm_label": "getpool()"
     },
     {
@@ -41041,7 +40897,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_db_read",
       "community": 379,
-      "community_name": "tools/marketplace.ts",
+      "community_name": "tools/salary.ts",
       "norm_label": "read()"
     },
     {
@@ -44033,6 +43889,18 @@
       "norm_label": "requiredapprovalsides()"
     },
     {
+      "label": ".upsertInsight()",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
+      "source_location": "L522",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_analytics_insights_service_analyticsinsightsservice_upsertinsight",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": ".upsertinsight()"
+    },
+    {
       "label": "build()",
       "file_type": "code",
       "source_file": "crm-new/src/analytics/insights/insights-engine.ts",
@@ -44655,6 +44523,66 @@
       "community": 422,
       "community_name": "PartnerAdminController",
       "norm_label": ".viewtechspecphotobyindex()"
+    },
+    {
+      "label": ".findByPosting()",
+      "file_type": "code",
+      "source_file": "crm-new/src/partner/partner-ozon.controller.ts",
+      "source_location": "L46",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_partner_partner_ozon_controller_partnerozoncontroller_findbyposting",
+      "community": 422,
+      "community_name": "PartnerAdminController",
+      "norm_label": ".findbyposting()"
+    },
+    {
+      "label": ".orderFor()",
+      "file_type": "code",
+      "source_file": "crm-new/src/partner/partner-ozon.controller.ts",
+      "source_location": "L106",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_partner_partner_ozon_controller_partnerozoncontroller_orderfor",
+      "community": 422,
+      "community_name": "PartnerAdminController",
+      "norm_label": ".orderfor()"
+    },
+    {
+      "label": ".streamTechSpec()",
+      "file_type": "code",
+      "source_file": "crm-new/src/partner/partner-ozon.controller.ts",
+      "source_location": "L80",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_partner_partner_ozon_controller_partnerozoncontroller_streamtechspec",
+      "community": 422,
+      "community_name": "PartnerAdminController",
+      "norm_label": ".streamtechspec()"
+    },
+    {
+      "label": ".techSpecPhoto()",
+      "file_type": "code",
+      "source_file": "crm-new/src/partner/partner-ozon.controller.ts",
+      "source_location": "L59",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_partner_partner_ozon_controller_partnerozoncontroller_techspecphoto",
+      "community": 422,
+      "community_name": "PartnerAdminController",
+      "norm_label": ".techspecphoto()"
+    },
+    {
+      "label": ".techSpecPhotoByIndex()",
+      "file_type": "code",
+      "source_file": "crm-new/src/partner/partner-ozon.controller.ts",
+      "source_location": "L68",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_partner_partner_ozon_controller_partnerozoncontroller_techspecphotobyindex",
+      "community": 422,
+      "community_name": "PartnerAdminController",
+      "norm_label": ".techspecphotobyindex()"
     },
     {
       "label": ".read()",
@@ -45569,6 +45497,30 @@
       "norm_label": ".constructor()"
     },
     {
+      "label": "PeriodSelector()",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/PeriodSelector.tsx",
+      "source_location": "L10",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_periodselector_periodselector",
+      "community": 44,
+      "community_name": "types/analytics.ts",
+      "norm_label": "periodselector()"
+    },
+    {
+      "label": "SourcesTable()",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/sections.tsx",
+      "source_location": "L265",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_sections_sourcestable",
+      "community": 44,
+      "community_name": "types/analytics.ts",
+      "norm_label": "sourcestable()"
+    },
+    {
       "label": "baseOverview()",
       "file_type": "code",
       "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
@@ -45627,6 +45579,18 @@
       "community": 44,
       "community_name": "types/analytics.ts",
       "norm_label": "merge()"
+    },
+    {
+      "label": "row()",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/__tests__/order-origins.test.tsx",
+      "source_location": "L16",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_tests_order_origins_test_row",
+      "community": 44,
+      "community_name": "types/analytics.ts",
+      "norm_label": "row()"
     },
     {
       "label": ".constructor()",
@@ -48920,7 +48884,7 @@
       "label": "addLead()",
       "file_type": "code",
       "source_file": "crm-new/src/analytics/ads/ad-performance.ts",
-      "source_location": "L167",
+      "source_location": "L170",
       "_callable": true,
       "_origin": "ast",
       "id": "crm_new_src_analytics_ads_ad_performance_addlead",
@@ -48932,7 +48896,7 @@
       "label": "computeAdPerformance()",
       "file_type": "code",
       "source_file": "crm-new/src/analytics/ads/ad-performance.ts",
-      "source_location": "L176",
+      "source_location": "L179",
       "_callable": true,
       "_origin": "ast",
       "id": "crm_new_src_analytics_ads_ad_performance_computeadperformance",
@@ -51917,6 +51881,18 @@
       "norm_label": ".update()"
     },
     {
+      "label": ".update()",
+      "file_type": "code",
+      "source_file": "crm-new/src/marketplace/marketplace.controller.ts",
+      "source_location": "L53",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_marketplace_marketplace_controller_marketplacecontroller_update",
+      "community": 9,
+      "community_name": "Roles",
+      "norm_label": ".update()"
+    },
+    {
       "label": ".createCrmOrder()",
       "file_type": "code",
       "source_file": "crm-new/src/marketplace/ozon-orders.controller.ts",
@@ -52397,6 +52373,18 @@
       "norm_label": ".updatetshirtitem()"
     },
     {
+      "label": ".constructor()",
+      "file_type": "code",
+      "source_file": "crm-new/src/partner/partner-settings.controller.ts",
+      "source_location": "L14",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_partner_partner_settings_controller_partnersettingscontroller_constructor",
+      "community": 9,
+      "community_name": "Roles",
+      "norm_label": ".constructor()"
+    },
+    {
       "label": ".update()",
       "file_type": "code",
       "source_file": "crm-new/src/partner/partner-settings.controller.ts",
@@ -52419,6 +52407,30 @@
       "community": 9,
       "community_name": "Roles",
       "norm_label": ".getmybalance()"
+    },
+    {
+      "label": ".convert()",
+      "file_type": "code",
+      "source_file": "crm-new/src/scenarios/scenario.controller.ts",
+      "source_location": "L100",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_scenarios_scenario_controller_scenariocontroller_convert",
+      "community": 9,
+      "community_name": "Roles",
+      "norm_label": ".convert()"
+    },
+    {
+      "label": ".saveDraft()",
+      "file_type": "code",
+      "source_file": "crm-new/src/scenarios/scenario.controller.ts",
+      "source_location": "L90",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "crm_new_src_scenarios_scenario_controller_scenariocontroller_savedraft",
+      "community": 9,
+      "community_name": "Roles",
+      "norm_label": ".savedraft()"
     },
     {
       "label": ".claim()",
@@ -52455,18 +52467,6 @@
       "community": 9,
       "community_name": "Roles",
       "norm_label": ".fail()"
-    },
-    {
-      "label": ".findQueue()",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-tasks.controller.ts",
-      "source_location": "L25",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_tasks_controller_localagenttaskscontroller_findqueue",
-      "community": 9,
-      "community_name": "Roles",
-      "norm_label": ".findqueue()"
     },
     {
       "label": ".heartbeat()",
@@ -54449,16 +54449,16 @@
       "norm_label": "metrikaorderssyncenabledfromenv()"
     },
     {
-      "label": "DevicesBlock()",
+      "label": "DirectionFunnels()",
       "file_type": "code",
       "source_file": "frontend/src/features/analytics/behavior-sections.tsx",
-      "source_location": "L242",
+      "source_location": "L145",
       "_callable": true,
       "_origin": "ast",
-      "id": "frontend_src_features_analytics_behavior_sections_devicesblock",
+      "id": "frontend_src_features_analytics_behavior_sections_directionfunnels",
       "community": 99,
       "community_name": "behavior-sections.tsx",
-      "norm_label": "devicesblock()"
+      "norm_label": "directionfunnels()"
     },
     {
       "label": "FunnelCard()",
@@ -54509,6 +54509,18 @@
       "norm_label": "kpi()"
     },
     {
+      "label": "PathsBlock()",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/behavior-sections.tsx",
+      "source_location": "L353",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_behavior_sections_pathsblock",
+      "community": 99,
+      "community_name": "behavior-sections.tsx",
+      "norm_label": "pathsblock()"
+    },
+    {
       "label": "QualityNotices()",
       "file_type": "code",
       "source_file": "frontend/src/features/analytics/behavior-sections.tsx",
@@ -54531,18 +54543,6 @@
       "community": 99,
       "community_name": "behavior-sections.tsx",
       "norm_label": "samplebadge()"
-    },
-    {
-      "label": "StepRow()",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/behavior-sections.tsx",
-      "source_location": "L56",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_behavior_sections_steprow",
-      "community": 99,
-      "community_name": "behavior-sections.tsx",
-      "norm_label": "steprow()"
     },
     {
       "label": "behaviorWarnings()",
@@ -55733,61 +55733,6 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_scenarios_dto_detect_product_dto_ts_maxlength",
-      "community": 101,
-      "community_name": "ScenarioController",
-      "norm_label": "maxlength"
-    },
-    {
-      "label": "save-draft.dto.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/scenarios/dto/save-draft.dto.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_scenarios_dto_save_draft_dto",
-      "community": 101,
-      "community_name": "ScenarioController",
-      "norm_label": "save-draft.dto.ts"
-    },
-    {
-      "label": "IsObject",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_scenarios_dto_save_draft_dto_ts_isobject",
-      "community": 101,
-      "community_name": "ScenarioController",
-      "norm_label": "isobject"
-    },
-    {
-      "label": "IsOptional",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_scenarios_dto_save_draft_dto_ts_isoptional",
-      "community": 101,
-      "community_name": "ScenarioController",
-      "norm_label": "isoptional"
-    },
-    {
-      "label": "IsString",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_scenarios_dto_save_draft_dto_ts_isstring",
-      "community": 101,
-      "community_name": "ScenarioController",
-      "norm_label": "isstring"
-    },
-    {
-      "label": "MaxLength",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_scenarios_dto_save_draft_dto_ts_maxlength",
       "community": 101,
       "community_name": "ScenarioController",
       "norm_label": "maxlength"
@@ -58939,21 +58884,10 @@
       "norm_label": "statuses.ts"
     },
     {
-      "label": "ACCRUAL_STATUS_LABELS",
-      "file_type": "code",
-      "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L74",
-      "_origin": "ast",
-      "id": "crm_mcp_src_statuses_accrual_status_labels",
-      "community": 118,
-      "community_name": "tools/orders.ts",
-      "norm_label": "accrual_status_labels"
-    },
-    {
       "label": "CATEGORY_LABELS",
       "file_type": "code",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L59",
+      "source_location": "L63",
       "_origin": "ast",
       "id": "crm_mcp_src_statuses_category_labels",
       "community": 118,
@@ -58961,10 +58895,21 @@
       "norm_label": "category_labels"
     },
     {
+      "label": "EXPENSE_LABELS",
+      "file_type": "code",
+      "source_file": "crm-mcp/src/statuses.ts",
+      "source_location": "L86",
+      "_origin": "ast",
+      "id": "crm_mcp_src_statuses_expense_labels",
+      "community": 118,
+      "community_name": "tools/orders.ts",
+      "norm_label": "expense_labels"
+    },
+    {
       "label": "PAID_STATUSES",
       "file_type": "code",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L18",
+      "source_location": "L22",
       "_origin": "ast",
       "id": "crm_mcp_src_statuses_paid_statuses",
       "community": 118,
@@ -58975,12 +58920,78 @@
       "label": "SOURCE_LABELS",
       "file_type": "code",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L65",
+      "source_location": "L69",
       "_origin": "ast",
       "id": "crm_mcp_src_statuses_source_labels",
       "community": 118,
       "community_name": "tools/orders.ts",
       "norm_label": "source_labels"
+    },
+    {
+      "label": "money.ts",
+      "file_type": "code",
+      "source_file": "crm-mcp/src/tools/money.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_mcp_src_tools_money",
+      "community": 118,
+      "community_name": "tools/orders.ts",
+      "norm_label": "money.ts"
+    },
+    {
+      "label": "basisSchema",
+      "file_type": "code",
+      "source_file": "crm-mcp/src/tools/money.ts",
+      "source_location": "L46",
+      "_origin": "ast",
+      "id": "crm_mcp_src_tools_money_basisschema",
+      "community": 118,
+      "community_name": "tools/orders.ts",
+      "norm_label": "basisschema"
+    },
+    {
+      "label": "moneyTools",
+      "file_type": "code",
+      "source_file": "crm-mcp/src/tools/money.ts",
+      "source_location": "L336",
+      "_origin": "ast",
+      "id": "crm_mcp_src_tools_money_moneytools",
+      "community": 118,
+      "community_name": "tools/orders.ts",
+      "norm_label": "moneytools"
+    },
+    {
+      "label": "orderCosts",
+      "file_type": "code",
+      "source_file": "crm-mcp/src/tools/money.ts",
+      "source_location": "L181",
+      "_origin": "ast",
+      "id": "crm_mcp_src_tools_money_ordercosts",
+      "community": 118,
+      "community_name": "tools/orders.ts",
+      "norm_label": "ordercosts"
+    },
+    {
+      "label": "prepayments",
+      "file_type": "code",
+      "source_file": "crm-mcp/src/tools/money.ts",
+      "source_location": "L241",
+      "_origin": "ast",
+      "id": "crm_mcp_src_tools_money_prepayments",
+      "community": 118,
+      "community_name": "tools/orders.ts",
+      "norm_label": "prepayments"
+    },
+    {
+      "label": "revenueSummary",
+      "file_type": "code",
+      "source_file": "crm-mcp/src/tools/money.ts",
+      "source_location": "L68",
+      "_origin": "ast",
+      "id": "crm_mcp_src_tools_money_revenuesummary",
+      "community": 118,
+      "community_name": "tools/orders.ts",
+      "norm_label": "revenuesummary"
     },
     {
       "label": "tools/orders.ts",
@@ -59038,70 +59049,48 @@
       "norm_label": "orderstimeline"
     },
     {
-      "label": "quality.ts",
+      "label": "types.ts",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/quality.ts",
+      "source_file": "crm-mcp/src/tools/types.ts",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_quality",
+      "id": "crm_mcp_src_tools_types",
       "community": 118,
       "community_name": "tools/orders.ts",
-      "norm_label": "quality.ts"
+      "norm_label": "types.ts"
     },
     {
-      "label": "dataHealth",
+      "label": "categorySchema",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/quality.ts",
-      "source_location": "L170",
+      "source_file": "crm-mcp/src/tools/types.ts",
+      "source_location": "L43",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_quality_datahealth",
+      "id": "crm_mcp_src_tools_types_categoryschema",
       "community": 118,
       "community_name": "tools/orders.ts",
-      "norm_label": "datahealth"
+      "norm_label": "categoryschema"
     },
     {
-      "label": "deletionReasons",
+      "label": "periodSchema",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/quality.ts",
-      "source_location": "L18",
+      "source_file": "crm-mcp/src/tools/types.ts",
+      "source_location": "L23",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_quality_deletionreasons",
+      "id": "crm_mcp_src_tools_types_periodschema",
       "community": 118,
       "community_name": "tools/orders.ts",
-      "norm_label": "deletionreasons"
+      "norm_label": "periodschema"
     },
     {
-      "label": "orderMix",
+      "label": "sourceSchema",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/quality.ts",
-      "source_location": "L393",
+      "source_file": "crm-mcp/src/tools/types.ts",
+      "source_location": "L35",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_quality_ordermix",
+      "id": "crm_mcp_src_tools_types_sourceschema",
       "community": 118,
       "community_name": "tools/orders.ts",
-      "norm_label": "ordermix"
-    },
-    {
-      "label": "qualityTools",
-      "file_type": "code",
-      "source_file": "crm-mcp/src/tools/quality.ts",
-      "source_location": "L515",
-      "_origin": "ast",
-      "id": "crm_mcp_src_tools_quality_qualitytools",
-      "community": 118,
-      "community_name": "tools/orders.ts",
-      "norm_label": "qualitytools"
-    },
-    {
-      "label": "reviews",
-      "file_type": "code",
-      "source_file": "crm-mcp/src/tools/quality.ts",
-      "source_location": "L101",
-      "_origin": "ast",
-      "id": "crm_mcp_src_tools_quality_reviews",
-      "community": 118,
-      "community_name": "tools/orders.ts",
-      "norm_label": "reviews"
+      "norm_label": "sourceschema"
     },
     {
       "label": "tools.test.ts",
@@ -59135,17 +59124,6 @@
       "community": 118,
       "community_name": "tools/orders.ts",
       "norm_label": "requires_args"
-    },
-    {
-      "label": "analyticsApi",
-      "file_type": "code",
-      "source_file": "frontend/src/api/analytics.ts",
-      "source_location": "L63",
-      "_origin": "ast",
-      "id": "frontend_src_api_analytics_analyticsapi",
-      "community": 119,
-      "community_name": "AnalyticsPage.tsx",
-      "norm_label": "analyticsapi"
     },
     {
       "label": "ads-sections.tsx",
@@ -59280,28 +59258,6 @@
       "norm_label": "note_text"
     },
     {
-      "label": "PRESET_LABELS",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/analytics-view.ts",
-      "source_location": "L20",
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_analytics_view_preset_labels",
-      "community": 119,
-      "community_name": "AnalyticsPage.tsx",
-      "norm_label": "preset_labels"
-    },
-    {
-      "label": "PRESET_ORDER",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/analytics-view.ts",
-      "source_location": "L31",
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_analytics_view_preset_order",
-      "community": 119,
-      "community_name": "AnalyticsPage.tsx",
-      "norm_label": "preset_order"
-    },
-    {
       "label": "PRODUCT_LABELS",
       "file_type": "code",
       "source_file": "frontend/src/features/analytics/analytics-view.ts",
@@ -59335,17 +59291,6 @@
       "norm_label": "trend_metrics"
     },
     {
-      "label": "PeriodSelector.tsx",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/PeriodSelector.tsx",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_periodselector",
-      "community": 119,
-      "community_name": "AnalyticsPage.tsx",
-      "norm_label": "periodselector.tsx"
-    },
-    {
       "label": "sections.tsx",
       "file_type": "code",
       "source_file": "frontend/src/features/analytics/sections.tsx",
@@ -59377,39 +59322,6 @@
       "community": 119,
       "community_name": "AnalyticsPage.tsx",
       "norm_label": "components.test.tsx"
-    },
-    {
-      "label": "order-origins.test.tsx",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/__tests__/order-origins.test.tsx",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_tests_order_origins_test",
-      "community": 119,
-      "community_name": "AnalyticsPage.tsx",
-      "norm_label": "order-origins.test.tsx"
-    },
-    {
-      "label": "period",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/__tests__/order-origins.test.tsx",
-      "source_location": "L14",
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_tests_order_origins_test_period",
-      "community": 119,
-      "community_name": "AnalyticsPage.tsx",
-      "norm_label": "period"
-    },
-    {
-      "label": "slice",
-      "file_type": "code",
-      "source_file": "frontend/src/features/analytics/__tests__/order-origins.test.tsx",
-      "source_location": "L36",
-      "_origin": "ast",
-      "id": "frontend_src_features_analytics_tests_order_origins_test_slice",
-      "community": 119,
-      "community_name": "AnalyticsPage.tsx",
-      "norm_label": "slice"
     },
     {
       "label": "TrendChart.tsx",
@@ -64406,50 +64318,6 @@
       "norm_label": "injectable"
     },
     {
-      "label": "create-ozon-crm-order.dto.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/marketplace/dto/create-ozon-crm-order.dto.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_marketplace_dto_create_ozon_crm_order_dto",
-      "community": 138,
-      "community_name": "order-photo.controller.ts",
-      "norm_label": "create-ozon-crm-order.dto.ts"
-    },
-    {
-      "label": "IsOptional",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_marketplace_dto_create_ozon_crm_order_dto_ts_isoptional",
-      "community": 138,
-      "community_name": "order-photo.controller.ts",
-      "norm_label": "isoptional"
-    },
-    {
-      "label": "IsString",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_marketplace_dto_create_ozon_crm_order_dto_ts_isstring",
-      "community": 138,
-      "community_name": "order-photo.controller.ts",
-      "norm_label": "isstring"
-    },
-    {
-      "label": "MaxLength",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_marketplace_dto_create_ozon_crm_order_dto_ts_maxlength",
-      "community": 138,
-      "community_name": "order-photo.controller.ts",
-      "norm_label": "maxlength"
-    },
-    {
       "label": "image-card-batch.controller.ts",
       "file_type": "code",
       "source_file": "crm-new/src/marketplace/image-cards/image-card-batch.controller.ts",
@@ -64811,6 +64679,61 @@
       "community": 138,
       "community_name": "order-photo.controller.ts",
       "norm_label": "reports.controller.ts"
+    },
+    {
+      "label": "save-draft.dto.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/scenarios/dto/save-draft.dto.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_scenarios_dto_save_draft_dto",
+      "community": 138,
+      "community_name": "order-photo.controller.ts",
+      "norm_label": "save-draft.dto.ts"
+    },
+    {
+      "label": "IsObject",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_scenarios_dto_save_draft_dto_ts_isobject",
+      "community": 138,
+      "community_name": "order-photo.controller.ts",
+      "norm_label": "isobject"
+    },
+    {
+      "label": "IsOptional",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_scenarios_dto_save_draft_dto_ts_isoptional",
+      "community": 138,
+      "community_name": "order-photo.controller.ts",
+      "norm_label": "isoptional"
+    },
+    {
+      "label": "IsString",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_scenarios_dto_save_draft_dto_ts_isstring",
+      "community": 138,
+      "community_name": "order-photo.controller.ts",
+      "norm_label": "isstring"
+    },
+    {
+      "label": "MaxLength",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_scenarios_dto_save_draft_dto_ts_maxlength",
+      "community": 138,
+      "community_name": "order-photo.controller.ts",
+      "norm_label": "maxlength"
     },
     {
       "label": "scenario.controller.ts",
@@ -69177,72 +69100,6 @@
       "norm_label": "minlength"
     },
     {
-      "label": "update-marketplace-account.dto.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/marketplace/dto/update-marketplace-account.dto.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_marketplace_dto_update_marketplace_account_dto",
-      "community": 162,
-      "community_name": "MarketplaceController",
-      "norm_label": "update-marketplace-account.dto.ts"
-    },
-    {
-      "label": "IsBoolean",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_marketplace_dto_update_marketplace_account_dto_ts_isboolean",
-      "community": 162,
-      "community_name": "MarketplaceController",
-      "norm_label": "isboolean"
-    },
-    {
-      "label": "IsOptional",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_marketplace_dto_update_marketplace_account_dto_ts_isoptional",
-      "community": 162,
-      "community_name": "MarketplaceController",
-      "norm_label": "isoptional"
-    },
-    {
-      "label": "IsString",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_marketplace_dto_update_marketplace_account_dto_ts_isstring",
-      "community": 162,
-      "community_name": "MarketplaceController",
-      "norm_label": "isstring"
-    },
-    {
-      "label": "MaxLength",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_marketplace_dto_update_marketplace_account_dto_ts_maxlength",
-      "community": 162,
-      "community_name": "MarketplaceController",
-      "norm_label": "maxlength"
-    },
-    {
-      "label": "MinLength",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_marketplace_dto_update_marketplace_account_dto_ts_minlength",
-      "community": 162,
-      "community_name": "MarketplaceController",
-      "norm_label": "minlength"
-    },
-    {
       "label": "Controller",
       "file_type": "code",
       "source_file": "",
@@ -69338,7 +69195,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_format",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "src/format.ts"
     },
     {
@@ -69349,40 +69206,40 @@
       "_origin": "ast",
       "id": "crm_mcp_src_tools_ads",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "tools/ads.ts"
     },
     {
       "label": "adAttribution",
       "file_type": "code",
       "source_file": "crm-mcp/src/tools/ads.ts",
-      "source_location": "L291",
+      "source_location": "L245",
       "_origin": "ast",
       "id": "crm_mcp_src_tools_ads_adattribution",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "adattribution"
     },
     {
       "label": "adEconomics",
       "file_type": "code",
       "source_file": "crm-mcp/src/tools/ads.ts",
-      "source_location": "L135",
+      "source_location": "L137",
       "_origin": "ast",
       "id": "crm_mcp_src_tools_ads_adeconomics",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "adeconomics"
     },
     {
       "label": "adSpend",
       "file_type": "code",
       "source_file": "crm-mcp/src/tools/ads.ts",
-      "source_location": "L46",
+      "source_location": "L48",
       "_origin": "ast",
       "id": "crm_mcp_src_tools_ads_adspend",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "adspend"
     },
     {
@@ -69393,7 +69250,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_tools_channels",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "channels.ts"
     },
     {
@@ -69404,19 +69261,8 @@
       "_origin": "ast",
       "id": "crm_mcp_src_tools_channels_channelssummary",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "channelssummary"
-    },
-    {
-      "label": "channelTools",
-      "file_type": "code",
-      "source_file": "crm-mcp/src/tools/channels.ts",
-      "source_location": "L278",
-      "_origin": "ast",
-      "id": "crm_mcp_src_tools_channels_channeltools",
-      "community": 163,
-      "community_name": "channels.ts",
-      "norm_label": "channeltools"
     },
     {
       "label": "siteLandings",
@@ -69426,7 +69272,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_tools_channels_sitelandings",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "sitelandings"
     },
     {
@@ -69437,52 +69283,63 @@
       "_origin": "ast",
       "id": "crm_mcp_src_tools_channels_sitetraffic",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "sitetraffic"
     },
     {
-      "label": "tools/salary.ts",
+      "label": "quality.ts",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/salary.ts",
+      "source_file": "crm-mcp/src/tools/quality.ts",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_salary",
+      "id": "crm_mcp_src_tools_quality",
       "community": 163,
-      "community_name": "channels.ts",
-      "norm_label": "tools/salary.ts"
+      "community_name": "quality.ts",
+      "norm_label": "quality.ts"
     },
     {
-      "label": "KIND_LABELS",
+      "label": "dataHealth",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/salary.ts",
+      "source_file": "crm-mcp/src/tools/quality.ts",
+      "source_location": "L170",
+      "_origin": "ast",
+      "id": "crm_mcp_src_tools_quality_datahealth",
+      "community": 163,
+      "community_name": "quality.ts",
+      "norm_label": "datahealth"
+    },
+    {
+      "label": "deletionReasons",
+      "file_type": "code",
+      "source_file": "crm-mcp/src/tools/quality.ts",
       "source_location": "L18",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_salary_kind_labels",
+      "id": "crm_mcp_src_tools_quality_deletionreasons",
       "community": 163,
-      "community_name": "channels.ts",
-      "norm_label": "kind_labels"
+      "community_name": "quality.ts",
+      "norm_label": "deletionreasons"
     },
     {
-      "label": "salaryDebt",
+      "label": "orderMix",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/salary.ts",
-      "source_location": "L125",
+      "source_file": "crm-mcp/src/tools/quality.ts",
+      "source_location": "L393",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_salary_salarydebt",
+      "id": "crm_mcp_src_tools_quality_ordermix",
       "community": 163,
-      "community_name": "channels.ts",
-      "norm_label": "salarydebt"
+      "community_name": "quality.ts",
+      "norm_label": "ordermix"
     },
     {
-      "label": "salarySummary",
+      "label": "reviews",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/salary.ts",
-      "source_location": "L24",
+      "source_file": "crm-mcp/src/tools/quality.ts",
+      "source_location": "L101",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_salary_salarysummary",
+      "id": "crm_mcp_src_tools_quality_reviews",
       "community": 163,
-      "community_name": "channels.ts",
-      "norm_label": "salarysummary"
+      "community_name": "quality.ts",
+      "norm_label": "reviews"
     },
     {
       "label": "limitSchema",
@@ -69492,7 +69349,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_tools_types_limitschema",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "limitschema"
     },
     {
@@ -69503,7 +69360,7 @@
       "_origin": "ast",
       "id": "crm_mcp_test_format_test",
       "community": 163,
-      "community_name": "channels.ts",
+      "community_name": "quality.ts",
       "norm_label": "format.test.ts"
     },
     {
@@ -71223,6 +71080,17 @@
       "norm_label": "api/analytics.ts"
     },
     {
+      "label": "analyticsApi",
+      "file_type": "code",
+      "source_file": "frontend/src/api/analytics.ts",
+      "source_location": "L63",
+      "_origin": "ast",
+      "id": "frontend_src_api_analytics_analyticsapi",
+      "community": 173,
+      "community_name": "api/analytics.ts",
+      "norm_label": "analyticsapi"
+    },
+    {
       "label": "behaviorApi",
       "file_type": "code",
       "source_file": "frontend/src/api/analytics.ts",
@@ -71501,7 +71369,7 @@
       "label": "adTools",
       "file_type": "code",
       "source_file": "crm-mcp/src/tools/ads.ts",
-      "source_location": "L364",
+      "source_location": "L318",
       "_origin": "ast",
       "id": "crm_mcp_src_tools_ads_adtools",
       "community": 175,
@@ -71509,15 +71377,15 @@
       "norm_label": "adtools"
     },
     {
-      "label": "moneyTools",
+      "label": "channelTools",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/money.ts",
-      "source_location": "L336",
+      "source_file": "crm-mcp/src/tools/channels.ts",
+      "source_location": "L278",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_money_moneytools",
+      "id": "crm_mcp_src_tools_channels_channeltools",
       "community": 175,
       "community_name": "registry.ts",
-      "norm_label": "moneytools"
+      "norm_label": "channeltools"
     },
     {
       "label": "orderTools",
@@ -71529,6 +71397,17 @@
       "community": 175,
       "community_name": "registry.ts",
       "norm_label": "ordertools"
+    },
+    {
+      "label": "qualityTools",
+      "file_type": "code",
+      "source_file": "crm-mcp/src/tools/quality.ts",
+      "source_location": "L515",
+      "_origin": "ast",
+      "id": "crm_mcp_src_tools_quality_qualitytools",
+      "community": 175,
+      "community_name": "registry.ts",
+      "norm_label": "qualitytools"
     },
     {
       "label": "registry.ts",
@@ -71551,17 +71430,6 @@
       "community": 175,
       "community_name": "registry.ts",
       "norm_label": "alltools"
-    },
-    {
-      "label": "salaryTools",
-      "file_type": "code",
-      "source_file": "crm-mcp/src/tools/salary.ts",
-      "source_location": "L205",
-      "_origin": "ast",
-      "id": "crm_mcp_src_tools_salary_salarytools",
-      "community": 175,
-      "community_name": "registry.ts",
-      "norm_label": "salarytools"
     },
     {
       "label": "10_BEHAVIOR_AND_FUNNELS.md",
@@ -74655,50 +74523,6 @@
       "norm_label": "tests"
     },
     {
-      "label": "analytics-insights.service.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_analytics_insights_service",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "analytics-insights.service.ts"
-    },
-    {
-      "label": "ACTIVE",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
-      "source_location": "L92",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_analytics_insights_service_active",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "active"
-    },
-    {
-      "label": "RUN_LOCK_MINUTES",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
-      "source_location": "L72",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_analytics_insights_service_run_lock_minutes",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "run_lock_minutes"
-    },
-    {
-      "label": "SUPPRESSION_REASONS",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
-      "source_location": "L93",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_analytics_insights_service_suppression_reasons",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "suppression_reasons"
-    },
-    {
       "label": "Injectable",
       "file_type": "code",
       "source_file": "",
@@ -74706,140 +74530,8 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_analytics_insights_service_ts_injectable",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": "injectable"
-    },
-    {
-      "label": "insight-action.dto.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/dto/insight-action.dto.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_dto_insight_action_dto",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insight-action.dto.ts"
-    },
-    {
-      "label": "IsIn",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_dto_insight_action_dto_ts_isin",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "isin"
-    },
-    {
-      "label": "IsInt",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_dto_insight_action_dto_ts_isint",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "isint"
-    },
-    {
-      "label": "IsOptional",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_dto_insight_action_dto_ts_isoptional",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "isoptional"
-    },
-    {
-      "label": "Max",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_dto_insight_action_dto_ts_max",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "max"
-    },
-    {
-      "label": "Min",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_dto_insight_action_dto_ts_min",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "min"
-    },
-    {
-      "label": "Type",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_dto_insight_action_dto_ts_type",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "type"
-    },
-    {
-      "label": "insights-contract.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insights-contract.ts"
-    },
-    {
-      "label": "INSIGHT_CATEGORIES",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L36",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_insight_categories",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insight_categories"
-    },
-    {
-      "label": "INSIGHT_ENGINE_VERSION",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L19",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_insight_engine_version",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insight_engine_version"
-    },
-    {
-      "label": "INSIGHT_SEVERITIES",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L54",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_insight_severities",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insight_severities"
-    },
-    {
-      "label": "INSIGHT_STATUSES",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
-      "source_location": "L61",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_contract_insight_statuses",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "insight_statuses"
     },
     {
       "label": "Get",
@@ -74849,7 +74541,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_dashboard_controller_ts_get",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": "get"
     },
     {
@@ -74860,7 +74552,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_dashboard_controller_ts_httpcode",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": "httpcode"
     },
     {
@@ -74871,7 +74563,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_dashboard_controller_ts_param",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": "param"
     },
     {
@@ -74882,7 +74574,7 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_dashboard_controller_ts_post",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": "post"
     },
     {
@@ -74893,63 +74585,8 @@
       "_origin": "ast",
       "id": "crm_new_src_analytics_insights_insights_dashboard_controller_ts_query",
       "community": 192,
-      "community_name": "analytics-insights.service.ts",
+      "community_name": "AnalyticsInsightsService",
       "norm_label": "query"
-    },
-    {
-      "label": "COOLDOWN_DAYS",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-rules.ts",
-      "source_location": "L87",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_rules_cooldown_days",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "cooldown_days"
-    },
-    {
-      "label": "MAX_ACTIVE_PER_DETECTOR",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-rules.ts",
-      "source_location": "L85",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_rules_max_active_per_detector",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "max_active_per_detector"
-    },
-    {
-      "label": "REOPEN_WINDOW_DAYS",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-rules.ts",
-      "source_location": "L83",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_rules_reopen_window_days",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "reopen_window_days"
-    },
-    {
-      "label": "ROLLING_WINDOW_DAYS",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-rules.ts",
-      "source_location": "L9",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_rules_rolling_window_days",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "rolling_window_days"
-    },
-    {
-      "label": "SEVERITY_ORDER",
-      "file_type": "code",
-      "source_file": "crm-new/src/analytics/insights/insights-rules.ts",
-      "source_location": "L98",
-      "_origin": "ast",
-      "id": "crm_new_src_analytics_insights_insights_rules_severity_order",
-      "community": 192,
-      "community_name": "analytics-insights.service.ts",
-      "norm_label": "severity_order"
     },
     {
       "label": "ozonDelivery.ts",
@@ -89787,7 +89424,7 @@
       "_origin": "ast",
       "id": "crm_new_src_partner_dto_update_partner_settings_dto",
       "community": 295,
-      "community_name": "DtoUpdatePartnerSettings",
+      "community_name": "LocalAgentTaskService",
       "norm_label": "update-partner-settings.dto.ts"
     },
     {
@@ -89798,7 +89435,7 @@
       "_origin": "ast",
       "id": "crm_new_src_partner_dto_update_partner_settings_dto_ts_isin",
       "community": 295,
-      "community_name": "DtoUpdatePartnerSettings",
+      "community_name": "LocalAgentTaskService",
       "norm_label": "isin"
     },
     {
@@ -89809,7 +89446,7 @@
       "_origin": "ast",
       "id": "crm_new_src_partner_dto_update_partner_settings_dto_ts_isint",
       "community": 295,
-      "community_name": "DtoUpdatePartnerSettings",
+      "community_name": "LocalAgentTaskService",
       "norm_label": "isint"
     },
     {
@@ -89820,7 +89457,7 @@
       "_origin": "ast",
       "id": "crm_new_src_partner_dto_update_partner_settings_dto_ts_isoptional",
       "community": 295,
-      "community_name": "DtoUpdatePartnerSettings",
+      "community_name": "LocalAgentTaskService",
       "norm_label": "isoptional"
     },
     {
@@ -89831,7 +89468,7 @@
       "_origin": "ast",
       "id": "crm_new_src_partner_dto_update_partner_settings_dto_ts_isstring",
       "community": 295,
-      "community_name": "DtoUpdatePartnerSettings",
+      "community_name": "LocalAgentTaskService",
       "norm_label": "isstring"
     },
     {
@@ -89842,7 +89479,7 @@
       "_origin": "ast",
       "id": "crm_new_src_partner_dto_update_partner_settings_dto_ts_max",
       "community": 295,
-      "community_name": "DtoUpdatePartnerSettings",
+      "community_name": "LocalAgentTaskService",
       "norm_label": "max"
     },
     {
@@ -89853,7 +89490,7 @@
       "_origin": "ast",
       "id": "crm_new_src_partner_dto_update_partner_settings_dto_ts_maxlength",
       "community": 295,
-      "community_name": "DtoUpdatePartnerSettings",
+      "community_name": "LocalAgentTaskService",
       "norm_label": "maxlength"
     },
     {
@@ -89864,8 +89501,140 @@
       "_origin": "ast",
       "id": "crm_new_src_partner_dto_update_partner_settings_dto_ts_min",
       "community": 295,
-      "community_name": "DtoUpdatePartnerSettings",
+      "community_name": "LocalAgentTaskService",
       "norm_label": "min"
+    },
+    {
+      "label": "local-agent-task.dto.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/dto/local-agent-task.dto.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_dto_local_agent_task_dto",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "local-agent-task.dto.ts"
+    },
+    {
+      "label": "IsEnum",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_dto_local_agent_task_dto_ts_isenum",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "isenum"
+    },
+    {
+      "label": "IsString",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_dto_local_agent_task_dto_ts_isstring",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "isstring"
+    },
+    {
+      "label": "MaxLength",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_dto_local_agent_task_dto_ts_maxlength",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "maxlength"
+    },
+    {
+      "label": "local-agent-task.service.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_task_service",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "local-agent-task.service.ts"
+    },
+    {
+      "label": "LOCAL_AGENT_TASK_INCLUDE",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
+      "source_location": "L17",
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_task_service_local_agent_task_include",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "local_agent_task_include"
+    },
+    {
+      "label": "Injectable",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_task_service_ts_injectable",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "injectable"
+    },
+    {
+      "label": "local-agent-tasks.controller.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-tasks.controller.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_tasks_controller",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "local-agent-tasks.controller.ts"
+    },
+    {
+      "label": "Get",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_tasks_controller_ts_get",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "get"
+    },
+    {
+      "label": "Query",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_tasks_controller_ts_query",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "query"
+    },
+    {
+      "label": "local-agent-tasks.service.spec.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/local-agent-tasks.service.spec.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_local_agent_tasks_service_spec",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "local-agent-tasks.service.spec.ts"
+    },
+    {
+      "label": "task-assignee-kind.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/tasks/task-assignee-kind.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_tasks_task_assignee_kind",
+      "community": 295,
+      "community_name": "LocalAgentTaskService",
+      "norm_label": "task-assignee-kind.ts"
     },
     {
       "label": "12_AUTOMATED_INSIGHTS.md",
@@ -90935,28 +90704,6 @@
       "norm_label": "\u0441\u0447\u0435\u0442\u0447\u0438\u043a\u0438 \u0437\u0430 \u0440\u0430\u0432\u043d\u044b\u0435 \u043e\u043a\u043d\u0430 (visits, siteleads, formstarts, leadattempts, formerrors, matched*, crmleads, acceptedorders, paidorders)"
     },
     {
-      "label": "canvas.module.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/canvas/canvas.module.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_canvas_canvas_module",
-      "community": 307,
-      "community_name": "partner-settings.module.ts",
-      "norm_label": "canvas.module.ts"
-    },
-    {
-      "label": "Module",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_canvas_canvas_module_ts_module",
-      "community": 307,
-      "community_name": "partner-settings.module.ts",
-      "norm_label": "module"
-    },
-    {
       "label": "Controller",
       "file_type": "code",
       "source_file": "",
@@ -90964,7 +90711,7 @@
       "_origin": "ast",
       "id": "crm_new_src_canvas_canvas_production_controller_ts_controller",
       "community": 307,
-      "community_name": "partner-settings.module.ts",
+      "community_name": "CanvasProductionController",
       "norm_label": "controller"
     },
     {
@@ -90975,52 +90722,8 @@
       "_origin": "ast",
       "id": "crm_new_src_canvas_canvas_production_controller_ts_useguards",
       "community": 307,
-      "community_name": "partner-settings.module.ts",
+      "community_name": "CanvasProductionController",
       "norm_label": "useguards"
-    },
-    {
-      "label": "Controller",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_partner_partner_settings_controller_ts_controller",
-      "community": 307,
-      "community_name": "partner-settings.module.ts",
-      "norm_label": "controller"
-    },
-    {
-      "label": "UseGuards",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_partner_partner_settings_controller_ts_useguards",
-      "community": 307,
-      "community_name": "partner-settings.module.ts",
-      "norm_label": "useguards"
-    },
-    {
-      "label": "partner-settings.module.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/partner/partner-settings.module.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_partner_partner_settings_module",
-      "community": 307,
-      "community_name": "partner-settings.module.ts",
-      "norm_label": "partner-settings.module.ts"
-    },
-    {
-      "label": "Module",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_partner_partner_settings_module_ts_module",
-      "community": 307,
-      "community_name": "partner-settings.module.ts",
-      "norm_label": "module"
     },
     {
       "label": "BACKUP_RESTORE_RUNBOOK.md",
@@ -91602,7 +91305,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_period",
       "community": 312,
-      "community_name": "production.ts",
+      "community_name": "tools/marketplace.ts",
       "norm_label": "period.ts"
     },
     {
@@ -91613,7 +91316,7 @@
       "_origin": "ast",
       "id": "crm_mcp_src_period_default_days",
       "community": 312,
-      "community_name": "production.ts",
+      "community_name": "tools/marketplace.ts",
       "norm_label": "default_days"
     },
     {
@@ -91624,85 +91327,74 @@
       "_origin": "ast",
       "id": "crm_mcp_src_period_max_days",
       "community": 312,
-      "community_name": "production.ts",
+      "community_name": "tools/marketplace.ts",
       "norm_label": "max_days"
     },
     {
-      "label": "production.ts",
+      "label": "STATUS_LABELS",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/production.ts",
+      "source_file": "crm-mcp/src/statuses.ts",
+      "source_location": "L45",
+      "_origin": "ast",
+      "id": "crm_mcp_src_statuses_status_labels",
+      "community": 312,
+      "community_name": "tools/marketplace.ts",
+      "norm_label": "status_labels"
+    },
+    {
+      "label": "tools/marketplace.ts",
+      "file_type": "code",
+      "source_file": "crm-mcp/src/tools/marketplace.ts",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_production",
+      "id": "crm_mcp_src_tools_marketplace",
       "community": 312,
-      "community_name": "production.ts",
-      "norm_label": "production.ts"
+      "community_name": "tools/marketplace.ts",
+      "norm_label": "tools/marketplace.ts"
     },
     {
-      "label": "approvalsStatus",
+      "label": "marketplaceArticles",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/production.ts",
-      "source_location": "L261",
+      "source_file": "crm-mcp/src/tools/marketplace.ts",
+      "source_location": "L106",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_production_approvalsstatus",
+      "id": "crm_mcp_src_tools_marketplace_marketplacearticles",
       "community": 312,
-      "community_name": "production.ts",
-      "norm_label": "approvalsstatus"
+      "community_name": "tools/marketplace.ts",
+      "norm_label": "marketplacearticles"
     },
     {
-      "label": "partnerDispatch",
+      "label": "marketplaceOrders",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/production.ts",
-      "source_location": "L167",
+      "source_file": "crm-mcp/src/tools/marketplace.ts",
+      "source_location": "L18",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_production_partnerdispatch",
+      "id": "crm_mcp_src_tools_marketplace_marketplaceorders",
       "community": 312,
-      "community_name": "production.ts",
-      "norm_label": "partnerdispatch"
+      "community_name": "tools/marketplace.ts",
+      "norm_label": "marketplaceorders"
     },
     {
-      "label": "productionCycle",
+      "label": "marketplaceTools",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/production.ts",
-      "source_location": "L91",
+      "source_file": "crm-mcp/src/tools/marketplace.ts",
+      "source_location": "L250",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_production_productioncycle",
+      "id": "crm_mcp_src_tools_marketplace_marketplacetools",
       "community": 312,
-      "community_name": "production.ts",
-      "norm_label": "productioncycle"
+      "community_name": "tools/marketplace.ts",
+      "norm_label": "marketplacetools"
     },
     {
-      "label": "productionLoad",
+      "label": "stockStatus",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/production.ts",
-      "source_location": "L12",
+      "source_file": "crm-mcp/src/tools/marketplace.ts",
+      "source_location": "L183",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_production_productionload",
+      "id": "crm_mcp_src_tools_marketplace_stockstatus",
       "community": 312,
-      "community_name": "production.ts",
-      "norm_label": "productionload"
-    },
-    {
-      "label": "productionTools",
-      "file_type": "code",
-      "source_file": "crm-mcp/src/tools/production.ts",
-      "source_location": "L415",
-      "_origin": "ast",
-      "id": "crm_mcp_src_tools_production_productiontools",
-      "community": 312,
-      "community_name": "production.ts",
-      "norm_label": "productiontools"
-    },
-    {
-      "label": "tasksOpen",
-      "file_type": "code",
-      "source_file": "crm-mcp/src/tools/production.ts",
-      "source_location": "L334",
-      "_origin": "ast",
-      "id": "crm_mcp_src_tools_production_tasksopen",
-      "community": 312,
-      "community_name": "production.ts",
-      "norm_label": "tasksopen"
+      "community_name": "tools/marketplace.ts",
+      "norm_label": "stockstatus"
     },
     {
       "label": "period.test.ts",
@@ -91712,7 +91404,7 @@
       "_origin": "ast",
       "id": "crm_mcp_test_period_test",
       "community": 312,
-      "community_name": "production.ts",
+      "community_name": "tools/marketplace.ts",
       "norm_label": "period.test.ts"
     },
     {
@@ -91723,7 +91415,7 @@
       "_origin": "ast",
       "id": "crm_mcp_test_period_test_now",
       "community": 312,
-      "community_name": "production.ts",
+      "community_name": "tools/marketplace.ts",
       "norm_label": "now"
     },
     {
@@ -92726,61 +92418,6 @@
       "community": 32,
       "community_name": "tasks.controller.ts",
       "norm_label": "isoptional"
-    },
-    {
-      "label": "local-agent-task.service.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_task_service",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": "local-agent-task.service.ts"
-    },
-    {
-      "label": "LOCAL_AGENT_TASK_INCLUDE",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-task.service.ts",
-      "source_location": "L17",
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_task_service_local_agent_task_include",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": "local_agent_task_include"
-    },
-    {
-      "label": "Injectable",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_task_service_ts_injectable",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": "injectable"
-    },
-    {
-      "label": "local-agent-tasks.service.spec.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-tasks.service.spec.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_tasks_service_spec",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": "local-agent-tasks.service.spec.ts"
-    },
-    {
-      "label": "task-assignee-kind.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/task-assignee-kind.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_task_assignee_kind",
-      "community": 32,
-      "community_name": "tasks.controller.ts",
-      "norm_label": "task-assignee-kind.ts"
     },
     {
       "label": "tasks.controller.ts",
@@ -97722,59 +97359,81 @@
       "norm_label": "r5 storage growth"
     },
     {
-      "label": "Controller",
+      "label": "production.ts",
       "file_type": "code",
-      "source_file": "",
-      "source_location": "",
+      "source_file": "crm-mcp/src/tools/production.ts",
+      "source_location": "L1",
       "_origin": "ast",
-      "id": "crm_new_src_partner_partner_ozon_controller_ts_controller",
+      "id": "crm_mcp_src_tools_production",
       "community": 366,
-      "community_name": "PartnerOzonController",
-      "norm_label": "controller"
+      "community_name": "production.ts",
+      "norm_label": "production.ts"
     },
     {
-      "label": "Get",
+      "label": "approvalsStatus",
       "file_type": "code",
-      "source_file": "",
-      "source_location": "",
+      "source_file": "crm-mcp/src/tools/production.ts",
+      "source_location": "L261",
       "_origin": "ast",
-      "id": "crm_new_src_partner_partner_ozon_controller_ts_get",
+      "id": "crm_mcp_src_tools_production_approvalsstatus",
       "community": 366,
-      "community_name": "PartnerOzonController",
-      "norm_label": "get"
+      "community_name": "production.ts",
+      "norm_label": "approvalsstatus"
     },
     {
-      "label": "Param",
+      "label": "partnerDispatch",
       "file_type": "code",
-      "source_file": "",
-      "source_location": "",
+      "source_file": "crm-mcp/src/tools/production.ts",
+      "source_location": "L167",
       "_origin": "ast",
-      "id": "crm_new_src_partner_partner_ozon_controller_ts_param",
+      "id": "crm_mcp_src_tools_production_partnerdispatch",
       "community": 366,
-      "community_name": "PartnerOzonController",
-      "norm_label": "param"
+      "community_name": "production.ts",
+      "norm_label": "partnerdispatch"
     },
     {
-      "label": "Res",
+      "label": "productionCycle",
       "file_type": "code",
-      "source_file": "",
-      "source_location": "",
+      "source_file": "crm-mcp/src/tools/production.ts",
+      "source_location": "L91",
       "_origin": "ast",
-      "id": "crm_new_src_partner_partner_ozon_controller_ts_res",
+      "id": "crm_mcp_src_tools_production_productioncycle",
       "community": 366,
-      "community_name": "PartnerOzonController",
-      "norm_label": "res"
+      "community_name": "production.ts",
+      "norm_label": "productioncycle"
     },
     {
-      "label": "UseGuards",
+      "label": "productionLoad",
       "file_type": "code",
-      "source_file": "",
-      "source_location": "",
+      "source_file": "crm-mcp/src/tools/production.ts",
+      "source_location": "L12",
       "_origin": "ast",
-      "id": "crm_new_src_partner_partner_ozon_controller_ts_useguards",
+      "id": "crm_mcp_src_tools_production_productionload",
       "community": 366,
-      "community_name": "PartnerOzonController",
-      "norm_label": "useguards"
+      "community_name": "production.ts",
+      "norm_label": "productionload"
+    },
+    {
+      "label": "productionTools",
+      "file_type": "code",
+      "source_file": "crm-mcp/src/tools/production.ts",
+      "source_location": "L415",
+      "_origin": "ast",
+      "id": "crm_mcp_src_tools_production_productiontools",
+      "community": 366,
+      "community_name": "production.ts",
+      "norm_label": "productiontools"
+    },
+    {
+      "label": "tasksOpen",
+      "file_type": "code",
+      "source_file": "crm-mcp/src/tools/production.ts",
+      "source_location": "L334",
+      "_origin": "ast",
+      "id": "crm_mcp_src_tools_production_tasksopen",
+      "community": 366,
+      "community_name": "production.ts",
+      "norm_label": "tasksopen"
     },
     {
       "label": "OZON_ORDER_TO_CRM.md",
@@ -98437,114 +98096,70 @@
       "norm_label": "default_prepay_rate"
     },
     {
-      "label": "EXPENSE_LABELS",
+      "label": "update-marketplace-account.dto.ts",
       "file_type": "code",
-      "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L82",
-      "_origin": "ast",
-      "id": "crm_mcp_src_statuses_expense_labels",
-      "community": 370,
-      "community_name": "money.ts",
-      "norm_label": "expense_labels"
-    },
-    {
-      "label": "money.ts",
-      "file_type": "code",
-      "source_file": "crm-mcp/src/tools/money.ts",
+      "source_file": "crm-new/src/marketplace/dto/update-marketplace-account.dto.ts",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_money",
+      "id": "crm_new_src_marketplace_dto_update_marketplace_account_dto",
       "community": 370,
-      "community_name": "money.ts",
-      "norm_label": "money.ts"
+      "community_name": "DtoUpdateMarketplaceAccount",
+      "norm_label": "update-marketplace-account.dto.ts"
     },
     {
-      "label": "basisSchema",
+      "label": "IsBoolean",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/money.ts",
-      "source_location": "L46",
+      "source_file": "",
+      "source_location": "",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_money_basisschema",
+      "id": "crm_new_src_marketplace_dto_update_marketplace_account_dto_ts_isboolean",
       "community": 370,
-      "community_name": "money.ts",
-      "norm_label": "basisschema"
+      "community_name": "DtoUpdateMarketplaceAccount",
+      "norm_label": "isboolean"
     },
     {
-      "label": "orderCosts",
+      "label": "IsOptional",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/money.ts",
-      "source_location": "L181",
+      "source_file": "",
+      "source_location": "",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_money_ordercosts",
+      "id": "crm_new_src_marketplace_dto_update_marketplace_account_dto_ts_isoptional",
       "community": 370,
-      "community_name": "money.ts",
-      "norm_label": "ordercosts"
+      "community_name": "DtoUpdateMarketplaceAccount",
+      "norm_label": "isoptional"
     },
     {
-      "label": "prepayments",
+      "label": "IsString",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/money.ts",
-      "source_location": "L241",
+      "source_file": "",
+      "source_location": "",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_money_prepayments",
+      "id": "crm_new_src_marketplace_dto_update_marketplace_account_dto_ts_isstring",
       "community": 370,
-      "community_name": "money.ts",
-      "norm_label": "prepayments"
+      "community_name": "DtoUpdateMarketplaceAccount",
+      "norm_label": "isstring"
     },
     {
-      "label": "revenueSummary",
+      "label": "MaxLength",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/money.ts",
-      "source_location": "L68",
+      "source_file": "",
+      "source_location": "",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_money_revenuesummary",
+      "id": "crm_new_src_marketplace_dto_update_marketplace_account_dto_ts_maxlength",
       "community": 370,
-      "community_name": "money.ts",
-      "norm_label": "revenuesummary"
+      "community_name": "DtoUpdateMarketplaceAccount",
+      "norm_label": "maxlength"
     },
     {
-      "label": "types.ts",
+      "label": "MinLength",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/types.ts",
-      "source_location": "L1",
+      "source_file": "",
+      "source_location": "",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_types",
+      "id": "crm_new_src_marketplace_dto_update_marketplace_account_dto_ts_minlength",
       "community": 370,
-      "community_name": "money.ts",
-      "norm_label": "types.ts"
-    },
-    {
-      "label": "categorySchema",
-      "file_type": "code",
-      "source_file": "crm-mcp/src/tools/types.ts",
-      "source_location": "L43",
-      "_origin": "ast",
-      "id": "crm_mcp_src_tools_types_categoryschema",
-      "community": 370,
-      "community_name": "money.ts",
-      "norm_label": "categoryschema"
-    },
-    {
-      "label": "periodSchema",
-      "file_type": "code",
-      "source_file": "crm-mcp/src/tools/types.ts",
-      "source_location": "L23",
-      "_origin": "ast",
-      "id": "crm_mcp_src_tools_types_periodschema",
-      "community": 370,
-      "community_name": "money.ts",
-      "norm_label": "periodschema"
-    },
-    {
-      "label": "sourceSchema",
-      "file_type": "code",
-      "source_file": "crm-mcp/src/tools/types.ts",
-      "source_location": "L35",
-      "_origin": "ast",
-      "id": "crm_mcp_src_tools_types_sourceschema",
-      "community": 370,
-      "community_name": "money.ts",
-      "norm_label": "sourceschema"
+      "community_name": "DtoUpdateMarketplaceAccount",
+      "norm_label": "minlength"
     },
     {
       "label": "canvasProduction.ts",
@@ -99236,74 +98851,74 @@
       "_origin": "ast",
       "id": "crm_mcp_src_db",
       "community": 379,
-      "community_name": "tools/marketplace.ts",
+      "community_name": "tools/salary.ts",
       "norm_label": "db.ts"
     },
     {
-      "label": "STATUS_LABELS",
+      "label": "ACCRUAL_STATUS_LABELS",
       "file_type": "code",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L41",
+      "source_location": "L78",
       "_origin": "ast",
-      "id": "crm_mcp_src_statuses_status_labels",
+      "id": "crm_mcp_src_statuses_accrual_status_labels",
       "community": 379,
-      "community_name": "tools/marketplace.ts",
-      "norm_label": "status_labels"
+      "community_name": "tools/salary.ts",
+      "norm_label": "accrual_status_labels"
     },
     {
-      "label": "tools/marketplace.ts",
+      "label": "tools/salary.ts",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/marketplace.ts",
+      "source_file": "crm-mcp/src/tools/salary.ts",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_marketplace",
+      "id": "crm_mcp_src_tools_salary",
       "community": 379,
-      "community_name": "tools/marketplace.ts",
-      "norm_label": "tools/marketplace.ts"
+      "community_name": "tools/salary.ts",
+      "norm_label": "tools/salary.ts"
     },
     {
-      "label": "marketplaceArticles",
+      "label": "KIND_LABELS",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/marketplace.ts",
-      "source_location": "L106",
-      "_origin": "ast",
-      "id": "crm_mcp_src_tools_marketplace_marketplacearticles",
-      "community": 379,
-      "community_name": "tools/marketplace.ts",
-      "norm_label": "marketplacearticles"
-    },
-    {
-      "label": "marketplaceOrders",
-      "file_type": "code",
-      "source_file": "crm-mcp/src/tools/marketplace.ts",
+      "source_file": "crm-mcp/src/tools/salary.ts",
       "source_location": "L18",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_marketplace_marketplaceorders",
+      "id": "crm_mcp_src_tools_salary_kind_labels",
       "community": 379,
-      "community_name": "tools/marketplace.ts",
-      "norm_label": "marketplaceorders"
+      "community_name": "tools/salary.ts",
+      "norm_label": "kind_labels"
     },
     {
-      "label": "marketplaceTools",
+      "label": "salaryDebt",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/marketplace.ts",
-      "source_location": "L250",
+      "source_file": "crm-mcp/src/tools/salary.ts",
+      "source_location": "L125",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_marketplace_marketplacetools",
+      "id": "crm_mcp_src_tools_salary_salarydebt",
       "community": 379,
-      "community_name": "tools/marketplace.ts",
-      "norm_label": "marketplacetools"
+      "community_name": "tools/salary.ts",
+      "norm_label": "salarydebt"
     },
     {
-      "label": "stockStatus",
+      "label": "salarySummary",
       "file_type": "code",
-      "source_file": "crm-mcp/src/tools/marketplace.ts",
-      "source_location": "L183",
+      "source_file": "crm-mcp/src/tools/salary.ts",
+      "source_location": "L24",
       "_origin": "ast",
-      "id": "crm_mcp_src_tools_marketplace_stockstatus",
+      "id": "crm_mcp_src_tools_salary_salarysummary",
       "community": 379,
-      "community_name": "tools/marketplace.ts",
-      "norm_label": "stockstatus"
+      "community_name": "tools/salary.ts",
+      "norm_label": "salarysummary"
+    },
+    {
+      "label": "salaryTools",
+      "file_type": "code",
+      "source_file": "crm-mcp/src/tools/salary.ts",
+      "source_location": "L205",
+      "_origin": "ast",
+      "id": "crm_mcp_src_tools_salary_salarytools",
+      "community": 379,
+      "community_name": "tools/salary.ts",
+      "norm_label": "salarytools"
     },
     {
       "label": "partner-integration.md",
@@ -101110,6 +100725,28 @@
       "norm_label": "module"
     },
     {
+      "label": "canvas.module.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/canvas/canvas.module.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_canvas_canvas_module",
+      "community": 393,
+      "community_name": "app.module.ts",
+      "norm_label": "canvas.module.ts"
+    },
+    {
+      "label": "Module",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_canvas_canvas_module_ts_module",
+      "community": 393,
+      "community_name": "app.module.ts",
+      "norm_label": "module"
+    },
+    {
       "label": "main.ts",
       "file_type": "code",
       "source_file": "crm-new/src/main.ts",
@@ -101149,6 +100786,28 @@
       "source_location": "",
       "_origin": "ast",
       "id": "crm_new_src_order_photo_order_photo_module_ts_module",
+      "community": 393,
+      "community_name": "app.module.ts",
+      "norm_label": "module"
+    },
+    {
+      "label": "partner-settings.module.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/partner/partner-settings.module.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_partner_partner_settings_module",
+      "community": 393,
+      "community_name": "app.module.ts",
+      "norm_label": "partner-settings.module.ts"
+    },
+    {
+      "label": "Module",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_partner_partner_settings_module_ts_module",
       "community": 393,
       "community_name": "app.module.ts",
       "norm_label": "module"
@@ -103651,6 +103310,182 @@
       "norm_label": "maxlength"
     },
     {
+      "label": "analytics-insights.service.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_analytics_insights_service",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "analytics-insights.service.ts"
+    },
+    {
+      "label": "ACTIVE",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
+      "source_location": "L92",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_analytics_insights_service_active",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "active"
+    },
+    {
+      "label": "RUN_LOCK_MINUTES",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
+      "source_location": "L72",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_analytics_insights_service_run_lock_minutes",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "run_lock_minutes"
+    },
+    {
+      "label": "SUPPRESSION_REASONS",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/analytics-insights.service.ts",
+      "source_location": "L93",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_analytics_insights_service_suppression_reasons",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "suppression_reasons"
+    },
+    {
+      "label": "insight-action.dto.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/dto/insight-action.dto.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_dto_insight_action_dto",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insight-action.dto.ts"
+    },
+    {
+      "label": "IsIn",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_dto_insight_action_dto_ts_isin",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "isin"
+    },
+    {
+      "label": "IsInt",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_dto_insight_action_dto_ts_isint",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "isint"
+    },
+    {
+      "label": "IsOptional",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_dto_insight_action_dto_ts_isoptional",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "isoptional"
+    },
+    {
+      "label": "Max",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_dto_insight_action_dto_ts_max",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "max"
+    },
+    {
+      "label": "Min",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_dto_insight_action_dto_ts_min",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "min"
+    },
+    {
+      "label": "Type",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_dto_insight_action_dto_ts_type",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "type"
+    },
+    {
+      "label": "insights-contract.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insights-contract.ts"
+    },
+    {
+      "label": "INSIGHT_CATEGORIES",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L36",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_insight_categories",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insight_categories"
+    },
+    {
+      "label": "INSIGHT_ENGINE_VERSION",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L19",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_insight_engine_version",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insight_engine_version"
+    },
+    {
+      "label": "INSIGHT_SEVERITIES",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L54",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_insight_severities",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insight_severities"
+    },
+    {
+      "label": "INSIGHT_STATUSES",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-contract.ts",
+      "source_location": "L61",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_contract_insight_statuses",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "insight_statuses"
+    },
+    {
       "label": "insights-engine.ts",
       "file_type": "code",
       "source_file": "crm-new/src/analytics/insights/insights-engine.ts",
@@ -104124,6 +103959,17 @@
       "norm_label": "client_id_coverage_min_pct"
     },
     {
+      "label": "COOLDOWN_DAYS",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-rules.ts",
+      "source_location": "L87",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_rules_cooldown_days",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "cooldown_days"
+    },
+    {
       "label": "CRITICAL_FORM_ERROR_VISITS",
       "file_type": "code",
       "source_file": "crm-new/src/analytics/insights/insights-rules.ts",
@@ -104322,6 +104168,17 @@
       "norm_label": "material_rate_points"
     },
     {
+      "label": "MAX_ACTIVE_PER_DETECTOR",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-rules.ts",
+      "source_location": "L85",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_rules_max_active_per_detector",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "max_active_per_detector"
+    },
+    {
       "label": "MIN_ENTITY_VISITS",
       "file_type": "code",
       "source_file": "crm-new/src/analytics/insights/insights-rules.ts",
@@ -104388,6 +104245,39 @@
       "norm_label": "mix_shift_points"
     },
     {
+      "label": "REOPEN_WINDOW_DAYS",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-rules.ts",
+      "source_location": "L83",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_rules_reopen_window_days",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "reopen_window_days"
+    },
+    {
+      "label": "ROLLING_WINDOW_DAYS",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-rules.ts",
+      "source_location": "L9",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_rules_rolling_window_days",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "rolling_window_days"
+    },
+    {
+      "label": "SEVERITY_ORDER",
+      "file_type": "code",
+      "source_file": "crm-new/src/analytics/insights/insights-rules.ts",
+      "source_location": "L98",
+      "_origin": "ast",
+      "id": "crm_new_src_analytics_insights_insights_rules_severity_order",
+      "community": 42,
+      "community_name": "insights-engine.ts",
+      "norm_label": "severity_order"
+    },
+    {
       "label": "@types/node",
       "file_type": "code",
       "source_file": "frontend/package.json",
@@ -104408,6 +104298,50 @@
       "community": 420,
       "community_name": "@types/node",
       "norm_label": "@types/node"
+    },
+    {
+      "label": "create-ozon-crm-order.dto.ts",
+      "file_type": "code",
+      "source_file": "crm-new/src/marketplace/dto/create-ozon-crm-order.dto.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "crm_new_src_marketplace_dto_create_ozon_crm_order_dto",
+      "community": 421,
+      "community_name": "DtoCreateOzonCrmOrder",
+      "norm_label": "create-ozon-crm-order.dto.ts"
+    },
+    {
+      "label": "IsOptional",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_marketplace_dto_create_ozon_crm_order_dto_ts_isoptional",
+      "community": 421,
+      "community_name": "DtoCreateOzonCrmOrder",
+      "norm_label": "isoptional"
+    },
+    {
+      "label": "IsString",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_marketplace_dto_create_ozon_crm_order_dto_ts_isstring",
+      "community": 421,
+      "community_name": "DtoCreateOzonCrmOrder",
+      "norm_label": "isstring"
+    },
+    {
+      "label": "MaxLength",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_marketplace_dto_create_ozon_crm_order_dto_ts_maxlength",
+      "community": 421,
+      "community_name": "DtoCreateOzonCrmOrder",
+      "norm_label": "maxlength"
     },
     {
       "label": "Controller",
@@ -104496,6 +104430,61 @@
       "community": 422,
       "community_name": "PartnerAdminController",
       "norm_label": "useinterceptors"
+    },
+    {
+      "label": "Controller",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_partner_partner_ozon_controller_ts_controller",
+      "community": 422,
+      "community_name": "PartnerAdminController",
+      "norm_label": "controller"
+    },
+    {
+      "label": "Get",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_partner_partner_ozon_controller_ts_get",
+      "community": 422,
+      "community_name": "PartnerAdminController",
+      "norm_label": "get"
+    },
+    {
+      "label": "Param",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_partner_partner_ozon_controller_ts_param",
+      "community": 422,
+      "community_name": "PartnerAdminController",
+      "norm_label": "param"
+    },
+    {
+      "label": "Res",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_partner_partner_ozon_controller_ts_res",
+      "community": 422,
+      "community_name": "PartnerAdminController",
+      "norm_label": "res"
+    },
+    {
+      "label": "UseGuards",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "crm_new_src_partner_partner_ozon_controller_ts_useguards",
+      "community": 422,
+      "community_name": "PartnerAdminController",
+      "norm_label": "useguards"
     },
     {
       "label": "partner-status.dto.ts",
@@ -106522,6 +106511,39 @@
       "norm_label": "typescript"
     },
     {
+      "label": "PRESET_LABELS",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/analytics-view.ts",
+      "source_location": "L20",
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_analytics_view_preset_labels",
+      "community": 44,
+      "community_name": "types/analytics.ts",
+      "norm_label": "preset_labels"
+    },
+    {
+      "label": "PRESET_ORDER",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/analytics-view.ts",
+      "source_location": "L31",
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_analytics_view_preset_order",
+      "community": 44,
+      "community_name": "types/analytics.ts",
+      "norm_label": "preset_order"
+    },
+    {
+      "label": "PeriodSelector.tsx",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/PeriodSelector.tsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_periodselector",
+      "community": 44,
+      "community_name": "types/analytics.ts",
+      "norm_label": "periodselector.tsx"
+    },
+    {
       "label": "fixtures.ts",
       "file_type": "code",
       "source_file": "frontend/src/features/analytics/__tests__/fixtures.ts",
@@ -106542,6 +106564,39 @@
       "community": 44,
       "community_name": "types/analytics.ts",
       "norm_label": "keys"
+    },
+    {
+      "label": "order-origins.test.tsx",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/__tests__/order-origins.test.tsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_tests_order_origins_test",
+      "community": 44,
+      "community_name": "types/analytics.ts",
+      "norm_label": "order-origins.test.tsx"
+    },
+    {
+      "label": "period",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/__tests__/order-origins.test.tsx",
+      "source_location": "L14",
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_tests_order_origins_test_period",
+      "community": 44,
+      "community_name": "types/analytics.ts",
+      "norm_label": "period"
+    },
+    {
+      "label": "slice",
+      "file_type": "code",
+      "source_file": "frontend/src/features/analytics/__tests__/order-origins.test.tsx",
+      "source_location": "L36",
+      "_origin": "ast",
+      "id": "frontend_src_features_analytics_tests_order_origins_test_slice",
+      "community": 44,
+      "community_name": "types/analytics.ts",
+      "norm_label": "slice"
     },
     {
       "label": "types/analytics.ts",
@@ -116566,59 +116621,26 @@
       "norm_label": "useinterceptors"
     },
     {
-      "label": "local-agent-task.dto.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/dto/local-agent-task.dto.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_dto_local_agent_task_dto",
-      "community": 9,
-      "community_name": "Roles",
-      "norm_label": "local-agent-task.dto.ts"
-    },
-    {
-      "label": "IsEnum",
+      "label": "Controller",
       "file_type": "code",
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "crm_new_src_tasks_dto_local_agent_task_dto_ts_isenum",
+      "id": "crm_new_src_partner_partner_settings_controller_ts_controller",
       "community": 9,
       "community_name": "Roles",
-      "norm_label": "isenum"
+      "norm_label": "controller"
     },
     {
-      "label": "IsString",
+      "label": "UseGuards",
       "file_type": "code",
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "crm_new_src_tasks_dto_local_agent_task_dto_ts_isstring",
+      "id": "crm_new_src_partner_partner_settings_controller_ts_useguards",
       "community": 9,
       "community_name": "Roles",
-      "norm_label": "isstring"
-    },
-    {
-      "label": "MaxLength",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_dto_local_agent_task_dto_ts_maxlength",
-      "community": 9,
-      "community_name": "Roles",
-      "norm_label": "maxlength"
-    },
-    {
-      "label": "local-agent-tasks.controller.ts",
-      "file_type": "code",
-      "source_file": "crm-new/src/tasks/local-agent-tasks.controller.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_tasks_controller",
-      "community": 9,
-      "community_name": "Roles",
-      "norm_label": "local-agent-tasks.controller.ts"
+      "norm_label": "useguards"
     },
     {
       "label": "Controller",
@@ -116630,17 +116652,6 @@
       "community": 9,
       "community_name": "Roles",
       "norm_label": "controller"
-    },
-    {
-      "label": "Get",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_tasks_controller_ts_get",
-      "community": 9,
-      "community_name": "Roles",
-      "norm_label": "get"
     },
     {
       "label": "Param",
@@ -116663,17 +116674,6 @@
       "community": 9,
       "community_name": "Roles",
       "norm_label": "post"
-    },
-    {
-      "label": "Query",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "crm_new_src_tasks_local_agent_tasks_controller_ts_query",
-      "community": 9,
-      "community_name": "Roles",
-      "norm_label": "query"
     },
     {
       "label": "UseGuards",
@@ -120135,7 +120135,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/analytics/ads/ad-performance.ts",
-      "source_location": "L170",
+      "source_location": "L173",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_analytics_ads_ad_performance_addlead",
@@ -120147,7 +120147,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/analytics/ads/ad-performance.ts",
-      "source_location": "L210",
+      "source_location": "L213",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_analytics_ads_ad_performance_computeadperformance",
@@ -120159,7 +120159,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/analytics/ads/ad-performance.ts",
-      "source_location": "L238",
+      "source_location": "L241",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_analytics_ads_ad_performance_computeadperformance",
@@ -120171,7 +120171,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/analytics/ads/ad-performance.ts",
-      "source_location": "L242",
+      "source_location": "L245",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_analytics_ads_ad_performance_computeadperformance",
@@ -120183,7 +120183,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/analytics/ads/ad-performance.ts",
-      "source_location": "L271",
+      "source_location": "L274",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_analytics_ads_ad_performance_computeadperformance",
@@ -268082,7 +268082,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L18",
+      "source_location": "L22",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_mcp_src_statuses",
@@ -268093,7 +268093,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L21",
+      "source_location": "L25",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_mcp_src_statuses",
@@ -268104,7 +268104,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L31",
+      "source_location": "L35",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_mcp_src_statuses",
@@ -268115,7 +268115,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L36",
+      "source_location": "L40",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_mcp_src_statuses",
@@ -268126,7 +268126,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L41",
+      "source_location": "L45",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_mcp_src_statuses",
@@ -268137,7 +268137,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L59",
+      "source_location": "L63",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_mcp_src_statuses",
@@ -268148,7 +268148,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L65",
+      "source_location": "L69",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_mcp_src_statuses",
@@ -268159,7 +268159,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L74",
+      "source_location": "L78",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_mcp_src_statuses",
@@ -268170,7 +268170,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L82",
+      "source_location": "L86",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_mcp_src_statuses",
@@ -268181,7 +268181,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-mcp/src/statuses.ts",
-      "source_location": "L95",
+      "source_location": "L99",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_mcp_src_statuses",
@@ -268192,7 +268192,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-mcp/src/tools/ads.ts",
-      "source_location": "L135",
+      "source_location": "L137",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_mcp_src_tools_ads",
@@ -268203,7 +268203,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-mcp/src/tools/ads.ts",
-      "source_location": "L291",
+      "source_location": "L245",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_mcp_src_tools_ads",
@@ -268214,7 +268214,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-mcp/src/tools/ads.ts",
-      "source_location": "L364",
+      "source_location": "L318",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_mcp_src_tools_ads",
@@ -268225,7 +268225,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-mcp/src/tools/ads.ts",
-      "source_location": "L37",
+      "source_location": "L39",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_mcp_src_tools_ads",
@@ -268236,7 +268236,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-mcp/src/tools/ads.ts",
-      "source_location": "L46",
+      "source_location": "L48",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_mcp_src_tools_ads",
@@ -270469,7 +270469,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/analytics/ads/ad-performance.ts",
-      "source_location": "L167",
+      "source_location": "L170",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_analytics_ads_ad_performance",
@@ -270480,7 +270480,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "crm-new/src/analytics/ads/ad-performance.ts",
-      "source_location": "L176",
+      "source_location": "L179",
       "weight": 1.0,
       "_origin": "ast",
       "source": "crm_new_src_analytics_ads_ad_performance",
@@ -366251,5 +366251,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "b82d0a9fe50878e61603fbf3aee59830b9d01207"
+  "built_at_commit": "2d7c7f911c9f0496b91f273d3652acd9c37e22a2"
 }

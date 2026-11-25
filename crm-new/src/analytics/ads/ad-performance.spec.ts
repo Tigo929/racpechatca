@@ -114,6 +114,8 @@ describe('computeAdPerformance', () => {
     expect(unknown?.name).toBe('Группа не определена');
     expect(unknown?.keywords[0].label).toBe('Ключ не передан');
     expect(r.totals.adLeadsWithGroup).toBe(0);
+    expect(unknown?.costPerLead).toBeNull();
+    expect(unknown?.spendShare).toBeNull();
   });
 
   it('finds the group by keyword when it lives in exactly one group', () => {
