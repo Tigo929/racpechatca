@@ -23,6 +23,8 @@ import { limitSchema, periodSchema, readLimit, type Tool } from './types.js';
 const AD_ORDER = `o.yclid IS NOT NULL AND o.yclid <> ''`;
 /** Похоже на рекламу, но метки клика нет: utm есть, yclid потерян. */
 const AD_LIKE = `(o.yclid IS NULL OR o.yclid = '') AND o."utmMedium" IS NOT NULL AND o."utmMedium" <> ''`;
+/** Заявка с рекламы Директа: метка клика или utm cpc от Яндекса (как на экране «Реклама»). */
+const AD_LEAD = `(COALESCE(o.yclid, '') <> '' OR (lower(COALESCE(o."utmSource", '')) LIKE 'ya%' AND lower(COALESCE(o."utmMedium", '')) IN ('cpc','ppc')))`;
 
 /**
  * НДС. Расход в CRM приходит из двух мест: API Метрики отдаёт суммы БЕЗ НДС
@@ -136,71 +138,60 @@ export const adEconomics: Tool = {
   name: 'ad_economics',
   title: 'Окупается ли реклама',
   description:
-    'Главный вопрос по рекламе: расход против заявок, заказов и выручки сайта — цена заявки, цена заказа, ДРР. ' +
-    'Отдаёт ДВА счёта заявок рядом: по достижениям цели Метрики (так считает дашборд CRM) и по метке клика в заказе (строгий счёт). ' +
-    'Окупаемость (ДРР, отдача на рубль) показывает ТОЛЬКО если связь «реклама → заказ» доказана хотя бы на половине заказов сайта; ' +
-    'иначе отказывается считать и говорит, почему — то же правило, что в аналитике CRM. Заказы, заведённые руками, рекламными не считаются никогда.',
+    'Главный вопрос по рекламе: расход против заявок, оплаченных заказов и выручки, пришедших С РЕКЛАМЫ — цена заявки, цена оплаченного заказа, доля расхода в выручке. ' +
+    'Рекламной считается только заявка с меткой клика Директа (yclid или utm cpc от Яндекса); заявки с поиска и прямых заходов в знаменатель не попадают. ' +
+    'Цены даны и без НДС (как в API), и с НДС (как в счёте). Разбивка по группам и ключам — на экране CRM «Аналитика → Реклама».',
   schema: { ...periodSchema },
   async run(args) {
     const period = resolvePeriod(args as { from?: string; to?: string });
     const [from, to] = sqlRange(period);
 
-    const spendRows = await read<{ spend: number; clicks: number; vat: string | null }>(
-      `SELECT COALESCE(sum(a.spend), 0)::int AS spend,
+    const spendRows = await read<{ spend: number; clicks: number; dney: number; vat: string | null }>(
+      `SELECT COALESCE(sum(a.spend), 0)::float AS spend,
               COALESCE(sum(a.clicks), 0)::int AS clicks,
+              count(DISTINCT a.date)::int AS dney,
               string_agg(DISTINCT a."vatBasis", ',') AS vat
          FROM "AdSpend" a
         WHERE a.date >= $1::date AND a.date <= $2::date`,
       [period.from, period.to],
     );
-    const spend = spendRows[0]?.spend ?? 0;
+    const spend = Math.round(spendRows[0]?.spend ?? 0);
     const clicks = spendRows[0]?.clicks ?? 0;
     const vat = (spendRows[0]?.vat ?? '').split(',').filter(Boolean);
+    /** API Метрики отдаёт без НДС; ручные выгрузки — уже с НДС. */
+    const spendVat = vat.length === 1 && vat[0] === 'EXCLUDED' ? Math.round(spend * 1.2) : spend;
 
-    /** Заявки по цели Метрики — тот же счёт, что у дашборда CRM. */
+    /** Заявки по цели Метрики — только визиты «по рекламе», не все источники. */
     const goalRows = await read<{ leads: number }>(
       `SELECT COALESCE(sum(s."leadReaches"), 0)::int AS leads
          FROM "MetrikaDailySource" s
-        WHERE s.date >= $1::date AND s.date <= $2::date`,
+        WHERE s.date >= $1::date AND s.date <= $2::date AND s."trafficSource" = 'ad'`,
       [period.from, period.to],
     );
     const metrikaLeads = goalRows[0]?.leads ?? 0;
 
     const siteRows = await read<{
       vsego: number;
-      prinyato: number;
-      s_lichnostyu: number;
-      s_metkoy: number;
+      reklama: number;
+      otmeneno: number;
       oplacheno: number;
-      oplacheno_bez_daty: number;
       vyruchka: number;
+      bez_metki_s_cid: number;
     }>(
       `SELECT count(*)::int AS vsego,
-              count(*) FILTER (WHERE o.status <> 'LEAD')::int AS prinyato,
-              count(*) FILTER (
-                WHERE o.status <> 'LEAD'
-                  AND (COALESCE(o."yandexClientId", '') <> '' OR COALESCE(o.yclid, '') <> '')
-              )::int AS s_lichnostyu,
-              count(*) FILTER (WHERE ${AD_ORDER})::int AS s_metkoy,
-              count(*) FILTER (WHERE o."clientPaidAt" IS NOT NULL)::int AS oplacheno,
-              count(*) FILTER (
-                WHERE o."clientPaidAt" IS NULL
-                  AND o.status IN ('PAID','READY_FOR_REVIEW','COMPLETED')
-              )::int AS oplacheno_bez_daty,
-              COALESCE(sum(o."totalOrder") FILTER (WHERE o."clientPaidAt" IS NOT NULL), 0)::int AS vyruchka
+              count(*) FILTER (WHERE ${AD_LEAD})::int AS reklama,
+              count(*) FILTER (WHERE ${AD_LEAD} AND o.status = 'CANCELLED')::int AS otmeneno,
+              count(*) FILTER (WHERE ${AD_LEAD} AND o.status <> 'CANCELLED' AND ${paidSql()})::int AS oplacheno,
+              COALESCE(sum(o."totalOrder") FILTER (WHERE ${AD_LEAD} AND o.status <> 'CANCELLED' AND ${paidSql()}), 0)::int AS vyruchka,
+              count(*) FILTER (WHERE NOT (${AD_LEAD}) AND COALESCE(o."yandexClientId", '') <> '')::int AS bez_metki_s_cid
          FROM "OrderPhoto" o
         WHERE o."createdAt" >= $1 AND o."createdAt" < $2
           AND o."sourceOrder" = 'WEBSITE'`,
       [from, to],
     );
-
     const st = siteRows[0];
     if (!st) {
-      return answer({
-        title: 'Окупается ли реклама',
-        period: period.label,
-        summary: ['Не удалось собрать данные по заказам сайта.'],
-      });
+      return answer({ title: 'Окупается ли реклама', period: period.label, summary: ['Не удалось собрать данные по заказам сайта.'] });
     }
 
     if (spend === 0) {
@@ -208,82 +199,45 @@ export const adEconomics: Tool = {
         title: 'Окупается ли реклама',
         period: period.label,
         summary: [
-          'Расхода за период в CRM нет — окупаемость считать не из чего. Это отсутствующие данные, а не бесплатная реклама: возможно, выгрузку не загружали.',
-          `Для справки: заявок по цели Метрики ${int(metrikaLeads)}, заказов с сайта ${int(st.vsego)}, из них оплачено ${int(st.oplacheno)}.`,
+          'Расхода за период в CRM нет — либо реклама не крутилась, либо расход не загрузился (проверьте data_health). Бесплатной рекламой это считать нельзя.',
+          `Для справки: рекламных заявок ${int(st.reklama)}, из них оплачено ${int(st.oplacheno)}.`,
         ],
       });
     }
 
-    /**
-     * Покрытие атрибуции — доля заказов сайта, у которых есть ClientID или
-     * метка клика. Ниже половины связь «реклама → заказ» не доказана, и тогда
-     * ДРР не показывается вовсе: при покрытии в треть он означал бы
-     * «реклама окупается», хотя две трети заказов отнесены к ней наугад.
-     * Порог и правило взяты из crm-new/src/analytics/ads/ad-spend.ts,
-     * чтобы агент и дашборд не спорили друг с другом.
-     */
-    const coverage = st.prinyato > 0 ? (st.s_lichnostyu / st.prinyato) * 100 : null;
-    const reliable = coverage !== null && coverage >= 50;
-
-    /**
-     * Минимальное число оплаченных заказов, при котором ДРР о чём-то говорит.
-     * Правило CRM про покрытие атрибуции проверяет, доказана ли связь, но не
-     * размер выборки: ДРР, посчитанный по одному заказу, формально верен и
-     * при этом бессмыслен — один крупный заказ делает рекламу «окупившейся»,
-     * один мелкий хоронит её. Поэтому число остаётся, но рядом сказано,
-     * на скольких заказах оно стоит.
-     */
-    const MIN_PAID_FOR_DRR = 5;
-    /** «по 1 заказу», но «по 2 заказам»: показывается только при 1–4. */
-    const zakazam = (n: number) => `${int(n)} ${n === 1 ? 'заказу' : 'заказам'}`;
-    const scarce = st.oplacheno < MIN_PAID_FOR_DRR;
-    const drr = !reliable
-      ? 'считать нельзя — связь не доказана'
-      : st.vyruchka === 0
-        ? '—'
-        : scarce
-          ? `${share(spend, st.vyruchka)} — но посчитано по ${zakazam(st.oplacheno)}, это не показатель`
-          : share(spend, st.vyruchka);
+    const MIN_PAID = 5;
+    const scarce = st.oplacheno < MIN_PAID;
+    const shareVat = st.vyruchka > 0 ? share(spendVat, st.vyruchka) : '—';
 
     const rows: (string | number)[][] = [
-      ['Расход', money(spend)],
-      ['Клики по объявлениям', int(clicks)],
-      ['Заявки по цели Метрики', int(metrikaLeads)],
-      ['Цена заявки по Метрике', per(spend, metrikaLeads)],
-      ['Заявки с меткой клика в CRM', int(st.s_metkoy)],
-      ['Цена заявки по метке', per(spend, st.s_metkoy)],
-      ['Заказов с сайта принято', int(st.prinyato)],
-      ['Цена принятого заказа', per(spend, st.prinyato)],
-      ['Из них оплачено (есть дата оплаты)', int(st.oplacheno)],
-      ['Оплачены по статусу, но без даты', int(st.oplacheno_bez_daty)],
-      [
-        'Цена оплаченного заказа',
-        scarce ? `${per(spend, st.oplacheno)} — по ${zakazam(st.oplacheno)}` : per(spend, st.oplacheno),
-      ],
-      ['Выручка оплаченных заказов сайта', money(st.vyruchka)],
-      ['ДРР (расход / выручка)', drr],
+      ['Расход без НДС / с НДС', `${money(spend)} / ${money(spendVat)}`],
+      ['Клики', int(clicks)],
+      ['Заявок с рекламы (метка клика в CRM)', int(st.reklama)],
+      ['Цена заявки, с НДС', per(spendVat, st.reklama)],
+      ['Заявок по цели Метрики в рекламных визитах', int(metrikaLeads)],
+      ['Оплачено рекламных заказов', int(st.oplacheno)],
+      ['Отменено', int(st.otmeneno)],
+      ['Цена оплаченного заказа, с НДС', scarce ? `${per(spendVat, st.oplacheno)} — всего ${int(st.oplacheno)} оплат, это не показатель` : per(spendVat, st.oplacheno)],
+      ['Выручка рекламных заказов', money(st.vyruchka)],
+      ['Реклама от выручки (с НДС)', shareVat],
     ];
 
     return answer({
       title: 'Окупается ли реклама',
       period: period.label,
       summary: [
-        reliable
-          ? `Связь «реклама → заказ» доказана: ${coverage!.toFixed(0)} % заказов сайта имеют ClientID или метку клика (нужно от 50 %).`
-          : `Связь «реклама → заказ» НЕ доказана: ${coverage === null ? 'заказов сайта за период нет' : `только ${coverage.toFixed(0)} % заказов сайта имеют ClientID или метку клика, нужно от 50 %`}. Окупаемость по таким данным не считается.`,
-        `Заявок с сайта в CRM: ${int(st.vsego)} · принято в работу: ${int(st.prinyato)} · оплачено с датой: ${int(st.oplacheno)}`,
-        ...(st.oplacheno_bez_daty > 0
-          ? [
-              `Ещё ${int(st.oplacheno_bez_daty)} заказов сайта оплачены по статусу, но без даты оплаты — в выручку периода они не попали, и ДРР из-за этого завышен. Дата ставится в CRM руками.`,
-            ]
+        `Заявок с сайта: ${int(st.vsego)}, из них с рекламы ${int(st.reklama)}. Расход данных есть за ${int(spendRows[0]?.dney ?? 0)} дн. периода.`,
+        `Заявка с рекламы стоит ${per(spendVat, st.reklama)} с НДС, оплаченный заказ — ${per(spendVat, st.oplacheno)}; реклама съедает ${shareVat} выручки этих заказов.`,
+        ...(st.bez_metki_s_cid > 0
+          ? [`Ещё ${int(st.bez_metki_s_cid)} заявок без метки клика, но с ClientID: это поиск, прямые заходы или потерянная метка — к рекламе они не отнесены.`]
           : []),
       ],
       table: table(['показатель', 'значение'], rows),
       note:
         `${vatNote(vat.includes('EXCLUDED'), vat.includes('UNKNOWN'))} ` +
-        'Два счёта заявок расходятся по построению: Метрика считает достижения цели в визитах с согласием на cookie, CRM — заведённые заявки с меткой клика. ' +
-        'Дашборд CRM показывает первый; второй строже и всегда меньше. Называйте, какой из них приводите, иначе число не сойдётся с дашбордом. ' +
-        'Выручка — по заказам сайта с датой оплаты в периоде. Оплата приходит позже заявки, поэтому по свежим дням ДРР выглядит хуже, чем окажется через две недели.',
+        'Оплачен — дата оплаты стоит или статус «Отправлен» и дальше (владелец: к отправке деньги уже получены). ' +
+        'Заявки и оплаты считаются по дню заявки, поэтому за свежие дни оплат меньше, чем будет. Повторные заказы не учитываются. ' +
+        'Цель Метрики видит только визиты с согласием на cookie — её число для справки, считать по нему цену заявки нельзя.',
     });
   },
 };
