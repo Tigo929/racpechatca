@@ -5,6 +5,7 @@ import { YandexMetrikaClient } from '../metrika/metrika-api.client';
 import { metrikaConfigFromEnv } from '../metrika/metrika.config';
 import { PgAdvisoryLock } from '../metrika/analytics/metrika-sync-lock';
 import { DirectSpendSync, directSpendConfig } from './ads/direct-spend-sync';
+import { DirectSpendDetailSync } from './ads/direct-spend-detail-sync';
 
 async function main() {
   const config = directSpendConfig();
@@ -25,6 +26,13 @@ async function main() {
       config,
     );
     console.log(JSON.stringify(await service.sync({ from, to })));
+    const detail = new DirectSpendDetailSync(
+      prisma as unknown as PrismaService,
+      new YandexMetrikaClient(metrikaConfigFromEnv()),
+      new PgAdvisoryLock(url, 700_703),
+      config,
+    );
+    console.log(JSON.stringify({ detail: await detail.sync({ from, to }) }));
   } finally {
     await prisma.$disconnect();
   }

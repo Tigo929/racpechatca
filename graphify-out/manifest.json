@@ -2425,8 +2425,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-analytics.module.ts": {
-    "mtime": 1791108199.9497273,
-    "ast_hash": "46cd4ebd8a30ff27fac4a144a43e2bba",
+    "mtime": 1795640661.0385635,
+    "ast_hash": "70a9b22456181450302b7215bbd331ed",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/analytics/metrika-dates.spec.ts": {
@@ -2795,8 +2795,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/analytics/dashboard/analytics-dashboard.module.ts": {
-    "mtime": 1789400897.9476128,
-    "ast_hash": "86c145f06eddaa5cd2808593d785eb7b",
+    "mtime": 1795640661.0587566,
+    "ast_hash": "e27a4aef914e5951a799cb5a60d54091",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/dashboard/dashboard-cache.ts": {
@@ -2810,8 +2810,8 @@
     "semantic_hash": ""
   },
   "frontend/src/api/analytics.ts": {
-    "mtime": 1790144914.464537,
-    "ast_hash": "e0cbbb0d05bbdc2e21428c0483d18163",
+    "mtime": 1795640686.843899,
+    "ast_hash": "a000fcb840e419944fb3eb66e02eeaba",
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/PeriodSelector.tsx": {
@@ -2855,8 +2855,8 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/AnalyticsPage.tsx": {
-    "mtime": 1790234604.8529027,
-    "ast_hash": "80545f854d091c108efdd031fb92b9e7",
+    "mtime": 1795640726.4556694,
+    "ast_hash": "5c04e95f3f2caec672066d53bfe57f63",
     "semantic_hash": ""
   },
   "frontend/src/test-setup.ts": {
@@ -4365,8 +4365,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/analytics/direct-spend-cli.ts": {
-    "mtime": 1791108199.9253514,
-    "ast_hash": "be1e3d5e83b1f6ad22e6f750527e4415",
+    "mtime": 1795640661.048079,
+    "ast_hash": "1203888f0da58e8bc9ba2fb9399ee10a",
     "semantic_hash": ""
   },
   "crm-new/src/metrika/orders/metrika-yclid-conversions.spec.ts": {
@@ -5812,6 +5812,41 @@
   "frontend/src/components/orders/OzonDeliveryBlock.test.tsx": {
     "mtime": 1795512854.8068132,
     "ast_hash": "c92a2556fcfa32b5fc87069023b91841",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/ads/ad-performance.controller.ts": {
+    "mtime": 1795640660.9072595,
+    "ast_hash": "16a168bf24d8e8b09f64a384147b049b",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/ads/ad-performance.service.ts": {
+    "mtime": 1795640610.7389467,
+    "ast_hash": "ea876068b3009227f03624e8763eb0d9",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/ads/ad-performance.spec.ts": {
+    "mtime": 1795640660.9647374,
+    "ast_hash": "9c77ad70602c8e966b5f990faac0e393",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/ads/ad-performance.ts": {
+    "mtime": 1795640661.0074883,
+    "ast_hash": "c93372a29d1895edd2b2433f8cf5cf3d",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/ads/direct-spend-detail-sync.ts": {
+    "mtime": 1795640661.0240066,
+    "ast_hash": "bf2b780137740ad571909a160c1b82a1",
+    "semantic_hash": ""
+  },
+  "frontend/src/features/analytics/ads-sections.tsx": {
+    "mtime": 1795640743.486781,
+    "ast_hash": "efe3f4dc45e0c027c4326b018cd55697",
+    "semantic_hash": ""
+  },
+  "frontend/src/types/ads.ts": {
+    "mtime": 1795640686.6014426,
+    "ast_hash": "463f6cfb0f2917e1365c4174611b466a",
     "semantic_hash": ""
   }
 }

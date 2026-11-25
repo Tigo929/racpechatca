@@ -1355,6 +1355,35 @@ model AdSpend {
   @@index([date])
 }
 
+/// Расход Директа с детализацией: день × кампания × группа × объявление ×
+/// условие показа (ключ или автотаргетинг). Источник — API Метрики (ym:ad:),
+/// суммы без НДС. Отдельно от AdSpend: та таблица — итог по кампании для
+/// дашборда и P&L, эта — для экрана «Реклама», где расход сводится с
+/// заявками по меткам utm_content (объявление) и utm_term (ключ).
+model AdSpendDetail {
+  id        String   @id() @default(uuid())
+  createdAt DateTime @default(now())
+
+  date         DateTime
+  source       String   @default("YANDEX_DIRECT")
+  campaignId   String
+  campaignName String   @default("")
+  adGroupId    String
+  adGroupName  String   @default("")
+  /// Номер объявления без префикса «M-» — так же, как в utm_content заявки.
+  adId         String
+  adName       String   @default("")
+  /// Условие показа, как его отдаёт Метрика: «печать фото москва -холст»
+  /// или «Autotargeting».
+  criterion    String
+  spend        Decimal  @db.Decimal(18, 4)
+  clicks       Int      @default(0)
+  vatBasis     String   @default("EXCLUDED")
+
+  @@unique([date, source, campaignId, adGroupId, adId, criterion])
+  @@index([date])
+}
+
 model PartnerSettings {
   id        String   @id @default("default")
   updatedAt DateTime @updatedAt

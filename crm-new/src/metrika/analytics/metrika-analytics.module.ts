@@ -12,6 +12,7 @@ import {
   DirectSpendSync,
   directSpendConfig,
 } from '../../analytics/ads/direct-spend-sync';
+import { DirectSpendDetailSync } from '../../analytics/ads/direct-spend-detail-sync';
 import { rollingWindow } from './metrika-dates';
 
 /**
@@ -73,6 +74,15 @@ import { rollingWindow } from './metrika-dates';
           );
           scheduler.registerAfterSync('direct-spend', () =>
             direct.sync(rollingWindow(35, new Date())),
+          );
+          const detail = new DirectSpendDetailSync(
+            prisma,
+            client,
+            new PgAdvisoryLock(process.env.DATABASE_URL, 700_703),
+            directConfig,
+          );
+          scheduler.registerAfterSync('direct-spend-detail', () =>
+            detail.sync(rollingWindow(35, new Date())),
           );
         }
         return scheduler;

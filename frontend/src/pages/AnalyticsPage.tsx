@@ -44,6 +44,7 @@ import { behaviorWarnings } from '../features/analytics/behavior-view';
 import { GrowthTab } from '../features/analytics/growth-sections';
 import { InsightsTab } from '../features/analytics/insights-sections';
 import { ReportsTab } from '../features/analytics/reports-sections';
+import { AdsTab } from '../features/analytics/ads-sections';
 
 /**
  * Дашборд руководителя (этап 09). Все числа — из `AnalyticsMetricsService`
@@ -51,10 +52,11 @@ import { ReportsTab } from '../features/analytics/reports-sections';
  * показывает, подписывает и предупреждает о неполных данных.
  */
 
-type Tab = 'overview' | 'insights' | 'behavior' | 'growth' | 'sources' | 'products' | 'pages' | 'quality' | 'reports';
+type Tab = 'overview' | 'ads' | 'insights' | 'behavior' | 'growth' | 'sources' | 'products' | 'pages' | 'quality' | 'reports';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'overview', label: 'Обзор' },
+  { key: 'ads', label: 'Реклама' },
   { key: 'insights', label: 'Инсайты' },
   { key: 'behavior', label: 'Поведение' },
   { key: 'growth', label: 'Рост / Изменения' },
@@ -113,6 +115,7 @@ export function AnalyticsPage() {
   const utm = useQuery({ queryKey: ['analytics', 'utm', key], queryFn: () => analyticsApi.utm(period), enabled: enabled && tab === 'sources', staleTime: 45_000 });
   const products = useQuery({ queryKey: ['analytics', 'products', key], queryFn: () => analyticsApi.products(period), enabled: enabled && tab === 'products', staleTime: 45_000 });
   const channels = useQuery({ queryKey: ['analytics', 'sales-channels', key], queryFn: () => analyticsApi.salesChannels(period), enabled: enabled && tab === 'products', staleTime: 45_000 });
+  const ads = useQuery({ queryKey: ['analytics', 'ads', key], queryFn: () => analyticsApi.ads(period), enabled: enabled && tab === 'ads', staleTime: 45_000 });
   const landings = useQuery({ queryKey: ['analytics', 'landings', key], queryFn: () => analyticsApi.landings(period), enabled: enabled && tab === 'pages', staleTime: 45_000 });
   const devices = useQuery({ queryKey: ['analytics', 'devices', key], queryFn: () => analyticsApi.devices(period), enabled: enabled && tab === 'pages', staleTime: 45_000 });
   // Поведение (этап 10): сводка первой, остальное — параллельно, страница не блокируется.
@@ -228,6 +231,7 @@ export function AnalyticsPage() {
                     )}
                   </div>
                 )}
+                {tab === 'ads' && (ads.isLoading ? <StateBlock kind="loading" /> : ads.isError || !ads.data ? <StateBlock kind="error" message={getErrorMessage(ads.error)} onRetry={() => void ads.refetch()} /> : <AdsTab data={ads.data} />)}
                 {tab === 'insights' && <InsightsTab />}
                 {tab === 'growth' && <GrowthTab />}
                 {tab === 'reports' && <ReportsTab />}

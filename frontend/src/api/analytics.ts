@@ -42,6 +42,7 @@ import type {
   InsightsQuality,
   InsightsStatus,
 } from '../types/insights';
+import type { AdPerformance } from '../types/ads';
 import { api } from './client';
 
 /**
@@ -69,6 +70,7 @@ export const analyticsApi = {
   devices: (q: PeriodQuery) => get<Slice<DeviceRow>>('devices', q),
   products: (q: PeriodQuery) => get<CrmSlice<ProductRow>>('products', q),
   salesChannels: (q: PeriodQuery) => get<CrmSlice<SalesChannelRow>>('sales-channels', q),
+  ads: (q: PeriodQuery) => get<AdPerformance>('ads', q),
 };
 
 /** Поведение и воронки (этап 10): тот же префикс, флаг и правила доступа. */

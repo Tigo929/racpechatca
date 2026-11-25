@@ -1,0 +1,178 @@
+import { Fragment, useState } from 'react';
+import type { AdPerformance, AdStats } from '../../types/ads';
+import { formatCount, formatMoney, formatPeriod } from './analytics-view';
+import { Card, Notice } from './ui';
+
+/**
+ * Экран «Реклама»: сколько стоит заявка и оплаченный заказ по кампании,
+ * группе и ключу. Все числа посчитаны на сервере (computeAdPerformance);
+ * здесь только раскраска и подписи.
+ */
+
+type Verdict = { tone: 'red' | 'amber' | 'green' | 'gray'; text: string };
+
+/** Ниже этой суммы расход без заявок — ещё шум, а не вывод. */
+const NOISE_SPEND = 500;
+
+function verdict(s: AdStats): Verdict {
+  if (s.spend === 0 && s.leads === 0) return { tone: 'gray', text: '—' };
+  if (s.leads === 0) {
+    return s.spend >= NOISE_SPEND ? { tone: 'red', text: 'тратит без заявок' } : { tone: 'gray', text: 'мало данных' };
+  }
+  if (s.paidOrders === 0) {
+    return s.spend >= NOISE_SPEND ? { tone: 'amber', text: 'заявки без оплат' } : { tone: 'gray', text: 'мало данных' };
+  }
+  if (s.spendShare === null) return { tone: 'gray', text: '—' };
+  if (s.spendShare > 100) return { tone: 'red', text: 'реклама дороже выручки' };
+  if (s.spendShare > 50) return { tone: 'amber', text: 'дорого' };
+  return { tone: 'green', text: 'окупается' };
+}
+
+const TONE: Record<Verdict['tone'], string> = {
+  red: 'bg-rose-50 text-rose-700 border-rose-200',
+  amber: 'bg-amber-50 text-amber-800 border-amber-200',
+  green: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  gray: 'bg-gray-50 text-gray-500 border-gray-200',
+};
+
+function Badge({ v }: { v: Verdict }) {
+  return <span className={`inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] ${TONE[v.tone]}`}>{v.text}</span>;
+}
+
+function Tile({ label, value, note }: { label: string; value: string; note?: string }) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3">
+      <div className="text-xs text-gray-500">{label}</div>
+      <div className="text-xl font-semibold text-gray-900 mt-1 tabular-nums">{value}</div>
+      {note && <div className="text-[11px] text-gray-400 mt-0.5">{note}</div>}
+    </div>
+  );
+}
+
+const pct = (v: number | null) => (v === null ? '—' : `${v.toLocaleString('ru-RU', { maximumFractionDigits: 1 })} %`);
+
+function Cells({ s }: { s: AdStats }) {
+  return (
+    <>
+      <td className="px-2 py-2 text-right tabular-nums">{formatMoney(s.spend)}</td>
+      <td className="px-2 py-2 text-right tabular-nums">{formatCount(s.clicks)}</td>
+      <td className="px-2 py-2 text-right tabular-nums">{formatCount(s.leads)}</td>
+      <td className="px-2 py-2 text-right tabular-nums">{formatMoney(s.costPerLead)}</td>
+      <td className="px-2 py-2 text-right tabular-nums">{formatCount(s.paidOrders)}</td>
+      <td className="px-2 py-2 text-right tabular-nums">{formatMoney(s.costPerOrder)}</td>
+      <td className="px-2 py-2 text-right tabular-nums">{formatMoney(s.revenue)}</td>
+      <td className="px-2 py-2 text-right tabular-nums">{pct(s.spendShare)}</td>
+      <td className="px-2 py-2">
+        <Badge v={verdict(s)} />
+      </td>
+    </>
+  );
+}
+
+export function AdsTab({ data }: { data: AdPerformance }) {
+  const t = data.totals;
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const toggle = (id: string) => setOpen((o) => ({ ...o, [id]: !(o[id] ?? true) }));
+
+  const warnings: { code: string; text: string }[] = [];
+  if (data.spendDays === 0) {
+    warnings.push({ code: 'no-spend', text: 'Расхода по объявлениям за период нет: либо реклама не крутилась, либо данные ещё не загружены.' });
+  } else if (data.spendLastDate && data.spendLastDate < data.period.to) {
+    warnings.push({ code: 'spend-lag', text: `Расход загружен по ${formatPeriod(data.spendLastDate, data.spendLastDate)} — за последние дни он появится после ночной синхронизации.` });
+  }
+  if (t.leads > 0 && t.adLeadsWithKeyword < t.leads) {
+    warnings.push({
+      code: 'no-term',
+      text: `У ${t.leads - t.adLeadsWithKeyword} из ${t.leads} рекламных заявок нет ключевого слова в метке — они показаны строкой «Ключ не передан» и в цену отдельных ключей не входят.`,
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Tile label="Потрачено на рекламу" value={formatMoney(t.spend)} note={`с НДС · без НДС ${formatMoney(t.spendWithoutVat)}`} />
+        <Tile label="Заявок с рекламы" value={formatCount(t.leads)} note={`из ${formatCount(t.siteLeads)} заявок с сайта`} />
+        <Tile label="Цена заявки" value={formatMoney(t.costPerLead)} />
+        <Tile label="Цена оплаченного заказа" value={formatMoney(t.costPerOrder)} note={`оплачено ${formatCount(t.paidOrders)} заказов`} />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Tile label="Выручка рекламных заказов" value={formatMoney(t.revenue)} />
+        <Tile label="Реклама от выручки" value={pct(t.spendShare)} note="чем меньше, тем лучше" />
+        <Tile label="Клики" value={formatCount(t.clicks)} note={`цена клика ${formatMoney(t.clicks ? Math.round(t.spend / t.clicks) : null)}`} />
+        <Tile label="Заявки не с рекламы" value={formatCount(t.nonAdLeads)} note="поиск, прямые заходы, ссылки" />
+      </div>
+
+      {warnings.map((w) => (
+        <Notice key={w.code} warning={w} />
+      ))}
+
+      <Card title="Кампании, группы и ключевые слова" subtitle="Нажмите на группу, чтобы свернуть ключи. Заявка привязана к ключу по метке клика — без догадок.">
+        <div className="overflow-x-auto -mx-4 sm:-mx-5">
+          <table className="min-w-[960px] w-full text-sm">
+            <thead>
+              <tr className="text-xs text-gray-500 border-b border-gray-100">
+                <th className="px-2 py-2 text-left font-medium pl-4 sm:pl-5">Кампания / группа / ключ</th>
+                <th className="px-2 py-2 text-right font-medium">Расход</th>
+                <th className="px-2 py-2 text-right font-medium">Клики</th>
+                <th className="px-2 py-2 text-right font-medium">Заявки</th>
+                <th className="px-2 py-2 text-right font-medium">Цена заявки</th>
+                <th className="px-2 py-2 text-right font-medium">Оплачено</th>
+                <th className="px-2 py-2 text-right font-medium">Цена заказа</th>
+                <th className="px-2 py-2 text-right font-medium">Выручка</th>
+                <th className="px-2 py-2 text-right font-medium">Реклама от выручки</th>
+                <th className="px-2 py-2 text-left font-medium">Итог</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.campaigns.map((c) => (
+                <Fragment key={`c${c.id}`}>
+                  <tr className="bg-gray-50 font-semibold text-gray-900 border-b border-gray-100">
+                    <td className="px-2 py-2 pl-4 sm:pl-5">{c.name}</td>
+                    <Cells s={c} />
+                  </tr>
+                  {c.groups.map((g) => {
+                    const gid = `${c.id}:${g.id}`;
+                    const isOpen = open[gid] ?? true;
+                    return (
+                      <Fragment key={gid}>
+                        <tr className="border-b border-gray-100 font-medium text-gray-800">
+                          <td className="px-2 py-2 pl-7 sm:pl-8">
+                            <button type="button" onClick={() => toggle(gid)} aria-expanded={isOpen} className="text-left hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded">
+                              <span aria-hidden="true" className="inline-block w-4 text-gray-400">{isOpen ? '▾' : '▸'}</span>
+                              {g.name}
+                            </button>
+                          </td>
+                          <Cells s={g} />
+                        </tr>
+                        {isOpen &&
+                          g.keywords.map((k) => (
+                            <tr key={`${gid}:${k.key}`} className="border-b border-gray-50 text-gray-600">
+                              <td className="px-2 py-1.5 pl-12 sm:pl-14 max-w-[320px] truncate" title={k.label}>
+                                {k.label}
+                              </td>
+                              <Cells s={k} />
+                            </tr>
+                          ))}
+                      </Fragment>
+                    );
+                  })}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card title="Как считается">
+        <ul className="text-xs text-gray-600 space-y-1.5 list-disc pl-4">
+          <li>Расход — из Директа через Метрику, показан с НДС 20 %: столько уходит со счёта.</li>
+          <li>Рекламная заявка — заявка с сайта, в которой есть метка клика Директа. Ключ и объявление берутся из этой же метки, поэтому заявка привязана точно, без распределения «на глаз».</li>
+          <li>Оплачен — у заказа стоит дата оплаты или статус «Отправлен» и дальше. Отменённые заказы в оплаты не входят.</li>
+          <li>Заявки и заказы считаются по дню заявки: заказ, оплаченный позже, всё равно относится к рекламе того периода. Поэтому за последние дни оплат меньше, чем будет потом.</li>
+          <li>«Тратит без заявок» — потрачено от {NOISE_SPEND} ₽ и ни одной заявки. «Дорого» — реклама съедает больше половины выручки.</li>
+          <li>Повторные заказы тех же клиентов здесь пока не учитываются.</li>
+        </ul>
+      </Card>
+    </div>
+  );
+}
