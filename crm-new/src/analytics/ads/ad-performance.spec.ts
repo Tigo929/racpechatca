@@ -215,14 +215,14 @@ describe('оплата и маржа как в P&L', () => {
     expect(r.totals.marginBeforeAds).toBe(2300);
     expect(r.totals.marginAfterAds).toBe(2300 - 1200);
   });
-  it('нет себестоимости у оплаты — маржа строки не считается', () => {
+  it('заказ без себестоимости в маржу не входит, но число таких заказов видно', () => {
     const r = computeAdPerformance(
       [spend({})],
       [lead({}), lead({ margin: null })],
     );
     expect(r.totals.paidOrders).toBe(2);
-    expect(r.totals.marginBeforeAds).toBeNull();
-    expect(r.totals.romi).toBeNull();
+    expect(r.totals.marginBeforeAds).toBe(700);
+    expect(r.totals.marginAfterAds).toBe(700 - 1200);
     expect(r.totals.paidWithoutCogs).toBe(1);
   });
 });

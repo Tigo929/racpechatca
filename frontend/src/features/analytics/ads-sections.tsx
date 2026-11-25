@@ -68,8 +68,9 @@ function Cells({ s }: { s: AdStats }) {
       <td className="px-2 py-2 text-right tabular-nums">{formatMoney(s.costPerOrder)}</td>
       <td className="px-2 py-2 text-right tabular-nums">{formatMoney(s.revenue)}</td>
       <td className="px-2 py-2 text-right tabular-nums">{pct(s.spendShare)}</td>
-      <td className={`px-2 py-2 text-right tabular-nums ${s.marginAfterAds !== null && s.marginAfterAds < 0 ? 'text-rose-700' : ''}`} title={s.paidWithoutCogs ? `у ${s.paidWithoutCogs} оплат нет себестоимости` : undefined}>
-        {s.marginAfterAds === null && s.paidWithoutCogs ? 'нет себест.' : formatMoney(s.marginAfterAds)}
+      <td className={`px-2 py-2 text-right tabular-nums ${s.marginAfterAds !== null && s.marginAfterAds < 0 ? 'text-rose-700' : ''}`} title={s.paidWithoutCogs ? `без учёта ${s.paidWithoutCogs} оплат без себестоимости` : undefined}>
+        {formatMoney(s.marginAfterAds)}
+        {s.paidWithoutCogs > 0 && <span className="text-amber-600">*</span>}
       </td>
       <td className="px-2 py-2">
         <Badge v={verdict(s)} />
@@ -106,7 +107,7 @@ export function AdsTab({ data }: { data: AdPerformance }) {
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Tile label="Выручка рекламных заказов" value={formatMoney(t.revenue)} note={`реклама — ${pct(t.spendShare)} выручки`} />
-        <Tile label="Прибыль заказов до рекламы" value={formatMoney(t.marginBeforeAds)} note={t.paidWithoutCogs ? `не считается: у ${t.paidWithoutCogs} оплат нет себестоимости` : 'как в отчёте о прибыли'} />
+        <Tile label="Прибыль заказов до рекламы" value={formatMoney(t.marginBeforeAds)} note={t.paidWithoutCogs ? `без ${t.paidWithoutCogs} заказов без себестоимости` : 'как в отчёте о прибыли'} />
         <Tile label="Осталось после рекламы" value={formatMoney(t.marginAfterAds)} note="прибыль заказов минус расход с НДС" />
         <Tile label="Отдача рекламы (ROMI)" value={pct(t.romi)} note="сколько осталось на каждый рубль рекламы" />
       </div>
@@ -184,7 +185,7 @@ export function AdsTab({ data }: { data: AdPerformance }) {
           <li>Расход — из Директа через Метрику, показан с НДС 20 %: столько уходит со счёта.</li>
           <li>Рекламная заявка — заявка с сайта, в которой есть метка клика Директа. Ключ и объявление берутся из этой же метки, поэтому заявка привязана точно, без распределения «на глаз».</li>
           <li>Оплачен — как в отчёте о прибыли: стоит дата оплаты, или заказ оплачен/завершён/отгружен, или фото «Отправлено». У футболок и холстов «Отправлен» — это передача производителю, оплатой он не считается.</li>
-          <li>Прибыль заказа — та же формула, что в отчёте о прибыли: выручка минус себестоимость (бумага, партнёр по футболкам, подрядчик по холстам) и начисленная зарплата, плюс заработок на доставке. Если у оплаченного заказа нет себестоимости, прибыль строки не считается вовсе, чтобы не показать выдуманную маржу.</li>
+          <li>Прибыль заказа — та же формула, что в отчёте о прибыли: выручка минус себестоимость (бумага, партнёр по футболкам, подрядчик по холстам) и начисленная зарплата, плюс заработок на доставке. Заказ без себестоимости (например, холст без цены подрядчика) в прибыль не входит вовсе — такие строки помечены «*», и настоящая прибыль у них чуть выше показанной. Чтобы убрать «*», впишите в заказ цену подрядчика.</li>
           <li>«Осталось после рекламы» — прибыль заказов минус расход с НДС. «Реклама в минус» — реклама съела больше, чем заработали на её заказах.</li>
           <li>Заявки и заказы считаются по дню заявки: заказ, оплаченный позже, всё равно относится к рекламе того периода. Поэтому за последние дни оплат меньше, чем будет потом.</li>
           <li>«Тратит без заявок» — потрачено от {NOISE_SPEND} ₽ и ни одной заявки. «Почти в ноль» — на каждый рубль рекламы осталось меньше 30 копеек.</li>
