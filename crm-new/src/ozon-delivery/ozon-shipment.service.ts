@@ -654,19 +654,16 @@ export class OzonShipmentService {
     const posting = findPosting(res, shipment.postingNumber);
     const ozonStatus = postingStatus(posting);
     /*
-     * Неизвестный статус после «готово к отгрузке» — значит, посылка пошла
-     * дальше: её приняли в пункте. Названий всех статусов приёмки у нас
-     * нет, а «Отправлен» должен встать сразу, как посылку сдали.
+     * Отмена после того, как посылку уже приняли, — это возврат: Ozon
+     * везёт её обратно (по статусной модели CANCELED отслеживается как
+     * возврат).
      */
+    const base = mapOzonStatus(ozonStatus);
     const mapped =
-      mapOzonStatus(ozonStatus) ??
-      (shipment.status === 'APPROVED' &&
-      ozonStatus &&
-      !['created', 'forming', 'ready_for_shipping'].includes(
-        ozonStatus.toLowerCase(),
-      )
-        ? 'IN_TRANSIT'
-        : null);
+      base === 'CANCELLED' &&
+      ['IN_TRANSIT', 'AT_PICKUP_POINT', 'RETURNING'].includes(shipment.status)
+        ? 'RETURNING'
+        : base;
     const now = new Date();
     const next = mapped && mapped !== shipment.status ? mapped : null;
     // Фактическая стоимость, если Ozon её уже показывает.

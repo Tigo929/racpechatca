@@ -13,7 +13,7 @@ import {
   OzonShipmentService,
   PICKUP_REMIND_AFTER_DAYS,
 } from './ozon-shipment.service';
-import { ACTIVE_STATUSES } from './ozon-shipment';
+import { ACTIVE_STATUSES, OZON_PROBLEM_STATUSES } from './ozon-shipment';
 
 /**
  * Статусы отправлений Ozon — сами, без отметок руками.
@@ -119,6 +119,26 @@ export class OzonShipmentSyncService implements OnModuleInit, OnModuleDestroy {
           `⚠️ Заказ ${order.numberOrder}: Ozon принял посылку, но отметить «Отправлен» не вышло — ${(e as Error).message}. Поставьте статус руками.`,
         );
       }
+    }
+
+    // Сбой у Ozon (не подтвердилось, не приняли в пункте) — сразу владельцу.
+    if (to === 'ERROR') {
+      const sh = await this.prisma.ozonShipment.findUnique({
+        where: { orderId },
+        select: { ozonStatus: true },
+      });
+      const key = (sh?.ozonStatus ?? '').toUpperCase();
+      const why =
+        OZON_PROBLEM_STATUSES[key] ?? `статус Ozon ${sh?.ozonStatus ?? '?'}`;
+      await this.prisma.ozonShipment.update({
+        where: { orderId },
+        data: {
+          lastError: `Ozon: ${why}. Проверьте посылку в кабинете Ozon Доставки.`,
+        },
+      });
+      await this.telegram.sendToOwner(
+        `⚠️ Заказ ${order.numberOrder}: ${why}. Проверьте посылку в кабинете Ozon Доставки «фотки-доставка».`,
+      );
     }
 
     // Клиент забрал — с этой минуты просим отзыв (review-reminder-rules):

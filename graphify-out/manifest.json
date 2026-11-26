@@ -5750,8 +5750,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/ozon-delivery/ozon-shipment-sync.service.ts": {
-    "mtime": 1795717454.9471989,
-    "ast_hash": "953929e0c2dc0acac79aa3bbfc1eebfd",
+    "mtime": 1795718383.6955955,
+    "ast_hash": "d5e1fb1a71b5b626ab1926253a4776f9",
     "semantic_hash": ""
   },
   "crm-new/src/ozon-delivery/ozon-shipment.controller.ts": {
@@ -5760,18 +5760,18 @@
     "semantic_hash": ""
   },
   "crm-new/src/ozon-delivery/ozon-shipment.service.ts": {
-    "mtime": 1795717517.7690234,
-    "ast_hash": "5297915daf332ef8c7679af9fe3bbbff",
+    "mtime": 1795718357.9802194,
+    "ast_hash": "8d51d024610a68218fb611cf74f662fb",
     "semantic_hash": ""
   },
   "crm-new/src/ozon-delivery/ozon-shipment.spec.ts": {
-    "mtime": 1795717455.031201,
-    "ast_hash": "dd81c32a1ae58dc9b0d29618d112fd01",
+    "mtime": 1795718376.034973,
+    "ast_hash": "09dbf5c902d71e2ea39ec84bef8ea5b9",
     "semantic_hash": ""
   },
   "crm-new/src/ozon-delivery/ozon-shipment.ts": {
-    "mtime": 1795717415.1343741,
-    "ast_hash": "0d92c030eff92d1f6300b6c516dddb27",
+    "mtime": 1795718357.9792137,
+    "ast_hash": "27499b9624dc6d0894ad6f247fb57023",
     "semantic_hash": ""
   },
   "frontend/src/api/ozonDelivery.ts": {

@@ -67,64 +67,52 @@ export const ACTIVE_STATUSES: readonly ShipmentStatus[] = [
 ];
 
 /**
- * Статус Ozon → наш.
+ * Статус Ozon → наш. По точной статусной модели из документации Ozon
+ * Delivery API (раздел «Статусная модель», прочитан 26.11.2026):
  *
- * Полного справочника статусов у нас нет (документация Ozon закрыта от
- * автоматического чтения), поэтому разбираем по смыслу слова, а сам статус
- * Ozon храним рядом и показываем. Неизвестное — null: прежний наш статус
- * остаётся, а в карточке видно, что сказал Ozon.
+ *   CREATED                  создано, не подтверждено
+ *   FORMING                  в процессе подтверждения
+ *   FORMING_FAILED           ошибка при подтверждении
+ *   READY_FOR_SHIPPING       подтверждено, готово к отгрузке в Ozon
+ *   IN_CONTAINER             добавлено в грузоместо
+ *   ACCEPTANCE_IN_PROGRESS   принято в пункте отгрузки, идёт приёмка
+ *   ON_WAY                   принято в логистику, доставляется
+ *   NOT_ACCEPTED_TO_DELIVERY не принято из грузоместа в пункте отгрузки
+ *   IN_DELIVERY_POINT        доставлено в ПВЗ или постамат
+ *   IN_COURIER_SERVICE       передано курьеру
+ *   DELIVERED                выдано получателю
+ *   CANCELED                 отменено, движение — как возврат
+ *
+ * Регистр Ozon отдаёт строчными («ready_for_shipping»), сравниваем без
+ * регистра. Незнакомый статус — null: прежний наш статус остаётся, а
+ * владелец получает сообщение (OzonShipmentSyncService.reportUnknown).
  */
+const OZON_STATUS_MAP: Record<string, ShipmentStatus> = {
+  CREATED: 'CREATED',
+  FORMING: 'APPROVED',
+  FORMING_FAILED: 'ERROR',
+  READY_FOR_SHIPPING: 'APPROVED',
+  IN_CONTAINER: 'APPROVED',
+  ACCEPTANCE_IN_PROGRESS: 'IN_TRANSIT',
+  ON_WAY: 'IN_TRANSIT',
+  NOT_ACCEPTED_TO_DELIVERY: 'ERROR',
+  IN_DELIVERY_POINT: 'AT_PICKUP_POINT',
+  IN_COURIER_SERVICE: 'IN_TRANSIT',
+  DELIVERED: 'DELIVERED',
+  CANCELED: 'CANCELLED',
+};
+
+/** Статусы Ozon, о которых стоит сразу сказать владельцу. */
+export const OZON_PROBLEM_STATUSES: Record<string, string> = {
+  FORMING_FAILED: 'Ozon не смог подтвердить отправление',
+  NOT_ACCEPTED_TO_DELIVERY: 'посылку не приняли в пункте отгрузки',
+};
+
 export function mapOzonStatus(
   raw: string | null | undefined,
 ): ShipmentStatus | null {
-  const s = (raw ?? '').toLowerCase();
-  if (!s) return null;
-  if (/cancel|отмен/.test(s)) return 'CANCELLED';
-  if (/returned|возвращ[её]н|return_completed|returned_to_seller/.test(s)) {
-    return 'RETURNED';
-  }
-  if (/return|возврат/.test(s)) return 'RETURNING';
-  /*
-   * «Клиент забрал» — только явно: по нему уходит просьба об отзыве, и
-   * ошибиться здесь хуже, чем промолчать. «delivered_to_pickup_point»
-   * содержит «delivered», но это посылка в пункте, а не у клиента, —
-   * поэтому пункт выдачи проверяем раньше, а «доставлено» засчитываем,
-   * только когда рядом клиент/получатель или статус ровно «delivered».
-   */
-  const toClient =
-    /client|customer|recipient|buyer|клиент|получател|покупател/.test(s);
-  if (
-    /^(delivered|issued|completed|done|handed_over|picked_up|выдан|вручен|получен)$/.test(
-      s,
-    ) ||
-    (toClient && /deliver|receiv|hand|issu|pick|выдан|вручен|получ/.test(s)) ||
-    /вручен|выдан клиент/.test(s)
-  ) {
-    return 'DELIVERED';
-  }
-  if (
-    /pickup_point|pickup|pvz|пвз|postamat|arrived|awaiting_(pickup|receipt|issue)|ready_to_issue|в пункте|ожидает получ|прибыл/.test(
-      s,
-    )
-  ) {
-    return 'AT_PICKUP_POINT';
-  }
-  if (
-    /transit|deliver|accepted|sorting|on_the_way|in_way|shipped|received|в пути|принят|доставля|сортир/.test(
-      s,
-    )
-  ) {
-    return 'IN_TRANSIT';
-  }
-  if (
-    /approved|forming|ready_for_shipping|awaiting_(registration|shipment|handover)|подтвержд/.test(
-      s,
-    )
-  ) {
-    return 'APPROVED';
-  }
-  if (/created|new|draft|создан/.test(s)) return 'CREATED';
-  return null;
+  const key = (raw ?? '').trim().toUpperCase();
+  return OZON_STATUS_MAP[key] ?? null;
 }
 
 /** «99.00» / {amount:"99.00"} → 99 (вверх до рубля). */

@@ -74,22 +74,24 @@ describe('ответы Ozon', () => {
     expect(rubles(null)).toBeNull();
   });
 
-  it('статусы по смыслу', () => {
-    expect(mapOzonStatus('delivered')).toBe('DELIVERED');
-    // «Доставлено в пункт» — посылка в пункте, а не у клиента: отзыв рано.
-    expect(mapOzonStatus('delivered_to_pickup_point')).toBe('AT_PICKUP_POINT');
-    expect(mapOzonStatus('delivered_to_pvz')).toBe('AT_PICKUP_POINT');
-    expect(mapOzonStatus('delivered_to_customer')).toBe('DELIVERED');
-    expect(mapOzonStatus('handed_to_recipient')).toBe('DELIVERED');
-    expect(mapOzonStatus('received_at_sorting_center')).toBe('IN_TRANSIT');
-    expect(mapOzonStatus('delivering')).toBe('IN_TRANSIT');
-    expect(mapOzonStatus('arrived_at_pickup_point')).toBe('AT_PICKUP_POINT');
-    expect(mapOzonStatus('in_transit')).toBe('IN_TRANSIT');
-    expect(mapOzonStatus('cancelled')).toBe('CANCELLED');
-    expect(mapOzonStatus('returning_to_seller')).toBe('RETURNING');
-    expect(mapOzonStatus('returned_to_seller')).toBe('RETURNED');
+  it('статусы — по статусной модели Ozon, без учёта регистра', () => {
+    expect(mapOzonStatus('created')).toBe('CREATED');
+    expect(mapOzonStatus('forming')).toBe('APPROVED');
     expect(mapOzonStatus('ready_for_shipping')).toBe('APPROVED');
+    expect(mapOzonStatus('IN_CONTAINER')).toBe('APPROVED');
+    // Приняли в пункте или везут — заказ «Отправлен».
+    expect(mapOzonStatus('acceptance_in_progress')).toBe('IN_TRANSIT');
+    expect(mapOzonStatus('on_way')).toBe('IN_TRANSIT');
+    expect(mapOzonStatus('in_courier_service')).toBe('IN_TRANSIT');
+    // В пункте выдачи — ещё не у клиента, отзыв рано.
+    expect(mapOzonStatus('in_delivery_point')).toBe('AT_PICKUP_POINT');
+    // Выдано получателю — через 30 минут просим отзыв.
+    expect(mapOzonStatus('delivered')).toBe('DELIVERED');
+    expect(mapOzonStatus('canceled')).toBe('CANCELLED');
+    expect(mapOzonStatus('forming_failed')).toBe('ERROR');
+    expect(mapOzonStatus('not_accepted_to_delivery')).toBe('ERROR');
     expect(mapOzonStatus('что-то новое')).toBeNull();
+    expect(mapOzonStatus(null)).toBeNull();
   });
 
   it('номер и статус отправления ищутся в глубине ответа', () => {
