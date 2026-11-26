@@ -649,7 +649,20 @@ export class OzonShipmentService {
     });
     const posting = findPosting(res, shipment.postingNumber);
     const ozonStatus = postingStatus(posting);
-    const mapped = mapOzonStatus(ozonStatus);
+    /*
+     * Неизвестный статус после «готово к отгрузке» — значит, посылка пошла
+     * дальше: её приняли в пункте. Названий всех статусов приёмки у нас
+     * нет, а «Отправлен» должен встать сразу, как посылку сдали.
+     */
+    const mapped =
+      mapOzonStatus(ozonStatus) ??
+      (shipment.status === 'APPROVED' &&
+      ozonStatus &&
+      !['created', 'forming', 'ready_for_shipping'].includes(
+        ozonStatus.toLowerCase(),
+      )
+        ? 'IN_TRANSIT'
+        : null);
     const now = new Date();
     const next = mapped && mapped !== shipment.status ? mapped : null;
     // Фактическая стоимость, если Ozon её уже показывает.

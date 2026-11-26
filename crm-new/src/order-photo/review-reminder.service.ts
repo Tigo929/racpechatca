@@ -17,6 +17,7 @@ import {
   REVIEW_REMINDER_PICKUP_DELAY_MS,
   REVIEW_REMINDER_STATUSES,
   waitsForAutoReview,
+  isReviewReminderEligible,
 } from './review-reminder-rules';
 import { customerChat } from './customer-chat-url';
 import { skipAlreadyAsked } from './client-identity';
@@ -353,6 +354,8 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
              * же ограничивает поток — отметка появляется раз.
              */
             { isMarketplacePrint: true, marketplaceDeliveredAt: { not: null } },
+            // Своё отправление Ozon: клиент забрал — спрашиваем сразу.
+            { isMarketplacePrint: false, pickedUpAt: { not: null } },
           ],
         },
         orderBy: { sentAt: 'asc' },
@@ -370,6 +373,12 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
           urlCommunication: true,
           clientTelegram: true,
           reviewRequestStatus: true,
+          status: true,
+          deliveryMethod: true,
+          clientReviewLeft: true,
+          reviewReminderNotifiedAt: true,
+          pickedUpAt: true,
+          ozonShipment: { select: { status: true } },
         },
       });
 
@@ -391,6 +400,24 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
          * молчит дольше выдержки, заказ попадёт сюда следующим проходом
          * вместе с причиной.
          */
+        // Своё отправление Ozon ещё не забрали — просить рано, даже если
+        // по старому правилу (3,5 дня от отправки) срок вышел.
+        if (
+          !isReviewReminderEligible({
+            productCategory: order.productCategory,
+            status: order.status,
+            deliveryMethod: order.deliveryMethod,
+            clientReviewLeft: order.clientReviewLeft,
+            reviewReminderNotifiedAt: order.reviewReminderNotifiedAt,
+            sentAt: order.sentAt,
+            isMarketplacePrint: order.isMarketplacePrint,
+            marketplaceDeliveredAt: order.marketplaceDeliveredAt,
+            pickedUpAt: order.pickedUpAt,
+            ozonShipment: order.ozonShipment,
+          })
+        ) {
+          continue;
+        }
         if (waitsForAutoReview(order)) continue;
         // Кнопка: оператор нажимает после отправки запроса отзыва клиенту —
         // вебхук (telegram-webhook.controller) ставит отметку в CRM.
@@ -504,7 +531,9 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
       escapeHtml(when),
       `Канал: ${escapeHtml(platform)}`,
       ...(order.marketplacePostingNumber
-        ? [`Отправление: <code>${escapeHtml(order.marketplacePostingNumber)}</code>`]
+        ? [
+            `Отправление: <code>${escapeHtml(order.marketplacePostingNumber)}</code>`,
+          ]
         : []),
       `Диалог: ${dialog}`,
       /*
@@ -514,7 +543,9 @@ export class ReviewReminderService implements OnModuleInit, OnModuleDestroy {
        * писать удобнее здесь, и именно сюда уходит автоматическая просьба.
        */
       ...(telegramLink
-        ? [`Telegram клиента: <a href="${telegramLink.href}">${telegramLink.label}</a>`]
+        ? [
+            `Telegram клиента: <a href="${telegramLink.href}">${telegramLink.label}</a>`,
+          ]
         : []),
       // Автоматика пробовала и не смогла — говорим, почему: иначе
       // непонятно, отчего понадобился человек.

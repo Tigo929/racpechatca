@@ -10,7 +10,6 @@ export const REVIEW_REMINDER_DELAY_MS = 84 * 60 * 60 * 1000; // 3.5 days
 /** Самовывоз: клиент получил заказ сразу — просим отзыв уже на следующий день. */
 export const REVIEW_REMINDER_PICKUP_DELAY_MS = 24 * 60 * 60 * 1000; // 1 day
 
-
 export const REVIEW_REMINDER_CATEGORIES: EnumProductCategory[] = [
   EnumProductCategory.PHOTO,
   EnumProductCategory.TSHIRT,
@@ -34,6 +33,21 @@ export const REVIEW_REMINDER_STATUSES: EnumStatus[] = [
 export const REVIEW_AUTOSEND_GRACE_MS = 6 * 60 * 60 * 1000;
 
 /**
+ * Доставка, за которой мы следим сами (отправление Ozon Доставки): просим
+ * отзыв, когда служба сказала «клиент забрал», а не через 3,5 дня после
+ * отправки — посылка может ехать неделю. Не сказала — спросим через 14 дней.
+ */
+export const REVIEW_TRACKED_FALLBACK_MS = 14 * 24 * 60 * 60 * 1000;
+
+/** Отправление отслеживается — ждём «забрал» от службы доставки. */
+export function isTrackedDelivery(order: {
+  ozonShipment?: { status: string } | null;
+}): boolean {
+  const s = order.ozonShipment?.status;
+  return Boolean(s) && s !== 'CANCELLED' && s !== 'ERROR';
+}
+
+/**
  * С какого момента уместно просить отзыв.
  *
  * У заказа с площадки это выкуп, у своего — наша отправка. Одна функция
@@ -44,10 +58,12 @@ export function reviewDueAt(order: {
   isMarketplacePrint?: boolean | null;
   marketplaceDeliveredAt?: Date | null;
   sentAt: Date | null;
+  pickedUpAt?: Date | null;
+  ozonShipment?: { status: string } | null;
 }): Date | null {
-  return order.isMarketplacePrint
-    ? (order.marketplaceDeliveredAt ?? null)
-    : (order.sentAt ?? null);
+  if (order.isMarketplacePrint) return order.marketplaceDeliveredAt ?? null;
+  if (isTrackedDelivery(order)) return order.pickedUpAt ?? null;
+  return order.sentAt ?? null;
 }
 
 /**
@@ -96,12 +112,25 @@ export function isReviewReminderEligible(
     isMarketplacePrint?: boolean | null;
     /** Когда площадка сообщила, что покупатель забрал посылку. */
     marketplaceDeliveredAt?: Date | null;
+    /** Клиент забрал посылку Ozon Доставки (наше отправление). */
+    pickedUpAt?: Date | null;
+    ozonShipment?: { status: string } | null;
   },
   now = new Date(),
 ): boolean {
   if (!REVIEW_REMINDER_CATEGORIES.includes(order.productCategory)) return false;
   if (order.clientReviewLeft) return false;
   if (order.reviewReminderNotifiedAt) return false;
+
+  // Своё отправление Ozon: просим, как только клиент забрал (25.11.2026,
+  // просьба владельца), а если отметки нет — через 14 дней от отправки.
+  if (!order.isMarketplacePrint && isTrackedDelivery(order)) {
+    if (order.pickedUpAt) return true;
+    return Boolean(
+      order.sentAt &&
+      order.sentAt <= new Date(now.getTime() - REVIEW_TRACKED_FALLBACK_MS),
+    );
+  }
 
   /*
    * Заказ с площадки идёт своим путём, и общее правило к нему не подходит.

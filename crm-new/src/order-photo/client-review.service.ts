@@ -5,7 +5,10 @@ import {
 } from 'src/generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TelegramService } from 'src/telegram/telegram.service';
-import { telegramUsernameFromUrl, type GreetingStatus } from './client-greeting';
+import {
+  telegramUsernameFromUrl,
+  type GreetingStatus,
+} from './client-greeting';
 import {
   isReviewReminderEligible,
   REVIEW_REMINDER_CATEGORIES,
@@ -104,6 +107,8 @@ export class ClientReviewService {
         marketplaceDeliveredAt: true,
         clientTelegram: true,
         urlCommunication: true,
+        pickedUpAt: true,
+        ozonShipment: { select: { status: true } },
       },
     });
 
@@ -134,6 +139,8 @@ export class ClientReviewService {
           sentAt: order.sentAt,
           isMarketplacePrint: order.isMarketplacePrint,
           marketplaceDeliveredAt: order.marketplaceDeliveredAt,
+          pickedUpAt: order.pickedUpAt,
+          ozonShipment: order.ozonShipment,
         })
       ) {
         continue;
@@ -206,7 +213,11 @@ export class ClientReviewService {
     this.logger.log(
       `Заказ ${order.numberOrder}: просьба об отзыве отправлена клиенту ${order.clientTelegram ?? ''}`,
     );
-    await this.notifyOwner(order.numberOrder, order.clientTelegram, order.productCategory);
+    await this.notifyOwner(
+      order.numberOrder,
+      order.clientTelegram,
+      order.productCategory,
+    );
   }
 
   private async notifyOwner(

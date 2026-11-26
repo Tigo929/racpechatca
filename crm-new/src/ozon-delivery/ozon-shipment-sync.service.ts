@@ -27,7 +27,8 @@ import { ACTIVE_STATUSES } from './ozon-shipment';
  *    напоминание владельцу: Ozon хранит её ограниченный срок;
  *  • возврат → сообщение владельцу сразу.
  */
-const INTERVAL_MS = 20 * 60 * 1000;
+// 10 минут: «Отправлен» должен встать вскоре после того, как посылку сдали.
+const INTERVAL_MS = 10 * 60 * 1000;
 const STARTUP_DELAY_MS = 2 * 60 * 1000;
 
 @Injectable()
@@ -102,7 +103,8 @@ export class OzonShipmentSyncService implements OnModuleInit, OnModuleDestroy {
     if (
       ['IN_TRANSIT', 'AT_PICKUP_POINT', 'DELIVERED'].includes(to) &&
       order.productCategory === 'PHOTO' &&
-      order.status === EnumStatus.SHIPMENT_CREATED &&
+      (order.status === EnumStatus.SHIPMENT_CREATED ||
+        order.status === EnumStatus.READY) &&
       order.ozonShipment?.createdById
     ) {
       try {
@@ -118,6 +120,16 @@ export class OzonShipmentSyncService implements OnModuleInit, OnModuleDestroy {
           `⚠️ Заказ ${order.numberOrder}: Ozon принял посылку, но отметить «Отправлен» не вышло — ${(e as Error).message}. Поставьте статус руками.`,
         );
       }
+    }
+
+    // Клиент забрал — с этой минуты просим отзыв (review-reminder-rules):
+    // Telegram-клиенту уходит само, остальным — владельцу готовым текстом
+    // со ссылкой на Яндекс Карты (сайт) или Авито.
+    if (to === 'DELIVERED') {
+      await this.prisma.orderPhoto.updateMany({
+        where: { id: orderId, pickedUpAt: null },
+        data: { pickedUpAt: new Date() },
+      });
     }
 
     if (to === 'RETURNING' || to === 'RETURNED') {

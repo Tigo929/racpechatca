@@ -335,6 +335,9 @@ model OrderPhoto {
   // Ozon сверяет со своим аккаунтом покупателя, ник в Telegram ему не нужен.
   recipientName  String?
   recipientPhone String?
+  // Клиент забрал посылку — по данным службы доставки (Ozon Доставка).
+  // С этой минуты уместно просить отзыв (review-reminder-rules).
+  pickedUpAt     DateTime?
 
   // Telegram partner message reference
   partnerTgMessageId Int?

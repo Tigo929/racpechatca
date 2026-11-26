@@ -113,7 +113,10 @@ describe('review reminder eligibility', () => {
 
     // Выкупил — спрашиваем сразу, ждать больше нечего.
     expect(
-      isReviewReminderEligible({ ...marketplace, marketplaceDeliveredAt: now }, now),
+      isReviewReminderEligible(
+        { ...marketplace, marketplaceDeliveredAt: now },
+        now,
+      ),
     ).toBe(true);
   });
 
@@ -155,13 +158,21 @@ describe('review reminder eligibility', () => {
 
     expect(
       isReviewReminderEligible(
-        { ...delivered, clientReviewLeft: true, reviewReminderNotifiedAt: null },
+        {
+          ...delivered,
+          clientReviewLeft: true,
+          reviewReminderNotifiedAt: null,
+        },
         now,
       ),
     ).toBe(false);
     expect(
       isReviewReminderEligible(
-        { ...delivered, clientReviewLeft: false, reviewReminderNotifiedAt: now },
+        {
+          ...delivered,
+          clientReviewLeft: false,
+          reviewReminderNotifiedAt: now,
+        },
         now,
       ),
     ).toBe(false);
