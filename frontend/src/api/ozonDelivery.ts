@@ -62,6 +62,19 @@ export interface Quote {
   days: number | null;
 }
 
+/** Пункт выдачи из справочника Ozon (поиск по адресу). */
+export interface FoundPoint {
+  id: number;
+  number: string | null;
+  name: string | null;
+  type: string | null;
+  address: string;
+  lat: number;
+  lng: number;
+  schedule: string | null;
+  storageDays: number | null;
+}
+
 const base = (id: string) => `/order-photo/${id}`;
 
 export const ozonDeliveryApi = {
@@ -70,6 +83,9 @@ export const ozonDeliveryApi = {
     id: string,
     patch: { pickupPoint?: string; recipientName?: string; recipientPhone?: string },
   ) => (await api.patch<DeliveryView>(`${base(id)}/delivery`, patch)).data,
+  /** exact=false — точного совпадения нет, это пункты на той же улице. */
+  findPoints: async (q: string) =>
+    (await api.post<{ points: FoundPoint[]; exact: boolean }>('/order-photo/ozon-points/find', { q })).data,
   quote: async (id: string, parcel: Partial<Parcel>) =>
     (await api.post<Quote>(`${base(id)}/ozon/quote`, parcel)).data,
   create: async (id: string, parcel: Partial<Parcel>) =>

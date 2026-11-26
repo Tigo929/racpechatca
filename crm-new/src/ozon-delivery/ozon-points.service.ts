@@ -88,6 +88,41 @@ export function queryWords(q: string): string[] {
     .slice(0, 6);
 }
 
+/**
+ * Служебные слова, с которыми клиенты присылают адрес: «г. Москва, ул. …,
+ * д. 4/1, пункт выдачи Ozon». В справочнике Ozon их нет или они написаны
+ * иначе («ул» против «улица»), и поиск по ним ничего бы не нашёл.
+ */
+const ADDRESS_NOISE = new Set([
+  'россия',
+  'рф',
+  'г',
+  'город',
+  'ул',
+  'улица',
+  'д',
+  'дом',
+  'стр',
+  'пвз',
+  'озон',
+  'ozon',
+  'пункт',
+  'выдачи',
+  'заказов',
+  'пункта',
+]);
+
+/** Слова вставленного адреса без служебных: «г. Москва, ул. Ленина, д. 5» → ['москва', 'ленина', '5']. */
+export function addressWords(q: string): string[] {
+  return q
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/[,.;:()«»"]+/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 0 && !ADDRESS_NOISE.has(w))
+    .slice(0, 8);
+}
+
 @Injectable()
 export class OzonPointsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(OzonPointsService.name);
@@ -288,6 +323,29 @@ export class OzonPointsService implements OnModuleInit, OnModuleDestroy {
       ${order}
       LIMIT ${limit}
     `;
+  }
+
+  /**
+   * Поиск для CRM: менеджер вставляет адрес, который прислал клиент.
+   * Сначала ищем по всем словам; не нашлось — отбрасываем слова с конца
+   * (обычно это «корпус 1», «4к1» против «4/1» в справочнике) и показываем
+   * пункты на той же улице с пометкой «точного совпадения нет».
+   */
+  async findByAddress(
+    q: string,
+    limit = 30,
+  ): Promise<{ points: PublicPoint[]; exact: boolean }> {
+    const words = addressWords(q);
+    if (!words.length) return { points: [], exact: true };
+    for (let n = words.length; n >= 1; n--) {
+      const points = await this.search({
+        q: words.slice(0, n).join(' '),
+        limit,
+      });
+      if (points.length) return { points, exact: n === words.length };
+      if (n <= 2 && words.length > 2) break; // одно-два слова — это уже весь город
+    }
+    return { points: [], exact: true };
   }
 
   async count(): Promise<number> {

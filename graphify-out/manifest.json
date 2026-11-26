@@ -5735,8 +5735,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/ozon-delivery/dto.ts": {
-    "mtime": 1795378749.934583,
-    "ast_hash": "b2490f880178d61a0220509be5bb936d",
+    "mtime": 1795725060.2041686,
+    "ast_hash": "19314a34f91601ba3fb92401495aaf28",
     "semantic_hash": ""
   },
   "crm-new/src/ozon-delivery/ozon-delivery.client.ts": {
@@ -5755,8 +5755,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/ozon-delivery/ozon-shipment.controller.ts": {
-    "mtime": 1795717454.961197,
-    "ast_hash": "d83edbb2ccf8b69a10e33e86ae0c9d59",
+    "mtime": 1795725060.2041686,
+    "ast_hash": "5e183ebeb679ee959f46c62b07fb1f99",
     "semantic_hash": ""
   },
   "crm-new/src/ozon-delivery/ozon-shipment.service.ts": {
@@ -5775,18 +5775,18 @@
     "semantic_hash": ""
   },
   "frontend/src/api/ozonDelivery.ts": {
-    "mtime": 1795300592.4932227,
-    "ast_hash": "29c6846735ae10a07453f10d3619b372",
+    "mtime": 1795725111.7407756,
+    "ast_hash": "e43679a6ab816b22d41b6a08fa25eff9",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OzonDeliveryBlock.tsx": {
-    "mtime": 1795512826.029953,
-    "ast_hash": "9e84cc89b20c994455867398024ecb69",
+    "mtime": 1795725120.69424,
+    "ast_hash": "695cedf383695fab878daf91acd6a458",
     "semantic_hash": ""
   },
   "crm-new/src/ozon-delivery/ozon-points.service.ts": {
-    "mtime": 1795546574.9554555,
-    "ast_hash": "992e899ddd659071c91316f09b058327",
+    "mtime": 1795725060.2031693,
+    "ast_hash": "95c53639deba10ada91df48cf353291b",
     "semantic_hash": ""
   },
   "crm-new/src/ozon-delivery/ozon-site.controller.ts": {
@@ -5810,8 +5810,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/OzonDeliveryBlock.test.tsx": {
-    "mtime": 1795512854.8068132,
-    "ast_hash": "c92a2556fcfa32b5fc87069023b91841",
+    "mtime": 1795725129.1402562,
+    "ast_hash": "237cc7a7c1bf035419dc1016fc7448a0",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/ads/ad-performance.controller.ts": {
@@ -5902,6 +5902,16 @@
   "crm-new/src/order-photo/client-item.ts": {
     "mtime": 1795719531.3216617,
     "ast_hash": "834049bafa38a35a087ef360c514aee2",
+    "semantic_hash": ""
+  },
+  "crm-new/src/ozon-delivery/ozon-points.spec.ts": {
+    "mtime": 1795725088.132068,
+    "ast_hash": "0debc9246b6b33610d2cd34ddcfcf268",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/orders/PickupPointSearch.tsx": {
+    "mtime": 1795725272.8035333,
+    "ast_hash": "ced188fda2ccfc9b6d00b4102ba1f512",
     "semantic_hash": ""
   }
 }

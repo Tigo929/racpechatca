@@ -58,3 +58,9 @@ export class DtoBulkLabels {
   @IsUUID('all', { each: true })
   ids!: string[];
 }
+
+export class DtoFindPoint {
+  @IsString()
+  @MaxLength(300)
+  q!: string;
+}

@@ -58,4 +58,20 @@ describe('блок «Доставка Ozon»', () => {
     });
     expect(await screen.findByText('+183 ₽')).toBeInTheDocument();
   });
+  it('пункт выбирается по вставленному адресу и сохраняется нажатием', async () => {
+    show({ ...lead, pickupPoint: null });
+    vi.spyOn(ozonDeliveryApi, 'findPoints').mockResolvedValue({
+      exact: true,
+      points: [
+        { id: 77, number: '56-27', name: null, type: 'PVZ', address: 'Москва, Сиреневый бульвар, 4/1', lat: 55.8, lng: 37.8, schedule: 'ежедневно 10:00–21:00', storageDays: 7 },
+      ],
+    });
+    const set = vi.spyOn(ozonDeliveryApi, 'setDelivery').mockResolvedValue(lead);
+    fireEvent.change(await screen.findByLabelText('Адрес пункта выдачи'), {
+      target: { value: 'г. Москва, Сиреневый бульвар 4/1' },
+    });
+    fireEvent.click(await screen.findByText('Москва, Сиреневый бульвар, 4/1', {}, { timeout: 2000 }));
+    expect(ozonDeliveryApi.findPoints).toHaveBeenCalledWith('г. Москва, Сиреневый бульвар 4/1');
+    await vi.waitFor(() => expect(set).toHaveBeenCalledWith('o1', { pickupPoint: '77' }));
+  });
 });

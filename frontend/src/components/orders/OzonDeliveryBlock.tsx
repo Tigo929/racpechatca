@@ -21,6 +21,7 @@ import {
   type ShipmentStatus,
 } from '../../api/ozonDelivery';
 import { getErrorMessage } from '../../utils/get-error-message';
+import { PickupPointSearch } from './PickupPointSearch';
 
 /**
  * Доставка Ozon в карточке заказа.
@@ -96,14 +97,12 @@ function Inner({ orderId, data, put }: { orderId: string; data: DeliveryView; pu
   const [editingWhere, setEditingWhere] = useState(!data.pickupPoint);
   const [editingWho, setEditingWho] = useState(!data.recipientName || !data.recipientPhone);
   const [editingParcel, setEditingParcel] = useState(false);
-  const [point, setPoint] = useState(pointValue);
   const [name, setName] = useState(data.recipientName ?? '');
   const [phone, setPhone] = useState(data.recipientPhone ?? '');
   const [parcel, setParcel] = useState<Parcel>(s?.parcel ?? data.defaultParcel);
   const [quote, setQuote] = useState<string | null>(null);
 
   const resetEdits = (v: DeliveryView) => {
-    setPoint(v.pickupPoint?.number ?? v.pickupPoint?.id ?? '');
     setName(v.recipientName ?? '');
     setPhone(v.recipientPhone ?? '');
     setEditingWhere(!v.pickupPoint);
@@ -113,7 +112,6 @@ function Inner({ orderId, data, put }: { orderId: string; data: DeliveryView; pu
   const save = useMutation({
     mutationFn: () =>
       ozonDeliveryApi.setDelivery(orderId, {
-        ...(point.trim() !== pointValue ? { pickupPoint: point.trim() } : {}),
         recipientName: name,
         recipientPhone: phone,
       }),
@@ -121,6 +119,17 @@ function Inner({ orderId, data, put }: { orderId: string; data: DeliveryView; pu
       put(v);
       resetEdits(v);
       toast.success('Сохранено');
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  // Пункт из поиска сохраняется сразу по нажатию — без кнопки «Сохранить».
+  const pick = useMutation({
+    mutationFn: (id: number) => ozonDeliveryApi.setDelivery(orderId, { pickupPoint: String(id) }),
+    onSuccess: (v) => {
+      put(v);
+      setEditingWhere(false);
+      toast.success('Пункт выдачи сохранён');
     },
     onError: (e) => toast.error(getErrorMessage(e)),
   });
@@ -168,7 +177,7 @@ function Inner({ orderId, data, put }: { orderId: string; data: DeliveryView; pu
   });
 
   const dirty =
-    point.trim() !== pointValue || name !== (data.recipientName ?? '') || phone !== (data.recipientPhone ?? '');
+    name !== (data.recipientName ?? '') || phone !== (data.recipientPhone ?? '');
   const setDim = (k: keyof Parcel) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setParcel({ ...parcel, [k]: Number(e.target.value) || 0 });
   const st = s ? STATUS[s.status] : null;
@@ -219,15 +228,12 @@ function Inner({ orderId, data, put }: { orderId: string; data: DeliveryView; pu
           <div className="min-w-0 flex-1">
             <div className={sectionLabel}>Куда</div>
             {editingWhere && editable ? (
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <input
-                  className={`${input} max-w-[220px]`}
-                  value={point}
-                  onChange={(e) => setPoint(e.target.value)}
-                  placeholder="Номер пункта, напр. 56-27"
-                />
-                <span className="text-xs text-gray-400">номер есть в заявке с сайта или в приложении Ozon</span>
-              </div>
+              <PickupPointSearch
+                saving={pick.isPending}
+                currentId={data.pickupPoint?.id}
+                onPick={(p) => pick.mutate(p.id)}
+                onCancel={data.pickupPoint ? () => setEditingWhere(false) : undefined}
+              />
             ) : data.pickupPoint ? (
               <div className="mt-0.5 flex items-start gap-2">
                 <div className="min-w-0 flex-1">

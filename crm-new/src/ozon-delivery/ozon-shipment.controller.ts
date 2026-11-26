@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -17,9 +18,11 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { OzonShipmentService } from './ozon-shipment.service';
 import { OzonShipmentSyncService } from './ozon-shipment-sync.service';
+import { OzonPointsService } from './ozon-points.service';
 import {
   DtoBulkLabels,
   DtoCreateShipment,
+  DtoFindPoint,
   DtoParcel,
   DtoSetDelivery,
 } from './dto';
@@ -40,6 +43,7 @@ export class OzonShipmentController {
   constructor(
     private readonly shipments: OzonShipmentService,
     private readonly syncer: OzonShipmentSyncService,
+    private readonly points: OzonPointsService,
   ) {}
 
   // Пачка — выше ':idOrder', иначе «bulk» прочитался бы как номер заказа.
@@ -53,6 +57,13 @@ export class OzonShipmentController {
       res.setHeader('Access-Control-Expose-Headers', 'X-Labels-Failed');
     }
     res.send(buffer);
+  }
+
+  /** Пункт выдачи по адресу, который прислал клиент. Выше ':idOrder'. */
+  @Post('ozon-points/find')
+  @HttpCode(200)
+  findPoint(@Body() dto: DtoFindPoint) {
+    return this.points.findByAddress(dto.q);
   }
 
   @Get(':idOrder/delivery')
