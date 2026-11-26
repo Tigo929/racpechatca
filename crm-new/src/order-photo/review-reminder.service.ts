@@ -24,7 +24,8 @@ import { skipAlreadyAsked } from './client-identity';
 import { ReviewAudienceService } from './review-audience.service';
 import { telegramUsernameFromUrl } from './client-greeting';
 
-const REVIEW_REMINDER_SCAN_MS = 60 * 60 * 1000;
+// 15 минут: после «клиент забрал» просьба должна уйти примерно через полчаса.
+const REVIEW_REMINDER_SCAN_MS = 15 * 60 * 1000;
 /** Пауза между сообщениями ручной пересылки: Telegram даёт ~20/мин в чат. */
 const RESEND_DELAY_MS = 3500;
 const REVIEW_REMINDER_LIMIT = 20;

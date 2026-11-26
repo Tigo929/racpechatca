@@ -39,6 +39,12 @@ export const REVIEW_AUTOSEND_GRACE_MS = 6 * 60 * 60 * 1000;
  */
 export const REVIEW_TRACKED_FALLBACK_MS = 14 * 24 * 60 * 60 * 1000;
 
+/**
+ * Пауза после «клиент забрал»: человек сначала посмотрит фотографии, а
+ * просьба в ту же минуту выглядит как автомат (просьба владельца 26.11).
+ */
+export const REVIEW_AFTER_PICKUP_MS = 30 * 60 * 1000;
+
 /** Отправление отслеживается — ждём «забрал» от службы доставки. */
 export function isTrackedDelivery(order: {
   ozonShipment?: { status: string } | null;
@@ -125,7 +131,11 @@ export function isReviewReminderEligible(
   // Своё отправление Ozon: просим, как только клиент забрал (25.11.2026,
   // просьба владельца), а если отметки нет — через 14 дней от отправки.
   if (!order.isMarketplacePrint && isTrackedDelivery(order)) {
-    if (order.pickedUpAt) return true;
+    if (order.pickedUpAt) {
+      return (
+        order.pickedUpAt.getTime() <= now.getTime() - REVIEW_AFTER_PICKUP_MS
+      );
+    }
     return Boolean(
       order.sentAt &&
       order.sentAt <= new Date(now.getTime() - REVIEW_TRACKED_FALLBACK_MS),

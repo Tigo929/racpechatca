@@ -24,8 +24,13 @@ describe('отзыв по своему отправлению Ozon', () => {
     expect(isReviewReminderEligible(base, now)).toBe(false);
   });
 
-  it('забрал — просим сразу', () => {
-    const pickedUpAt = new Date(now.getTime() - 60_000);
+  it('забрал только что — ждём 30 минут', () => {
+    const pickedUpAt = new Date(now.getTime() - 10 * 60_000);
+    expect(isReviewReminderEligible({ ...base, pickedUpAt }, now)).toBe(false);
+  });
+
+  it('забрал полчаса назад — просим', () => {
+    const pickedUpAt = new Date(now.getTime() - 31 * 60_000);
     expect(isReviewReminderEligible({ ...base, pickedUpAt }, now)).toBe(true);
     expect(reviewDueAt({ ...base, pickedUpAt })).toEqual(pickedUpAt);
   });
