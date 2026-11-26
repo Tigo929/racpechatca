@@ -639,7 +639,11 @@ export class OzonShipmentService {
   }
 
   /** Подтянуть статус одного отправления. Возвращает, что изменилось. */
-  async sync(orderId: string): Promise<{ from: string; to: string } | null> {
+  async sync(orderId: string): Promise<{
+    from: string;
+    to: string | null;
+    unknownStatus?: string;
+  } | null> {
     const shipment = await this.prisma.ozonShipment.findUnique({
       where: { orderId },
     });
@@ -697,7 +701,12 @@ export class OzonShipmentService {
           : {}),
       },
     });
-    return next ? { from: shipment.status, to: next } : null;
+    // Статус, которого правила не знают, — наверх: по нему видно, что
+    // правила пора дополнить (полного справочника статусов Ozon у нас нет).
+    const unknownStatus =
+      ozonStatus && !mapOzonStatus(ozonStatus) ? ozonStatus : undefined;
+    if (!next && !unknownStatus) return null;
+    return { from: shipment.status, to: next, unknownStatus };
   }
 
   /** Блок «Доставка» для карточки заказа. */

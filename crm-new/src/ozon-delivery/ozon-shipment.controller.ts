@@ -16,6 +16,7 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { OzonShipmentService } from './ozon-shipment.service';
+import { OzonShipmentSyncService } from './ozon-shipment-sync.service';
 import {
   DtoBulkLabels,
   DtoCreateShipment,
@@ -36,7 +37,10 @@ interface RequestUser {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(EnumRole.ADMIN, EnumRole.ORDER_MANAGER)
 export class OzonShipmentController {
-  constructor(private readonly shipments: OzonShipmentService) {}
+  constructor(
+    private readonly shipments: OzonShipmentService,
+    private readonly syncer: OzonShipmentSyncService,
+  ) {}
 
   // Пачка — выше ':idOrder', иначе «bulk» прочитался бы как номер заказа.
   @Post('bulk/ozon-labels')
@@ -90,7 +94,7 @@ export class OzonShipmentController {
 
   @Post(':idOrder/ozon/sync')
   async sync(@Param('idOrder', ParseUUIDPipe) id: string) {
-    await this.shipments.sync(id);
+    await this.syncer.syncOne(id);
     return this.shipments.view(id);
   }
 

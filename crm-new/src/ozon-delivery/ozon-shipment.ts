@@ -80,29 +80,49 @@ export function mapOzonStatus(
   const s = (raw ?? '').toLowerCase();
   if (!s) return null;
   if (/cancel|отмен/.test(s)) return 'CANCELLED';
-  if (/returned|возвращ[её]н|return_completed|returned_to_seller/.test(s))
+  if (/returned|возвращ[её]н|return_completed|returned_to_seller/.test(s)) {
     return 'RETURNED';
+  }
   if (/return|возврат/.test(s)) return 'RETURNING';
-  if (/delivered|вручен|получен|issued|completed/.test(s)) return 'DELIVERED';
+  /*
+   * «Клиент забрал» — только явно: по нему уходит просьба об отзыве, и
+   * ошибиться здесь хуже, чем промолчать. «delivered_to_pickup_point»
+   * содержит «delivered», но это посылка в пункте, а не у клиента, —
+   * поэтому пункт выдачи проверяем раньше, а «доставлено» засчитываем,
+   * только когда рядом клиент/получатель или статус ровно «delivered».
+   */
+  const toClient =
+    /client|customer|recipient|buyer|клиент|получател|покупател/.test(s);
   if (
-    /pickup_point|at_pvz|arrived|awaiting_pickup|ready_for_pickup|ready_to_issue|в пункте|ожидает получ/.test(
+    /^(delivered|issued|completed|done|handed_over|picked_up|выдан|вручен|получен)$/.test(
+      s,
+    ) ||
+    (toClient && /deliver|receiv|hand|issu|pick|выдан|вручен|получ/.test(s)) ||
+    /вручен|выдан клиент/.test(s)
+  ) {
+    return 'DELIVERED';
+  }
+  if (
+    /pickup_point|pickup|pvz|пвз|postamat|arrived|awaiting_(pickup|receipt|issue)|ready_to_issue|в пункте|ожидает получ|прибыл/.test(
       s,
     )
   ) {
     return 'AT_PICKUP_POINT';
   }
   if (
-    /transit|delivering|accepted|sorting|on_the_way|в пути|принят|доставля/.test(
+    /transit|deliver|accepted|sorting|on_the_way|in_way|shipped|received|в пути|принят|доставля|сортир/.test(
       s,
     )
-  )
+  ) {
     return 'IN_TRANSIT';
+  }
   if (
     /approved|forming|ready_for_shipping|awaiting_(registration|shipment|handover)|подтвержд/.test(
       s,
     )
-  )
+  ) {
     return 'APPROVED';
+  }
   if (/created|new|draft|создан/.test(s)) return 'CREATED';
   return null;
 }

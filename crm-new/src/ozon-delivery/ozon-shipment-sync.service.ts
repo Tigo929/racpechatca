@@ -70,8 +70,7 @@ export class OzonShipmentSyncService implements OnModuleInit, OnModuleDestroy {
       });
       for (const { orderId } of active) {
         try {
-          const change = await this.shipments.sync(orderId);
-          if (change) await this.onChange(orderId, change.to);
+          await this.syncOne(orderId);
         } catch (e) {
           this.logger.warn(
             `Ozon: статус ${orderId} не обновлён: ${(e as Error).message}`,
@@ -139,6 +138,42 @@ export class OzonShipmentSyncService implements OnModuleInit, OnModuleDestroy {
           : `↩️ Заказ ${order.numberOrder}: посылка Ozon возвращается — клиент не забрал или отказался.`,
       );
     }
+  }
+
+  /**
+   * Одно отправление — со всеми последствиями для заказа. Этим же путём
+   * идёт кнопка «Обновить статус»: иначе ручное обновление меняло бы
+   * статус посылки, но «Отправлен» и «клиент забрал» не ставились бы,
+   * и просьба об отзыве не ушла бы.
+   */
+  async syncOne(orderId: string): Promise<void> {
+    const change = await this.shipments.sync(orderId);
+    if (change?.to) await this.onChange(orderId, change.to);
+    if (change?.unknownStatus) {
+      await this.reportUnknown(orderId, change.unknownStatus);
+    }
+  }
+
+  /**
+   * Новый, незнакомый статус Ozon — владельцу один раз на каждое название.
+   * Документация Ozon закрыта, и все статусы мы узнаём только вживую: так
+   * сразу видно, если посылка «застряла» в статусе, которого CRM не поняла.
+   */
+  private reportedStatuses = new Set<string>();
+  private async reportUnknown(orderId: string, status: string) {
+    if (this.reportedStatuses.has(status)) return;
+    this.reportedStatuses.add(status);
+    const order = await this.prisma.orderPhoto.findUnique({
+      where: { id: orderId },
+      select: { numberOrder: true },
+    });
+    this.logger.warn(
+      `Ozon: незнакомый статус «${status}» у ${order?.numberOrder}`,
+    );
+    await this.telegram.sendToOwner(
+      `ℹ️ Ozon прислал незнакомый статус «${status}» (заказ ${order?.numberOrder ?? orderId}). ` +
+        'Если посылку уже сдали или клиент её забрал, а статус в CRM не сменился, — перешлите это сообщение разработчику.',
+    );
   }
 
   /** Посылка ждёт в пункте слишком долго — напомнить один раз. */

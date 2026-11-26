@@ -76,6 +76,13 @@ describe('ответы Ozon', () => {
 
   it('статусы по смыслу', () => {
     expect(mapOzonStatus('delivered')).toBe('DELIVERED');
+    // «Доставлено в пункт» — посылка в пункте, а не у клиента: отзыв рано.
+    expect(mapOzonStatus('delivered_to_pickup_point')).toBe('AT_PICKUP_POINT');
+    expect(mapOzonStatus('delivered_to_pvz')).toBe('AT_PICKUP_POINT');
+    expect(mapOzonStatus('delivered_to_customer')).toBe('DELIVERED');
+    expect(mapOzonStatus('handed_to_recipient')).toBe('DELIVERED');
+    expect(mapOzonStatus('received_at_sorting_center')).toBe('IN_TRANSIT');
+    expect(mapOzonStatus('delivering')).toBe('IN_TRANSIT');
     expect(mapOzonStatus('arrived_at_pickup_point')).toBe('AT_PICKUP_POINT');
     expect(mapOzonStatus('in_transit')).toBe('IN_TRANSIT');
     expect(mapOzonStatus('cancelled')).toBe('CANCELLED');
