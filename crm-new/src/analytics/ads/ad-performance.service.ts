@@ -23,6 +23,10 @@ import {
   type AdPerformance,
   type LeadInput,
 } from './ad-performance';
+import {
+  computeSearchQueries,
+  type SearchQueriesBlock,
+} from './ad-search-queries';
 
 export interface AdDataQuality {
   /** Последний загруженный день расхода (YYYY-MM-DD) или null. */
@@ -51,6 +55,8 @@ export interface AdPerformanceResponse extends AdPerformance {
   spendDays: number;
   spendLastDate: string | null;
   quality: AdDataQuality;
+  /** Поисковые запросы Директа; null — за период они не загружены. */
+  searchQueries: SearchQueriesBlock | null;
 }
 
 /** Прибыль одного заказа по методике P&L: addOrder на пустую корзину. */
@@ -76,85 +82,91 @@ export class AdPerformanceService {
       lte: isoToUtcDate(period.to),
     };
     const { start, endExclusive } = periodBoundsUtc(period);
-    const [spend, orders, last, settings, sync, outbox] = await Promise.all([
-      this.prisma.adSpendDetail.findMany({ where: { date: dateWhere } }),
-      this.prisma.orderPhoto.findMany({
-        where: {
-          sourceOrder: 'WEBSITE',
-          createdAt: { gte: start, lt: endExclusive },
-        },
-        select: {
-          status: true,
-          yclid: true,
-          yandexClientId: true,
-          utmSource: true,
-          utmMedium: true,
-          utmCampaign: true,
-          utmContent: true,
-          utmTerm: true,
-          // поля OrderRow — ровно то, что берёт P&L для прибыли заказа
-          sourceOrder: true,
-          sentAt: true,
-          completedAt: true,
-          statusChangedAt: true,
-          createdAt: true,
-          clientPaidAt: true,
-          totalOrder: true,
-          deliveryCost: true,
-          deliveryMethod: true,
-          ozonShipment: {
-            select: {
-              actualCost: true,
-              estimatedCost: true,
-              estimatedInsurance: true,
-              status: true,
+    const [spend, orders, last, settings, sync, outbox, queries] =
+      await Promise.all([
+        this.prisma.adSpendDetail.findMany({ where: { date: dateWhere } }),
+        this.prisma.orderPhoto.findMany({
+          where: {
+            sourceOrder: 'WEBSITE',
+            createdAt: { gte: start, lt: endExclusive },
+          },
+          select: {
+            status: true,
+            yclid: true,
+            yandexClientId: true,
+            utmSource: true,
+            utmMedium: true,
+            utmCampaign: true,
+            utmContent: true,
+            utmTerm: true,
+            // поля OrderRow — ровно то, что берёт P&L для прибыли заказа
+            sourceOrder: true,
+            sentAt: true,
+            completedAt: true,
+            statusChangedAt: true,
+            createdAt: true,
+            clientPaidAt: true,
+            totalOrder: true,
+            deliveryCost: true,
+            deliveryMethod: true,
+            ozonShipment: {
+              select: {
+                actualCost: true,
+                estimatedCost: true,
+                estimatedInsurance: true,
+                status: true,
+              },
+            },
+            productCategory: true,
+            items: {
+              select: {
+                formatPaper: true,
+                quantity: true,
+                pricePosition: true,
+                printOnClientItem: true,
+                thermalCost: true,
+                partnerPayout: true,
+                partnerRateBasisPoints: true,
+              },
+            },
+            tshirtItems: {
+              select: {
+                pricePosition: true,
+                quantity: true,
+                designCost: true,
+                thermalCost: true,
+                blankCost: true,
+                clientItem: true,
+              },
+            },
+            canvasItems: { select: { contractorCostPosition: true } },
+            accruals: {
+              where: { status: { not: 'REVERSED' } },
+              select: { salaryAmount: true },
             },
           },
-          productCategory: true,
-          items: {
-            select: {
-              formatPaper: true,
-              quantity: true,
-              pricePosition: true,
-              printOnClientItem: true,
-              thermalCost: true,
-              partnerPayout: true,
-              partnerRateBasisPoints: true,
-            },
-          },
-          tshirtItems: {
-            select: {
-              pricePosition: true,
-              quantity: true,
-              designCost: true,
-              thermalCost: true,
-              blankCost: true,
-              clientItem: true,
-            },
-          },
-          canvasItems: { select: { contractorCostPosition: true } },
-          accruals: {
-            where: { status: { not: 'REVERSED' } },
-            select: { salaryAmount: true },
-          },
-        },
-      }),
-      this.prisma.adSpendDetail.findFirst({
-        orderBy: { date: 'desc' },
-        select: { date: true },
-      }),
-      this.prisma.partnerSettings.findUnique({ where: { id: 'default' } }),
-      this.prisma.metrikaSyncRun.findFirst({
-        where: { status: 'SUCCESS', finishedAt: { not: null } },
-        orderBy: { finishedAt: 'desc' },
-        select: { finishedAt: true },
-      }),
-      this.prisma.metrikaOrderOutbox.groupBy({
-        by: ['status'],
-        where: { status: { in: ['pending', 'processing', 'failed'] } },
-        _count: { _all: true },
-      }),
-    ]);
+        }),
+        this.prisma.adSpendDetail.findFirst({
+          orderBy: { date: 'desc' },
+          select: { date: true },
+        }),
+        this.prisma.partnerSettings.findUnique({ where: { id: 'default' } }),
+        this.prisma.metrikaSyncRun.findFirst({
+          where: { status: 'SUCCESS', finishedAt: { not: null } },
+          orderBy: { finishedAt: 'desc' },
+          select: { finishedAt: true },
+        }),
+        this.prisma.metrikaOrderOutbox.groupBy({
+          by: ['status'],
+          where: { status: { in: ['pending', 'processing', 'failed'] } },
+          _count: { _all: true },
+        }),
+        this.prisma.adSearchQueryDaily.groupBy({
+          by: ['campaignId', 'adGroupId', 'query', 'criterion', 'matchType'],
+          where: { date: dateWhere },
+          _sum: { impressions: true, clicks: true, spend: true },
+        }),
+      ]);
     const s = costSettingsFrom(settings);
 
     const leads: LeadInput[] = orders.map((o) => {
@@ -208,6 +220,21 @@ export class AdPerformanceService {
       spendDays,
       spendLastDate,
       ...result,
+      searchQueries: queries.length
+        ? computeSearchQueries(
+            queries.map((q) => ({
+              campaignId: q.campaignId,
+              adGroupId: q.adGroupId,
+              query: q.query,
+              criterion: q.criterion,
+              matchType: q.matchType,
+              impressions: q._sum.impressions ?? 0,
+              clicks: q._sum.clicks ?? 0,
+              spend: Number(q._sum.spend ?? 0),
+            })),
+            result,
+          )
+        : null,
       quality: {
         spendLastDate,
         spendDays,

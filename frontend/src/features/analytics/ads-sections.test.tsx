@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { AdsTab } from './ads-sections';
 import type { AdPerformance, AdStats } from '../../types/ads';
 
@@ -63,6 +63,14 @@ const data: AdPerformance = {
     outboxPending: 2,
     outboxFailed: 1,
   },
+  searchQueries: {
+    total: { queries: 3, impressions: 120, clicks: 9, spend: 900, spendUnderKeywordsWithoutLeads: 300 },
+    rows: [
+      { query: 'печать фото рядом', groupId: '10', groupName: 'Фотки', keyword: 'печать фото', matchType: 'SYNONYM', impressions: 80, clicks: 6, spend: 600, ctr: 7.5, keywordLeads: 10, keywordPaid: 8 },
+      { query: 'фото на паспорт', groupId: '30', groupName: 'футболки', keyword: 'футболка', matchType: 'NONE', impressions: 40, clicks: 3, spend: 300, ctr: 7.5, keywordLeads: 0, keywordPaid: 0 },
+    ],
+    hidden: 1,
+  },
 };
 
 describe('AdsTab', () => {
@@ -76,5 +84,19 @@ describe('AdsTab', () => {
     expect(screen.getByText('Качество данных')).toBeTruthy();
     expect(screen.getByText('Заказы не ушли в Метрику (ошибка)')).toBeTruthy();
     expect(screen.getByText(/1 из 11 рекламных заявок нет ключевого слова/)).toBeTruthy();
+  });
+
+  it('lists search queries and flags leadless ones', () => {
+    render(<AdsTab data={data} />);
+    expect(screen.getByText('Поисковые запросы')).toBeTruthy();
+    expect(screen.getByText('фото на паспорт')).toBeTruthy();
+    expect(screen.getAllByText('в минус-слова?').length).toBe(1);
+    fireEvent.click(screen.getByLabelText('только под ключами без заявок'));
+    expect(screen.queryByText('печать фото рядом')).toBeNull();
+  });
+
+  it('says when queries are not loaded yet', () => {
+    render(<AdsTab data={{ ...data, searchQueries: null }} />);
+    expect(screen.getByText(/запросы ещё не загружены/)).toBeTruthy();
   });
 });

@@ -1384,6 +1384,33 @@ model AdSpendDetail {
   @@index([date])
 }
 
+/// Поисковые запросы Директа (отчёт SEARCH_QUERY_PERFORMANCE_REPORT): что
+/// человек на самом деле набрал, по какому условию показа и в какой группе
+/// показалось объявление. Грузится отдельной программой (ads:search-queries)
+/// по расписанию на сервере, не внутри backend. Деньги — без НДС.
+model AdSearchQueryDaily {
+  id        String   @id() @default(uuid())
+  createdAt DateTime @default(now())
+
+  date          DateTime
+  campaignId    String
+  adGroupId     String
+  /// Текст запроса, как его отдаёт Директ.
+  query         String
+  /// Условие показа: «печать фото -москва» или «---autotargeting».
+  criterion     String
+  /// KEYWORD | AUTOTARGETING | …
+  criterionType String   @default("")
+  /// Тип соответствия запроса ключу: RELATED_EXACT, SYNONYM, NONE…
+  matchType     String   @default("")
+  impressions   Int      @default(0)
+  clicks        Int      @default(0)
+  spend         Decimal  @db.Decimal(18, 4)
+
+  @@unique([date, campaignId, adGroupId, query, criterion])
+  @@index([date])
+}
+
 model PartnerSettings {
   id        String   @id @default("default")
   updatedAt DateTime @updatedAt

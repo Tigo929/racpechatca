@@ -48,6 +48,32 @@ export interface AdPerformance {
   };
   campaigns: AdCampaignRow[];
   quality: AdDataQuality;
+  /** null — поисковые запросы за период не загружены. */
+  searchQueries: AdSearchQueries | null;
+}
+export interface AdSearchQueryRow {
+  query: string;
+  groupId: string;
+  groupName: string;
+  keyword: string;
+  matchType: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  ctr: number | null;
+  keywordLeads: number;
+  keywordPaid: number;
+}
+export interface AdSearchQueries {
+  total: {
+    queries: number;
+    impressions: number;
+    clicks: number;
+    spend: number;
+    spendUnderKeywordsWithoutLeads: number;
+  };
+  rows: AdSearchQueryRow[];
+  hidden: number;
 }
 export interface AdDataQuality {
   spendLastDate: string | null;

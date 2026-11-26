@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react';
-import type { AdDataQuality, AdPerformance, AdStats } from '../../types/ads';
+import type { AdDataQuality, AdPerformance, AdSearchQueries, AdStats } from '../../types/ads';
 import { formatCount, formatMoney, formatPeriod } from './analytics-view';
 import { Card, Notice } from './ui';
 
@@ -178,6 +178,8 @@ export function AdsTab({ data }: { data: AdPerformance }) {
         </div>
       </Card>
 
+      <SearchQueriesCard sq={data.searchQueries} />
+
       <QualityCard q={data.quality} />
 
       <Card title="Как считается">
@@ -190,6 +192,7 @@ export function AdsTab({ data }: { data: AdPerformance }) {
           <li>Заявки и заказы считаются по дню заявки: заказ, оплаченный позже, всё равно относится к рекламе того периода. Поэтому за последние дни оплат меньше, чем будет потом.</li>
           <li>«Тратит без заявок» — потрачено от {NOISE_SPEND} ₽ и ни одной заявки. «Почти в ноль» — на каждый рубль рекламы осталось меньше 30 копеек.</li>
           <li>Повторные заказы тех же клиентов здесь пока не учитываются.</li>
+          <li>Поисковые запросы — прямо из отчёта Директа, обновляются раз в сутки. Заявка запрос не запоминает, только ключ, поэтому у запроса показаны заявки его ключа, а не его собственные.</li>
         </ul>
       </Card>
     </div>
@@ -228,6 +231,103 @@ function QualityCard({ q }: { q: AdDataQuality }) {
           <QualityRow label="Оплат без себестоимости" value={formatCount(q.paidWithoutCogs)} bad={q.paidWithoutCogs > 0} />
         </div>
       </div>
+    </Card>
+  );
+}
+
+/** От этой суммы запрос под ключом без заявок помечается как кандидат в минус-слова. */
+const MINUS_CANDIDATE_SPEND = 150;
+
+function SearchQueriesCard({ sq }: { sq: AdSearchQueries | null }) {
+  const [filter, setFilter] = useState('');
+  const [onlyLeadless, setOnlyLeadless] = useState(false);
+  if (!sq) {
+    return (
+      <Card title="Поисковые запросы" subtitle="Что люди набирали, когда видели объявление">
+        <p className="text-sm text-gray-500">За этот период запросы ещё не загружены — они приходят из Директа раз в сутки.</p>
+      </Card>
+    );
+  }
+  const needle = filter.trim().toLowerCase();
+  const rows = sq.rows.filter(
+    (r) => (!onlyLeadless || r.keywordLeads === 0) && (!needle || r.query.toLowerCase().includes(needle) || r.keyword.toLowerCase().includes(needle)),
+  );
+  const t = sq.total;
+  const leadlessShare = t.spend ? Math.round((t.spendUnderKeywordsWithoutLeads / t.spend) * 1000) / 10 : null;
+  return (
+    <Card
+      title="Поисковые запросы"
+      subtitle={`Что люди набирали, когда видели объявление: ${formatCount(t.queries)} разных запросов, ${formatCount(t.clicks)} кликов, ${formatMoney(t.spend)} с НДС.`}
+    >
+      {t.spendUnderKeywordsWithoutLeads > 0 && (
+        <p className="text-sm text-gray-700 mb-3">
+          На запросы под ключами без единой заявки ушло <b>{formatMoney(t.spendUnderKeywordsWithoutLeads)}</b> ({pct(leadlessShare)} расхода). Пометка «в минус-слова?» — запрос не принёс ключу ни одной заявки; какие исключить, решаете вы.
+        </p>
+      )}
+      <div className="flex flex-wrap items-center gap-3 mb-3">
+        <input
+          type="search"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Найти запрос или ключ"
+          aria-label="Найти запрос или ключ"
+          className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-64 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+        />
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={onlyLeadless} onChange={(e) => setOnlyLeadless(e.target.checked)} />
+          только под ключами без заявок
+        </label>
+      </div>
+      <div className="overflow-x-auto -mx-4 sm:-mx-5 max-h-[560px] overflow-y-auto">
+        <table className="min-w-[900px] w-full text-sm">
+          <thead className="sticky top-0 bg-white">
+            <tr className="text-xs text-gray-500 border-b border-gray-100">
+              <th className="px-2 py-2 text-left font-medium pl-4 sm:pl-5">Запрос</th>
+              <th className="px-2 py-2 text-left font-medium">Группа · ключ</th>
+              <th className="px-2 py-2 text-right font-medium">Показы</th>
+              <th className="px-2 py-2 text-right font-medium">Клики</th>
+              <th className="px-2 py-2 text-right font-medium">CTR</th>
+              <th className="px-2 py-2 text-right font-medium">Расход</th>
+              <th className="px-2 py-2 text-right font-medium">Заявок / оплат у ключа</th>
+              <th className="px-2 py-2 text-left font-medium">
+                <span className="sr-only">Пометка</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={`${r.groupId}:${r.keyword}:${r.query}`} className="border-b border-gray-50">
+                <td className="px-2 py-1.5 pl-4 sm:pl-5 max-w-[300px] truncate text-gray-900" title={r.query}>
+                  {r.query || '—'}
+                </td>
+                <td className="px-2 py-1.5 max-w-[260px] truncate text-gray-500" title={`${r.groupName} · ${r.keyword}`}>
+                  {r.groupName} · {r.keyword}
+                </td>
+                <td className="px-2 py-1.5 text-right tabular-nums">{formatCount(r.impressions)}</td>
+                <td className="px-2 py-1.5 text-right tabular-nums">{formatCount(r.clicks)}</td>
+                <td className="px-2 py-1.5 text-right tabular-nums">{pct(r.ctr)}</td>
+                <td className="px-2 py-1.5 text-right tabular-nums">{formatMoney(r.spend)}</td>
+                <td className="px-2 py-1.5 text-right tabular-nums">
+                  {formatCount(r.keywordLeads)} / {formatCount(r.keywordPaid)}
+                </td>
+                <td className="px-2 py-1.5">{r.keywordLeads === 0 && r.spend >= MINUS_CANDIDATE_SPEND && <Badge v={{ tone: 'red', text: 'в минус-слова?' }} />}</td>
+              </tr>
+            ))}
+            {!rows.length && (
+              <tr>
+                <td colSpan={8} className="px-4 py-4 text-sm text-gray-500">
+                  Ничего не нашлось.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      {sq.hidden > 0 && (
+        <p className="text-xs text-gray-400 mt-2">
+          Показаны {formatCount(sq.rows.length)} самых дорогих запросов; ещё {formatCount(sq.hidden)} с меньшим расходом не показаны.
+        </p>
+      )}
     </Card>
   );
 }

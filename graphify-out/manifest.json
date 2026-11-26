@@ -15,8 +15,8 @@
     "semantic_hash": ""
   },
   "crm-new/package.json": {
-    "mtime": 1795544975.0264473,
-    "ast_hash": "aa37354b46aa3f40d5d57f1dfd3a9bfd",
+    "mtime": 1795679095.8123991,
+    "ast_hash": "e37697bf0db48dd088a675137f906db3",
     "semantic_hash": ""
   },
   "crm-new/prisma.config.ts": {
@@ -4340,28 +4340,28 @@
     "semantic_hash": ""
   },
   "crm-new/src/analytics/ads/ad-spend-import.ts": {
-    "mtime": 1795646453.496318,
-    "ast_hash": "e8536735764b5e46cbdd6b5d7f1396a2",
+    "mtime": 1795679104.1868057,
+    "ast_hash": "4156545141bc6ca9885a1bd366410e57",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/ads/ad-spend.spec.ts": {
-    "mtime": 1795646453.496318,
-    "ast_hash": "8896a2c29aaa5bc1a2e58cce126419ae",
+    "mtime": 1795679104.2062838,
+    "ast_hash": "db6f2582791e27bcd7854272c34fd6e4",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/ads/ad-spend.ts": {
-    "mtime": 1795646453.497319,
-    "ast_hash": "e4a7cfd013ee3a265977c3a61ff5b071",
+    "mtime": 1795679104.2172868,
+    "ast_hash": "12146cf446f585ae47d403b006825857",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/ads/direct-spend-sync.spec.ts": {
-    "mtime": 1795646453.4983191,
-    "ast_hash": "23029ec7451419edcb0cb2f70e4f32c9",
+    "mtime": 1795679104.2755737,
+    "ast_hash": "701017f69db7e69248a7f6c327fee3f3",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/ads/direct-spend-sync.ts": {
-    "mtime": 1795646453.4983191,
-    "ast_hash": "568d7f7a959f42c8b91aeaa9c8498d33",
+    "mtime": 1795679104.290571,
+    "ast_hash": "8c190a1d94ed12ff4f71f01b746aa365",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/direct-spend-cli.ts": {
@@ -5820,8 +5820,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/analytics/ads/ad-performance.service.ts": {
-    "mtime": 1795646284.4970646,
-    "ast_hash": "443a80f104c819422bebf22080e003f9",
+    "mtime": 1795679072.5650253,
+    "ast_hash": "0b9b79fe0fdc8ffd4f01c7c201d02350",
     "semantic_hash": ""
   },
   "crm-new/src/analytics/ads/ad-performance.spec.ts": {
@@ -5840,13 +5840,13 @@
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/ads-sections.tsx": {
-    "mtime": 1795647317.1274245,
-    "ast_hash": "2ad03075ce6971ffa22a1881d34201a9",
+    "mtime": 1795679208.491359,
+    "ast_hash": "718f198ea0efd02eb79baad397f58b6a",
     "semantic_hash": ""
   },
   "frontend/src/types/ads.ts": {
-    "mtime": 1795646311.7997136,
-    "ast_hash": "ea7941343ea7f3d0f9edf4a23fac75b8",
+    "mtime": 1795679208.4903567,
+    "ast_hash": "11886509c4b70607f22d0bf3e8468f0f",
     "semantic_hash": ""
   },
   "crm-new/src/ozon-delivery/append-pdf.spec.ts": {
@@ -5860,13 +5860,33 @@
     "semantic_hash": ""
   },
   "frontend/src/features/analytics/ads-sections.test.tsx": {
-    "mtime": 1795646359.6512437,
-    "ast_hash": "8ffb46f1c1847809b1cd96ff3e2afde2",
+    "mtime": 1795679208.491359,
+    "ast_hash": "4afa6c0d9c4af930ed04b589b69d1e16",
     "semantic_hash": ""
   },
   "docs/marketing-mcp-audit.md": {
     "mtime": 1795645885.586357,
     "ast_hash": "f48504465d361a205722a5da3e28bb5c",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/ads/ad-search-queries.ts": {
+    "mtime": 1795679062.3839889,
+    "ast_hash": "33456fb49876c1b7642d833d794b3b7d",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/ads/direct-search-query-sync.spec.ts": {
+    "mtime": 1795679104.2322907,
+    "ast_hash": "fceca723ca825c74f41d9c3d2eaff59f",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/ads/direct-search-query-sync.ts": {
+    "mtime": 1795679122.664185,
+    "ast_hash": "6b80ed8c327bd43b8ee6dacaaaec6b7f",
+    "semantic_hash": ""
+  },
+  "crm-new/src/analytics/direct-search-queries-cli.ts": {
+    "mtime": 1795679042.2205107,
+    "ast_hash": "3c1822351bdb9f8ae70170e656b34e1f",
     "semantic_hash": ""
   }
 }
