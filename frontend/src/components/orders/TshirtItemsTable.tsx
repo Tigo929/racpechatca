@@ -153,6 +153,7 @@ function FreeRows({ state, onChange }: { state: FreeState; onChange: (s: FreeSta
       </Row>
       <Row label="Партнёру">
         <PartnerPayoutPicker
+          itemName={state.name}
           value={state.partnerPayout}
           onChange={(value, presetName) =>
             onChange({

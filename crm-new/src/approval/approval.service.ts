@@ -1,3 +1,4 @@
+import { isClientItemPosition } from 'src/order-photo/client-item';
 import {
   BadRequestException,
   ConflictException,
@@ -39,7 +40,6 @@ import { randomUUID } from 'node:crypto';
 /** Насколько широким ложится только что загруженный принт — доля зоны печати. */
 const DEFAULT_VIEW_WIDTH = 0.8;
 
-
 const approvalInclude = {
   createdBy: { select: { id: true, username: true } },
   telegramDelivery: { select: deliverySelect },
@@ -48,7 +48,7 @@ const approvalInclude = {
   item: { select: { id: true, color: true, size: true, quantity: true } },
   order: {
     select: {
-      items: { select: { printOnClientItem: true } },
+      items: { select: { printOnClientItem: true, formatPaper: true } },
       // printLocation: по нему интерфейс показывает только нужные стороны.
       tshirtItems: { select: { clientItem: true, printLocation: true } },
     },
@@ -520,7 +520,7 @@ export class ApprovalService {
         marketplacePostingNumber: true,
         isMarketplacePrint: true,
         // Печать на изделии заказчика — свободная позиция с этим признаком.
-        items: { select: { printOnClientItem: true } },
+        items: { select: { printOnClientItem: true, formatPaper: true } },
         tshirtItems: {
           select: {
             clientItem: true,
@@ -535,7 +535,7 @@ export class ApprovalService {
     });
     if (!order) throw new NotFoundException('Заказ не найден');
     const clientItem =
-      order.items.some((i) => i.printOnClientItem) ||
+      order.items.some((i) => isClientItemPosition(i)) ||
       order.tshirtItems.some((i) => i.clientItem);
 
     /*
@@ -634,7 +634,7 @@ export class ApprovalService {
       updatedAt: Date;
       finalizedAt: Date | null;
       order: {
-        items: { printOnClientItem: boolean }[];
+        items: { printOnClientItem: boolean; formatPaper?: string | null }[];
         tshirtItems: { clientItem: boolean; printLocation: string }[];
       };
     },
@@ -646,7 +646,7 @@ export class ApprovalService {
     return {
       ...view,
       clientItem:
-        order.items.some((item) => item.printOnClientItem) ||
+        order.items.some((item) => isClientItemPosition(item)) ||
         order.tshirtItems.some((item) => item.clientItem),
       // Стороны из заказа: интерфейс показывает их и не даёт отправить лист,
       // пока обязательная сторона пустая. Правило одно и то же здесь и на

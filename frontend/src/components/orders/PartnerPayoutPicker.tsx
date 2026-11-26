@@ -22,6 +22,8 @@ interface Props {
   /** Общая ставка из настроек — показываем в подсказке поля. */
   defaultRatePercent?: number;
   className?: string;
+  /** Название позиции — чтобы заметить «изделие заказчика» без оплаты партнёру. */
+  itemName?: string;
 }
 
 export function PartnerPayoutPicker({
@@ -31,7 +33,12 @@ export function PartnerPayoutPicker({
   onRateChange,
   defaultRatePercent,
   className = '',
+  itemName = '',
 }: Props) {
+  // 25.11.2026 позицию «на изделие заказчика» завели с «не платим»: отметка
+  // «изделие клиента» тогда снималась, и лист согласования молчал.
+  const clientItemMismatch =
+    /издели[еяию]\s+(заказчика|клиента)/i.test(itemName) && value !== 'MARGIN_SHARE';
   const option = payoutOption(value);
   const paid = value !== 'NONE';
 
@@ -53,6 +60,13 @@ export function PartnerPayoutPicker({
       </select>
 
       <p className="text-xs text-gray-500">{option.hint}</p>
+
+      {clientItemMismatch && (
+        <p className="rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-800">
+          Позиция — печать на изделии заказчика. Если наносит партнёр, выберите
+          «Доля от маржи — печать по изделию заказчика».
+        </p>
+      )}
 
       {paid && (
         <label className="flex items-center gap-2 text-xs text-gray-600">

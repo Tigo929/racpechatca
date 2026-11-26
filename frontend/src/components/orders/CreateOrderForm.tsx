@@ -1228,6 +1228,7 @@ export function CreateOrderForm({ onClose, onCreated }: Props) {
                     <div className="col-span-3 p-2.5 rounded-lg border border-gray-200">
                       <label className={labelCls}>Партнёру</label>
                       <PartnerPayoutPicker
+                        itemName={watch(`tshirtItems.${idx}.name`) ?? ''}
                         value={
                           (watch(`tshirtItems.${idx}.partnerPayout`) ??
                             'NONE') as PartnerPayout

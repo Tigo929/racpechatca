@@ -675,8 +675,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/CreateOrderForm.tsx": {
-    "mtime": 1795300592.4962223,
-    "ast_hash": "dfe74fde636102a7c3c677e5da29e974",
+    "mtime": 1795719567.0835955,
+    "ast_hash": "1dd33e042e90e53b43de10a7c79d2d62",
     "semantic_hash": ""
   },
   "frontend/src/components/orders/ItemsTable.tsx": {
@@ -700,8 +700,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/TshirtItemsTable.tsx": {
-    "mtime": 1794496903.3376853,
-    "ast_hash": "2baed60486774b49306b5a5adb56e0fa",
+    "mtime": 1795719567.081597,
+    "ast_hash": "0bfa93d3e6e08a427b26187ec2fc8487",
     "semantic_hash": ""
   },
   "frontend/src/components/ui/DeliveryBadge.tsx": {
@@ -1735,8 +1735,8 @@
     "semantic_hash": ""
   },
   "crm-new/src/approval/approval.service.ts": {
-    "mtime": 1794309127.999763,
-    "ast_hash": "1460d4edc911da36e3c097b1fb659244",
+    "mtime": 1795719606.383671,
+    "ast_hash": "464ae0aa6cfdde0eff0212b11ec3b09d",
     "semantic_hash": ""
   },
   "crm-new/src/approval/dto/create-approval.dto.ts": {
@@ -5605,8 +5605,8 @@
     "semantic_hash": ""
   },
   "frontend/src/components/orders/PartnerPayoutPicker.tsx": {
-    "mtime": 1794496903.1835263,
-    "ast_hash": "67fd487daa9decb950a22369673a4b6b",
+    "mtime": 1795719567.0805967,
+    "ast_hash": "f1ae5d40f4014a7483bab42ca495913d",
     "semantic_hash": ""
   },
   "frontend/src/utils/paper-type.test.ts": {
@@ -5892,6 +5892,16 @@
   "crm-new/src/order-photo/review-tracked.spec.ts": {
     "mtime": 1795716487.250631,
     "ast_hash": "29ff49af226268c6b60e26c9248b0eb1",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/client-item.spec.ts": {
+    "mtime": 1795719606.3826728,
+    "ast_hash": "6d9ad09ea11f6683bb3b4fa367402d37",
+    "semantic_hash": ""
+  },
+  "crm-new/src/order-photo/client-item.ts": {
+    "mtime": 1795719531.3216617,
+    "ast_hash": "834049bafa38a35a087ef360c514aee2",
     "semantic_hash": ""
   }
 }
