@@ -183,6 +183,14 @@ export class DtoCreateLead {
   @IsIn(['GLOSS', 'MATTE'])
   paperType?: 'GLOSS' | 'MATTE';
 
+  /**
+   * Срочная печать, выбранная на сайте. Надбавку сайт не присылает:
+   * CRM считает её сама из проверенной суммы позиций (urgent-lead.ts).
+   */
+  @IsOptional()
+  @IsBoolean()
+  urgent?: boolean;
+
   @IsOptional()
   @IsUrl({ require_protocol: true })
   @MaxLength(600)

@@ -20,8 +20,15 @@ import { EnumProductCategory, EnumStatus } from 'src/generated/prisma/enums';
  */
 export const DEFAULT_DEADLINE_MS = 3 * 24 * 60 * 60 * 1000;
 
+/**
+ * Срочная печать с сайта: «от нескольких часов до 1 дня» (решение
+ * владельца 28.11.2026), поэтому срок — сутки, а не три дня.
+ */
+export const URGENT_DEADLINE_MS = 24 * 60 * 60 * 1000;
+
 export interface DeadlineStartOrder {
   status: EnumStatus;
+  isUrgent?: boolean;
   deadline: Date | null;
   productCategory: EnumProductCategory;
 }
@@ -42,5 +49,6 @@ export function deadlineOnAccept(
   if (!accepted) return {};
   if (order.deadline) return {};
   if (order.productCategory === EnumProductCategory.TSHIRT) return {};
-  return { deadline: new Date(now.getTime() + DEFAULT_DEADLINE_MS) };
+  const span = order.isUrgent ? URGENT_DEADLINE_MS : DEFAULT_DEADLINE_MS;
+  return { deadline: new Date(now.getTime() + span) };
 }

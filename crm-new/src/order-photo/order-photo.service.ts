@@ -19,6 +19,7 @@ import { clientPaidAtPatch, parseClientPaidAt } from './paid-at';
 import { clampOrderDiscount, orderTotal } from './order-total';
 import { tshirtSizeLabel } from './tshirt-size';
 import { deadlineOnAccept, DEFAULT_DEADLINE_MS } from './deadline-start';
+import { URGENT_LEAD_PERCENT, urgentLeadFee } from './urgent-lead';
 import {
   canvasPositionMoney,
   normalizeAddons,
@@ -975,11 +976,19 @@ export class OrderPhotoService {
         communicationValue,
         maxLinkTemplate,
       );
-      const isYandexPvz = dto.delivery === 'yandex_pvz';
+      const isYandexPvz = dto.urgent !== true && dto.delivery === 'yandex_pvz';
       // ПВЗ Ozon: клиент выбрал конкретный пункт на карте сайта. Без пункта
       // это не Ozon, а «уточнить в переписке» — заводим самовывозом.
+      /*
+        Срочная печать с сайта: способ получения клиент не выбирал — его
+        согласует менеджер. Поэтому заводим самовывозом без цены доставки,
+        а не Ozon/Яндексом, даже если такое поле вдруг пришло.
+      */
+      const isUrgentLead = dto.urgent === true;
       const isOzonPvz =
-        dto.delivery === 'ozon_pvz' && Boolean(dto.pickupPointId);
+        !isUrgentLead &&
+        dto.delivery === 'ozon_pvz' &&
+        Boolean(dto.pickupPointId);
       /*
         Доставка до двери по Москве — своя машина производства, то есть
         PRODUCTION_MSK. Бывает только у холста: другой товар с ней пришёл
@@ -1021,6 +1030,8 @@ export class OrderPhotoService {
         throw err;
       }
       const total = money.pricePosition;
+      // +30% к печати за срочность — от нашей суммы, доставку не трогает.
+      const leadUrgencyFee = isUrgentLead ? urgentLeadFee(total) : 0;
 
       /*
         Доставка считается ПОСЛЕ суммы позиций: от неё зависит, бесплатна ли
@@ -1045,6 +1056,9 @@ export class OrderPhotoService {
         dto.comment?.trim() || dto.description?.trim() || '';
       const noteLines = [
         `🆕 Заявка с сайта`,
+        isUrgentLead
+          ? `🔥 СРОЧНАЯ ПЕЧАТЬ (от нескольких часов до 1 дня): +${URGENT_LEAD_PERCENT}% к печати${leadUrgencyFee ? ` = ${leadUrgencyFee} ₽` : ''}. Способ получения согласовать с клиентом.`
+          : null,
         clientComment ? `💬 Клиент просит: ${clientComment}` : null,
         dto.leadId ? `ID заявки: ${dto.leadId}` : null,
         `Имя: ${dto.name}`,
@@ -1063,17 +1077,19 @@ export class OrderPhotoService {
         dto.quantity ? `Тираж: ${dto.quantity} шт` : null,
         dto.unitPrice ? `Цена за шт: ${dto.unitPrice} ₽` : null,
         money.pricePosition ? `Итого: ${money.pricePosition} ₽` : null,
-        dto.delivery
-          ? `Получение: ${
-              dto.delivery === 'yandex_pvz'
-                ? 'Яндекс ПВЗ'
-                : isOzonPvz
-                  ? `ПВЗ Ozon ${dto.pickupPointNumber ?? dto.pickupPointId} — ${dto.pickupPointAddress ?? ''}`
-                  : isCourierMsk
-                    ? `доставка до двери по Москве — ${CANVAS_COURIER_MSK_PRICE} ₽`
-                    : 'Самовывоз'
-            }`
-          : null,
+        isUrgentLead
+          ? 'Получение: согласовать с клиентом (срочный заказ)'
+          : dto.delivery
+            ? `Получение: ${
+                dto.delivery === 'yandex_pvz'
+                  ? 'Яндекс ПВЗ'
+                  : isOzonPvz
+                    ? `ПВЗ Ozon ${dto.pickupPointNumber ?? dto.pickupPointId} — ${dto.pickupPointAddress ?? ''}`
+                    : isCourierMsk
+                      ? `доставка до двери по Москве — ${CANVAS_COURIER_MSK_PRICE} ₽`
+                      : 'Самовывоз'
+              }`
+            : null,
         dto.paperType
           ? `Бумага: ${dto.paperType === 'MATTE' ? 'матовая' : 'глянцевая'}`
           : null,
@@ -1149,7 +1165,12 @@ export class OrderPhotoService {
           recipientPhone: normalizePhone(phone),
           // Сумма заказа = позиции + доставка: иначе отчёт вычтет доставку
           // из суммы, где её нет, и «выручка за товар» уйдёт в минус.
-          totalOrder: total + leadDeliveryCost,
+          totalOrder: total + leadDeliveryCost + leadUrgencyFee,
+          // Срочность — флагом и отдельной суммой: «🔥» в плане дня и
+          // строка «Срочное изготовление» в подтверждении клиенту.
+          ...(isUrgentLead
+            ? { isUrgent: true, urgencyFee: leadUrgencyFee }
+            : {}),
           productCategory: dto.productCategory ?? EnumProductCategory.PHOTO,
           note: noteLines.join('\n'),
           // Откуда пришёл человек — колонками. Те же данные остаются
@@ -2543,10 +2564,10 @@ export class OrderPhotoService {
           {
             id: dispatchedOrder.id,
             numberOrder: dispatchedOrder.numberOrder,
-            status: dispatchedOrder.status as any,
+            status: dispatchedOrder.status,
             createdAt: dispatchedOrder.createdAt,
             updatedAt: dispatchedOrder.updatedAt,
-            executorSentAt: dispatchedOrder.executorSentAt as Date | null,
+            executorSentAt: dispatchedOrder.executorSentAt,
             sourceRevision: (dispatchedOrder as any).sourceRevision ?? 1,
             partnerTgChatId: (dispatchedOrder as any).partnerTgChatId ?? null,
             partnerTgMessageId:

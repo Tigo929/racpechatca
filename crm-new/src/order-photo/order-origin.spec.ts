@@ -108,6 +108,19 @@ const manual = (over: Partial<DtoCreateOrder> = {}): DtoCreateOrder =>
   }) as unknown as DtoCreateOrder;
 
 describe('новые заказы: происхождение ставит сервер', () => {
+  it('срочная заявка: +30% к печати, срочно, получение согласовать', async () => {
+    const { service, create } = serviceWithTx();
+    await service.createLead(
+      lead({ urgent: true, delivery: 'ozon_pvz', pickupPointId: '123' }),
+    );
+    const data = create.mock.calls[0][0].data;
+    expect(data.isUrgent).toBe(true);
+    expect(data.urgencyFee).toBe(120);
+    expect(data.deliveryMethod).toBe('PICKUP');
+    expect(data.totalOrder).toBe(520);
+    expect(String(data.note)).toContain('СРОЧНАЯ ПЕЧАТЬ');
+  });
+
   it('1. заявка с сайта → WEBSITE', async () => {
     const { service, create } = serviceWithTx();
     await service.createLead(lead());
